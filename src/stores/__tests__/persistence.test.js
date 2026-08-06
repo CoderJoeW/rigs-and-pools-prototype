@@ -1,0 +1,139 @@
+import { describe, it, expect, vi } from 'vitest';
+import { freshStore, reopenStore } from '../../test/testStore.js';
+
+// wipeSave() ends with a cosmetic location.reload(), already wrapped in a
+// try/catch in app code — jsdom has no real navigation, so stub it quiet.
+vi.stubGlobal('location', { ...window.location, reload: () => {} });
+
+describe('saveNow / loadSave round trip', () => {
+  it('loadSave on an empty save returns false and leaves a fresh game alone', async () => {
+    const g = freshStore();
+    const loaded = await g.loadSave();
+    expect(loaded).toBe(false);
+    expect(g.s.cash).toBe(500);
+  });
+
+  it('saveNow persists to localStorage and reports where', async () => {
+    const g = freshStore();
+    await g.saveNow();
+    expect(g.s.saveInfo).toMatch(/saved/);
+    expect(localStorage.getItem('rigs-and-pools-save')).toBeTruthy();
+  });
+
+  it('a fresh store reopening the app restores the saved state', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    g1.s.cash = 12345;
+    await g1.saveNow();
+
+    const g2 = reopenStore();
+    expect(g2.s.cash).toBe(500); // still the boot default until loadSave runs
+    const loaded = await g2.loadSave();
+
+    expect(loaded).toBe(true);
+    expect(g2.s.cash).toBe(12345);
+    expect(g2.s.rigs).toHaveLength(1);
+  });
+
+  it('loadSave resets transient UI state even though it was saved', async () => {
+    const g1 = freshStore();
+    g1.s.picker = 'frame';
+    g1.s.speed = 3600;
+    await g1.saveNow();
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.s.picker).toBe(null);
+    expect(g2.s.speed).toBe(1); // always resumes at real time, whatever was saved
+  });
+});
+
+describe('offline catch-up', () => {
+  it('credits progress for time away and reports a "Welcome back" toast', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60); // finish assembly, start earning
+    await g1.saveNow();
+
+    // back-date the save as if the tab had been closed for 2 hours
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 2 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const tBefore = raw.state.t;
+    await g2.loadSave();
+
+    // ~2 hours of game time should have been credited in 30-second chunks.
+    // (Toasts during the catch-up are real-time rate-limited — by design,
+    // so a burst of simulated ticks doesn't strobe — so the "Welcome back"
+    // toast can lose that race; the activity feed isn't rate-limited and
+    // is the reliable place to see the notice.)
+    expect(g2.s.t).toBeGreaterThan(tBefore + 3600);
+    expect(g2.s.feed.some(e => e.text.startsWith('Away '))).toBe(true);
+  });
+
+  it('caps offline credit at 24 hours', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const tBefore = raw.state.t;
+    raw.savedAt = Date.now() - 30 * 24 * 3600 * 1000; // a month ago
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    // capped at C.OFFLINE_CAP (86400s), not the full month
+    expect(g2.s.t).toBeLessThanOrEqual(tBefore + 86400 + 1);
+    expect(g2.s.feed.some(e => e.text.startsWith('Away '))).toBe(true);
+  });
+
+  it('does not fast-forward for a short absence', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const tBefore = raw.state.t;
+    raw.savedAt = Date.now() - 5000; // 5 seconds ago
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.s.t).toBeCloseTo(tBefore, 1);
+  });
+});
+
+describe('wipeSave', () => {
+  it('resets to a fresh game and immediately re-saves that fresh state', async () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    g.s.cash = 999;
+    await g.saveNow();
+
+    await g.wipeSave();
+
+    expect(g.s.cash).toBe(500);
+    expect(g.s.rigs).toHaveLength(0);
+    expect(g.s.saveInfo).toBe('erased');
+
+    // the erase-then-resave persisted: reopening finds the FRESH game, not
+    // the old $999 one — wipeSave deliberately leaves a save behind so the
+    // new run isn't one accidental reload away from losing itself again
+    const g2 = reopenStore();
+    expect(await g2.loadSave()).toBe(true);
+    expect(g2.s.cash).toBe(500);
+    expect(g2.s.rigs).toHaveLength(0);
+  });
+});
