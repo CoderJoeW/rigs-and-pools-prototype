@@ -75,13 +75,18 @@ const FLOW_C={ solar:'#C98A0B', battery:'#2E6BA8', grid:'#8A8F98',
   rigs:'#137A55', cooling:'#2E6BA8', charging:'#C98A0B', unserved:'#B4232A' };
 const segs=(parts,total)=>parts.map(([k,w])=>({k,w,
   pct: total>0?Math.max(0,w)/total*100:0, c:FLOW_C[k]}));
-const flowIn=f=>{ const x=g.flowOf(f);
+/* sitePlan/flowOf each re-walk and re-sort the site's sources; the power and
+   battery panels below used to call them (via these) up to 8 times combined
+   per render. Computed once per site here. */
+const plan=computed(()=> g.sitePlan(f.value));
+const flow=computed(()=> g.flowOf(f.value));
+const flowIn=computed(()=>{ const x=flow.value;
   const tot=x.inRenew+x.inBatt+x.inPaid+x.unserved;
   return segs([['solar',x.inRenew],['battery',x.inBatt],['grid',x.inPaid],
-               ['unserved',x.unserved]],tot); };
-const flowOut=f=>{ const x=g.flowOf(f);
+               ['unserved',x.unserved]],tot); });
+const flowOut=computed(()=>{ const x=flow.value;
   const tot=x.rigs+x.cool+x.charge;
-  return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); };
+  return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
 </script>
 
 <template>
@@ -141,17 +146,17 @@ const flowOut=f=>{ const x=g.flowOf(f);
         <span style="font-size:14px">{{ sec.power?'−':'+' }}</span></button>
       <div v-if="sec.power" class="card-bd">
         <div class="track" style="height:14px;display:flex;overflow:hidden">
-          <i v-for="seg in flowIn(f)" :key="seg.k" :title="seg.k"
+          <i v-for="seg in flowIn" :key="seg.k" :title="seg.k"
              :style="{width:seg.pct+'%',background:seg.c,height:'100%',display:'block'}"></i>
         </div>
         <div class="track-cap"><span>Coming from</span>
-          <b>{{ flowIn(f).filter(x=>x.pct>0).map(x=>x.k+' '+fmt.w(x.w)).join(' · ') || 'nothing drawn' }}</b></div>
+          <b>{{ flowIn.filter(x=>x.pct>0).map(x=>x.k+' '+fmt.w(x.w)).join(' · ') || 'nothing drawn' }}</b></div>
         <div class="track" style="height:14px;display:flex;overflow:hidden;margin-top:6px">
-          <i v-for="seg in flowOut(f)" :key="seg.k" :title="seg.k"
+          <i v-for="seg in flowOut" :key="seg.k" :title="seg.k"
              :style="{width:seg.pct+'%',background:seg.c,height:'100%',display:'block'}"></i>
         </div>
         <div class="track-cap"><span>Going to</span>
-          <b>{{ flowOut(f).filter(x=>x.pct>0).map(x=>x.k+' '+fmt.w(x.w)).join(' · ') || '—' }}</b></div>
+          <b>{{ flowOut.filter(x=>x.pct>0).map(x=>x.k+' '+fmt.w(x.w)).join(' · ') || '—' }}</b></div>
         <div class="track-cap" style="margin-top:4px"><span>Bill at this moment</span>
           <b>{{ fmt.usd2(g.siteCostPerHour(f)*24) }}/day</b></div>
         <div v-if="g.battFirm(f)>0" class="track-cap" style="margin-top:2px">
@@ -191,8 +196,8 @@ const flowOut=f=>{ const x=g.flowOf(f);
         <span style="flex:1;text-align:left"><span class="nm">Battery</span>
           <div class="sb">{{ g.battKwh(f)>0
             ? (f.batt||0).toFixed(1)+' of '+g.battKwh(f)+' kWh · '+
-              (g.sitePlan(f).chW+g.sitePlan(f).gridChW>0?'charging'
-               :g.sitePlan(f).disW>0?'discharging':'idle')
+              (plan.chW+plan.gridChW>0?'charging'
+               :plan.disW>0?'discharging':'idle')
             : 'none installed' }}</div></span>
         <span style="font-size:14px">{{ sec.batt?'−':'+' }}</span></button>
       <div v-if="sec.batt" class="card-bd">
@@ -202,9 +207,9 @@ const flowOut=f=>{ const x=g.flowOf(f);
           <div class="track-cap"><span>Stored</span>
             <b>{{ (f.batt||0).toFixed(1) }} kWh · {{ fmt.w(g.battKw(f)) }} rate</b></div>
           <div class="dl"><dt>Right now</dt><dd>
-            <span v-if="g.sitePlan(f).chW>0" class="pos">charging {{ fmt.w(g.sitePlan(f).chW) }} from solar</span>
-            <span v-else-if="g.sitePlan(f).gridChW>0" class="blu">charging {{ fmt.w(g.sitePlan(f).gridChW) }} off-peak</span>
-            <span v-else-if="g.sitePlan(f).disW>0" class="amb">discharging {{ fmt.w(g.sitePlan(f).disW) }}</span>
+            <span v-if="plan.chW>0" class="pos">charging {{ fmt.w(plan.chW) }} from solar</span>
+            <span v-else-if="plan.gridChW>0" class="blu">charging {{ fmt.w(plan.gridChW) }} off-peak</span>
+            <span v-else-if="plan.disW>0" class="amb">discharging {{ fmt.w(plan.disW) }}</span>
             <span v-else>idle</span></dd></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px">
             <span style="font-size:13px">Charge from off-peak grid</span>

@@ -1,7 +1,8 @@
 import { reactive } from 'vue';
 import { CHAINS } from '../data/chains.js';
-import { C, SIM_CHAINS, RIVAL_PER_CHAIN, SIM_PLAYERS, SIM_RATIO, mkRival } from '../data/constants.js';
-import { gauss } from '../utils/format.js';
+import { C, SIM_CHAINS, RIVAL_PER_CHAIN, SIM_PLAYERS, SIM_RATIO } from '../data/constants.js';
+import { mkRival } from './rivals.js';
+import { gauss } from '../utils/random.js';
 
 /* 00-state.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent

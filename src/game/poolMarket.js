@@ -1,5 +1,6 @@
 import { computed } from 'vue';
-import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_CHAINS, RIVAL_PER_CHAIN, mkRival } from '../data/constants.js';
+import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_CHAINS, RIVAL_PER_CHAIN } from '../data/constants.js';
+import { mkRival } from './rivals.js';
 import { fmt } from '../utils/format.js';
 
 /* 05-pools-and-market.js — installed into the shared context G.

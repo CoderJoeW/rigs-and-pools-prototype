@@ -1,7 +1,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
-import { fmt } from '../utils/format.js';
+import { fmt, partSub } from '../utils/format.js';
 import Compare from '../components/Compare.vue';
 
 const g = useGameStore();
@@ -72,6 +72,9 @@ const rig=computed(()=> openRig.value==null ? null
 const fleetOpen=ref(false);
 const fleetGroup=ref(1), fleetCard=ref('c8');
 const specInfo=computed(()=> g.fleetSpecInfo(g.draftSpec(), scopeId.value));
+const wornInfo=computed(()=> g.fleetWorn(0.35, scopeId.value));
+const moveInfo=computed(()=> g.fleetMoveInfo(fleetGroup.value, scopeId.value));
+const refitInfo=computed(()=> g.fleetRefitInfo(fleetCard.value, scopeId.value));
 
 const wornCost=(r,t)=>r.units.filter(u=>u.w>=t).reduce((a,u)=>a+g.PART(u.p).price,0);
 const wornN=(r,t)=>r.units.filter(u=>u.w>=t).length;
@@ -87,13 +90,13 @@ const rbFields=computed(()=>{
     { slot:'unit', label:'Cards', name:P(d.unit).name, changed:d.unit!==r.units[0].p,
       sub:P(d.unit).mh+' MH · '+(P(d.unit).mh/P(d.unit).w).toFixed(2)+' MH/W' },
     { slot:'frame', label:'Frame', name:P(d.frame).name, changed:d.frame!==r.frame,
-      sub:'fits '+P(d.frame).slots+' · airflow '+P(d.frame).air.toFixed(2) },
+      sub:partSub('frame',P(d.frame)) },
     { slot:'mobo', label:'Board', name:P(d.mobo).name, changed:d.mobo!==r.mobo,
-      sub:'drives '+P(d.mobo).pcie+' · '+P(d.mobo).w+'W idle' },
+      sub:partSub('mobo',P(d.mobo)) },
     { slot:'cool', label:'Cooling', name:P(d.cool).name, changed:d.cool!==r.cool,
-      sub:'÷'+P(d.cool).fac.toFixed(2)+' heat · '+P(d.cool).w+'W' },
+      sub:partSub('cool',P(d.cool)) },
     { slot:'psu', label:'Supply', name:P(d.psu).name, changed:d.psu!==r.psu,
-      sub:fmt.w(P(d.psu).w)+' · '+P(d.psu).conn+' PCIe · '+(P(d.psu).eff*100).toFixed(0)+'%' },
+      sub:partSub('psu',P(d.psu)) },
   ];
 });
 const rbPickerRows=computed(()=>{
@@ -111,10 +114,7 @@ const rbPickerRows=computed(()=>{
       note=would!==lim?' · limit → '+would:''; }
     if(slot==='mobo'){ const would=Math.min(g.PART(d.frame).slots,p.pcie);
       note=would!==lim?' · limit → '+would:''; }
-    let eff= slot==='frame'?'fits '+p.slots+' · airflow '+p.air.toFixed(2)
-           : slot==='mobo'?'drives '+p.pcie+' · '+p.w+'W idle'
-           : slot==='cool'?'÷'+p.fac.toFixed(2)+' heat · '+p.w+'W'
-           : fmt.w(p.w)+' · '+p.conn+' PCIe · '+(p.eff*100).toFixed(0)+'%';
+    const eff=partSub(slot,p);
     return { id:p.id, name:p.name, sub:eff+note,
       value:p.price?fmt.usd(p.price):'free', valueSub:'',
       current:p.id===d[slot] };
@@ -311,13 +311,13 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
         <div class="card"><div class="card-bd pt">
           <div class="rigfld"><label>Repair worn cards</label>
             <button class="btn btn-wide"
-                    :class="g.fleetWorn(0.35,scopeId).n&&g.s.cash>=g.fleetWorn(0.35,scopeId).cost?'btn-pri':''"
-                    :disabled="!g.fleetWorn(0.35,scopeId).n||g.s.cash<g.fleetWorn(0.35,scopeId).cost"
+                    :class="wornInfo.n&&g.s.cash>=wornInfo.cost?'btn-pri':''"
+                    :disabled="!wornInfo.n||g.s.cash<wornInfo.cost"
                     @click="g.fleetRepair(0.35,scopeId)">
-              {{ g.fleetWorn(0.35,scopeId).n
-                 ? 'Replace '+g.fleetWorn(0.35,scopeId).n+' card'+(g.fleetWorn(0.35,scopeId).n===1?'':'s')
-                   +' across '+g.fleetWorn(0.35,scopeId).rigs+' rig'+(g.fleetWorn(0.35,scopeId).rigs===1?'':'s')
-                   +' · '+fmt.usd(g.fleetWorn(0.35,scopeId).cost)
+              {{ wornInfo.n
+                 ? 'Replace '+wornInfo.n+' card'+(wornInfo.n===1?'':'s')
+                   +' across '+wornInfo.rigs+' rig'+(wornInfo.rigs===1?'':'s')
+                   +' · '+fmt.usd(wornInfo.cost)
                  : 'Nothing worn past 35%' }}</button></div>
 
           <div class="rigfld"><label>Move to a group</label>
@@ -327,13 +327,13 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
                   :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool).name:'') }}</option>
             </select>
             <button class="btn btn-wide" style="margin-top:6px"
-                    :class="g.fleetMoveInfo(fleetGroup,scopeId).rigs?'btn-pri':''"
-                    :disabled="!g.fleetMoveInfo(fleetGroup,scopeId).rigs"
+                    :class="moveInfo.rigs?'btn-pri':''"
+                    :disabled="!moveInfo.rigs"
                     @click="g.fleetMove(fleetGroup,scopeId)">
-              {{ g.fleetMoveInfo(fleetGroup,scopeId).rigs
-                 ? 'Move '+g.fleetMoveInfo(fleetGroup,scopeId).rigs+' rig'
-                   +(g.fleetMoveInfo(fleetGroup,scopeId).rigs===1?'':'s')+' ('
-                   +fmt.hash(g.fleetMoveInfo(fleetGroup,scopeId).hash)+')'
+              {{ moveInfo.rigs
+                 ? 'Move '+moveInfo.rigs+' rig'
+                   +(moveInfo.rigs===1?'':'s')+' ('
+                   +fmt.hash(moveInfo.hash)+')'
                  : 'Already there' }}</button>
             <p class="hint">Moving never forfeits a PPLNS window — it belongs to the group.</p></div>
         </div></div>
@@ -345,13 +345,13 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
                 {{ c.name }} — {{ c.mh }} MH · {{ (c.mh/c.w).toFixed(2) }} MH/W · {{ fmt.usd(c.price) }}</option>
             </select>
             <button class="btn btn-wide" style="margin-top:6px"
-                    :class="g.fleetRefitInfo(fleetCard,scopeId).rigs?'btn-pri':''"
-                    :disabled="!g.fleetRefitInfo(fleetCard,scopeId).rigs||g.s.cash<g.fleetRefitInfo(fleetCard,scopeId).cost"
+                    :class="refitInfo.rigs?'btn-pri':''"
+                    :disabled="!refitInfo.rigs||g.s.cash<refitInfo.cost"
                     @click="g.fleetRefit(fleetCard,scopeId)">
-              {{ g.fleetRefitInfo(fleetCard,scopeId).rigs
-                 ? 'Refit '+g.fleetRefitInfo(fleetCard,scopeId).rigs+' rig'
-                   +(g.fleetRefitInfo(fleetCard,scopeId).rigs===1?'':'s')
-                   +' · '+fmt.usd(g.fleetRefitInfo(fleetCard,scopeId).cost)
+              {{ refitInfo.rigs
+                 ? 'Refit '+refitInfo.rigs+' rig'
+                   +(refitInfo.rigs===1?'':'s')
+                   +' · '+fmt.usd(refitInfo.cost)
                  : 'No eligible rigs' }}</button>
             <div class="warnbox" style="margin-top:6px">Every eligible rig goes down at once for
               its rebuild. The farm earns nothing until they are back.</div>

@@ -2,13 +2,11 @@
 import { computed, reactive, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { sparkPath } from '../utils/spark.js';
 
 const g = useGameStore();
 const open=reactive({});
-const spark=x=>{ const h=Array.isArray(x)?x:x.hist; if(!h||h.length<2) return '';
-  const lo=Math.min(...h),hi=Math.max(...h),r=(hi-lo)||1;
-  return h.map((v,i)=>(i?'L':'M')+(i/(h.length-1)*100).toFixed(1)+' '+
-    (32-((v-lo)/r)*26).toFixed(1)).join(' '); };
+const spark=x=> sparkPath(Array.isArray(x)?x:x.hist, 32, 26);
 const feeDraft=reactive({});
 const fieldMine=ref(true);
 // one table, everyone on the same axes, ranked by the thing that matters
@@ -110,7 +108,7 @@ const projMargin=computed(()=>{
           <span v-if="p.owner==='you'" class="tag b" style="margin-left:3px">YOURS</span>
           <div class="sb">{{ g.chain(p.chain).name }} · {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks</div></span>
-        <span class="rt">{{ (p.fee*100).toFixed(1) }}%
+        <span class="rt">{{ fmt.pct(p.fee) }}
           <div class="sb">{{ fmt.pct(g.poolRep(p),0) }} rep</div></span></div>
       <div v-if="!field.length" class="rowline">
         <span class="sb">No pools running here yet.</span></div>
@@ -136,7 +134,7 @@ const projMargin=computed(()=>{
             luck {{ fmt.pct(g.repParts(p).luck,0) }},
             steady fee {{ fmt.pct(g.repParts(p).feeStab,0) }}<br>
             backed by {{ fmt.usd(p.bond) }} of capital</div></span>
-        <span class="rt">{{ (p.fee*100).toFixed(1) }}%
+        <span class="rt">{{ fmt.pct(p.fee) }}
           <div class="sb">{{ fmt.pct(g.poolRep(p),0) }} rep</div></span></button>
       <div v-if="!g.rivalPools.length" class="rowline">
         <span class="sb">No pools running anywhere — the field is yours.</span></div>
@@ -162,7 +160,7 @@ const projMargin=computed(()=>{
           <div class="sb">{{ g.chain(p.chain).name }} · {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks ·
             {{ fmt.pct(g.poolRep(p),0) }} rep</div></span>
-        <span class="rt" style="text-align:right">{{ (p.fee*100).toFixed(1) }}%
+        <span class="rt" style="text-align:right">{{ fmt.pct(p.fee) }}
           <div class="sb" :class="p.bond<p.bond0*0.4?'neg':''">bond {{ fmt.usd(p.bond) }}</div></span>
         <span style="font-size:14px;margin-left:8px">{{ open[p.id]?'−':'+' }}</span>
       </button>
@@ -185,7 +183,7 @@ const projMargin=computed(()=>{
               +g.s.sims.filter(m=>m.pool===p.id).length+' with you'
             : 'nobody mines '+g.chain(p.chain).name }}</dd></div>
         <div class="dl"><dt>Rivals</dt><dd>{{ g.s.pools.filter(x=>x.live&&x.chain===p.chain&&x.id!==p.id)
-          .map(x=>x.name.replace(g.chain(p.chain).name+' ','')+' '+(x.fee*100).toFixed(1)+'%').join(' · ') }}</dd></div>
+          .map(x=>x.name.replace(g.chain(p.chain).name+' ','')+' '+fmt.pct(x.fee)).join(' · ') }}</dd></div>
         <div v-for="gr in g.s.groups.filter(x=>x.chain===p.chain&&x.pool!==p.id)" :key="gr.id"
              class="dl"><dt>Your rigs</dt>
           <dd><button class="btn btn-sm" @click="g.setGroupPool(gr,p.id)">
@@ -272,7 +270,7 @@ const projMargin=computed(()=>{
         <div v-if="p.bond<p.bond0" class="warnbox" style="margin-top:7px">
           <b>Bond below its opening size.</b> Top it up — if it reaches zero the pool cannot pay
           its miners and closes automatically, and you lose what is left.</div>
-        <div class="dl"><dt>Fee</dt><dd>{{ (p.fee*100).toFixed(1) }}%
+        <div class="dl"><dt>Fee</dt><dd>{{ fmt.pct(p.fee) }}
           <span class="sb"> · holding {{ fmt.hash(g.poolHash(p)) }}</span></dd></div>
         <input type="range" min="0" max="0.10" step="0.0025" :value="feeDraft[p.id]!==undefined?feeDraft[p.id]:p.fee"
                @input="feeDraft[p.id]=parseFloat($event.target.value)">

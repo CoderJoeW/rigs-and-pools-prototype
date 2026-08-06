@@ -1,5 +1,3 @@
-import { CHAINS } from './chains.js';
-
 export const C = {
   TICK_MS:100, DT:0.1, SPEEDS:[1,60,600,3600],
   AMBIENT_LOW:16, AMBIENT_HIGH:28,   // the day swings, peaking mid-afternoon
@@ -72,23 +70,3 @@ export const RIVAL_NAMES = ['Ironvault','Northwind','Kestrel Op','Blue Sky','Gra
   'Mercer','Halcyon Bros','Longshore','Ardent','Copperline','Vantage','Rook',
   'Tidewater','Foxglove','Sable','Meridian'];
 export const RIVAL_PER_CHAIN = 3;                  // how many rivals each chain opens with
-
-let rivalSeq=0;
-export function mkRival(cid,t){
-  const c=CHAINS.find(x=>x.id===cid);
-  const scheme=Math.random()<0.35?'PPS':'PPLNS';
-  const fee=scheme==='PPS' ? 0.015+Math.random()*0.045 : 0.005+Math.random()*0.035;
-  // capitalised to carry a slice of its own chain under the SAME two rules
-  // the player faces, so a PPS rival on a rare-block chain arrives properly
-  // heavy rather than opening with capacity for nobody
-  const want=SIM_RATIO*c.floor*(0.12+Math.random()*0.45);
-  const N=Math.max(1e-9, 86400*COVER_DAYS*want/Math.max(1,c.floor*c.target));
-  const bv=c.reward*c.price*(1+TX_FEES);
-  const bond=Math.round(Math.max(
-    want*C.PAY*c.mult*(scheme==='PPS'?1.0:PPLNS_COVER),
-    scheme==='PPS' ? VAR_K*Math.sqrt(N)*bv : 0));
-  return { id:'r'+(++rivalSeq), chain:cid, owner:'rival',
-    name:RIVAL_NAMES[(rivalSeq-1)%RIVAL_NAMES.length]+(rivalSeq>RIVAL_NAMES.length?' '+Math.ceil(rivalSeq/RIVAL_NAMES.length):''),
-    scheme, fee, bond, bond0:bond, cap:0, born:t||0, live:true, earned:0,
-    found:0, feeMoved:-1e9, lapse:0 };
-}

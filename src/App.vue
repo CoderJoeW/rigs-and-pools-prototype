@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import FarmView from './views/FarmView.vue';
@@ -36,13 +36,12 @@ const allTabs=[
   {id:'market',label:'Market',icon:'M4 19V5M4 19h16M8 14.5l3.5-4 3 2.5L20 8'},
   {id:'stats', label:'Stats', icon:'M5 20V10M12 20V4M19 20v-7'},
 ];
-const tabs=computed(()=>allTabs);
 </script>
 
 <template>
   <TopBar />
   <main class="body"><component :is="views[g.s.tab]" /></main>
-  <nav class="tabs"><button v-for="t in tabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
+  <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
       <svg viewBox="0 0 24 24"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
   <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n">

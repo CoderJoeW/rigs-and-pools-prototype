@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { sparkPath } from '../utils/spark.js';
 import StatChart from '../components/StatChart.vue';
 
 const g = useGameStore();
@@ -57,10 +58,7 @@ const tracks=computed(()=>{
         <div class="track-cap"><span>{{ c.tick }}</span><b>{{ fmt.usd2(g.price(c)) }}</b></div>
         <svg viewBox="0 0 100 22" preserveAspectRatio="none"
              style="width:100%;height:34px;display:block" aria-hidden="true">
-          <path :d="(c.hist||[]).length<2?'':c.hist.map((v,i)=>{
-              const lo=Math.min(...c.hist),hi=Math.max(...c.hist),r=(hi-lo)||1;
-              return (i?'L':'M')+(i/(c.hist.length-1)*100).toFixed(1)+' '+
-                (20-((v-lo)/r)*18).toFixed(1); }).join(' ')"
+          <path :d="sparkPath(c.hist, 20, 18)"
             fill="none" stroke="#137A55" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
       </div>
       <p class="hint">One point per ~18 game hours. Card generations land every

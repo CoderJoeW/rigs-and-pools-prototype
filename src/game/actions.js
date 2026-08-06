@@ -1,6 +1,7 @@
 import { C } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER } from '../data/hardware.js';
-import { fmt, wearRate } from '../utils/format.js';
+import { fmt } from '../utils/format.js';
+import { wearRate } from '../utils/random.js';
 
 /* 09-actions.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent

@@ -1,7 +1,14 @@
-export function gauss(){ let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
-  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
-export const pick = a => a[Math.floor(Math.random()*a.length)];
-export const wearRate = () => 0.75+Math.random()*0.5;
+/* The one-line "what does this part do" description shown on the Build tab,
+   a rig's retrofit sheet, and that sheet's part picker — same four slot
+   kinds, same wording, wherever a frame/board/cooler/supply is offered. */
+export function partSub(slot, p){
+  switch(slot){
+    case 'frame': return 'fits '+p.slots+' · airflow '+p.air.toFixed(2);
+    case 'mobo':  return 'drives '+p.pcie+' · '+p.w+'W idle';
+    case 'cool':  return '÷'+p.fac.toFixed(2)+' heat · '+p.w+'W';
+    case 'psu':   return fmt.w(p.w)+' · '+p.conn+' PCIe · '+(p.eff*100).toFixed(0)+'%';
+  }
+}
 
 export const fmt = {
   hash(mh){ return mh>=1e6?(mh/1e6).toFixed(2)+' TH/s':mh>=1000?(mh/1000).toFixed(2)+' GH/s':mh.toFixed(0)+' MH/s'; },

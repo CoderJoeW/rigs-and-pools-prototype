@@ -2,21 +2,23 @@
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 
 const g = useGameStore();
 const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
-const netPath=computed(()=>{
-  const h=g.s.netHist; if(h.length<2) return '';
-  const lo=Math.min(0,...h), hi=Math.max(...h), r=(hi-lo)||1;
-  return h.map((v,i)=>(i?'L':'M')+(i/(h.length-1)*100).toFixed(1)+' '+
-    (31-((v-lo)/r)*28).toFixed(1)).join(' ');
-});
+const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
 const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   const a=h[h.length-6], b=h[h.length-1];
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
+/* groupAdvice/chainCeiling each walk every group and rig internally
+   (chainHash -> myHash -> groupHash), and the template used to call them
+   up to 5x and 4x per group per render. Computed once per group here. */
+const groupRows=computed(()=>g.s.groups.map(gr=>({
+  gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
+})));
 </script>
 
 <template>
@@ -59,13 +61,13 @@ const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0))
         <div class="card-hd"><span class="eyebrow">Mining groups</span>
           <button class="btn btn-sm btn-ghost" @click="g.addGroup()">+ New group</button></div>
         <div class="card-bd pt">
-          <div v-for="gr in g.s.groups" :key="gr.id"
+          <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id"
                style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px">
             <div style="display:flex;align-items:baseline;gap:8px">
               <b style="flex:1">{{ gr.name }}
-                <span v-if="g.groupAdvice(gr)" class="tag"
+                <span v-if="advice" class="tag"
                       style="background:var(--amber-t);color:var(--amber);margin-left:5px">OUTGROWN</span>
-                <span v-else-if="g.chainCeiling(g.chain(gr.chain))" class="tag"
+                <span v-else-if="ceiling" class="tag"
                       style="background:var(--amber-t);color:var(--amber);margin-left:5px">AT CEILING</span></b>
               <span class="num" style="font-size:13px">{{ fmt.hash(g.groupHash(gr)) }}</span>
               <span class="sb">· {{ g.groupRigs(gr).length }} rig{{ g.groupRigs(gr).length===1?'':'s' }}
@@ -83,26 +85,26 @@ const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0))
                 <optgroup label="Rival pools">
                   <option v-for="p in g.s.pools.filter(x=>x.live&&x.chain===gr.chain&&x.owner==='rival')"
                           :key="p.id" :value="p.id">{{ p.name }} — {{ p.scheme }}
-                    {{ (p.fee*100).toFixed(1) }}%</option></optgroup>
+                    {{ fmt.pct(p.fee) }}</option></optgroup>
                 <optgroup v-if="g.s.pools.some(x=>x.live&&x.chain===gr.chain&&x.owner==='you')"
                           label="Your pools">
                   <option v-for="p in g.s.pools.filter(x=>x.live&&x.chain===gr.chain&&x.owner==='you')"
                           :key="p.id" :value="p.id">{{ p.name }} — {{ p.scheme }}
-                    {{ (p.fee*100).toFixed(1) }}%</option></optgroup>
+                    {{ fmt.pct(p.fee) }}</option></optgroup>
               </select>
             </div>
-            <p v-if="g.groupAdvice(gr)" class="hint" style="margin:6px 0 0;color:var(--amber)">
-              You are {{ fmt.pct(g.groupAdvice(gr).share,0) }} of {{ g.chain(gr.chain).name }} —
+            <p v-if="advice" class="hint" style="margin:6px 0 0;color:var(--amber)">
+              You are {{ fmt.pct(advice.share,0) }} of {{ g.chain(gr.chain).name }} —
               above the floor a chain pays its emission, not your hashrate.
-              {{ g.groupAdvice(gr).alt }} would pay about
-              {{ g.groupAdvice(gr).mult.toFixed(1) }}× per MH, even after your hash raises
+              {{ advice.alt }} would pay about
+              {{ advice.mult.toFixed(1) }}× per MH, even after your hash raises
               its difficulty.</p>
-            <p v-else-if="g.chainCeiling(g.chain(gr.chain))" class="hint"
+            <p v-else-if="ceiling" class="hint"
                style="margin:6px 0 0;color:var(--amber)">
-              You are {{ fmt.pct(g.chainCeiling(g.chain(gr.chain)).share,0) }} of
+              You are {{ fmt.pct(ceiling.share,0) }} of
               {{ g.chain(gr.chain).name }} — above the floor a chain pays its emission, not your
               hashrate. It hands out about
-              {{ fmt.usd(g.chainCeiling(g.chain(gr.chain)).grossCap) }}/day however much you point
+              {{ fmt.usd(ceiling.grossCap) }}/day however much you point
               at it, so more rigs here divide the same pot. No other chain currently pays enough
               more to be worth the move, so growth has to come from a second group on another
               chain, or from a pool.</p>

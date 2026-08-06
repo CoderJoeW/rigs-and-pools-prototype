@@ -1,15 +1,11 @@
 <script setup>
 import { computed } from 'vue';
 import { fmt } from '../utils/format.js';
+import { sparkPath } from '../utils/spark.js';
 
 const p = defineProps({ title:String, data:Array, color:String, money:Boolean });
 
-const path = computed(()=>{
-  const h=p.data||[]; if(h.length<2) return '';
-  const lo=Math.min(...h), hi=Math.max(...h), r=(hi-lo)||1;
-  return h.map((v,i)=>(i?'L':'M')+(i/(h.length-1)*100).toFixed(1)+' '+
-    (36-((v-lo)/r)*32).toFixed(1)).join(' ');
-});
+const path = computed(()=> sparkPath(p.data, 36, 32));
 const last = computed(()=> (p.data&&p.data.length)?p.data[p.data.length-1]:0);
 const lo = computed(()=> p.data&&p.data.length?Math.min(...p.data):0);
 const hi = computed(()=> p.data&&p.data.length?Math.max(...p.data):0);

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
-import { fmt } from '../utils/format.js';
+import { fmt, partSub } from '../utils/format.js';
 import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import Compare from '../components/Compare.vue';
 
@@ -38,13 +38,13 @@ const FIELDS=computed(()=>{
   const x=g.s.draft;
   return [
     {k:'frame',label:'Frame',job:'holds the cards, and decides how well they breathe',
-      part:g.PART(x.frame), sub:p=>'fits '+p.slots+' · airflow '+p.air.toFixed(2)},
+      part:g.PART(x.frame), sub:p=>partSub('frame',p)},
     {k:'mobo',label:'Board',job:'drives the cards, and burns power doing nothing',
-      part:g.PART(x.mobo), sub:p=>'drives '+p.pcie+' · '+p.w+'W idle'},
+      part:g.PART(x.mobo), sub:p=>partSub('mobo',p)},
     {k:'cool',label:'Cooling',job:'trades watts for card life',
-      part:g.PART(x.cool), sub:p=>'÷'+p.fac.toFixed(2)+' heat · '+p.w+'W'},
+      part:g.PART(x.cool), sub:p=>partSub('cool',p)},
     {k:'psu',label:'Supply',job:'watts and connectors',
-      part:g.PART(x.psu), sub:p=>fmt.w(p.w)+' · '+p.conn+' PCIe · '+(p.eff*100).toFixed(0)+'%'},
+      part:g.PART(x.psu), sub:p=>partSub('psu',p)},
     {k:'unit',label:'Cards',job:'the hashrate',
       part:g.PART(x.unit), sub:p=>p.mh+' MH · '+p.w+'W · '+(p.mh/p.w).toFixed(2)+' MH/W'},
   ];

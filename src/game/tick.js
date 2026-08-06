@@ -2,7 +2,8 @@ import { C, TX_FEES, SIM_GROWTH, CONN_Q, BLOCK_K, RETARGET } from '../data/const
 import { SITEPART } from '../data/site-parts.js';
 import { PART } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
-import { fmt, gauss } from '../utils/format.js';
+import { fmt } from '../utils/format.js';
+import { gauss } from '../utils/random.js';
 
 /* 07-tick.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
