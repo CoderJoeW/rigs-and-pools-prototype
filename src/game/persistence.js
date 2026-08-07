@@ -101,6 +101,11 @@ export function installPersistence(G){
     }
     if(!G.s.drip) G.s.drip={ on:false, frac:0.25, hours:6 };
     if(!G.s.hold) G.s.hold={};
+    // A save from before `today.blocks` existed carries a `today` object
+    // without it — Object.assign leaves that shape in place, so blocks++
+    // runs on undefined (-> NaN) until the next day boundary reinitializes
+    // it. Same trap as autoSell/drip above: gate on the field being absent.
+    if(G.s.today && typeof G.s.today.blocks!=='number') G.s.today.blocks=0;
     // v40 rebalanced the chain ladder — floors, rewards and network sizes all
     // moved. Bring an older world onto the new ladder rather than stranding it
     // on a chain whose difficulty no longer matches anything.

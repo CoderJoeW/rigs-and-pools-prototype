@@ -22,6 +22,24 @@ describe('solo block finding', () => {
     expect(g.s.wallet.tessera).toBeGreaterThan(0);
   });
 
+  it("today's block count tracks real blocks found, not stuck at 0", () => {
+    // today.blocks starts undefined on a legacy-shaped save and blocks++
+    // silently produces NaN, which the UI's `|| 0` fallback then displays
+    // as a plausible-looking but wrong zero — this pins the real count.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    g.stepTick(3600);
+
+    // blocksSolved counts every solo block found, including orphaned ones;
+    // today.blocks only counts the ones actually credited, so it's <=, not ==.
+    expect(g.s.today.blocks).toBeGreaterThan(0);
+    expect(g.s.today.blocks).toBeLessThanOrEqual(g.s.blocksSolved);
+    expect(Number.isNaN(g.s.today.blocks)).toBe(false);
+  });
+
   it('difficulty (obs) retargets away from the floor once blocks land', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
