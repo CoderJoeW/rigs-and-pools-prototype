@@ -8,12 +8,14 @@ import { freshStore } from '../../test/testStore.js';
    overwhelming probability, not flakily. */
 
 describe('Tessera balance', () => {
-  // mult is authoring-time only (used to derive `reward` by hand — see the
-  // derivation comment in chains.js); revPerMh() never reads it at runtime,
-  // so a mult comparison alone proves nothing about realized pay. This
-  // drives the real simulation and compares the number a player actually
-  // sees: Tessera should no longer be a strict giveaway (drastically better
-  // than everything else, permanently, with zero competition), but it also
+  // revPerMh()/diffOf() (dispatch.js) never read mult — a mult comparison
+  // alone proves nothing about realized pay. mult IS read elsewhere though
+  // (pool float/bond sizing in poolMarket.js and rivals.js, and the Chains
+  // tab's own pay-rate display), so it isn't dead — just not what determines
+  // the number this test actually cares about. This drives the real
+  // simulation and compares the number a player actually sees: Tessera
+  // should no longer be a strict giveaway (drastically better than
+  // everything else, permanently, with zero competition), but it also
   // shouldn't fall below Nova — the chain deliberately designed to be the
   // ladder's worst payer (see chains.js: "the lowest pay per MH").
   it('settles to a realized rate comparable to the ladder, not the worst chain in it', () => {
@@ -38,16 +40,25 @@ describe('Tessera balance', () => {
     // is true either way and proves nothing (the same vacuousness the first
     // version of this test had, from a different angle).
     //
-    // What actually changed is whether the floor is reachable: under the
-    // old floor (500) even two starter rigs' worth of hash (~384 MH) never
-    // crossed it, so a farm that had genuinely grown — not just idled —
-    // still never triggered the "you've outgrown this" advisory. The new
-    // floor sits low enough that it does.
+    // What actually changed is whether the floor is reachable by
+    // chainCeiling's own AT CEILING gate (net>floor, share>=0.5 — see
+    // dispatch.js) — NOT by groupAdvice's OUTGROWN gate, which needs
+    // net>floor*1.2 plus another chain paying >=1.5x more and doesn't clear
+    // until roughly a third rig's worth of hash. chainCeiling(chain,
+    // extraMh) is the same check BuildView runs against a rig being
+    // planned, so calling it with a second rig's worth of hash as extraMh
+    // pins the real behaviour rather than just comparing raw numbers. Under
+    // the old floor (500) a second rig's worth (~384 MH) never crossed it;
+    // under the new floor (350) it does.
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
     g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
     const oneRig = g.dp.mh;
-    expect(oneRig * 2).toBeGreaterThan(tessera.floor);
+    expect(g.chainCeiling(tessera)).toBeNull(); // one rig alone: still below the floor
+    expect(g.chainCeiling(tessera, oneRig)).not.toBeNull(); // a second rig's worth pushes past it
   });
 });
 

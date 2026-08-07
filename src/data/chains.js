@@ -14,7 +14,7 @@
    because the floor sat below even a single unbuilt rig's projected
    hashrate, the Build tab's ceiling warning fired before the player owned
    any hardware at all — the opposite of "starters below the floor are
-   never nudged" (§1). Also missed that Tessera's price sits close enough
+   never nudged" (§10b). Also missed that Tessera's price sits close enough
    to the global price floor to clamp there under normal selling pressure
    (see thread filed as a separate issue), which costs it ~17% of nominal
    rate that no other chain pays — so matching another chain's *mult*
