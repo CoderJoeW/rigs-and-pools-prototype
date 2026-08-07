@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import BuildView from '../BuildView.vue';
 
@@ -34,5 +35,32 @@ describe('BuildView', () => {
     await orderBtn.trigger('click');
     expect(store.s.rigs).toHaveLength(1);
     expect(store.s.tab).toBe('rigs');
+  });
+
+  it('issue #6: explains the below-floor newcomer premium instead of leaving a huge first-rig payback unexplained', () => {
+    // A fresh game's first draft is priced on Tessera, which starts with no
+    // simulated miners at all and so sits below its own floor — a same-day
+    // payback worth several times the $500 starting cash is real, but reads
+    // as broken without this note (issue #6).
+    const { wrapper, store } = mountWithStore(BuildView);
+    const tessera = store.s.chains.find(c => c.id === 'tessera');
+    expect(store.chainHash(tessera)).toBeLessThan(tessera.floor);
+    expect(wrapper.text()).toContain('new-miner premium');
+  });
+
+  it("the premium note disappears once the chain the group is on already carries hash above its floor", async () => {
+    // Isolated from production tuning, same pattern as dispatch.test.js's
+    // chainCeiling tests: build a real rig so the chain actually carries
+    // hash, then force the floor below it — chainHash(tessera) is 0 until
+    // a live rig exists (Tessera has no simulated network), so this can't
+    // be tested pre-build the way the busy-chain case can.
+    const { wrapper, store } = mountWithStore(BuildView);
+    const tessera = store.s.chains.find(c => c.id === 'tessera');
+    store.build();
+    for (let i = 0; i < 5; i++) store.stepTick(60); // finish assembly
+    tessera.floor = 1;
+    await nextTick();
+    expect(store.chainHash(tessera)).toBeGreaterThanOrEqual(tessera.floor);
+    expect(wrapper.text()).not.toContain('new-miner premium');
   });
 });

@@ -97,6 +97,21 @@ const ceilingNote=computed(()=>{
         +'/day however much you point at it, so this rig mostly divides '
         +'the same pot. Move the group to another chain and it earns on top.' };
 });
+/* Issue #6: a brand-new player's first Build-tab numbers can be a same-day
+   payback worth several times the starting balance — honest, but reads as
+   "this must be broken" with no context. It's real: below its floor a
+   chain pays every miner the same linear rate no matter how little hash
+   they bring (§1), so a first rig on an empty chain earns a rate the chain
+   can't sustain once it fills. Mutually exclusive with ceilingNote, which
+   only fires ABOVE the floor — one guard, never both at once. */
+const subsidyNote=computed(()=>{
+  const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
+  if(!c || g.chainHash(c)>=c.floor) return null;
+  return { label:c.name+' is paying a new-miner premium',
+    fix:'Below its floor, '+c.name+' pays every miner the same rate regardless '
+        +'of how little hash they bring — the fast payback is a deliberate '
+        +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
+});
 const verdict=computed(()=>{
   const c=g.checks, dp=g.dp, ex=g.draftExpected;
   const gr=g.draftGroup();
@@ -105,7 +120,7 @@ const verdict=computed(()=>{
       rows:[ {k:'Parts', v:fmt.usd(dp.cost)},
              {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(ex.net)+'/day'},
              {k:'Expected payback', v:isFinite(ex.payback)?Math.round(ex.payback)+' days':'never'} ],
-      checks:[c[5]], note:ceilingNote.value },
+      checks:[c[5]], note:ceilingNote.value||subsidyNote.value },
     { t:'Hashrate & MH/W',
       rows:[ {k:'Hashrate', v:fmt.hash(dp.mh)},
              {k:'MH/W', v:g.draftEff.toFixed(3)} ],
