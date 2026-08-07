@@ -98,6 +98,24 @@ describe('swapWorn (repair)', () => {
     expect(g.s.cash).toBe(cashBefore);
   });
 
+  it('an untuned rig needs its first repair within about a week, not months (issue #3)', () => {
+    // Drives real ticks rather than setting .w directly (that's what the two
+    // tests above do, and what BASE_WEAR itself can't break). 10 sim-days at
+    // tune=0 crosses the 0.35 repair line even for the unluckiest card —
+    // wr's floor is 0.75 (random.js), and 0.35/(0.05*0.75) ≈ 9.3 days — so
+    // this isn't relying on getting lucky rolls. Actual site heat is >=1
+    // (tick.js), so real ambient swings only get there faster, never slower.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    for (let i = 0; i < 10; i++) g.stepTick(86400); // 10 sim-days, full tilt
+
+    const rig = g.s.rigs[0];
+    expect(rig.units.every(u => u.w > 0)).toBe(true); // wear is actually accruing
+    expect(g.fleetWorn(0.35, null).n).toBeGreaterThan(0); // and it reached the repair line
+  });
+
   it('does nothing when cash cannot cover the repair', () => {
     const g = freshStore();
     g.generatePreset();

@@ -1,7 +1,20 @@
 export const C = {
   TICK_MS:100, DT:0.1, SPEEDS:[1,60,600,3600],
   AMBIENT_LOW:16, AMBIENT_HIGH:28,   // the day swings, peaking mid-afternoon
-  BASE_WEAR:0.003,
+  /* At the old 0.003, an untuned card at a cool site (tw=1, heat=1) took
+     0.35/0.003 ≈ 117 days to cross the 35% repair threshold and 333 days to
+     fully wear out — so the "purely scheduled maintenance" §3 describes as
+     one of the game's few recurring decisions, and the "Fifty repairs"
+     Craft milestone, sat far outside any session ordinary play would reach
+     (issue #3: a 46-hour playtest still read 1% wear with Repair disabled
+     the whole time). Retuned to land the first repair within roughly a
+     week and full wear-out within roughly three, both well inside the
+     14-day GEN_DAYS generation cycle so a card can plausibly need at least
+     one repair before it's due for replacement anyway:
+       0.35/0.05 ≈ 7 days to the repair line, 1/0.05 = 20 days to fully worn,
+       both at wr's mean of 1 — the 0.75-1.25 spread (random.js) moves the
+       first repair between roughly 5.6 and 9.3 days for any given card. */
+  BASE_WEAR:0.05,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
   BUILD_BASE:22*60,         // rig assembly, real seconds
