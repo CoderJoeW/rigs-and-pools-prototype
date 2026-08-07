@@ -40,6 +40,29 @@ describe('solo block finding', () => {
     expect(Number.isNaN(g.s.today.blocks)).toBe(false);
   });
 
+  it('repeated orphans collapse into one feed line instead of spamming one each', () => {
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    // The real roll is Math.random() < c.orphan*(1-CONN_Q) (tick.js) — CONN_Q
+    // is 0.35, so orphan must clear 1/0.65 (~1.54) to make every solo find
+    // orphan with certainty, not just orphan=1 (which is only p=0.65).
+    tessera.orphan = 2;
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    g.stepTick(3600); // plenty of blocks on a 20s-window chain
+
+    expect(g.s.orphaned).toBeGreaterThan(1); // several orphan events really happened
+    const orphanLines = g.s.feed.filter(e => e.text === 'Orphaned on Tessera');
+    // other feed kinds (milestones etc.) can interleave and start a new run,
+    // so this doesn't assert exactly one line — only that consecutive repeats
+    // collapse rather than spamming one line per event, and none are lost.
+    expect(orphanLines.length).toBeGreaterThan(0);
+    expect(orphanLines.length).toBeLessThan(g.s.orphaned);
+    expect(orphanLines.reduce((a, e) => a + e.n, 0)).toBe(g.s.orphaned);
+  });
+
   it('difficulty (obs) retargets away from the floor once blocks land', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');

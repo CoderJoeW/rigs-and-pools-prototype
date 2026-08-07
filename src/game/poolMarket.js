@@ -231,9 +231,20 @@ export function installPoolMarket(G){
 
   function say(kind,text,amount,num,unit){
     const top=G.s.feed[0];
-    if(top && top.kind===kind && top.text===text && num!==undefined && top.num!==undefined){
-      top.n=(top.n||1)+1; top.num+=num; top.t=fmt.hm(G.s.t);
-      top.amount='+'+fmt.c(top.num)+(unit?' '+unit:''); return;
+    if(top && top.kind===kind && top.text===text){
+      if(num!==undefined && top.num!==undefined){
+        top.n=(top.n||1)+1; top.num+=num; top.t=fmt.hm(G.s.t);
+        top.amount='+'+fmt.c(top.num)+(unit?' '+unit:''); return;
+      }
+      // Same event, no quantity to accumulate AND no dollar amount either
+      // (e.g. "Orphaned on X") — still worth collapsing into one "×N" line
+      // rather than one line per repeat. Gated on amount too, not just num:
+      // plenty of calls (rush, site installs) carry a fixed-string amount
+      // with no num — those differ order to order and must stay separate
+      // lines, or the feed would silently under-report what was spent.
+      if(num===undefined && top.num===undefined && !amount && !top.amount){
+        top.n=(top.n||1)+1; top.t=fmt.hm(G.s.t); return;
+      }
     }
     G.s.feed.unshift({id:G.s.feedId++,t:fmt.hm(G.s.t),kind,text,amount:amount||'',num,n:1});
     if(G.s.feed.length>70) G.s.feed.length=70;

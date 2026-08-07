@@ -87,6 +87,30 @@ describe('rush', () => {
     g.rush(f.id, 0);
     expect(job.left).toBe(leftBefore);
   });
+
+  it('two same-part rushes at different costs stay as separate feed lines', () => {
+    // the feed's collapsing (say()) must not merge same-text events that
+    // carry different dollar amounts — that would silently under-report
+    // what was actually spent. rushCost depends on remaining hours, so two
+    // jobs of the same part queued at different times cost differently.
+    const g = freshStore();
+    g.s.cash = 2000;
+    const f = g.active;
+    g.addSitePart(f.id, 's-30', 'source'); // job A: left = 10h
+    g.stepTick(3600); // job A now has ~9h left
+    g.addSitePart(f.id, 's-30', 'source'); // job B: left = 10h, fresh
+
+    const costA = g.rushCost(f.queue[0]);
+    const costB = g.rushCost(f.queue[1]);
+    expect(costA).not.toBe(costB); // same part, genuinely different costs
+
+    g.rush(f.id, 0);
+    g.rush(f.id, 1);
+
+    const rushLines = g.s.feed.filter(e => e.text === 'Paid to rush 30A service');
+    expect(rushLines).toHaveLength(2);
+    expect(new Set(rushLines.map(e => e.amount)).size).toBe(2); // both amounts preserved
+  });
 });
 
 describe('upgradeShell', () => {
