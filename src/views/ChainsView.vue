@@ -8,6 +8,10 @@ const g = useGameStore();
 const open=reactive({});
 const spark=x=> sparkPath(Array.isArray(x)?x:x.hist, 32, 26);
 const feeDraft=reactive({});
+const poolRenameOpen=reactive({});
+const poolRenameDraft=reactive({});
+const startRenamePool=p=>{ poolRenameDraft[p.id]=p.name; poolRenameOpen[p.id]=true; };
+const saveRenamePool=p=>{ g.renamePool(p,poolRenameDraft[p.id]); poolRenameOpen[p.id]=false; };
 const fieldMine=ref(true);
 // one table, everyone on the same axes, ranked by the thing that matters
 const field=computed(()=>{
@@ -168,6 +172,17 @@ const projMargin=computed(()=>{
         <span style="font-size:14px;margin-left:8px">{{ open[p.id]?'−':'+' }}</span>
       </button>
       <div v-if="open[p.id]" class="card-bd">
+        <template v-if="poolRenameOpen[p.id]">
+          <input v-model="poolRenameDraft[p.id]" maxlength="24" placeholder="Pool name"
+                 style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+                        font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenamePool(p)">
+          <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0;margin-bottom:8px">
+            <button class="btn btn-ghost btn-sm" @click="poolRenameOpen[p.id]=false">Cancel</button>
+            <button class="btn btn-pri btn-sm" @click="saveRenamePool(p)">Save name</button>
+          </div>
+        </template>
+        <button v-else class="btn btn-ghost btn-sm" style="margin-bottom:8px"
+                @click="startRenamePool(p)">Rename</button>
         <div class="track"><i :class="p.bond<p.bond0*0.4?'o':'g'"
           :style="{width:Math.min(100,p.bond/p.bond0*100)+'%'}"></i></div>
         <div class="track-cap"><span>Bond against its opening size</span>

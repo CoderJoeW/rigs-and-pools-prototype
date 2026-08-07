@@ -45,6 +45,28 @@ describe('renameRig', () => {
   });
 });
 
+describe('renameGroup', () => {
+  it('renames a group, trimmed and length-capped', () => {
+    const g = freshStore();
+    const gr = g.addGroup();
+
+    g.renameGroup(gr, '  Obelisk Crew  ');
+    expect(gr.name).toBe('Obelisk Crew');
+
+    g.renameGroup(gr, 'x'.repeat(40));
+    expect(gr.name).toHaveLength(24);
+  });
+
+  it('a blank name is a no-op', () => {
+    const g = freshStore();
+    const gr = g.addGroup();
+    const before = gr.name;
+
+    g.renameGroup(gr, '   ');
+    expect(gr.name).toBe(before);
+  });
+});
+
 describe('fleetWorn / fleetRepair', () => {
   it('repairs only rigs actually carrying worn cards, across the whole farm', () => {
     const g = freshStore();

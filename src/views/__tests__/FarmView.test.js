@@ -34,4 +34,20 @@ describe('FarmView', () => {
     await addBtn.trigger('click');
     expect(store.s.groups.length).toBe(before + 1);
   });
+
+  it('renaming a group from its card updates the store', async () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    await renameBtn.trigger('click');
+
+    const input = wrapper.find('input[placeholder="Group name"]');
+    await input.setValue('Night Shift');
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
+    await saveBtn.trigger('click');
+
+    expect(store.s.groups[0].name).toBe('Night Shift');
+    expect(wrapper.text()).toContain('Night Shift');
+  });
 });

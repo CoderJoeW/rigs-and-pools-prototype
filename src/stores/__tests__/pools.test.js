@@ -67,6 +67,39 @@ describe('bond management', () => {
   });
 });
 
+describe('renamePool', () => {
+  it('renames a pool you own, trimmed and length-capped', () => {
+    const g = freshStore();
+    g.foundPool('tessera', 'PPLNS', 0.02);
+    const pool = g.s.pools.find(p => p.owner === 'you');
+
+    g.renamePool(pool, '  Night Shift  ');
+    expect(pool.name).toBe('Night Shift');
+
+    g.renamePool(pool, 'x'.repeat(40));
+    expect(pool.name).toHaveLength(24);
+  });
+
+  it('refuses to rename a rival pool', () => {
+    const g = freshStore();
+    const rival = g.s.pools.find(p => p.owner === 'rival');
+    const before = rival.name;
+
+    g.renamePool(rival, 'Hijacked');
+    expect(rival.name).toBe(before);
+  });
+
+  it('a blank name is a no-op', () => {
+    const g = freshStore();
+    g.foundPool('tessera', 'PPLNS', 0.02);
+    const pool = g.s.pools.find(p => p.owner === 'you');
+    const before = pool.name;
+
+    g.renamePool(pool, '   ');
+    expect(pool.name).toBe(before);
+  });
+});
+
 describe('closing a pool', () => {
   it('refunds the remaining bond and returns any of your groups pointed at it to solo', () => {
     const g = freshStore();

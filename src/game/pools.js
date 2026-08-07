@@ -22,6 +22,11 @@ export function installPools(G){
     if(!G.simsOn(chainId))
       G.say('bad','No other miners work '+c.name+' — this pool can only ever hold your own rigs');
   }
+  function renamePool(p,name){
+    if(p.owner!=='you') return;               // a rival's pool is not yours to rename
+    const n=(name||'').trim().slice(0,24);
+    if(n) p.name=n;
+  }
   function setPoolFee(p,fee){
     if(Math.abs(fee-p.fee)>0.0005) p.feeMoved=G.s.t;
     p.fee=Math.max(0,Math.min(0.15,fee));
@@ -125,5 +130,5 @@ export function installPools(G){
   const toggleHold=cid=>{ G.s.hold=G.s.hold||{}; G.s.hold[cid]=!G.s.hold[cid]; };
 
 
-  Object.assign(G, {addBond,bondFloor,buy,closePool,doBuy,doSell,dripCost,dripWorst,fireDrip,foundPool,poolProfit,releaseBond,sell,setDrip,setPoolFee,toggleHold,topUpBond,withdrawProfit});
+  Object.assign(G, {addBond,bondFloor,buy,closePool,doBuy,doSell,dripCost,dripWorst,fireDrip,foundPool,poolProfit,releaseBond,renamePool,sell,setDrip,setPoolFee,toggleHold,topUpBond,withdrawProfit});
 }

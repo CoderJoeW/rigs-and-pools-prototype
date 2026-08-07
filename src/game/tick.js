@@ -292,6 +292,10 @@ export function installTick(G){
       pool:'solo', pending:0 };
     G.s.groups.push(gr); return gr;
   }
+  function renameGroup(gr,name){
+    const n=(name||'').trim().slice(0,24);
+    if(n) gr.name=n;
+  }
   function dropGroup(gr){
     if(G.s.groups.length<2 || G.groupRigs(gr).length) return;
     forfeitGroup(gr,'when it was disbanded');
@@ -423,5 +427,5 @@ export function installTick(G){
   }
 
 
-  Object.assign(G, {addGroup,addTo,armBlock,awardBlock,drawWinner,dropGroup,flatDrip,forfeitGroup,netIfOn,runBlockWindow,setGroupChain,setGroupPool,stepTick});
+  Object.assign(G, {addGroup,addTo,armBlock,awardBlock,drawWinner,dropGroup,flatDrip,forfeitGroup,netIfOn,renameGroup,runBlockWindow,setGroupChain,setGroupPool,stepTick});
 }

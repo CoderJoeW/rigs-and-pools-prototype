@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
@@ -19,6 +19,10 @@ const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0))
 const groupRows=computed(()=>g.s.groups.map(gr=>({
   gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
 })));
+const groupRenameOpen=reactive({});
+const groupRenameDraft=reactive({});
+const startRenameGroup=gr=>{ groupRenameDraft[gr.id]=gr.name; groupRenameOpen[gr.id]=true; };
+const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRenameOpen[gr.id]=false; };
 </script>
 
 <template>
@@ -63,8 +67,19 @@ const groupRows=computed(()=>g.s.groups.map(gr=>({
         <div class="card-bd pt">
           <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id"
                style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px">
-            <div style="display:flex;align-items:baseline;gap:8px">
+            <template v-if="groupRenameOpen[gr.id]">
+              <input v-model="groupRenameDraft[gr.id]" maxlength="24" placeholder="Group name"
+                     style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+                            font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenameGroup(gr)">
+              <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">
+                <button class="btn btn-ghost btn-sm" @click="groupRenameOpen[gr.id]=false">Cancel</button>
+                <button class="btn btn-pri btn-sm" @click="saveRenameGroup(gr)">Save name</button>
+              </div>
+            </template>
+            <div v-else style="display:flex;align-items:baseline;gap:8px">
               <b style="flex:1">{{ gr.name }}
+                <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:2px"
+                        @click="startRenameGroup(gr)">Rename</button>
                 <span v-if="advice" class="tag"
                       style="background:var(--amber-t);color:var(--amber);margin-left:5px">OUTGROWN</span>
                 <span v-else-if="ceiling" class="tag"

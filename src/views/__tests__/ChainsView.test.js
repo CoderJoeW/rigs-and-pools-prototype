@@ -35,4 +35,22 @@ describe('ChainsView', () => {
     expect(wrapper.text()).toContain('Your Tessera pool');
     expect(wrapper.text()).not.toContain('None yet');
   });
+
+  it('renaming your pool from its expanded panel updates the store', async () => {
+    const { wrapper, store } = mountWithStore(ChainsView, {
+      seed: g => g.foundPool('tessera', 'PPLNS', 0.02),
+    });
+    await wrapper.find('.rig-hd').trigger('click'); // expand the one pool card
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    await renameBtn.trigger('click');
+
+    const input = wrapper.find('input[placeholder="Pool name"]');
+    await input.setValue('Night Shift');
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
+    await saveBtn.trigger('click');
+
+    const pool = store.s.pools.find(p => p.owner === 'you');
+    expect(pool.name).toBe('Night Shift');
+    expect(wrapper.text()).toContain('Night Shift');
+  });
 });
