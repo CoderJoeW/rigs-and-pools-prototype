@@ -2,18 +2,30 @@ export const C = {
   TICK_MS:100, DT:0.1, SPEEDS:[1,60,600,3600],
   AMBIENT_LOW:16, AMBIENT_HIGH:28,   // the day swings, peaking mid-afternoon
   /* At the old 0.003, an untuned card at a cool site (tw=1, heat=1) took
-     0.35/0.003 ≈ 117 days to cross the 35% repair threshold and 333 days to
-     fully wear out — so the "purely scheduled maintenance" §3 describes as
-     one of the game's few recurring decisions, and the "Fifty repairs"
-     Craft milestone, sat far outside any session ordinary play would reach
-     (issue #3: a 46-hour playtest still read 1% wear with Repair disabled
-     the whole time). Retuned to land the first repair within roughly a
-     week and full wear-out within roughly three, both well inside the
-     14-day GEN_DAYS generation cycle so a card can plausibly need at least
-     one repair before it's due for replacement anyway:
-       0.35/0.05 ≈ 7 days to the repair line, 1/0.05 = 20 days to fully worn,
-       both at wr's mean of 1 — the 0.75-1.25 spread (random.js) moves the
-       first repair between roughly 5.6 and 9.3 days for any given card. */
+     0.35/0.003 ≈ 117 days to cross the 35% repair threshold — so the
+     "purely scheduled maintenance" §3 describes as one of the game's few
+     recurring decisions, and the "Fifty repairs" Craft milestone, sat far
+     outside any session ordinary play would reach (issue #3: a 46-hour
+     playtest still read 1% wear with Repair disabled the whole time).
+     Retuned so the repair line arrives within roughly a week — a real
+     rhythm without being frantic:
+       0.35/0.05 = 7 days at wr's mean of 1 (the 0.75-1.25 spread in
+       random.js moves it between roughly 5.6 and 9.3 days per card;
+       afternoon heat pulls it a little earlier still, so 7 days is a
+       ceiling, not a guarantee).
+
+     A neglected rig never actually reaches "fully worn" (u.w=1) at this
+     rate: wear also raises card draw (dispatch.js: rigPow scales each
+     unit's watts by 1+0.5·u.w), and by roughly the two-week mark that
+     growing draw trips a brownout — the site sheds the rig for exceeding
+     capacity (tick.js) — which freezes its wear right where it stood
+     (worn units are skipped, but so is the whole rig once it's off).
+     That lands close to GEN_DAYS (14), not safely inside it: repairing
+     within the first week, well before either the brownout or the next
+     generation, is the actual point — ignore both advisories and the
+     rig disciplines itself into an outage rather than mining forever.
+     Repairing clears the excess draw along with the wear, so the
+     brownout is a backstop for neglect, not a new dead end. */
   BASE_WEAR:0.05,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
