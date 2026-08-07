@@ -50,4 +50,16 @@ describe('FarmView', () => {
     expect(store.s.groups[0].name).toBe('Night Shift');
     expect(wrapper.text()).toContain('Night Shift');
   });
+
+  it('per-group chain/pool selects and the rename button carry a discriminating label', () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const groupName = store.s.groups[0].name;
+    const selects = wrapper.findAll('select');
+    expect(selects.some(s => s.attributes('aria-label') === 'Chain for ' + groupName)).toBe(true);
+    expect(selects.some(s => s.attributes('aria-label') === 'Pool for ' + groupName)).toBe(true);
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    expect(renameBtn.attributes('aria-label')).toBe('Rename ' + groupName);
+  });
 });

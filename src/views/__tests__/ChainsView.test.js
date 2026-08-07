@@ -53,4 +53,17 @@ describe('ChainsView', () => {
     expect(pool.name).toBe('Night Shift');
     expect(wrapper.text()).toContain('Night Shift');
   });
+
+  it('the fee slider and Close button carry a discriminating label per pool', async () => {
+    const { wrapper, store } = mountWithStore(ChainsView, {
+      seed: g => g.foundPool('tessera', 'PPLNS', 0.02),
+    });
+    await wrapper.find('.rig-hd').trigger('click');
+    const pool = store.s.pools.find(p => p.owner === 'you');
+    const feeSlider = wrapper.findAll('input[type="range"]')
+      .find(i => i.attributes('aria-label') === 'Fee for ' + pool.name);
+    expect(feeSlider).toBeTruthy();
+    const closeBtn = wrapper.findAll('button').find(b => b.text() === 'Close');
+    expect(closeBtn.attributes('aria-label')).toBe('Close ' + pool.name);
+  });
 });

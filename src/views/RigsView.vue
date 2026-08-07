@@ -164,7 +164,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
       <div v-if="g.s.sites.length>1" class="chips">
         <button v-for="st in g.s.sites" :key="st.id" class="chip"
-                :class="{on:st.id===g.s.activeSite}" @click="g.s.activeSite=st.id">
+                :class="{on:st.id===g.s.activeSite}" :aria-current="st.id===g.s.activeSite?'true':null"
+                @click="g.s.activeSite=st.id">
           {{ st.name }} <span class="n">{{ g.siteRigs(st).length }}</span></button>
       </div>
     </div>
@@ -203,8 +204,9 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <span v-if="stateOf(r).k!=='run'" class="sb" style="margin:0">{{ stateOf(r).label }}</span></span>
           <div class="sb">{{ r.units.length }}× {{ g.PART(r.units[0].p).name }}
             · {{ g.groupOf(r).name }} · {{ g.chain(g.groupOf(r).chain).name }}</div>
-          <div class="wearbar"><i :class="avgWear(r)>0.6?'b':avgWear(r)>0.35?'w':''"
-            :style="{width:(avgWear(r)*100).toFixed(0)+'%'}"></i></div>
+          <div class="wearbar" role="img" :aria-label="'Wear '+(avgWear(r)*100).toFixed(0)+'%'">
+            <i :class="avgWear(r)>0.6?'b':avgWear(r)>0.35?'w':''"
+               :style="{width:(avgWear(r)*100).toFixed(0)+'%'}"></i></div>
         </span>
         <span class="rt">
           <div class="v" :class="g.rigNet(r)>=0?'pos':'neg'">{{ fmt.usd2(g.rigNet(r)) }}</div>
@@ -237,7 +239,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         <div class="card">
           <div class="rig-hd" v-if="renameOpen">
             <span style="flex:1;min-width:0">
-              <input v-model="renameDraft" maxlength="24" placeholder="Rig name"
+              <label class="sr-only" for="rig-rename-input">Rig name</label>
+              <input id="rig-rename-input" v-model="renameDraft" maxlength="24" placeholder="Rig name"
                      style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
                             font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenameRig">
               <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">
@@ -283,15 +286,16 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
               <div v-if="!rig.on&&rig.cut" class="sb">Turning it back on will not hold until the
                 cause clears.</div></span>
           </div>
-          <div class="rigfld"><label>Mining group — chain and pool live on the group</label>
-            <select :value="rig.group" @change="g.setRigGroup(rig,parseInt($event.target.value))">
+          <div class="rigfld"><label for="rig-group-select">Mining group — chain and pool live on the group</label>
+            <select id="rig-group-select" :value="rig.group"
+                    @change="g.setRigGroup(rig,parseInt($event.target.value))">
               <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
                 {{ gr.name }} — {{ g.chain(gr.chain).name }}</option>
             </select>
             <p class="hint">Moving between groups never forfeits anything — the window belongs to
               the group. Manage groups on the Farm tab.</p></div>
-          <div class="rigfld"><label>Tune — quiet to pushed</label>
-            <input type="range" min="-0.15" max="0.15" step="0.01" :value="rig.tune||0"
+          <div class="rigfld"><label for="rig-tune-range">Tune — quiet to pushed</label>
+            <input id="rig-tune-range" type="range" min="-0.15" max="0.15" step="0.01" :value="rig.tune||0"
                    @input="rig.tune=parseFloat($event.target.value)">
             <div class="track-cap">
               <span>{{ ((rig.tune||0)*100).toFixed(0) }}% hash ·
@@ -351,8 +355,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                    +' · '+fmt.usd(wornInfo.cost)
                  : 'Nothing worn past 35%' }}</button></div>
 
-          <div class="rigfld"><label>Move to a group</label>
-            <select v-model.number="fleetGroup">
+          <div class="rigfld"><label for="fleet-group-select">Move to a group</label>
+            <select id="fleet-group-select" v-model.number="fleetGroup">
               <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
                 {{ gr.name }} — {{ g.chain(gr.chain).name }}{{ gr.pool==='solo'?' · solo'
                   :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool).name:'') }}</option>
@@ -370,8 +374,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         </div></div>
 
         <div class="card"><div class="card-bd pt">
-          <div class="rigfld"><label>Swap cards, keeping each chassis</label>
-            <select v-model="fleetCard">
+          <div class="rigfld"><label for="fleet-card-select">Swap cards, keeping each chassis</label>
+            <select id="fleet-card-select" v-model="fleetCard">
               <option v-for="c in g.cards()" :key="c.id" :value="c.id">
                 {{ c.name }} — {{ c.mh }} MH · {{ (c.mh/c.w).toFixed(2) }} MH/W · {{ fmt.usd(c.price) }}</option>
             </select>

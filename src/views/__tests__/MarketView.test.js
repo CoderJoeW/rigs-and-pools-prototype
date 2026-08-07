@@ -39,4 +39,11 @@ describe('MarketView', () => {
     await darkBtn.trigger('click');
     expect(store.s.theme).toBe('dark');
   });
+
+  it('the drip size/frequency button groups have an accessible group name', () => {
+    const { wrapper } = mountWithStore(MarketView);
+    const groups = wrapper.findAll('[role="group"]');
+    expect(groups.some(g => g.attributes('aria-labelledby') === 'drip-size-label')).toBe(true);
+    expect(groups.some(g => g.attributes('aria-labelledby') === 'drip-freq-label')).toBe(true);
+  });
 });

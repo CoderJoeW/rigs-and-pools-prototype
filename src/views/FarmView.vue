@@ -68,7 +68,9 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
           <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id"
                style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px">
             <template v-if="groupRenameOpen[gr.id]">
-              <input v-model="groupRenameDraft[gr.id]" maxlength="24" placeholder="Group name"
+              <label class="sr-only" :for="'group-rename-'+gr.id">Group name</label>
+              <input :id="'group-rename-'+gr.id" v-model="groupRenameDraft[gr.id]" maxlength="24"
+                     placeholder="Group name"
                      style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
                             font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenameGroup(gr)">
               <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">
@@ -79,7 +81,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
             <div v-else style="display:flex;align-items:baseline;gap:8px">
               <b style="flex:1">{{ gr.name }}
                 <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:2px"
-                        @click="startRenameGroup(gr)">Rename</button>
+                        :aria-label="'Rename '+gr.name" @click="startRenameGroup(gr)">Rename</button>
                 <span v-if="advice" class="tag"
                       style="background:var(--amber-t);color:var(--amber);margin-left:5px">OUTGROWN</span>
                 <span v-else-if="ceiling" class="tag"
@@ -89,12 +91,12 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
                 · {{ gr.found||0 }} blocks</span>
             </div>
             <div style="display:flex;gap:7px;margin-top:7px">
-              <select style="flex:1" :value="gr.chain"
+              <select style="flex:1" :value="gr.chain" :aria-label="'Chain for '+gr.name"
                       @change="g.setGroupChain(gr,$event.target.value)">
                 <option v-for="c in g.s.chains" :key="c.id" :value="c.id">
                   {{ c.name }} — {{ c.target<60?c.target+'s':(c.target/60)+' min' }} blocks</option>
               </select>
-              <select style="flex:1" :value="gr.pool"
+              <select style="flex:1" :value="gr.pool" :aria-label="'Pool for '+gr.name"
                       @change="g.setGroupPool(gr,$event.target.value)">
                 <option value="solo">Solo — whole reward</option>
                 <optgroup label="Rival pools">

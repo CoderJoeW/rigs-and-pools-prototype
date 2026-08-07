@@ -98,6 +98,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
     <div class="card"><div class="list">
       <button v-for="st in g.s.sites" :key="st.id" class="rowline"
               :style="{background: st.id===g.s.activeSite?'var(--green-t)':''}"
+              :aria-current="st.id===g.s.activeSite?'true':null"
               @click="g.s.activeSite=st.id">
         <span style="flex:1;min-width:0"><span class="nm">{{ st.name }}</span>
           <div class="sb">{{ fmt.w(g.siteDemand(st)) }} / {{ fmt.w(g.siteCapacity(st)) }}
@@ -115,7 +116,8 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
       <div class="card-hd" style="padding:0 0 7px"><span class="eyebrow">Manage {{ f.name }}</span>
         <span class="eyebrow">{{ g.siteRigs(f).length }}/{{ g.siteSlots(f) }} positions</span></div>
       <template v-if="renameOpen">
-        <input v-model="renameDraft" maxlength="24" placeholder="Site name"
+        <label class="sr-only" for="site-rename-input">Site name</label>
+        <input id="site-rename-input" v-model="renameDraft" maxlength="24" placeholder="Site name"
                style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
                       font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRename">
         <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">

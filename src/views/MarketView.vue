@@ -39,13 +39,13 @@ async function onBackupFile(e){
       <button class="switch" :class="{on:g.s.drip.on}" @click="g.setDrip('on',!g.s.drip.on)"
               aria-label="auto-sell" :aria-pressed="!!g.s.drip.on"><i></i></button></div>
       <div class="card-bd">
-        <div class="rigfld" style="margin-top:0"><label>Order size — how much of a stack goes at once</label>
-          <div class="btn-row" style="margin-top:0">
+        <div class="rigfld" style="margin-top:0"><label id="drip-size-label">Order size — how much of a stack goes at once</label>
+          <div class="btn-row" style="margin-top:0" role="group" aria-labelledby="drip-size-label">
             <button v-for="f in [0.25,0.5,1]" :key="f" class="btn btn-sm"
                     :class="g.s.drip.frac===f?'btn-pri':''" @click="g.setDrip('frac',f)">
               {{ (f*100).toFixed(0) }}%</button></div></div>
-        <div class="rigfld"><label>How often</label>
-          <div class="btn-row" style="margin-top:0">
+        <div class="rigfld"><label id="drip-freq-label">How often</label>
+          <div class="btn-row" style="margin-top:0" role="group" aria-labelledby="drip-freq-label">
             <button v-for="h in [1,6,24]" :key="h" class="btn btn-sm"
                     :class="g.s.drip.hours===h?'btn-pri':''" @click="g.setDrip('hours',h)">
               {{ h===1?'hourly':h===6?'every 6h':'daily' }}</button></div></div>
@@ -57,7 +57,8 @@ async function onBackupFile(e){
           Slippage bites hardest on {{ g.dripWorst().c.name }}: this order would lose
           {{ fmt.pct(g.dripWorst().cost) }}<span v-if="g.s.drip.frac>0.25">
             — a 25% order would cost {{ fmt.pct(g.dripWorst().at25) }}</span>.</p>
-        <input type="range" min="0" max="14" step="0.25" v-model.number="g.s.minSell">
+        <input type="range" min="0" max="14" step="0.25" v-model.number="g.s.minSell"
+               aria-label="Hold below price floor">
         <div class="track-cap"><span>Hold below</span>
           <b>{{ g.s.minSell>0?fmt.usd2(g.s.minSell):'no floor' }}</b></div>
         <p v-if="g.s.help" class="hint">Slippage is charged per order and heals between them, so
@@ -83,14 +84,14 @@ async function onBackupFile(e){
           <button class="btn btn-sm btn-ghost" @click="g.toggleHold(c.id)">
             {{ g.s.hold[c.id]?'Release':'Hold' }}</button></div>
         <div v-if="open[c.id]" class="card-bd" style="padding-top:6px">
-          <div class="eyebrow" style="margin-bottom:4px">Sell your {{ c.tick }}</div>
-          <div class="btn-row" style="margin-top:0">
+          <div class="eyebrow" style="margin-bottom:4px" :id="'sell-label-'+c.id">Sell your {{ c.tick }}</div>
+          <div class="btn-row" style="margin-top:0" role="group" :aria-labelledby="'sell-label-'+c.id">
             <button class="btn" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,0.25)">25%</button>
             <button class="btn" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,0.5)">50%</button>
             <button class="btn btn-pri" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,1)">All</button>
           </div>
-          <div class="eyebrow" style="margin:10px 0 4px">Buy {{ c.tick }} with cash</div>
-          <div class="btn-row" style="margin-top:0">
+          <div class="eyebrow" style="margin:10px 0 4px" :id="'buy-label-'+c.id">Buy {{ c.tick }} with cash</div>
+          <div class="btn-row" style="margin-top:0" role="group" :aria-labelledby="'buy-label-'+c.id">
             <button class="btn" :disabled="!g.s.cash" @click="g.buy(c.id,0.1)">10%</button>
             <button class="btn" :disabled="!g.s.cash" @click="g.buy(c.id,0.25)">25%</button>
             <button class="btn btn-pri" :disabled="!g.s.cash" @click="g.buy(c.id,0.5)">50%</button>

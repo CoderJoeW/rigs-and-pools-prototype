@@ -73,4 +73,22 @@ describe('RigsView', () => {
     expect(store.s.rigs[0].name).toBe('Tessera Miner');
     expect(wrapper.text()).toContain('Tessera Miner');
   });
+
+  it('the compact wear bar exposes wear as an accessible label, not just color', () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const bar = wrapper.find('.wearbar');
+    expect(bar.attributes('aria-label')).toBe('Wear 0%');
+  });
+
+  it('the mining-group select in the rig sheet is a real labeled control', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    const select = wrapper.find('#rig-group-select');
+    expect(select.exists()).toBe(true);
+    expect(wrapper.find('label[for="rig-group-select"]').exists()).toBe(true);
+  });
 });

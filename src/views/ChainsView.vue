@@ -173,7 +173,9 @@ const projMargin=computed(()=>{
       </button>
       <div v-if="open[p.id]" class="card-bd">
         <template v-if="poolRenameOpen[p.id]">
-          <input v-model="poolRenameDraft[p.id]" maxlength="24" placeholder="Pool name"
+          <label class="sr-only" :for="'pool-rename-'+p.id">Pool name</label>
+          <input :id="'pool-rename-'+p.id" v-model="poolRenameDraft[p.id]" maxlength="24"
+                 placeholder="Pool name"
                  style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
                         font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenamePool(p)">
           <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0;margin-bottom:8px">
@@ -182,7 +184,7 @@ const projMargin=computed(()=>{
           </div>
         </template>
         <button v-else class="btn btn-ghost btn-sm" style="margin-bottom:8px"
-                @click="startRenamePool(p)">Rename</button>
+                :aria-label="'Rename '+p.name" @click="startRenamePool(p)">Rename</button>
         <div class="track"><i :class="p.bond<p.bond0*0.4?'o':'g'"
           :style="{width:Math.min(100,p.bond/p.bond0*100)+'%'}"></i></div>
         <div class="track-cap"><span>Bond against its opening size</span>
@@ -291,7 +293,7 @@ const projMargin=computed(()=>{
         <div class="dl"><dt>Fee</dt><dd>{{ fmt.pct(p.fee) }}
           <span class="sb"> · holding {{ fmt.hash(g.poolHash(p)) }}</span></dd></div>
         <input type="range" min="0" max="0.10" step="0.0025" :value="feeDraft[p.id]!==undefined?feeDraft[p.id]:p.fee"
-               @input="feeDraft[p.id]=parseFloat($event.target.value)">
+               :aria-label="'Fee for '+p.name" @input="feeDraft[p.id]=parseFloat($event.target.value)">
         <div v-if="feeDraft[p.id]!==undefined&&Math.abs(feeDraft[p.id]-p.fee)>0.0005"
              class="warnbox" style="margin-top:6px">
           <b>{{ (feeDraft[p.id]*100).toFixed(2) }}% would settle at
@@ -319,7 +321,7 @@ const projMargin=computed(()=>{
           <button class="btn btn-ghost" :disabled="g.s.cash<100"
                   @click="g.topUpBond(p,Math.min(g.s.cash,Math.max(100,p.bond0-p.bond)))">
             Top up</button>
-          <button class="btn btn-ghost" @click="g.closePool(p)">Close</button></div>
+          <button class="btn btn-ghost" :aria-label="'Close '+p.name" @click="g.closePool(p)">Close</button></div>
       </div>
     </div>
 
@@ -329,17 +331,17 @@ const projMargin=computed(()=>{
           <div class="sb">post a bond, set a fee, take members off the rivals</div></span>
         <span class="ch">&rsaquo;</span></button>
       <div v-if="found" class="card-bd" style="border-top:1px solid var(--line-2);padding-top:10px">
-        <div class="dl"><dt>Chain</dt><dd><select v-model="fChain" style="width:auto">
+        <div class="dl"><dt>Chain</dt><dd><select v-model="fChain" style="width:auto" aria-label="Chain">
           <option v-for="c in g.s.chains" :key="c.id" :value="c.id">{{ c.name }}</option></select></dd></div>
         <div class="dl"><dt>Miners there</dt>
           <dd :class="g.simsOn(fChain)?'':'neg'">{{ g.simsOn(fChain)
             ? g.simsOn(fChain)+' on this chain to recruit from'
             : 'nobody — a pool here can only hold your own rigs' }}</dd></div>
-        <div class="dl"><dt>Scheme</dt><dd><select v-model="fScheme" style="width:auto">
+        <div class="dl"><dt>Scheme</dt><dd><select v-model="fScheme" style="width:auto" aria-label="Scheme">
           <option value="PPLNS">PPLNS — members carry variance</option>
           <option value="PPS">PPS — you underwrite it</option></select></dd></div>
         <div class="dl"><dt>Your fee</dt><dd>{{ (fFee*100).toFixed(2) }}%</dd></div>
-        <input type="range" min="0" max="0.08" step="0.0025" v-model.number="fFee">
+        <input type="range" min="0" max="0.08" step="0.0025" v-model.number="fFee" aria-label="Your fee">
         <div class="dl"><dt>Bond required</dt>
           <dd :class="g.s.cash<bond?'neg':''">{{ fmt.usd(bond) }}</dd></div>
         <div class="dl"><dt>Likely share</dt><dd>{{ fmt.pct(projShare,0) }} of the pool market</dd></div>

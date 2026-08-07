@@ -38,6 +38,8 @@ body{background:var(--backdrop);color:var(--ink);font-family:var(--sans);font-si
   line-height:1.45;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
 /* height, not min-height, so the nav is a real flex child pinned to the bottom.
    100dvh follows the mobile URL bar; 100vh is the fallback. */
 #app{max-width:440px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);

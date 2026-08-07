@@ -37,4 +37,10 @@ describe('SitesView', () => {
     await saveBtn.trigger('click');
     expect(store.s.sites[0].name).toBe('My Farm');
   });
+
+  it('marks the active site row with aria-current', () => {
+    const { wrapper, store } = mountWithStore(SitesView);
+    const row = wrapper.findAll('.rowline').find(r => r.text().includes(store.s.sites[0].name));
+    expect(row.attributes('aria-current')).toBe('true');
+  });
 });
