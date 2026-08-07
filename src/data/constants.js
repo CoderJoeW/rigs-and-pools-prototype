@@ -14,18 +14,22 @@ export const C = {
        afternoon heat pulls it a little earlier still, so 7 days is a
        ceiling, not a guarantee).
 
-     A neglected rig never actually reaches "fully worn" (u.w=1) at this
-     rate: wear also raises card draw (dispatch.js: rigPow scales each
-     unit's watts by 1+0.5·u.w), and by roughly the two-week mark that
-     growing draw trips a brownout — the site sheds the rig for exceeding
-     capacity (tick.js) — which freezes its wear right where it stood
-     (worn units are skipped, but so is the whole rig once it's off).
-     That lands close to GEN_DAYS (14), not safely inside it: repairing
-     within the first week, well before either the brownout or the next
-     generation, is the actual point — ignore both advisories and the
-     rig disciplines itself into an outage rather than mining forever.
-     Repairing clears the excess draw along with the wear, so the
-     brownout is a backstop for neglect, not a new dead end. */
+     On the default starter site, a neglected rig never actually reaches
+     "fully worn" (u.w=1) at this rate — that's a property of the site's
+     power budget, not of BASE_WEAR itself: wear also raises card draw
+     (dispatch.js: rigCoreW scales each unit's watts by 1+0.5·u.w), and by
+     roughly the two-week mark that growing draw trips a brownout on a
+     capacity-constrained site — it sheds the rig for exceeding capacity
+     (tick.js) — which freezes its wear right where it stood (worn units
+     are skipped, but so is the whole rig once it's off). A site with
+     power to spare has no such ceiling and a card left alone there will
+     eventually hit u.w=1 for real. Either way it lands close to GEN_DAYS
+     (14), not safely inside it: repairing within the first week, well
+     before the brownout, the next generation, or full wear-out, is the
+     actual point — ignore all of that and the rig either disciplines
+     itself into an outage or grinds down to WORN_OUT hashrate. Repairing
+     clears the excess draw along with the wear, so on a capacity-bound
+     site the brownout is a backstop for neglect, not a new dead end. */
   BASE_WEAR:0.05,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
