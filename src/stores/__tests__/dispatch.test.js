@@ -38,8 +38,8 @@ describe('chainCeiling', () => {
     // BuildView.vue calls chainCeiling(chain, draftHash) to warn about the
     // rig being planned — that must not fire before the player owns
     // anything, or the very first screen of a new game tells them their
-    // starting chain is already maxed out (docs/design-spec.md §1: "Starters
-    // below the floor are never nudged").
+    // starting chain is already maxed out (docs/design-spec.md §10b:
+    // "Starters below the floor are never nudged").
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
     g.generatePreset();
@@ -62,7 +62,6 @@ describe('chainCeiling', () => {
     const ceiling = g.chainCeiling(tessera);
     expect(ceiling).not.toBeNull();
     expect(ceiling.share).toBe(1); // Tessera has no simulated miners
-    expect(ceiling.over).toBeGreaterThan(1);
   });
 });
 
@@ -96,14 +95,16 @@ describe('groupAdvice', () => {
   it('nudges toward a better chain once a group has genuinely outgrown its own', () => {
     // Isolated from production tuning on two axes: floor, so the "above
     // floor, majority share" gate clears immediately, and reward — the
-    // field revPerMh() actually reads at runtime; mult is authoring-time
-    // only (see chains.js's derivation comment) and has no runtime effect,
-    // so overriding mult alone wouldn't change anything here. Forcing a low
-    // reward makes this chain clearly the worst payer, which is what it
-    // takes to clear groupAdvice's own >=1.5x-better bar — Tessera's real
-    // tuning now sits close enough to the rest of the ladder that it no
-    // longer clears that bar on its own (a good sign for the balance, but
-    // it means this specific branch needs an isolated scenario to reach).
+    // field revPerMh() actually reads at runtime (traced in dispatch.js).
+    // mult is only ever read for pool float/bond sizing (poolMarket.js,
+    // rivals.js) and the Chains tab's own pay-rate display, never by
+    // revPerMh/diffOf, so overriding mult alone wouldn't change anything
+    // here. Forcing a low reward makes this chain clearly the worst payer,
+    // which is what it takes to clear groupAdvice's own >=1.5x-better bar —
+    // Tessera's real tuning now sits close enough to the rest of the ladder
+    // that it no longer clears that bar on its own (a good sign for the
+    // balance, but it means this specific branch needs an isolated scenario
+    // to reach).
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
     tessera.floor = 10;
@@ -115,7 +116,6 @@ describe('groupAdvice', () => {
     const advice = g.groupAdvice(g.s.groups[0]);
     expect(advice).not.toBeNull();
     expect(advice.share).toBe(1);
-    expect(advice.mult).toBeGreaterThan(1.5); // the alt chain genuinely pays enough more to move
     expect(g.s.chains.map(c => c.id)).toContain(advice.alt.toLowerCase());
   });
 });

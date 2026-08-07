@@ -33,7 +33,15 @@
    reward recomputed to match the ladder's own calibration (every chain in
    this file satisfies revPerMh = PAY*mult at/below its floor — see
    dispatch.js's diffOf/revPerMh): PAY*mult*floor*target/(86400*price)
-     = 4.20*1.25*350*20/(86400*0.024) ≈ 17.72 (was 30). */
+     = 4.20*1.25*350*20/(86400*0.024) ≈ 17.72 (was 30).
+
+   This mult is chosen to land right once the clamp loss above is netted
+   out, which means it's coupled to that separate bug: fixing the price
+   floor (so Tessera's price can actually sit at its base 0.024 instead of
+   clamping to the global 0.02) would push Tessera's realized rate back up
+   to its full nominal ~5.25, past Ferro and Obelisk into 2nd place on the
+   ladder — this mult would need revisiting alongside that fix, not after
+   it lands unnoticed. */
 export const CHAINS = [
   { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:17.72, price:0.024,
     mult:1.25, floor:350, vol:0.030, depth:4200, recover:0.50, orphan:0.050,

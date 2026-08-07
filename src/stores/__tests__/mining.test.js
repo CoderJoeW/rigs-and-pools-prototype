@@ -27,6 +27,28 @@ describe('Tessera balance', () => {
 
     expect(g.revPerMh(tessera)).toBeGreaterThan(g.revPerMh(nova));
   });
+
+  it('the floor sits within reach of a modestly grown farm, not just a single rig forever', () => {
+    // The lower-bound test above alone isn't enough: it's satisfied by the
+    // OLD, over-powered numbers too (old Tessera also beat Nova on realized
+    // rate), so on its own it wouldn't have caught what issue #2 is actually
+    // about. A rank-based "is Tessera the best payer" check doesn't work
+    // either — measured directly, Halcyon already realizes a higher rate
+    // than Tessera under BOTH the old and the new numbers, so "not the max"
+    // is true either way and proves nothing (the same vacuousness the first
+    // version of this test had, from a different angle).
+    //
+    // What actually changed is whether the floor is reachable: under the
+    // old floor (500) even two starter rigs' worth of hash (~384 MH) never
+    // crossed it, so a farm that had genuinely grown — not just idled —
+    // still never triggered the "you've outgrown this" advisory. The new
+    // floor sits low enough that it does.
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    g.generatePreset();
+    const oneRig = g.dp.mh;
+    expect(oneRig * 2).toBeGreaterThan(tessera.floor);
+  });
 });
 
 describe('solo block finding', () => {
