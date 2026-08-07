@@ -79,6 +79,7 @@ export function installState(G){
     unlocked:new Proxy({},{get:()=>true}),
     picker:null, sitePicker:null, rebuild:null, saveInfo:'', wipeArm:false,
     shakeAt:0, shakeOn:null,
+    onboardingDismissed:false,
     feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''}, tab:'build',
   };
   }

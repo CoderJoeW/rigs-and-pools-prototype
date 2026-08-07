@@ -12,6 +12,7 @@ import { installActions } from '../game/actions.js';
 import { installSites } from '../game/sites.js';
 import { installPools } from '../game/pools.js';
 import { installFleetActions } from '../game/fleetActions.js';
+import { installOnboarding } from '../game/onboarding.js';
 import { installPersistence } from '../game/persistence.js';
 
 /* createGame — assembles the game from its installers.
@@ -44,6 +45,7 @@ export const useGameStore = defineStore('game', () => {
   installSites(G);
   installPools(G);
   installFleetActions(G);
+  installOnboarding(G);
   installPersistence(G);
   return G.__exports;
 });

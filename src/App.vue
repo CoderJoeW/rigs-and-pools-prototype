@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
+import OnboardingBanner from './components/OnboardingBanner.vue';
 import FarmView from './views/FarmView.vue';
 import SitesView from './views/SitesView.vue';
 import RigsView from './views/RigsView.vue';
@@ -40,6 +41,7 @@ const allTabs=[
 
 <template>
   <TopBar />
+  <OnboardingBanner />
   <main class="body"><component :is="views[g.s.tab]" /></main>
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
