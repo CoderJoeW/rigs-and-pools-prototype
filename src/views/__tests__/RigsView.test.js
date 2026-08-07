@@ -17,15 +17,33 @@ describe('RigsView', () => {
     expect(wrapper.text()).toContain('Running'); // it's on, mid-assembly counts as its own state
   });
 
-  it('opening a rig shows its detail sheet', async () => {
+  it('opening a rig shows its detail sheet, with dialog semantics', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
     await wrapper.find('.rigrow').trigger('click');
-    expect(wrapper.find('.sheet').exists()).toBe(true);
+    const sheet = wrapper.find('.sheet');
+    expect(sheet.exists()).toBe(true);
+    expect(sheet.attributes('role')).toBe('dialog');
+    expect(sheet.attributes('aria-modal')).toBe('true');
+    expect(sheet.attributes('aria-labelledby')).toBeTruthy();
     expect(wrapper.text()).toContain('Retrofit');
     expect(wrapper.text()).toContain('Repair');
     expect(wrapper.text()).toContain('Strip');
+  });
+
+  it('Escape closes the rig detail sheet', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); },
+      attachTo: document.body,
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    expect(wrapper.find('.sheet').exists()).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.sheet').exists()).toBe(false);
+    wrapper.unmount();
   });
 
   it('the fleet-actions sheet opens and shows scope-aware previews', async () => {

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
+import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 
 const g = useGameStore();
@@ -137,6 +138,16 @@ const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
 
 // switching sites should not leave a stale selection or an open rig behind
 watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.value='all'; });
+
+/* Escape/focus-trap/return-focus for each sheet, mirroring the on-screen
+   back/cancel button each one already has. */
+const rigSheetEl=ref(null);
+useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; });
+const fleetSheetEl=ref(null);
+useSheetA11y(fleetSheetEl, fleetOpen, ()=>{ fleetOpen.value=false; });
+const rebuildSheetEl=ref(null);
+useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
+  ()=>{ if(g.s.rebuild) g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null; });
 </script>
 
 <template>
@@ -217,10 +228,11 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
     </div></div>
 
     <!-- ACT: one rig, full screen, nothing else competing -->
-    <div v-if="rig" class="sheet">
+    <div v-if="rig" class="sheet" ref="rigSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="rig-sheet-title">
       <div class="sheet-hd">
         <button class="btn btn-sm btn-ghost" @click="openRig=null">&lsaquo; Rigs</button>
-        <span class="t">{{ rig.name }}</span></div>
+        <span class="t" id="rig-sheet-title">{{ rig.name }}</span></div>
       <div class="sheet-bd">
         <div class="card">
           <div class="rig-hd" v-if="renameOpen">
@@ -266,7 +278,7 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
         <div class="card"><div class="card-bd pt">
           <div style="display:flex;gap:9px;align-items:center;margin-bottom:11px">
             <button class="switch" :class="{on:rig.on&&rig.building<=0}" @click="g.toggleRig(rig.id)"
-                    aria-label="power"><i></i></button>
+                    aria-label="power" :aria-pressed="rig.on&&rig.building<=0"><i></i></button>
             <span style="font-size:13px;flex:1">{{ rig.on ? 'Powered on' : stateOf(rig).label }}
               <div v-if="!rig.on&&rig.cut" class="sb">Turning it back on will not hold until the
                 cause clears.</div></span>
@@ -315,10 +327,11 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
     </div>
 
     <!-- ACT: many rigs at once -->
-    <div v-if="fleetOpen" class="sheet">
+    <div v-if="fleetOpen" class="sheet" ref="fleetSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="fleet-sheet-title">
       <div class="sheet-hd">
         <button class="btn btn-sm btn-ghost" @click="fleetOpen=false">&lsaquo; Rigs</button>
-        <span class="t">Fleet actions</span></div>
+        <span class="t" id="fleet-sheet-title">Fleet actions</span></div>
       <div class="sheet-bd">
         <div class="card"><div class="card-bd pt">
           <div class="dl" style="margin-top:0"><dt>Applies to</dt><dd>{{ scopeLabel }}</dd></div>
@@ -404,12 +417,13 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
     </div>
 
     <!-- the rebuild planner, unchanged -->
-    <div v-if="g.s.rebuild && rbRig" class="sheet">
+    <div v-if="g.s.rebuild && rbRig" class="sheet" ref="rebuildSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="rebuild-sheet-title">
       <div class="sheet-hd">
         <button class="btn btn-sm btn-ghost"
                 @click="g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null">
           &lsaquo; {{ g.s.rebuild.picker ? 'Back' : 'Cancel' }}</button>
-        <span class="t">{{ g.s.rebuild.picker
+        <span class="t" id="rebuild-sheet-title">{{ g.s.rebuild.picker
           ? {unit:'Cards',frame:'Frame',mobo:'Board',cool:'Cooling',psu:'Supply'}[g.s.rebuild.picker]
           : 'Rebuild '+rbRig.name }}</span></div>
       <div class="sheet-bd">
@@ -431,10 +445,10 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
                   {{ rbD.n>rbRig.units.length?'+':'' }}{{ rbD.n-rbRig.units.length }}</span></div>
                 <div class="s">Limit {{ rbInfo.lim }} — worn cards are traded first when reducing</div></span>
               <span style="display:flex;align-items:center;border:1px solid var(--line);border-radius:8px">
-                <button style="width:32px;height:32px;text-align:center"
+                <button style="width:32px;height:32px;text-align:center" aria-label="Decrease card count"
                         @click="rbD.n=Math.max(1,rbD.n-1)">&minus;</button>
                 <span class="num" style="min-width:24px;text-align:center">{{ rbD.n }}</span>
-                <button style="width:32px;height:32px;text-align:center"
+                <button style="width:32px;height:32px;text-align:center" aria-label="Increase card count"
                         @click="rbD.n=Math.min(rbInfo.lim,rbD.n+1)">+</button></span></div>
           </div></div>
 

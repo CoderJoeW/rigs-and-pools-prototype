@@ -194,13 +194,13 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:13px">Power down unprofitable rigs</span>
             <button class="switch" :class="{on:g.s.autoOff}" @click="g.s.autoOff=!g.s.autoOff"
-                    aria-label="shutdown"><i></i></button></div>
+                    aria-label="shutdown" :aria-pressed="!!g.s.autoOff"><i></i></button></div>
           <input type="range" min="-5" max="30" step="0.25" v-model.number="g.s.offThreshold">
           <div class="track-cap"><span>Threshold</span><b>{{ fmt.usd2(g.s.offThreshold) }}/day</b></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px">
             <span style="font-size:13px">Replace worn cards</span>
             <button class="switch" :class="{on:g.s.autoFix}" @click="g.s.autoFix=!g.s.autoFix"
-                    aria-label="replace"><i></i></button></div>
+                    aria-label="replace" :aria-pressed="!!g.s.autoFix"><i></i></button></div>
           <input type="range" min="0.2" max="0.9" step="0.05" v-model.number="g.s.fixAt">
           <div class="track-cap"><span>Replace above</span><b>{{ fmt.pct(g.s.fixAt,0) }} wear</b></div>
         </div>

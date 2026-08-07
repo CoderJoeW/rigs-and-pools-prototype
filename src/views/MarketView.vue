@@ -37,7 +37,7 @@ async function onBackupFile(e){
   <div>
     <div class="card"><div class="card-hd"><span class="eyebrow">Auto-sell drip</span>
       <button class="switch" :class="{on:g.s.drip.on}" @click="g.setDrip('on',!g.s.drip.on)"
-              aria-label="auto-sell"><i></i></button></div>
+              aria-label="auto-sell" :aria-pressed="!!g.s.drip.on"><i></i></button></div>
       <div class="card-bd">
         <div class="rigfld" style="margin-top:0"><label>Order size — how much of a stack goes at once</label>
           <div class="btn-row" style="margin-top:0">

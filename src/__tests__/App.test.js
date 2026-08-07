@@ -43,14 +43,26 @@ describe('App', () => {
     expect(wrapper.text()).toContain('Nothing installed'); // FarmView's empty state
   });
 
-  it('a toast appears with the class matching its kind', async () => {
+  it('a toast appears with the class matching its kind, announced as a polite status', async () => {
     const { wrapper, store } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
     store.s.toast = { n: 1, text: 'Test toast', amount: '', cls: 'grn' };
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.toast.grn').exists()).toBe(true);
+    const toast = wrapper.find('.toast.grn');
+    expect(toast.exists()).toBe(true);
+    expect(toast.attributes('role')).toBe('status');
+    expect(toast.attributes('aria-live')).toBe('polite');
     expect(wrapper.text()).toContain('Test toast');
+  });
+
+  it('a "dark"-kind toast (urgent news) is announced as an alert', async () => {
+    const { wrapper, store } = mountWithStore(App);
+    mounted.push(wrapper);
+    await flushPromises();
+    store.s.toast = { n: 1, text: 'Out of cash', amount: '', cls: 'dark' };
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.toast.dark').attributes('role')).toBe('alert');
   });
 
   it('applies data-theme to the document root, and clears it for auto', async () => {

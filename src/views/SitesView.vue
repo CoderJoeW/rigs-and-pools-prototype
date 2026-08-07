@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 
 const g = useGameStore();
@@ -87,6 +88,9 @@ const flowIn=computed(()=>{ const x=flow.value;
 const flowOut=computed(()=>{ const x=flow.value;
   const tot=x.rigs+x.cool+x.charge;
   return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
+
+const pickerSheetEl=ref(null);
+useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
 
 <template>
@@ -214,11 +218,11 @@ const flowOut=computed(()=>{ const x=flow.value;
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px">
             <span style="font-size:13px">Charge from off-peak grid</span>
             <button class="switch" :class="{on:f.gridCharge}" @click="f.gridCharge=!f.gridCharge"
-                    aria-label="grid charge"><i></i></button></div>
+                    aria-label="grid charge" :aria-pressed="!!f.gridCharge"><i></i></button></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px">
             <span style="font-size:13px">Discharge outside peak too</span>
             <button class="switch" :class="{on:f.disAny}" @click="f.disAny=!f.disAny"
-                    aria-label="discharge any"><i></i></button></div>
+                    aria-label="discharge any" :aria-pressed="!!f.disAny"><i></i></button></div>
           <p v-if="g.battAdvice(f)" class="hint"
              :style="g.battAdvice(f).warn?'color:var(--amber)':''">{{ g.battAdvice(f).text }}</p>
           <p v-if="g.s.help" class="hint">Soaks free solar surplus, and can buy cheap off-peak
@@ -280,10 +284,11 @@ const flowOut=computed(()=>{ const x=flow.value;
       </div>
     </div>
 
-    <div v-if="g.s.sitePicker" class="sheet">
+    <div v-if="g.s.sitePicker" class="sheet" ref="pickerSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="site-picker-title">
       <div class="sheet-hd">
         <button class="btn btn-sm btn-ghost" @click="g.s.sitePicker=null">&lsaquo; Back</button>
-        <span class="t">{{ g.s.sitePicker==='shell'?'New site':
+        <span class="t" id="site-picker-title">{{ g.s.sitePicker==='shell'?'New site':
           g.s.sitePicker==='expand'?'Expand '+f.name:
           g.s.sitePicker==='source'?'Power sources':
           g.s.sitePicker==='storage'?'Batteries':'Cooling' }}</span></div>

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
+import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 
 const g = useGameStore();
@@ -74,6 +75,9 @@ const pickerRows=computed(()=>{
   });
 });
 const choose=id=>{ g.s.draft[g.s.picker]=id; g.s.picker=null; };
+
+const pickerSheetEl=ref(null);
+useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
 
 /* Verdict panel, always ranked the same way: cost and payback first,
    then hashrate and efficiency, then what it costs the site. Guidance
@@ -162,10 +166,10 @@ const verdict=computed(()=>{
                 board drives {{ cardLimit.mobo }}</span></div>
             <div class="s">{{ g.s.draft.n }} risers · {{ fmt.usd(g.s.draft.n*g.RISER.price) }}</div></span>
           <span class="stepper" style="display:flex;align-items:center;border:1px solid var(--line);border-radius:8px">
-            <button style="width:32px;height:32px;text-align:center"
+            <button style="width:32px;height:32px;text-align:center" aria-label="Decrease card count"
                     @click="g.s.draft.n=Math.max(1,g.s.draft.n-1)">&minus;</button>
             <span class="num" style="min-width:24px;text-align:center">{{ g.s.draft.n }}</span>
-            <button style="width:32px;height:32px;text-align:center"
+            <button style="width:32px;height:32px;text-align:center" aria-label="Increase card count"
                     @click="g.s.draft.n=Math.min(cardLimit.n,g.s.draft.n+1)">+</button></span></div>
       </template>
 
@@ -190,10 +194,11 @@ const verdict=computed(()=>{
       </div>
     </div>
 
-    <div v-if="g.s.picker" class="sheet">
+    <div v-if="g.s.picker" class="sheet" ref="pickerSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="build-picker-title">
       <div class="sheet-hd">
         <button class="btn btn-sm btn-ghost" @click="g.s.picker=null">&lsaquo; Back</button>
-        <span class="t">{{ FIELDS.find(f=>f.k===g.s.picker).label }} —
+        <span class="t" id="build-picker-title">{{ FIELDS.find(f=>f.k===g.s.picker).label }} —
           {{ FIELDS.find(f=>f.k===g.s.picker).job }}</span></div>
       <div class="sheet-bd">
         <Compare title="Cheapest first — more expensive is always better" metric="cost"

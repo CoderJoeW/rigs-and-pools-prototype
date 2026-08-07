@@ -63,7 +63,8 @@ const allTabs=[
   <main class="body"><component :is="views[g.s.tab]" /></main>
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
-      <svg viewBox="0 0 24 24"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
-  <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
+  <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n"
+       :role="g.s.toast.cls==='dark'?'alert':'status'" aria-live="polite" aria-atomic="true">
     <span>{{ g.s.toast.text }}</span><span class="num">{{ g.s.toast.amount }}</span></div>
 </template>
