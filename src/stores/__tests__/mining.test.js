@@ -7,6 +7,28 @@ import { freshStore } from '../../test/testStore.js';
    hashrate, so a single multi-hour tick should find many blocks with
    overwhelming probability, not flakily. */
 
+describe('Tessera balance', () => {
+  it('is no longer the single best-paying chain — a newcomer subsidy, not a permanent one', () => {
+    // Tessera is deliberately generous (no simulated competition, a low
+    // floor a starter rig clears fast) — but it should not ALSO be the
+    // highest raw rate in the ladder, or there's never a reason to leave it.
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const others = g.s.chains.filter(c => c.id !== 'tessera');
+    expect(others.some(c => c.mult >= tessera.mult)).toBe(true);
+  });
+
+  it('a starter rig outgrows Tessera\'s floor on its very first build, not after days idle', () => {
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    expect(g.totalHash).toBeGreaterThan(tessera.floor);
+  });
+});
+
 describe('solo block finding', () => {
   it('a rig mining solo on Tessera finds blocks and gets paid', () => {
     const g = freshStore();
