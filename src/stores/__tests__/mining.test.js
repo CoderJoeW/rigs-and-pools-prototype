@@ -8,24 +8,24 @@ import { freshStore } from '../../test/testStore.js';
    overwhelming probability, not flakily. */
 
 describe('Tessera balance', () => {
-  it('is no longer the single best-paying chain — a newcomer subsidy, not a permanent one', () => {
-    // Tessera is deliberately generous (no simulated competition, a low
-    // floor a starter rig clears fast) — but it should not ALSO be the
-    // highest raw rate in the ladder, or there's never a reason to leave it.
+  // mult is authoring-time only (used to derive `reward` by hand — see the
+  // derivation comment in chains.js); revPerMh() never reads it at runtime,
+  // so a mult comparison alone proves nothing about realized pay. This
+  // drives the real simulation and compares the number a player actually
+  // sees: Tessera should no longer be a strict giveaway (drastically better
+  // than everything else, permanently, with zero competition), but it also
+  // shouldn't fall below Nova — the chain deliberately designed to be the
+  // ladder's worst payer (see chains.js: "the lowest pay per MH").
+  it('settles to a realized rate comparable to the ladder, not the worst chain in it', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
-    const others = g.s.chains.filter(c => c.id !== 'tessera');
-    expect(others.some(c => c.mult >= tessera.mult)).toBe(true);
-  });
-
-  it('a starter rig outgrows Tessera\'s floor on its very first build, not after days idle', () => {
-    const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const nova = g.s.chains.find(c => c.id === 'nova');
     g.generatePreset();
     g.build();
-    for (let i = 0; i < 5; i++) g.stepTick(60);
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    for (let i = 0; i < 100; i++) g.stepTick(3600); // let price and difficulty settle
 
-    expect(g.totalHash).toBeGreaterThan(tessera.floor);
+    expect(g.revPerMh(tessera)).toBeGreaterThan(g.revPerMh(nova));
   });
 });
 
@@ -94,9 +94,10 @@ describe('solo block finding', () => {
     g.build();
     g.stepTick(3600); // finishes assembly and mines for about an hour in one chunk
 
-    // a starter rig's hashrate sits nowhere near Tessera's 500 MH floor, so
-    // once blocks land and obs retargets per block, it should have moved —
-    // direction (up or down) isn't asserted, only that retargeting happened
+    // a starter rig's hashrate sits below Tessera's floor (see chains.js),
+    // so once blocks land and obs retargets per block, it should have
+    // moved — direction (up or down) isn't asserted, only that retargeting
+    // happened
     expect(tessera.obs).not.toBe(tessera.floor);
     expect(Number.isFinite(tessera.obs)).toBe(true);
   });

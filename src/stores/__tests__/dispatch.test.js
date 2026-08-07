@@ -19,13 +19,12 @@ describe('chainCeiling', () => {
     expect(g.chainCeiling(tessera)).toBeNull();
   });
 
-  it('returns null while the chain sits below its own floor', () => {
+  it('returns null for a real starter rig on Tessera — the floor gives a genuine below-floor period', () => {
+    // Tessera's floor is tuned to sit above a single starter rig's hashrate
+    // on purpose (see chains.js): the newcomer subsidy should mean something
+    // before it starts fading, not vanish the instant a rig finishes.
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
-    // isolate the guard clause from Tessera's actual tuned floor (deliberately
-    // low enough that a real starter rig now sits ABOVE it — see chains.js)
-    // so this test keeps meaning what it says regardless of balance tuning.
-    tessera.floor = 1e9;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -35,12 +34,26 @@ describe('chainCeiling', () => {
     expect(g.chainCeiling(tessera)).toBeNull();
   });
 
-  it('fires for a real starter rig on Tessera — the floor is low enough to outgrow immediately', () => {
-    // this is the actual point of Tessera's floor being tuned low: a single
-    // starter rig should trip the OUTGROWN advisory in the first session,
-    // not require days of unattended idling first (see chains.js).
+  it('returns null for the draft rig on the Build tab before any rig is actually owned', () => {
+    // BuildView.vue calls chainCeiling(chain, draftHash) to warn about the
+    // rig being planned — that must not fire before the player owns
+    // anything, or the very first screen of a new game tells them their
+    // starting chain is already maxed out (docs/design-spec.md §1: "Starters
+    // below the floor are never nudged").
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
+    g.generatePreset();
+    expect(g.s.rigs).toHaveLength(0);
+    expect(g.chainCeiling(tessera, g.dp.mh)).toBeNull();
+  });
+
+  it('fires once a group genuinely holds most of a chain above its floor', () => {
+    // isolate the guard's actual logic from whatever Tessera's floor is
+    // currently tuned to — this pins the function's behavior at the
+    // boundary, not a specific production balance number.
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    tessera.floor = 100;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -69,8 +82,32 @@ describe('groupAdvice', () => {
     expect(g.groupAdvice(g.s.groups[0])).toBeNull();
   });
 
-  it('nudges a real starter rig on Tessera toward a better chain immediately', () => {
+  it('returns null for a real starter rig on Tessera, still within its below-floor period', () => {
     const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    expect(g.totalHash).toBeLessThan(tessera.floor);
+    expect(g.groupAdvice(g.s.groups[0])).toBeNull();
+  });
+
+  it('nudges toward a better chain once a group has genuinely outgrown its own', () => {
+    // Isolated from production tuning on two axes: floor, so the "above
+    // floor, majority share" gate clears immediately, and reward — the
+    // field revPerMh() actually reads at runtime; mult is authoring-time
+    // only (see chains.js's derivation comment) and has no runtime effect,
+    // so overriding mult alone wouldn't change anything here. Forcing a low
+    // reward makes this chain clearly the worst payer, which is what it
+    // takes to clear groupAdvice's own >=1.5x-better bar — Tessera's real
+    // tuning now sits close enough to the rest of the ladder that it no
+    // longer clears that bar on its own (a good sign for the balance, but
+    // it means this specific branch needs an isolated scenario to reach).
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    tessera.floor = 10;
+    tessera.reward = 1;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
