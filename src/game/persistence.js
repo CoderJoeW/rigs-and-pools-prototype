@@ -44,8 +44,23 @@ export function installPersistence(G){
   }
   /* Shared by loadSave (from storage) and importSave (from a picked file) —
      a backup is just a save payload that arrived by a different door, so it
-     goes through the exact same migration and offline-catch-up path. */
+     goes through the exact same migration and offline-catch-up path.
+     Wrapped whole: a malformed state (hand-edited localStorage, a save from
+     a build with a shape this migration doesn't anticipate, a corrupted
+     backup file) must never brick the app on load. Falling back to a fresh
+     game beats a blank screen — the same choice loadSave already makes for
+     a bare version mismatch, just widened to cover mid-migration crashes. */
   function hydrate(data){
+    try{ return hydrateUnsafe(data); }
+    catch(e){
+      restoring=false;
+      console.warn('save failed to load, starting fresh:', e.message);
+      resetState();
+      G.pop('Save could not be read','starting a fresh game','dark',{always:true});
+      return false;
+    }
+  }
+  function hydrateUnsafe(data){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
@@ -168,9 +183,9 @@ export function installPersistence(G){
     let data;
     try{ data=JSON.parse(text); }catch(e){ return false; }
     if(!data || typeof data!=='object' || data.ver!==C.SAVE_VER || !data.state) return false;
-    hydrate(data);
-    await saveNow();
-    return true;
+    const ok=hydrate(data);
+    if(ok) await saveNow();
+    return ok;
   }
   async function wipeSave(){
     wiped=true;                    // latch BEFORE any await — pagehide can fire mid-wipe

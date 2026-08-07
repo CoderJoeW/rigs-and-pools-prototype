@@ -50,6 +50,38 @@ describe('saveNow / loadSave round trip', () => {
   });
 });
 
+describe('a corrupted save', () => {
+  it('does not brick the app — loadSave falls back to a fresh game instead of throwing', async () => {
+    const g1 = freshStore();
+    const corrupted = JSON.stringify({
+      ver: g1.C.SAVE_VER, savedAt: Date.now(),
+      state: { rigs: 'not-an-array' }, // makes the legacy-rig migration's .some() throw
+    });
+    localStorage.setItem('rigs-and-pools-save', corrupted);
+
+    const g2 = reopenStore();
+    const loaded = await g2.loadSave();
+
+    expect(loaded).toBe(false);
+    expect(g2.s.cash).toBe(500); // reset to a real fresh state, not left holding the garbage
+    expect(g2.s.rigs).toEqual([]);
+  });
+
+  it('importSave falls back to a fresh game and does not persist the corrupted state', async () => {
+    const g = freshStore();
+    g.s.cash = 777;
+    const corrupted = JSON.stringify({
+      ver: g.C.SAVE_VER, savedAt: Date.now(), state: { rigs: 'nope' },
+    });
+
+    const ok = await g.importSave(corrupted);
+
+    expect(ok).toBe(false);
+    expect(g.s.cash).toBe(500); // reset, not left at 777 and not left holding the garbage either
+    expect(g.s.rigs).toEqual([]);
+  });
+});
+
 describe('offline catch-up', () => {
   it('credits progress for time away and reports a "Welcome back" toast', async () => {
     const g1 = freshStore();
