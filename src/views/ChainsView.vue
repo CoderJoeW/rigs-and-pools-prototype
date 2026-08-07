@@ -79,7 +79,10 @@ const projMargin=computed(()=>{
                 ({{ g.easeOf(c)>1?'+':'' }}{{ ((g.easeOf(c)-1)*100).toFixed(0) }}% vs live)</span></dd></div>
           <div class="dl"><dt>Blocks found</dt><dd>{{ c.found }}</dd></div>
           <div class="dl"><dt>Price impact</dt>
-            <dd :class="c.impact>0.01?'neg':''">{{ fmt.pct(c.impact) }}</dd></div>
+            <dd :class="c.impact>0.01?'neg':c.impact<-0.01?'pos':''">
+              {{ c.impact<0?'+':'' }}{{ fmt.pct(-c.impact) }}
+              <span v-if="c.impact<-0.01" class="sb">premium from buying</span>
+              <span v-else-if="c.impact>0.01" class="sb">discount from selling</span></dd></div>
           <div class="dl"><dt>Market</dt>
             <dd>tracks the miners
               <span v-if="g.fundOf(c)>g.price(c)*1.1" class="pos"> — rising toward {{ fmt.usd2(g.fundOf(c)) }}</span>

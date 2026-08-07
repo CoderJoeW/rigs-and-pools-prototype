@@ -58,11 +58,22 @@ const slip=(c,f)=>Math.min(0.5,0.5*(g.s.wallet[c.id]*f)/c.depth);
           <button class="btn btn-sm btn-ghost" @click="g.toggleHold(c.id)">
             {{ g.s.hold[c.id]?'Release':'Hold' }}</button></div>
         <div v-if="open[c.id]" class="card-bd" style="padding-top:6px">
+          <div class="eyebrow" style="margin-bottom:4px">Sell your {{ c.tick }}</div>
           <div class="btn-row" style="margin-top:0">
             <button class="btn" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,0.25)">25%</button>
             <button class="btn" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,0.5)">50%</button>
             <button class="btn btn-pri" :disabled="!g.s.wallet[c.id]" @click="g.sell(c.id,1)">All</button>
-          </div></div>
+          </div>
+          <div class="eyebrow" style="margin:10px 0 4px">Buy {{ c.tick }} with cash</div>
+          <div class="btn-row" style="margin-top:0">
+            <button class="btn" :disabled="!g.s.cash" @click="g.buy(c.id,0.1)">10%</button>
+            <button class="btn" :disabled="!g.s.cash" @click="g.buy(c.id,0.25)">25%</button>
+            <button class="btn btn-pri" :disabled="!g.s.cash" @click="g.buy(c.id,0.5)">50%</button>
+          </div>
+          <p v-if="g.s.help" class="hint" style="margin-top:6px">Buying pushes the price up the same
+            way selling pushes it down — a premium that fades back toward fundamental value over a
+            few days, same as a discount does.</p>
+        </div>
       </template>
     </div></div>
 
