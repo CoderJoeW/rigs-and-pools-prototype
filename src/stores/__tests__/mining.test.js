@@ -43,7 +43,10 @@ describe('solo block finding', () => {
   it('repeated orphans collapse into one feed line instead of spamming one each', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
-    tessera.orphan = 1; // force every solo block found to orphan, deterministically
+    // The real roll is Math.random() < c.orphan*(1-CONN_Q) (tick.js) — CONN_Q
+    // is 0.35, so orphan must clear 1/0.65 (~1.54) to make every solo find
+    // orphan with certainty, not just orphan=1 (which is only p=0.65).
+    tessera.orphan = 2;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);

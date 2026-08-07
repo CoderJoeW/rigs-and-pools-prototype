@@ -236,9 +236,13 @@ export function installPoolMarket(G){
         top.n=(top.n||1)+1; top.num+=num; top.t=fmt.hm(G.s.t);
         top.amount='+'+fmt.c(top.num)+(unit?' '+unit:''); return;
       }
-      // Same event, no quantity to accumulate (e.g. "Orphaned on X") — still
-      // worth collapsing into one "×N" line rather than one line per repeat.
-      if(num===undefined && top.num===undefined){
+      // Same event, no quantity to accumulate AND no dollar amount either
+      // (e.g. "Orphaned on X") — still worth collapsing into one "×N" line
+      // rather than one line per repeat. Gated on amount too, not just num:
+      // plenty of calls (rush, site installs) carry a fixed-string amount
+      // with no num — those differ order to order and must stay separate
+      // lines, or the feed would silently under-report what was spent.
+      if(num===undefined && top.num===undefined && !amount && !top.amount){
         top.n=(top.n||1)+1; top.t=fmt.hm(G.s.t); return;
       }
     }
