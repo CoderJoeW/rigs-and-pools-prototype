@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountWithStore } from '../test/mountWithStore.js';
 import App from '../App.vue';
@@ -9,11 +9,19 @@ import App from '../App.vue';
    before the async continuation ever set one — otherwise that interval
    is orphaned and keeps ticking a torn-down test's store afterward. */
 let mounted = [];
+beforeEach(() => {
+  // App.vue keeps this meta tag (normally written once in index.html) in
+  // sync at runtime; the test document needs it present to have something
+  // to sync into, the same way the real page does.
+  document.head.insertAdjacentHTML('beforeend', '<meta name="theme-color" content="#F5F6F4">');
+});
 afterEach(async () => {
   await flushPromises();
   for (const w of mounted) w.unmount();
   mounted = [];
   delete document.documentElement.dataset.theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.remove();
 });
 
 describe('App', () => {
@@ -58,5 +66,21 @@ describe('App', () => {
     store.s.theme = 'auto';
     await wrapper.vm.$nextTick();
     expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it('keeps the theme-color meta tag in sync with the chosen theme', async () => {
+    const { wrapper, store } = mountWithStore(App);
+    mounted.push(wrapper);
+    await flushPromises();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    expect(meta.getAttribute('content')).toBe('#F5F6F4'); // auto, no matchMedia in jsdom -> light
+
+    store.s.theme = 'dark';
+    await wrapper.vm.$nextTick();
+    expect(meta.getAttribute('content')).toBe('#14181A');
+
+    store.s.theme = 'light';
+    await wrapper.vm.$nextTick();
+    expect(meta.getAttribute('content')).toBe('#F5F6F4');
   });
 });

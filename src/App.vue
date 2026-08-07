@@ -12,12 +12,23 @@ import MarketView from './views/MarketView.vue';
 import StatsView from './views/StatsView.vue';
 
 const g = useGameStore();
-// 'auto' leaves no attribute so main.css's prefers-color-scheme query decides;
+// 'auto' leaves no [data-theme] so main.css's prefers-color-scheme query decides
+// the CSS palette; the <meta name="theme-color"> that colors the OS status bar
+// has no such query-based equivalent for content, so it's kept in sync here
+// instead — including tracking a live system-preference change while on auto.
 // loadSave() may overwrite g.s.theme after boot, and this reacts to that too.
-watch(()=>g.s.theme, theme=>{
+const LIGHT_BG='#F5F6F4', DARK_BG='#14181A';
+const darkMedia = typeof matchMedia==='function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme(theme){
   if(theme==='light'||theme==='dark') document.documentElement.dataset.theme=theme;
   else delete document.documentElement.dataset.theme;
-}, {immediate:true});
+  const isDark = theme==='dark' || (theme==='auto' && !!(darkMedia&&darkMedia.matches));
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', isDark?DARK_BG:LIGHT_BG);
+}
+watch(()=>g.s.theme, applyTheme, {immediate:true});
+const onSystemThemeChange=()=>{ if(g.s.theme==='auto') applyTheme('auto'); };
+if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
@@ -31,7 +42,8 @@ onMounted(async ()=>{
 });
 onUnmounted(()=>{ clearInterval(timer); clearInterval(saver);
   window.removeEventListener('pagehide',onLeave);
-  document.removeEventListener('visibilitychange',onHide); });
+  document.removeEventListener('visibilitychange',onHide);
+  if(darkMedia) darkMedia.removeEventListener('change',onSystemThemeChange); });
 const views={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
              chains:ChainsView,market:MarketView,stats:StatsView};
 const allTabs=[
