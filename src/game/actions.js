@@ -23,6 +23,11 @@ export function installActions(G){
     G.s.nextId++;
     G.say('sys','Ordered parts for Rig '+(G.s.nextId-1),'-'+fmt.usd(p.cost));
   }
+  function renameRig(id,name){
+    const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
+    const n=(name||'').trim().slice(0,24);
+    if(n) r.name=n;
+  }
   function scrapRig(id){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
     const back=G.rigSalvage(r); G.s.cash+=back; G.s.rigs=G.s.rigs.filter(x=>x.id!==id);
@@ -116,5 +121,5 @@ export function installActions(G){
 
 
 
-  Object.assign(G, {SLOT_OPTS,applyRebuild,applyRebuildTo,build,rebuildInfo,rebuildTime,scrapRig,setRigGroup,startRebuild,swapWorn,toggleRig});
+  Object.assign(G, {SLOT_OPTS,applyRebuild,applyRebuildTo,build,rebuildInfo,rebuildTime,renameRig,scrapRig,setRigGroup,startRebuild,swapWorn,toggleRig});
 }

@@ -69,6 +69,11 @@ const scopeLabel=computed(()=> picking.value && chosenIds.value.length
 const openRig=ref(null);
 const rig=computed(()=> openRig.value==null ? null
   : g.s.rigs.find(r=>r.id===openRig.value) || null);
+const renameOpen=ref(false);
+const renameDraft=ref('');
+watch(openRig, ()=>{ renameOpen.value=false; });
+const startRenameRig=()=>{ renameDraft.value=rig.value.name; renameOpen.value=true; };
+const saveRenameRig=()=>{ g.renameRig(rig.value.id,renameDraft.value); renameOpen.value=false; };
 const fleetOpen=ref(false);
 const fleetGroup=ref(1), fleetCard=ref('c8');
 const specInfo=computed(()=> g.fleetSpecInfo(g.draftSpec(), scopeId.value));
@@ -218,9 +223,22 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
         <span class="t">{{ rig.name }}</span></div>
       <div class="sheet-bd">
         <div class="card">
-          <div class="rig-hd">
+          <div class="rig-hd" v-if="renameOpen">
             <span style="flex:1;min-width:0">
-              <span class="rig-nm">{{ rig.name }}</span>
+              <input v-model="renameDraft" maxlength="24" placeholder="Rig name"
+                     style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+                            font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenameRig">
+              <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">
+                <button class="btn btn-ghost btn-sm" @click="renameOpen=false">Cancel</button>
+                <button class="btn btn-pri btn-sm" @click="saveRenameRig">Save name</button>
+              </div>
+            </span>
+          </div>
+          <div class="rig-hd" v-else>
+            <span style="flex:1;min-width:0">
+              <span class="rig-nm">{{ rig.name }}
+                <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:4px"
+                        @click="startRenameRig">Rename</button></span>
               <div class="sb" style="margin-top:3px">
                 <span class="dot" :class="stateOf(rig).dot"
                       style="display:inline-block;margin-right:5px"></span>

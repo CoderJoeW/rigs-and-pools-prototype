@@ -17,6 +17,34 @@ function twoRigs(g) {
   return g.s.rigs;
 }
 
+describe('renameRig', () => {
+  it('renames a rig, trimmed and length-capped', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+
+    g.renameRig(a.id, '  GPU Rig One  ');
+    expect(a.name).toBe('GPU Rig One');
+
+    g.renameRig(a.id, 'x'.repeat(40));
+    expect(a.name).toHaveLength(24);
+  });
+
+  it('a blank name is a no-op', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    const before = a.name;
+
+    g.renameRig(a.id, '   ');
+    expect(a.name).toBe(before);
+  });
+
+  it('an unknown rig id is a no-op', () => {
+    const g = freshStore();
+    twoRigs(g);
+    expect(() => g.renameRig(99999, 'Ghost')).not.toThrow();
+  });
+});
+
 describe('fleetWorn / fleetRepair', () => {
   it('repairs only rigs actually carrying worn cards, across the whole farm', () => {
     const g = freshStore();

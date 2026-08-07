@@ -38,4 +38,21 @@ describe('RigsView', () => {
     expect(wrapper.text()).toContain('Repair worn cards');
     expect(wrapper.text()).toContain('Move to a group');
   });
+
+  it('renaming a rig from its detail sheet updates the store', async () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    await renameBtn.trigger('click');
+
+    const input = wrapper.find('input[placeholder="Rig name"]');
+    await input.setValue('Tessera Miner');
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
+    await saveBtn.trigger('click');
+
+    expect(store.s.rigs[0].name).toBe('Tessera Miner');
+    expect(wrapper.text()).toContain('Tessera Miner');
+  });
 });
