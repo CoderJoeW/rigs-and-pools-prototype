@@ -119,6 +119,16 @@ async function onBackupFile(e){
             {{ fmt.usd(g.lifetimeNet) }}</dd></div>
       </div></div>
 
+    <div class="card"><div class="card-hd"><span class="eyebrow">Appearance</span></div>
+      <div class="card-bd">
+        <div class="btn-row" style="margin-top:0">
+          <button v-for="t in ['auto','light','dark']" :key="t" class="btn btn-sm"
+                  :class="g.s.theme===t?'btn-pri':''" @click="g.s.theme=t">
+            {{ t[0].toUpperCase()+t.slice(1) }}</button>
+        </div>
+        <p v-if="g.s.help" class="hint">Auto follows your device's setting.</p>
+      </div></div>
+
     <div class="card"><div class="card-bd pt">
       <div class="btn-row" style="margin-top:0">
         <button class="btn" @click="downloadBackup">Download backup</button>

@@ -1,16 +1,40 @@
 :root{
-  --bg:#F5F6F4; --card:#FFF; --ink:#12171A; --ink-2:#4C5551; --ink-3:#8F9995;
+  --bg:#F5F6F4; --backdrop:#EDEFEB; --card:#FFF; --ink:#12171A; --ink-2:#4C5551; --ink-3:#8F9995;
   --line:#E5E8E4; --line-2:#F0F2EE;
   --green:#137A55; --green-t:#E9F4EF;
-  --gold:#C98A0B;  --gold-t:#FCF2DC;
+  --gold:#C98A0B;  --gold-t:#FCF2DC; --amber:#C98A0B;
   --red:#BE443A;   --red-t:#FAEDEB;
   --blue:#2E6BA8;  --blue-t:#E9F0F7;
+  --top-bg:rgba(245,246,244,.92);
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;
 }
+/* Dark palette mirrors the light one token-for-token, so every rule built on
+   var(--x) repaints for free — only two rules elsewhere hardcode #fff over
+   var(--ink) as a background and need a matching fix (see .ev.big, .toast.dark). */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14181A; --backdrop:#0D1011; --card:#1C2123; --ink:#EDEFEC; --ink-2:#9BA6A0; --ink-3:#67716C;
+    --line:#2B3133; --line-2:#202628;
+    --green:#2FB27E; --green-t:#15302A;
+    --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
+    --red:#E2685C;   --red-t:#3A211E;
+    --blue:#5B9AD9;  --blue-t:#1C2A3A;
+    --top-bg:rgba(20,24,26,.85);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14181A; --backdrop:#0D1011; --card:#1C2123; --ink:#EDEFEC; --ink-2:#9BA6A0; --ink-3:#67716C;
+  --line:#2B3133; --line-2:#202628;
+  --green:#2FB27E; --green-t:#15302A;
+  --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
+  --red:#E2685C;   --red-t:#3A211E;
+  --blue:#5B9AD9;  --blue-t:#1C2A3A;
+  --top-bg:rgba(20,24,26,.85);
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{background:#EDEFEB;color:var(--ink);font-family:var(--sans);font-size:15px;
+body{background:var(--backdrop);color:var(--ink);font-family:var(--sans);font-size:15px;
   line-height:1.45;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
@@ -26,7 +50,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--gold)} .blu{color:var(--blue)}
 
 .top{flex:none;z-index:20;padding:calc(env(safe-area-inset-top) + 10px) 15px 9px;
-  background:rgba(245,246,244,.92);backdrop-filter:saturate(180%) blur(14px);
+  background:var(--top-bg);backdrop-filter:saturate(180%) blur(14px);
   -webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);
   display:flex;align-items:center;justify-content:space-between;gap:10px}
 .wordmark{font-size:15.5px;font-weight:600;letter-spacing:-.02em}
@@ -196,7 +220,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .ev.block .ev-x,.ev.block .ev-a{color:var(--gold);font-weight:500}
 .ev.pay .ev-a{color:var(--green)}
 .ev.bad .ev-x{color:var(--red)}
-.ev.big{background:var(--ink)} .ev.big .ev-x,.ev.big .ev-t,.ev.big .ev-a{color:#fff;font-weight:500}
+.ev.big{background:var(--ink)} .ev.big .ev-x,.ev.big .ev-t,.ev.big .ev-a{color:var(--card);font-weight:500}
 .ev.site .ev-x{color:var(--blue)}
 
 .dl{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;
@@ -231,7 +255,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .warnbox{margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--red-t);color:var(--red);
   font-size:12.5px;line-height:1.45}
 .warnbox b{font-weight:600}
-.warnbox.hard{background:var(--ink);color:#fff} .warnbox.hard b{color:var(--gold)}
+.warnbox.hard{background:var(--ink);color:var(--card)} .warnbox.hard b{color:var(--gold)}
 
 .sheet{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;
   max-width:440px;margin:0 auto}
@@ -258,7 +282,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   padding:10px 14px;border-radius:11px;display:flex;justify-content:space-between;align-items:center;
   gap:10px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(201,138,11,.3);
   animation:tst 2.6s cubic-bezier(.2,.8,.2,1) forwards}
-.toast.dark{background:var(--ink)} .toast.grn{background:var(--green)} .toast.blu{background:var(--blue)}
+.toast.dark{background:var(--ink);color:var(--card)} .toast.grn{background:var(--green)} .toast.blu{background:var(--blue)}
 @keyframes tst{0%{opacity:0;transform:translate(-50%,-16px)}
   8%,78%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-10px)}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}

@@ -31,4 +31,12 @@ describe('MarketView', () => {
     expect(store.s.wipeArm).toBe(true);
     expect(wrapper.text()).toContain('Tap again to erase everything');
   });
+
+  it('defaults to Auto theme and switches on click', async () => {
+    const { wrapper, store } = mountWithStore(MarketView);
+    expect(store.s.theme).toBe('auto');
+    const darkBtn = wrapper.findAll('button').find(b => b.text() === 'Dark');
+    await darkBtn.trigger('click');
+    expect(store.s.theme).toBe('dark');
+  });
 });

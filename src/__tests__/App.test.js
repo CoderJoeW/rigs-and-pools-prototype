@@ -13,6 +13,7 @@ afterEach(async () => {
   await flushPromises();
   for (const w of mounted) w.unmount();
   mounted = [];
+  delete document.documentElement.dataset.theme;
 });
 
 describe('App', () => {
@@ -42,5 +43,20 @@ describe('App', () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.toast.grn').exists()).toBe(true);
     expect(wrapper.text()).toContain('Test toast');
+  });
+
+  it('applies data-theme to the document root, and clears it for auto', async () => {
+    const { wrapper, store } = mountWithStore(App);
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(document.documentElement.dataset.theme).toBeUndefined(); // default is auto
+
+    store.s.theme = 'dark';
+    await wrapper.vm.$nextTick();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+
+    store.s.theme = 'auto';
+    await wrapper.vm.$nextTick();
+    expect(document.documentElement.dataset.theme).toBeUndefined();
   });
 });

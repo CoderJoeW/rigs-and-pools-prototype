@@ -51,7 +51,7 @@ export function installState(G){
   }
 
   return {
-    t:0, cash:C.START_CASH, speed:1, help:true,
+    t:0, cash:C.START_CASH, speed:1, help:true, theme:'auto',
     chains, pools, sims,
     /* Mining groups: one account, many rigs. A group owns the chain and pool;
        rigs are its workers. The group is drawn as a single participant and

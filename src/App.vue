@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
@@ -12,6 +12,12 @@ import MarketView from './views/MarketView.vue';
 import StatsView from './views/StatsView.vue';
 
 const g = useGameStore();
+// 'auto' leaves no attribute so main.css's prefers-color-scheme query decides;
+// loadSave() may overwrite g.s.theme after boot, and this reacts to that too.
+watch(()=>g.s.theme, theme=>{
+  if(theme==='light'||theme==='dark') document.documentElement.dataset.theme=theme;
+  else delete document.documentElement.dataset.theme;
+}, {immediate:true});
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
