@@ -1,11 +1,36 @@
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 
 const g = useGameStore();
 const open=reactive({});
 const slip=(c,f)=>Math.min(0.5,0.5*(g.s.wallet[c.id]*f)/c.depth);
+
+function downloadBackup(){
+  const blob=new Blob([g.exportSave()],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`rigs-and-pools-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const fileInput=ref(null);
+const importArm=ref(false);
+const importMsg=ref('');
+function pickBackup(){
+  if(!importArm.value){ importArm.value=true; return; }
+  fileInput.value.click();
+}
+async function onBackupFile(e){
+  const file=e.target.files[0];
+  e.target.value='';       // lets the same file be picked again
+  importArm.value=false;
+  if(!file) return;
+  const ok=await g.importSave(await file.text());
+  importMsg.value=ok?'Restored from backup':"That file isn't a Rigs & Pools save";
+}
 </script>
 
 <template>
@@ -95,11 +120,22 @@ const slip=(c,f)=>Math.min(0.5,0.5*(g.s.wallet[c.id]*f)/c.depth);
       </div></div>
 
     <div class="card"><div class="card-bd pt">
-      <button class="btn btn-ghost btn-wide" @click="g.s.wipeArm ? g.wipeSave() : g.s.wipeArm=true">
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn" @click="downloadBackup">Download backup</button>
+        <button class="btn" :class="importArm?'btn-pri':''" @click="pickBackup">
+          {{ importArm?'Choose a file…':'Restore from backup' }}</button>
+      </div>
+      <input ref="fileInput" type="file" accept="application/json" style="display:none"
+             @change="onBackupFile">
+      <p v-if="importMsg" class="hint" :class="importMsg.startsWith('Restored')?'pos':'neg'">
+        {{ importMsg }}</p>
+      <button class="btn btn-ghost btn-wide" style="margin-top:8px"
+              @click="g.s.wipeArm ? g.wipeSave() : g.s.wipeArm=true">
         {{ g.s.saveInfo==='erased' ? 'Erased — a new run has begun'
            : g.s.wipeArm ? 'Tap again to erase everything' : 'Erase save and start over' }}</button>
       <p class="hint">Autosaves every 30 seconds and when you leave. Offline progress is credited
-        on return, up to 24 hours.</p>
+        on return, up to 24 hours. A backup file is the only way to move a save between browsers
+        or devices, or to keep a copy before trying something risky.</p>
     </div></div>
   </div>
 </template>

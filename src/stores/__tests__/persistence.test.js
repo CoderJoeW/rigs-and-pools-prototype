@@ -114,6 +114,68 @@ describe('offline catch-up', () => {
   });
 });
 
+describe('exportSave / importSave', () => {
+  it('exports a payload that round-trips into a fresh store', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    g1.s.cash = 4242;
+
+    const backup = g1.exportSave();
+    const parsed = JSON.parse(backup);
+    expect(parsed.state.cash).toBe(4242);
+    expect(parsed.state.rigs).toHaveLength(1);
+
+    const g2 = freshStore();
+    expect(g2.s.cash).toBe(500);
+    const ok = await g2.importSave(backup);
+
+    expect(ok).toBe(true);
+    expect(g2.s.cash).toBe(4242);
+    expect(g2.s.rigs).toHaveLength(1);
+  });
+
+  it('an imported backup persists — reopening the app keeps it, not the old run', async () => {
+    const g1 = freshStore();
+    g1.s.cash = 111;
+    const backup = g1.exportSave();
+
+    const g2 = freshStore();
+    g2.s.cash = 999;
+    await g2.saveNow();
+    await g2.importSave(backup);
+    expect(g2.s.cash).toBe(111);
+
+    const g3 = reopenStore();
+    expect(await g3.loadSave()).toBe(true);
+    expect(g3.s.cash).toBe(111);
+  });
+
+  it('rejects garbage without touching the current run', async () => {
+    const g = freshStore();
+    g.s.cash = 777;
+
+    expect(await g.importSave('not json')).toBe(false);
+    expect(await g.importSave('{}')).toBe(false);
+    expect(await g.importSave(JSON.stringify({ ver: -1, state: {} }))).toBe(false);
+
+    expect(g.s.cash).toBe(777);
+  });
+
+  it('resets transient UI state on import, same as loadSave', async () => {
+    const g1 = freshStore();
+    const backup = g1.exportSave();
+
+    const g2 = freshStore();
+    g2.s.picker = 'frame';
+    g2.s.speed = 3600;
+    await g2.importSave(backup);
+
+    expect(g2.s.picker).toBe(null);
+    expect(g2.s.speed).toBe(1);
+  });
+});
+
 describe('wipeSave', () => {
   it('resets to a fresh game and immediately re-saves that fresh state', async () => {
     const g = freshStore();

@@ -40,6 +40,12 @@ export function installPersistence(G){
   async function loadSave(){
     const data=await storage.get();
     if(!data || data.ver!==C.SAVE_VER) return false;
+    return hydrate(data);
+  }
+  /* Shared by loadSave (from storage) and importSave (from a picked file) —
+     a backup is just a save payload that arrived by a different door, so it
+     goes through the exact same migration and offline-catch-up path. */
+  function hydrate(data){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
@@ -152,6 +158,20 @@ export function installPersistence(G){
     for(const k of Object.keys(G.toastSeen)) delete G.toastSeen[k];
     G.say('sys','A spare bedroom, a 1.5 kW outlet and $500');
   }
+  /* The payload matches what saveNow() writes to storage exactly, so a
+     downloaded backup round-trips through importSave/loadSave identically
+     to a real autosave. */
+  function exportSave(){
+    return JSON.stringify({ ver:C.SAVE_VER, savedAt:Date.now(), state:G.s });
+  }
+  async function importSave(text){
+    let data;
+    try{ data=JSON.parse(text); }catch(e){ return false; }
+    if(!data || typeof data!=='object' || data.ver!==C.SAVE_VER || !data.state) return false;
+    hydrate(data);
+    await saveNow();
+    return true;
+  }
   async function wipeSave(){
     wiped=true;                    // latch BEFORE any await — pagehide can fire mid-wipe
     await storage.wipe();
@@ -173,7 +193,7 @@ export function installPersistence(G){
     blockValue:G.blockValue,bondReq:G.bondReq,poolTrust:G.poolTrust,TRUST_RAMP,poolCapLimit:G.poolCapLimit,poolHash:G.poolHash,poolProfit:G.poolProfit,withdrawProfit:G.withdrawProfit,
     battFirm:G.battFirm,flowOf:G.flowOf,chainHash:G.chainHash,easeOf:G.easeOf,blockETA:G.blockETA,blockProg:G.blockProg,winChance:G.winChance,fundOf:G.fundOf,groupAdvice:G.groupAdvice,chainCeiling:G.chainCeiling,draftGroup:G.draftGroup,battAdvice:G.battAdvice,myPools:G.myPools,foundPool:G.foundPool,setPoolFee:G.setPoolFee,simsOn:G.simsOn,poolRep:G.poolRep,repParts:G.repParts,rivalPools:G.rivalPools,poolDemand:G.poolDemand,poolProj:G.poolProj,nextTierBond:G.nextTierBond,poolPnl:G.poolPnl,addBond:G.addBond,releaseBond:G.releaseBond,capBinding:G.capBinding,bondFloor:G.bondFloor,topUpBond:G.topUpBond,closePool:G.closePool,
     stepTick:G.stepTick,build:G.build,scrapRig:G.scrapRig,swapWorn:G.swapWorn,expectedDay:G.expectedDay,powerRateDay:G.powerRateDay,
-    SLOT_OPTS:G.SLOT_OPTS,rebuildInfo:G.rebuildInfo,startRebuild:G.startRebuild,applyRebuild:G.applyRebuild,toggleRig:G.toggleRig,setRigGroup:G.setRigGroup,groupOf:G.groupOf,groupHash:G.groupHash,groupRigs:G.groupRigs,setGroupChain:G.setGroupChain,setGroupPool:G.setGroupPool,addGroup:G.addGroup,dropGroup:G.dropGroup,newSite:G.newSite,addSitePart:G.addSitePart,rush:G.rush,rushCost:G.rushCost,upgradeShell:G.upgradeShell,renameSite:G.renameSite,decommissionSite:G.decommissionSite,sell:G.sell,buy:G.buy,fleetMove:G.fleetMove,fleetMoveInfo:G.fleetMoveInfo,draftSpec:G.draftSpec,fleetSpecInfo:G.fleetSpecInfo,fleetToSpec:G.fleetToSpec,dripCost:G.dripCost,dripWorst:G.dripWorst,setDrip:G.setDrip,toggleHold:G.toggleHold,MILESTONES,RANKS,fleetWorn:G.fleetWorn,fleetRepair:G.fleetRepair,fleetRefitInfo:G.fleetRefitInfo,fleetRefit:G.fleetRefit,onboardingStep:G.onboardingStep,dismissOnboarding:G.dismissOnboarding,saveNow,loadSave,wipeSave};
+    SLOT_OPTS:G.SLOT_OPTS,rebuildInfo:G.rebuildInfo,startRebuild:G.startRebuild,applyRebuild:G.applyRebuild,toggleRig:G.toggleRig,setRigGroup:G.setRigGroup,groupOf:G.groupOf,groupHash:G.groupHash,groupRigs:G.groupRigs,setGroupChain:G.setGroupChain,setGroupPool:G.setGroupPool,addGroup:G.addGroup,dropGroup:G.dropGroup,newSite:G.newSite,addSitePart:G.addSitePart,rush:G.rush,rushCost:G.rushCost,upgradeShell:G.upgradeShell,renameSite:G.renameSite,decommissionSite:G.decommissionSite,sell:G.sell,buy:G.buy,fleetMove:G.fleetMove,fleetMoveInfo:G.fleetMoveInfo,draftSpec:G.draftSpec,fleetSpecInfo:G.fleetSpecInfo,fleetToSpec:G.fleetToSpec,dripCost:G.dripCost,dripWorst:G.dripWorst,setDrip:G.setDrip,toggleHold:G.toggleHold,MILESTONES,RANKS,fleetWorn:G.fleetWorn,fleetRepair:G.fleetRepair,fleetRefitInfo:G.fleetRefitInfo,fleetRefit:G.fleetRefit,onboardingStep:G.onboardingStep,dismissOnboarding:G.dismissOnboarding,saveNow,loadSave,wipeSave,exportSave,importSave};
 
-  Object.assign(G, {advance,loadSave,resetState,saveNow,wipeSave,wiped});
+  Object.assign(G, {advance,exportSave,importSave,loadSave,resetState,saveNow,wipeSave,wiped});
 }
