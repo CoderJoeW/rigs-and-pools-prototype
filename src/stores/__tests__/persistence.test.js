@@ -48,6 +48,27 @@ describe('saveNow / loadSave round trip', () => {
     expect(g2.s.picker).toBe(null);
     expect(g2.s.speed).toBe(1); // always resumes at real time, whatever was saved
   });
+
+  it('a save from before today.blocks existed is migrated, not left broken', async () => {
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    delete raw.state.today.blocks; // the pre-fix shape
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.s.today.blocks).toBe(0);
+    expect(Number.isNaN(g2.s.today.blocks)).toBe(false);
+
+    g2.generatePreset();
+    g2.build();
+    for (let i = 0; i < 5; i++) g2.stepTick(60);
+    g2.stepTick(3600);
+
+    expect(g2.s.today.blocks).toBeGreaterThan(0);
+  });
 });
 
 describe('a corrupted save', () => {
