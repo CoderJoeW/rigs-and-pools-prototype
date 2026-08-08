@@ -254,15 +254,23 @@ describe('jackpot blocks', () => {
     g.s.bestBlock = 1e9; // isolate from the record path
     g.s.recentBlockUsd = { tessera: [0.1, 0.1, 0.1, 0.1, 0.1] };
     g.setGroupChain(g.s.groups[0], 'ferro');
-    const feedLenBefore = g.s.feed.length;
+    // the feed caps at 70 entries (poolMarket.js's say()), truncating the
+    // OLDEST — a length-diff ("entries added" = feed.length - before) would
+    // silently undercount, and could even miss the one entry that matters,
+    // once enough ticks push it out of the window. feedId is a monotonic
+    // counter untouched by that cap, so filtering on id is safe regardless
+    // of how much else happens to land in the feed meanwhile; keeping the
+    // sample target modest (2 past the 5-sample minimum, not 10) also keeps
+    // this comfortably clear of the cap in the first place.
+    const feedIdBefore = g.s.feedId;
 
     // enough real Ferro blocks to both build its own baseline
-    // (BLOCK_BASELINE_MIN=5 samples) and then test several more against it
+    // (BLOCK_BASELINE_MIN=5 samples) and then test a couple more against it
     let guard = 0;
-    while ((g.s.recentBlockUsd.ferro || []).length < 10 && guard++ < 4000) g.stepTick(30);
-    expect((g.s.recentBlockUsd.ferro || []).length).toBeGreaterThanOrEqual(10);
+    while ((g.s.recentBlockUsd.ferro || []).length < 7 && guard++ < 4000) g.stepTick(30);
+    expect((g.s.recentBlockUsd.ferro || []).length).toBeGreaterThanOrEqual(7);
 
-    const newEntries = g.s.feed.slice(0, g.s.feed.length - feedLenBefore);
+    const newEntries = g.s.feed.filter(e => e.id >= feedIdBefore);
     expect(newEntries.some(e => e.kind === 'jackpot')).toBe(false);
     expect(g.s.recentBlockUsd.tessera).toEqual([0.1, 0.1, 0.1, 0.1, 0.1]); // untouched by Ferro's own blocks
   });
