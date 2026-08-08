@@ -259,6 +259,34 @@ export function installDispatch(G){
     const grossCap=86400*c.reward*G.price(c)/c.target;
     return { share, grossCap, over:net/c.floor };
   }
+  /* Issue #7: nothing pulled cash toward the next purchase once a rig and
+     site existed — the only nudge was onboarding.js's one-time, dismissible
+     "grow" tip, so a player who dismissed it (or never saw it, having
+     already grown past it) had no ongoing signal that cash was piling up
+     with somewhere obvious to put it. This is a persistent companion, in
+     the same "the game says what binds" idiom as chainCeiling/groupAdvice/
+     battAdvice — a pure read of current state, not a stored dismissal.
+
+     Deliberately does NOT read G.dp/G.canBuild (the Build tab's live draft):
+     that state is shared and only refreshes when a player visits Build, so
+     right after the first rig mostly fills the site's power headroom, the
+     still-drafted first-rig preset no longer fits — and stays that way
+     forever on Farm and every other tab, since nothing there re-drafts it.
+     Verified this the hard way: an earlier version of this advisory used
+     G.dp.value.cost and, in a real browser run, never fired even after
+     cash had regrown well past IDLE_CASH_MULT, because the stale draft's
+     power requirement alone kept G.canBuild false. G.openBuildCost(f)
+     (buildDraft.js) answers "would ANYTHING fit here" without touching
+     draft state, so this stays accurate regardless of what's drafted.
+     IDLE_CASH_MULT gates how far past "affordable" cash has to sit before
+     this is worth saying. */
+  const idleCashAdvice = computed(()=>{
+    const f=G.active.value;
+    if(!f) return null;
+    const cost=G.openBuildCost(f);
+    if(cost===null || G.s.cash<cost*C.IDLE_CASH_MULT) return null;
+    return { site:f, cost, open:siteSlots(f)-siteRigs(f).length };
+  });
   const fundOf = c => {
     const anchor=c.anchor||1;
     const ratio=Math.min(100, Math.max(1, chainHash(c)/c.floor)/anchor);
@@ -319,5 +347,5 @@ export function installDispatch(G){
   const lifetimeNet = computed(()=> G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
 
-  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,WORN_OUT,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigWallW,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
+  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,WORN_OUT,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigWallW,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
 }

@@ -62,4 +62,35 @@ describe('FarmView', () => {
     const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
     expect(renameBtn.attributes('aria-label')).toBe('Rename ' + groupName);
   });
+
+  it('issue #7: nudges toward the next purchase once cash sits idle past what the farm can deploy', async () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset();
+        g.build();
+        for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+        // the first rig maxed out the site's power headroom, so the SAME
+        // 8-card draft (still sitting in g.s.draft) no longer fits — and
+        // the player never revisits Build, so nothing ever re-drafts it.
+        // idleCashAdvice must not depend on that stale state: probe its
+        // own cash-independent cost, then dial cash to exactly 2x it,
+        // without ever touching g.s.draft again.
+        g.s.cash = 1e6;
+        const cost = g.idleCashAdvice.cost;
+        g.s.cash = cost * 2;
+      },
+    });
+    expect(wrapper.text()).toContain('sitting idle');
+    const buildBtn = wrapper.findAll('button').find(b => b.text() === 'Build one');
+    expect(buildBtn).toBeTruthy();
+    await buildBtn.trigger('click');
+    expect(store.s.tab).toBe('build');
+  });
+
+  it('stays quiet about idle cash right after building, before it has re-accumulated', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    expect(wrapper.text()).not.toContain('sitting idle');
+  });
 });

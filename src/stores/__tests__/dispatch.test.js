@@ -119,3 +119,81 @@ describe('groupAdvice', () => {
     expect(g.s.chains.map(c => c.id)).toContain(advice.alt.toLowerCase());
   });
 });
+
+/* idleCashAdvice drives the "sitting idle" nudge on Farm (issue #7: nothing
+   pulled cash toward the next purchase once a rig and site existed). It
+   deliberately does NOT read the Build tab's shared draft (g.dp/g.canBuild)
+   — that state only refreshes when a player visits Build, so it goes stale
+   the moment the site's real constraints move past whatever was last
+   drafted (see openBuildCost's derivation comment in buildDraft.js). It
+   must also stay quiet whenever there's genuinely nowhere to put the
+   money, so it never claims a purchase is available when it isn't. */
+describe('idleCashAdvice', () => {
+  it('returns null on a fresh game — starting cash is not 2x what a real build costs', () => {
+    const g = freshStore();
+    g.s.cash = 1e6; // learn the real, cash-independent cost first
+    const cost = g.idleCashAdvice.cost;
+    g.s.cash = 500; // the actual starting balance
+    expect(500).toBeLessThan(cost * 2);
+    expect(g.idleCashAdvice).toBeNull();
+  });
+
+  it('returns null right after building — cash is spent, not idle', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    expect(g.idleCashAdvice).toBeNull(); // ~$34 left, nowhere near 2x anything real
+  });
+
+  it('returns null once the active site has no open positions, no matter how much cash sits idle', () => {
+    const g = freshStore();
+    g.s.cash = 1e6;
+    g.active.sources.push({ p: 's-400', n: 1 }); // remove power as a constraint — floor space only
+    // fill every remaining position so there is genuinely nowhere to build
+    let guard = 0;
+    while (g.siteRigs(g.active).length < g.siteSlots(g.active) && guard++ < 20) {
+      expect(g.generatePreset()).toBe(true);
+      g.build();
+    }
+    expect(g.siteRigs(g.active).length).toBe(g.siteSlots(g.active));
+    expect(g.idleCashAdvice).toBeNull();
+  });
+
+  it('stays accurate even when the shared Build-tab draft is stale or nonsensical', () => {
+    // The bug this replaced: reading g.dp/g.canBuild meant the advisory
+    // could go permanently silent the moment the site's power headroom no
+    // longer fit whatever was last drafted, since nothing outside Build
+    // ever re-runs generatePreset(). Verified in a real browser run: after
+    // building one rig and letting cash regrow for days, the advisory
+    // never fired under the old implementation. This pins the fix by
+    // forcing the draft into a state that could never itself be built
+    // (0 cards) and confirming the advisory still finds a real answer.
+    const g = freshStore();
+    g.s.cash = 1e6;
+    g.s.draft.n = 999; // more cards than any frame/board combo can carry
+    expect(g.canBuild).toBe(false);
+    const advice = g.idleCashAdvice;
+    expect(advice).not.toBeNull();
+    expect(advice.cost).toBeGreaterThan(0);
+  });
+
+  it('fires once cash sits at least 2x what a real build costs, with room to build it', () => {
+    const g = freshStore();
+    g.s.cash = 1e6; // learn the real, cash-independent cost first
+    const cost = g.idleCashAdvice.cost;
+    g.s.cash = cost * 2; // exactly at the line — inclusive
+    const advice = g.idleCashAdvice;
+    expect(advice).not.toBeNull();
+    expect(advice.cost).toBe(cost); // stable — unaffected by the cash change
+    expect(advice.open).toBe(g.siteSlots(g.active)); // nothing built yet
+    expect(advice.site.id).toBe(g.active.id);
+  });
+
+  it('falls just short of the line at 2x minus a cent', () => {
+    const g = freshStore();
+    g.s.cash = 1e6;
+    const cost = g.idleCashAdvice.cost;
+    g.s.cash = cost * 2 - 0.01;
+    expect(g.idleCashAdvice).toBeNull();
+  });
+});

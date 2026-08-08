@@ -164,6 +164,11 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
             <b>Burning cash</b> — {{ fmt.eta(g.runway) }} of runway.</div>
           <div v-else-if="!g.s.cash && !g.revenueDay" class="warnbox hard">
             <b>Insolvent.</b> The farm will sell itself down until something pays for itself.</div>
+          <div v-else-if="g.idleCashAdvice" class="warnbox" style="background:var(--amber-t);color:var(--amber)">
+            <b>{{ fmt.usd(g.s.cash) }} sitting idle</b> — {{ g.idleCashAdvice.site.name }} has
+            {{ g.idleCashAdvice.open }} open position{{ g.idleCashAdvice.open===1?'':'s' }} and the next
+            rig only costs {{ fmt.usd(g.idleCashAdvice.cost) }}.
+            <button class="btn btn-sm btn-pri" style="margin-top:6px" @click="g.s.tab='build'">Build one</button></div>
         </div>
         <div class="statline">
           <div class="s"><div class="k">Hashrate</div><div class="v">{{ fmt.hash(g.totalHash) }}</div></div>
