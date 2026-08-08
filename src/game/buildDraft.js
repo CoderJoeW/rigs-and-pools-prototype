@@ -114,7 +114,43 @@ export function installBuildDraft(G){
     const net  = u.mh*G.draftRate() - wall/1000*24*G.margRate(f);
     return { net, wall, payback:net>0?u.price/net:Infinity, perKw:net/(wall/1000), mhw:u.mh/u.w };
   };
+  /* Issue #7's idle-cash advisory needs "is something buildable right now,
+     and what would it cost" WITHOUT depending on the player having recently
+     visited Build. G.s.draft is shared, global state that only refreshes on
+     BuildView's onMounted (or a manual re-preset), so reading dp/canBuild
+     directly is stale the instant the site's real constraints move past
+     whatever was last drafted — concretely, right after the site's power
+     headroom is mostly spent on rig one, the still-drafted rig-one preset no
+     longer fits, and stays that way on Farm/every other tab forever, since
+     nothing there ever calls generatePreset(). Mirrors generatePreset()'s
+     own search (same site-aware strategy and order) but touches no state —
+     it answers the query, it doesn't try to become the draft — and skips
+     the cash check specifically, since the whole point here is a cost to
+     compare cash against, not a "would this be affordable" verdict. */
+  const siteRigsOpen = f => G.siteSlots(f)-G.siteRigs(f).length;
+  const openBuildCost = f => {
+    if(siteRigsOpen(f)<=0) return null;
+    const flip = G.siteDemand(f) >= G.siteCapacity(f)*C.FLIP_AT;
+    const pool = G.cards();
+    const order = flip ? [...pool].sort((a,b)=>(b.mh/b.w)-(a.mh/a.w)) : pool;
+    const maxCards = Math.min(FRAMES[FRAMES.length-1].slots, MOBOS[MOBOS.length-1].pcie);
+    for(const unit of order){
+      for(let n=maxCards; n>=1; n--){
+        const frame=FRAMES.find(x=>x.slots>=n);
+        const mobo=MOBOS.find(x=>x.pcie>=n);
+        if(!frame||!mobo) continue;
+        const cool=COOLERS[0];
+        const core=frame.w+mobo.w+cool.w+n*RISER.w+n*unit.w;
+        const psu=G.livePsus.find(x=>G.psuUsableW(x)>=core && x.conn>=n*unit.conn);
+        if(!psu) continue;
+        const coolDelta=G.sitePlantW(f, core/(frame.air*cool.fac))-G.sitePlantW(f);
+        const after=G.siteDemand(f)+core/psu.eff+coolDelta;
+        if(after>G.siteCapacity(f)+G.battFirm(f)) continue;
+        return frame.price+mobo.price+cool.price+psu.price+n*(unit.price+RISER.price);
+      }
+    }
+    return null;
+  };
 
-
-  Object.assign(G, {buildTime,canBuild,checks,dp,draftEff,draftExpected,generatePreset,unitEcon});
+  Object.assign(G, {buildTime,canBuild,checks,dp,draftEff,draftExpected,generatePreset,openBuildCost,unitEcon});
 }

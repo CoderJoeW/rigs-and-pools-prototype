@@ -50,6 +50,13 @@ export const C = {
      load fraction where the ranking changes from $/MH to $/watt. */
   PSU_HEADROOM:0.85,
   FLIP_AT:0.85,
+  /* Issue #7: nothing pulled cash toward the next purchase once a rig and
+     site existed — cash could sit at any multiple of the next rig's cost
+     with no nudge beyond a one-time, dismissible onboarding tip. 2x means
+     "could afford this rig again and still have money left" — comfortably
+     past "could afford one," which would nag the instant a player saved a
+     single dollar past viable. */
+  IDLE_CASH_MULT:2,
 };
 
 export const TX_FEES = 0.06;
