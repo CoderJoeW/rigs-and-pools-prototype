@@ -23,6 +23,23 @@ describe('onboarding coach', () => {
     expect(g.onboardingStep.id).toBe('grow');
   });
 
+  it('issue #8: "grow" names the rival-pool ecosystem specifically, not just a generic "found a pool" afterthought', () => {
+    // The rival-pool layer (named competitors, live reputation, a
+    // PPS/PPLNS mix) only exists on the non-Tessera chains, so a player
+    // with no concrete reason to check Chains can go a whole session
+    // without ever seeing it. Naming actual chains and what's on them
+    // gives this step a specific pull instead of generic flavor text.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    const text = g.onboardingStep.text;
+    expect(text).toContain('rival pools');
+    expect(text).toContain('reputation');
+    // names at least one real non-Tessera chain, not just "Chains" in the abstract
+    expect(g.s.chains.filter(c => c.id !== 'tessera').some(c => text.includes(c.name))).toBe(true);
+  });
+
   it('clears once a second site or a player-owned pool exists', () => {
     const g = freshStore();
     g.generatePreset();

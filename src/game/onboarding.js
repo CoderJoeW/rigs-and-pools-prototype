@@ -16,8 +16,15 @@ const STEPS = [
     done: G => G.totalHash.value>=100, // mirrors milestone h1, "First real hashrate"
     text: 'Rig ordered — it starts earning once assembly finishes. Watch it on Farm, or check Chains to see where else it could mine.' },
   { id:'grow',
+    // issue #8: the rival-pool layer (12 named competitors, live reputation,
+    // a PPS/PPLNS mix) is some of the game's best content, but it only
+    // exists on the non-Tessera chains — so it goes entirely unseen by a
+    // player who never has a concrete reason to leave the newcomer chain.
+    // Naming what's actually there (reputation, fills, the PPS/PPLNS
+    // choice) gives Chains a specific pull instead of a generic "or found
+    // a pool" afterthought; the second-site path stays equally valid.
     done: G => G.s.sites.length>1 || G.s.pools.some(p=>p.owner==='you'),
-    text: 'Cash flowing? Add a second site on Sites, or found your own pool on Chains — either grows past what one rig on one chain can earn.' },
+    text: 'Cash flowing? Add a second site on Sites — or check Chains: Halcyon, Nova, Ferro and Obelisk each run rival pools with live reputations and fills, and founding your own grows past what one rig on one chain can earn.' },
 ];
 
 export function installOnboarding(G){
