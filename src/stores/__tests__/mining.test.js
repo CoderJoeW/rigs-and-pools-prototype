@@ -136,6 +136,136 @@ describe('solo block finding', () => {
   });
 });
 
+/* Issue #9: "Biggest block yet" only ever fires on a genuine all-time
+   record — trivially broken almost immediately, then rarely challenged
+   again — so a jackpot needs its own signal: far above what the player's
+   actually been seeing lately, whether or not it's a new record. */
+describe('jackpot blocks', () => {
+  it("stays quiet until there's a real baseline (BLOCK_BASELINE_MIN samples) to compare against", () => {
+    // Tessera's 20s blocks land fast enough that a whole minute can cross
+    // BLOCK_BASELINE_MIN mid-tick (legitimate — the gate should open the
+    // moment 5 real samples exist, even mid-tick), so this can't assume
+    // "however many blocks land, none should be a jackpot" over a long
+    // window. Instead it resets the baseline to empty and uses a window
+    // short enough that landing 5+ blocks would itself be the anomaly:
+    // both invariants (length still under the minimum, and no jackpot
+    // fired) are asserted so a rare unlucky run fails loudly rather than
+    // passing vacuously.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly (this alone can already find blocks)
+    g.s.recentBlockUsd = [];
+    g.s.bestBlock = 1; // isolate from the record path too
+
+    g.stepTick(40); // ~2 Tessera blocks expected — safely under BLOCK_BASELINE_MIN(5)
+
+    expect(g.s.recentBlockUsd.length).toBeLessThan(5);
+    expect(g.s.feed.some(e => e.kind === 'jackpot')).toBe(false);
+  });
+
+  it('a block clearing 3x the recent median fires a jackpot instead of a routine toast', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    // isolate from whatever record already exists — a real Tessera block at
+    // this preset's default price/reward is worth ~$0.45 (17.72*1.06*0.024);
+    // a $0.10 baseline puts the 3x line at $0.30, comfortably cleared
+    g.s.bestBlock = 1;
+    g.s.recentBlockUsd = [0.1, 0.1, 0.1, 0.1, 0.1];
+
+    g.stepTick(60); // one Tessera block lands well within a minute
+
+    // feed, not toast: other same-tick events (milestones etc.) can pop()
+    // after the jackpot and overwrite the single shared "last toast" field,
+    // but every event still gets its own feed line regardless of ordering.
+    expect(g.s.feed.some(e => e.kind === 'jackpot')).toBe(true);
+    expect(g.s.bestBlock).toBe(1); // unaffected — this wasn't a record
+  });
+
+  it('a new all-time record still wins over a jackpot for the same block', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // this can already set a record on its own
+
+    // reset explicitly rather than assuming a fresh store's bestBlock is
+    // still 0 by this point — Tessera's 20s blocks likely already landed
+    // (and recorded) during the assembly-finishing ticks above
+    g.s.bestBlock = 0;
+    g.s.recentBlockUsd = [0.1, 0.1, 0.1, 0.1, 0.1]; // would also qualify as a jackpot on its own
+
+    // Neither a long nor a short fixed window is reliable here: too long
+    // and a SECOND block can land in the same call — which is its own
+    // real, separate jackpot against this seeded baseline (the first
+    // block's record doesn't retroactively raise the median), not a
+    // violation of what's under test; too short and often nothing lands
+    // at all. Polling in small steps until exactly one new block has been
+    // credited isolates a single block's own record-vs-jackpot resolution
+    // deterministically, regardless of the K-model's arrival variance.
+    const before = g.s.recentBlockUsd.length;
+    let guard = 0;
+    while (g.s.recentBlockUsd.length === before && guard++ < 400) g.stepTick(5);
+    expect(g.s.recentBlockUsd.length).toBe(before + 1); // exactly one new block credited
+
+    // "Biggest block yet" is the TOAST text specifically (pop()) — the feed
+    // line for a record block was already, and stays, the routine "Block
+    // solved solo on X" (kind:'block'); only a jackpot gets its own feed
+    // wording. So the record path is verified via bestBlock itself plus
+    // the absence of a jackpot line, not by a feed string that was never
+    // there even before this change.
+    expect(g.s.bestBlock).toBeGreaterThan(0);
+    expect(g.s.feed.some(e => e.kind === 'jackpot')).toBe(false);
+  });
+
+  it('recentBlockUsd rolls and stays capped at the baseline window', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.recentBlockUsd = Array(20).fill(0.2); // already at the window's cap
+
+    // long enough that at least one of several Tessera blocks lands
+    // uncredited-orphan odds against ALL of them are negligible
+    g.stepTick(300);
+
+    expect(g.s.recentBlockUsd.length).toBe(20); // grew and shed in step, never over the cap
+  });
+
+  it('a save (or a future smaller window) that leaves recentBlockUsd oversized settles back to the cap, not stuck above it', () => {
+    // The natural cap-enforcement above (push then shift once) only ever
+    // PREVENTS further growth from an already-correctly-sized array — it
+    // can't recover one that starts oversized, since one shift for one
+    // push nets zero change in length. A while-loop is needed to actually
+    // converge back down; an if would leave this permanently oversized.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.recentBlockUsd = Array(23).fill(0.2); // past the cap by 3 — never happens in normal play
+
+    g.stepTick(60); // however many blocks land, even just one push must fully re-converge
+
+    expect(g.s.recentBlockUsd.length).toBe(20);
+  });
+
+  it('orphaned blocks pay nothing and never count toward the baseline', () => {
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    tessera.orphan = 2; // Math.random() < orphan*(1-CONN_Q) — guarantees every solo find orphans
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+
+    g.stepTick(300);
+
+    expect(g.s.orphaned).toBeGreaterThan(0);
+    expect(g.s.recentBlockUsd.length).toBe(0);
+  });
+});
+
 describe('chain price', () => {
   it('fundOf rises when a chain carries more hashrate than it did when it opened', () => {
     const g = freshStore();

@@ -4,7 +4,7 @@ import { useGameStore } from '../stores/game.js';
 
 const g = useGameStore();
 const filt = ref('all');
-const GROUPS = { blocks:['block','pool'], money:['pay','sys','big'], problems:['bad'] };
+const GROUPS = { blocks:['block','pool','jackpot'], money:['pay','sys','big'], problems:['bad'] };
 const shown = computed(()=> filt.value==='all' ? g.s.feed
   : g.s.feed.filter(e=>GROUPS[filt.value].includes(e.kind)));
 </script>

@@ -69,6 +69,36 @@ describe('saveNow / loadSave round trip', () => {
 
     expect(g2.s.today.blocks).toBeGreaterThan(0);
   });
+
+  it('a save with a malformed recentBlockUsd field is repaired, not left broken', async () => {
+    // NOT the today.blocks trap: recentBlockUsd is a plain top-level key, so
+    // a save that's simply MISSING it (any save from before this field
+    // existed) leaves G.s's own fresh [] default untouched — Object.assign
+    // only copies keys the source actually has, unlike `today`, a nested
+    // object Object.assign replaces wholesale even when incomplete. What
+    // this guards against is a save where the field is genuinely PRESENT
+    // but malformed — hand-edited localStorage, a corrupted import file —
+    // which push()/shift() would only discover, by throwing, the next time
+    // a block lands, well after hydrate()'s own try/catch already returned.
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.state.recentBlockUsd = null; // present, but not an array
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(Array.isArray(g2.s.recentBlockUsd)).toBe(true);
+    expect(g2.s.recentBlockUsd.length).toBe(0);
+
+    g2.generatePreset();
+    g2.build();
+    for (let i = 0; i < 5; i++) g2.stepTick(60);
+    g2.stepTick(60); // does not throw on the first block after repair
+
+    expect(g2.s.recentBlockUsd.length).toBeGreaterThan(0);
+  });
 });
 
 describe('a corrupted save', () => {
