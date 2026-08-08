@@ -69,6 +69,41 @@ describe('saveNow / loadSave round trip', () => {
 
     expect(g2.s.today.blocks).toBeGreaterThan(0);
   });
+
+  it('a save with a malformed recentBlockUsd field is repaired, not left broken', async () => {
+    // NOT the today.blocks trap: recentBlockUsd is a plain top-level key, so
+    // a save that's simply MISSING it (any save from before this field
+    // existed) leaves G.s's own fresh {} default untouched — Object.assign
+    // only copies keys the source actually has, unlike `today`, a nested
+    // object Object.assign replaces wholesale even when incomplete. What
+    // this guards against is a save where the field is genuinely PRESENT
+    // but malformed — hand-edited localStorage, a corrupted import file —
+    // which push()/shift() on a per-chain array would only discover, by
+    // throwing, the next time a block lands, well after hydrate()'s own
+    // try/catch already returned. recentBlockUsd is per-chain (chain id ->
+    // array), not one flat array — see tick.js's derivation comment.
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.state.recentBlockUsd = null; // present, but not a plain object
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(typeof g2.s.recentBlockUsd).toBe('object');
+    expect(g2.s.recentBlockUsd).not.toBeNull();
+    expect(Array.isArray(g2.s.recentBlockUsd)).toBe(false);
+    expect(Object.keys(g2.s.recentBlockUsd).length).toBe(0);
+
+    g2.generatePreset();
+    g2.build();
+    for (let i = 0; i < 5; i++) g2.stepTick(60);
+    g2.stepTick(300); // does not throw on the first block after repair (long enough that one lands)
+
+    expect(Object.keys(g2.s.recentBlockUsd).length).toBeGreaterThan(0);
+    expect(g2.s.recentBlockUsd.tessera.length).toBeGreaterThan(0);
+  });
 });
 
 describe('a corrupted save', () => {

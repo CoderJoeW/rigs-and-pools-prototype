@@ -57,6 +57,18 @@ export const C = {
      past "could afford one," which would nag the instant a player saved a
      single dollar past viable. */
   IDLE_CASH_MULT:2,
+  /* Issue #9: "Biggest block yet" only fires on a genuine all-time record,
+     which is trivially broken almost immediately on the tiny starter chain
+     and then rarely challenged again — so most real jackpot moments (a
+     block far above what a player's been seeing lately, e.g. right after
+     graduating to a bigger chain) get the same flat toast as routine
+     income. 3x matches the issue's own example ("3x your usual"); needs
+     BLOCK_BASELINE_MIN samples of real baseline before it can fire, so the
+     first few blocks — with no "usual" yet to compare against — never
+     falsely read as a jackpot. */
+  JACKPOT_MULT:3,
+  BLOCK_BASELINE_MIN:5,
+  BLOCK_BASELINE_WINDOW:20,
 };
 
 export const TX_FEES = 0.06;

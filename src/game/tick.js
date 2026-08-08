@@ -360,6 +360,46 @@ export function installTick(G){
     return { pool:'solo', mine:false };
   }
 
+  /* Issue #9: "Biggest block yet" only ever fires on a genuine all-time
+     record — trivially broken almost immediately on the tiny starter
+     chain, then rarely challenged again, so most real jackpot moments (a
+     block far above what a player's actually been seeing lately — e.g.
+     right after graduating to a bigger chain) get the same flat toast as
+     routine income. This tracks a rolling window of recent block $ values
+     the player actually received (solo full blocks and PPLNS group
+     shares — not orphans, which never pay) and flags anything clearing
+     JACKPOT_MULT times the median of that window, once there's enough of
+     a baseline to compare against (BLOCK_BASELINE_MIN) so the first few
+     blocks — with no "usual" yet — never falsely read as a jackpot. A new
+     all-time record still takes priority over a jackpot callout for the
+     same block; they'd otherwise mean almost the same thing back to back.
+
+     PER CHAIN, not one pooled window — round-1 review caught this the hard
+     way: block value differs by 20-90x between chains (Tessera ~$0.45,
+     Ferro ~$9, Halcyon ~$300+), so a single shared window mixing them
+     mistook "this is just what Ferro pays" for a jackpot almost every
+     time a farm ran Tessera and Ferro side by side — simulated at 79 of 80
+     Ferro blocks flagged, and 9 consecutive Jackpot toasts on a single
+     chain graduation (the exact motivating scenario for this fix, turned
+     into exactly the feed-spam issue #4 already fixed once). Keying by
+     chain id makes "usual" mean usual for THAT chain, matching what the
+     comment always claimed. */
+  function blockBaseline(chainId){
+    const arr=G.s.recentBlockUsd[chainId];
+    if(!arr || arr.length<C.BLOCK_BASELINE_MIN) return null;
+    const s=[...arr].sort((a,b)=>a-b), mid=Math.floor(s.length/2);
+    return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
+  }
+  function trackBlockUsd(chainId, usd){
+    const arr=G.s.recentBlockUsd[chainId]||(G.s.recentBlockUsd[chainId]=[]);
+    arr.push(usd);
+    // while, not if: a single shift only ever prevents further growth from
+    // an already-correctly-sized array — it can't recover one that's
+    // somehow oversized (e.g. old save data from a smaller/no window, or a
+    // future change to BLOCK_BASELINE_WINDOW itself), which would then stay
+    // oversized forever instead of settling back down to the real cap.
+    while(arr.length>C.BLOCK_BASELINE_WINDOW) arr.shift();
+  }
   /* A pool only ever gains funds when that pool finds a block. */
   function awardBlock(c, w){
     const full=c.reward*(1+TX_FEES);
@@ -374,10 +414,18 @@ export function installTick(G){
       if(Math.random()<c.orphan*(1-CONN_Q)){ G.s.orphaned++; G.say('bad','Orphaned on '+c.name); }
       else { G.s.wallet[c.id]+=full; G.today().earned+=full*G.price(c); G.today().blocks++;
         const usd=full*G.price(c);
-        G.say('block','Block solved solo on '+c.name,'+'+fmt.c(full),full,c.tick);
-        if(usd>G.s.bestBlock){ G.s.bestBlock=usd;
+        const baseline=blockBaseline(c.id);
+        const record=usd>G.s.bestBlock;
+        const jackpot=!record && baseline && usd>=baseline*C.JACKPOT_MULT;
+        if(jackpot) G.say('jackpot','Jackpot on '+c.name+' — '+(usd/baseline).toFixed(1)+'x your usual',
+          '+'+fmt.c(full),full,c.tick);
+        else G.say('block','Block solved solo on '+c.name,'+'+fmt.c(full),full,c.tick);
+        if(record){ G.s.bestBlock=usd;
           G.pop('Biggest block yet','+'+fmt.usd2(usd),'',{always:true}); }
-        else G.pop('Block solved','+'+fmt.c(full)+' '+c.tick,'',{kind:'block'}); }
+        else if(jackpot) G.pop('Jackpot','+'+fmt.usd2(usd)+' — '+(usd/baseline).toFixed(1)+'x your usual',
+          'jackpot',{always:true});
+        else G.pop('Block solved','+'+fmt.c(full)+' '+c.tick,'',{kind:'block'});
+        trackBlockUsd(c.id, usd); }
       return;
     }
     if(w.mine) G.s.blocksSolved++;
@@ -405,8 +453,21 @@ export function installTick(G){
         }
         G.s.wallet[c.id]+=out; G.today().earned+=out*G.price(c); G.today().blocks++;
         if(share>0.0002){
-          if(w.mine){ G.say('block',w.group.name+' solved the '+c.name+' pool block','+'+fmt.c(share),share,c.tick);
-                      G.pop(w.group.name+' found it','+'+fmt.c(share)+' '+c.tick,'',{kind:'block'}); }
+          if(w.mine){
+            const usd=share*G.price(c);
+            const baseline=blockBaseline(c.id);
+            const jackpot=baseline && usd>=baseline*C.JACKPOT_MULT;
+            if(jackpot){
+              G.say('jackpot',w.group.name+' solved the '+c.name+' pool block — '
+                +(usd/baseline).toFixed(1)+'x your usual','+'+fmt.c(share),share,c.tick);
+              G.pop('Jackpot','+'+fmt.usd2(usd)+' — '+(usd/baseline).toFixed(1)+'x your usual',
+                'jackpot',{always:true});
+            } else {
+              G.say('block',w.group.name+' solved the '+c.name+' pool block','+'+fmt.c(share),share,c.tick);
+              G.pop(w.group.name+' found it','+'+fmt.c(share)+' '+c.tick,'',{kind:'block'});
+            }
+            trackBlockUsd(c.id, usd);
+          }
           else G.say('pay',pool.name+' found a block','+'+fmt.c(share),share,c.tick);
         }
       }

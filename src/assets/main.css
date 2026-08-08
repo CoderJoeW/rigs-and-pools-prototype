@@ -227,7 +227,9 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .ev.block .ev-x,.ev.block .ev-a{color:var(--gold);font-weight:500}
 .ev.pay .ev-a{color:var(--green)}
 .ev.bad .ev-x{color:var(--red)}
-.ev.big{background:var(--ink)} .ev.big .ev-x,.ev.big .ev-t,.ev.big .ev-a{color:var(--card);font-weight:500}
+.ev.big,.ev.jackpot{background:var(--ink)}
+.ev.big .ev-x,.ev.big .ev-t,.ev.big .ev-a,.ev.jackpot .ev-x,.ev.jackpot .ev-t,.ev.jackpot .ev-a{
+  color:var(--card);font-weight:500}
 .ev.site .ev-x{color:var(--blue)}
 
 .dl{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;
@@ -294,4 +296,16 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .toast.dark{background:var(--ink);color:var(--card)} .toast.grn{background:var(--green)} .toast.blu{background:var(--blue)}
 @keyframes tst{0%{opacity:0;transform:translate(-50%,-16px)}
   8%,78%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-10px)}}
+/* Issue #9: a jackpot (far above recent usual, but not necessarily an
+   all-time record) needs its own distinct beat, separate from the plain
+   gold "big record" toast — same duration/easing as the base .toast so it
+   still sits in rhythm with everything else, but with its own keyframes
+   (not a second animation layered on .toast's, which would fight it for
+   control of transform) so it can pulse without breaking the slide-in. */
+.toast.jackpot{background:linear-gradient(135deg,var(--gold),var(--red));font-size:14.5px;font-weight:700;
+  box-shadow:0 10px 30px rgba(190,68,58,.35);animation:jackpot 2.6s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes jackpot{0%{opacity:0;transform:translate(-50%,-16px) scale(.92)}
+  8%{opacity:1;transform:translate(-50%,0) scale(1.08)}
+  16%,78%{opacity:1;transform:translate(-50%,0) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-10px) scale(1)}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
