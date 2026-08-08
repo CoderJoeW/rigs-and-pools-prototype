@@ -14,10 +14,28 @@ export const MILESTONES=[
     check:g=>g.totalHash.value>=250000 },
   { id:'b1', track:'Blocks', name:'First block', desc:'One of your groups finds a block',
     check:g=>g.s.blocksSolved>=1 },
-  { id:'b2', track:'Blocks', name:'Block habit', desc:'25 blocks found',
-    check:g=>g.s.blocksSolved>=25 },
-  { id:'b3', track:'Blocks', name:'Block machine', desc:'500 blocks found',
-    check:g=>g.s.blocksSolved>=500 },
+  // b2/b3 are pure block-COUNT milestones — deliberately distinct from b4's
+  // dollar threshold. Post-#17 (Tessera's $-value rebalance), an untouched
+  // passive single rig on Tessera still solves ~2,300 blocks/day purely
+  // from its ~20s block target — pure elapsed-time volume, not skill or
+  // decisions. At the old thresholds (25, 500) both cleared inside the very
+  // first sim-day, before the player had made a single choice beyond the
+  // opening build. h1/b1 stay untouched on purpose: h1 deliberately mirrors
+  // onboarding's 'earn' step (see onboarding.js), and b1 is meant to be a
+  // quick, celebratory first-block moment — both are supposed to fire fast.
+  // These two are raised to actually require sustained, multi-day
+  // operation: ~7,500 (~3 days at that same passive rate) for "habit";
+  // ~50,000 for "machine" takes considerably longer on an untouched single
+  // rig — the network's simulated hashrate keeps growing while this one
+  // doesn't, so its share of blocks thins over time (measured: over a
+  // month, not weeks, for one static rig; a real engaged, multi-rig farm
+  // clears it far sooner). Both stay in reach of patient idle play
+  // (design-spec §12 explicitly protects that pattern) without being
+  // clearable before breakfast on day one.
+  { id:'b2', track:'Blocks', name:'Block habit', desc:'7,500 blocks found',
+    check:g=>g.s.blocksSolved>=7500 },
+  { id:'b3', track:'Blocks', name:'Block machine', desc:'50,000 blocks found',
+    check:g=>g.s.blocksSolved>=50000 },
   { id:'b4', track:'Blocks', name:'The big one', desc:'A single block worth $25,000+',
     check:g=>g.s.bestBlock>=25000 },
   { id:'i1', track:'Infrastructure', name:'Second site', desc:'Operate two sites',

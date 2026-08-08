@@ -392,4 +392,19 @@ describe('milestones', () => {
     expect(Object.keys(g.s.mile.done).length).toBeGreaterThanOrEqual(4);
     expect(g.s.mile.rank).toBeGreaterThanOrEqual(1);
   });
+
+  it('pure block-count volume (b2/b3) does not clear from a single sim-day of passive, untouched play', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly, start earning
+    for (let i = 0; i < 24; i++) g.stepTick(3600); // 1 full sim-day, zero decisions after the opening build
+
+    // b1 (first block) is still meant to fire fast — confirms this fix didn't
+    // accidentally raise the wrong milestone too
+    expect(g.s.mile.done.b1).toBeTypeOf('number');
+    expect(g.s.mile.done.b2).toBeUndefined();
+    expect(g.s.mile.done.b3).toBeUndefined();
+    expect(g.s.mile.rank).toBeLessThan(1); // still Hobbyist, not Tinkerer, from block volume alone
+  });
 });
