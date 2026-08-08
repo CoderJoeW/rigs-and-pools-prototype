@@ -109,14 +109,19 @@ export function installPersistence(G){
     // NOT the today.blocks trap above, despite the resemblance: recentBlockUsd
     // is a plain top-level key, not a field nested inside another object that
     // Object.assign replaces wholesale — a save genuinely missing it (every
-    // save from before this field existed) leaves G.s's own fresh []
+    // save from before this field existed) leaves G.s's own fresh {}
     // default untouched, since Object.assign only copies keys the SOURCE
     // actually has. This guards the real boundary risk instead: hand-edited
     // localStorage or a malformed import file setting the field to something
-    // that isn't an array, which push()/shift() would only discover — by
-    // throwing — the next time a block lands, well after hydrate()'s own
-    // try/catch has already returned successfully.
-    if(!Array.isArray(G.s.recentBlockUsd)) G.s.recentBlockUsd=[];
+    // that isn't a plain object, which push()/shift() on one of its per-chain
+    // arrays would only discover — by throwing — the next time a block
+    // lands, well after hydrate()'s own try/catch has already returned
+    // successfully. Per-chain (chain id -> array of recent $ values), not
+    // one flat array — see tick.js's blockBaseline/trackBlockUsd comment
+    // for why a single shared window across chains 20-90x apart in block
+    // value doesn't work.
+    if(typeof G.s.recentBlockUsd!=='object' || G.s.recentBlockUsd===null || Array.isArray(G.s.recentBlockUsd))
+      G.s.recentBlockUsd={};
     // v40 rebalanced the chain ladder — floors, rewards and network sizes all
     // moved. Bring an older world onto the new ladder rather than stranding it
     // on a chain whose difficulty no longer matches anything.

@@ -372,21 +372,33 @@ export function installTick(G){
      a baseline to compare against (BLOCK_BASELINE_MIN) so the first few
      blocks — with no "usual" yet — never falsely read as a jackpot. A new
      all-time record still takes priority over a jackpot callout for the
-     same block; they'd otherwise mean almost the same thing back to back. */
-  function blockBaseline(){
-    const arr=G.s.recentBlockUsd;
-    if(arr.length<C.BLOCK_BASELINE_MIN) return null;
+     same block; they'd otherwise mean almost the same thing back to back.
+
+     PER CHAIN, not one pooled window — round-1 review caught this the hard
+     way: block value differs by 20-90x between chains (Tessera ~$0.45,
+     Ferro ~$9, Halcyon ~$300+), so a single shared window mixing them
+     mistook "this is just what Ferro pays" for a jackpot almost every
+     time a farm ran Tessera and Ferro side by side — simulated at 79 of 80
+     Ferro blocks flagged, and 9 consecutive Jackpot toasts on a single
+     chain graduation (the exact motivating scenario for this fix, turned
+     into exactly the feed-spam issue #4 already fixed once). Keying by
+     chain id makes "usual" mean usual for THAT chain, matching what the
+     comment always claimed. */
+  function blockBaseline(chainId){
+    const arr=G.s.recentBlockUsd[chainId];
+    if(!arr || arr.length<C.BLOCK_BASELINE_MIN) return null;
     const s=[...arr].sort((a,b)=>a-b), mid=Math.floor(s.length/2);
     return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
   }
-  function trackBlockUsd(usd){
-    G.s.recentBlockUsd.push(usd);
+  function trackBlockUsd(chainId, usd){
+    const arr=G.s.recentBlockUsd[chainId]||(G.s.recentBlockUsd[chainId]=[]);
+    arr.push(usd);
     // while, not if: a single shift only ever prevents further growth from
     // an already-correctly-sized array — it can't recover one that's
     // somehow oversized (e.g. old save data from a smaller/no window, or a
     // future change to BLOCK_BASELINE_WINDOW itself), which would then stay
     // oversized forever instead of settling back down to the real cap.
-    while(G.s.recentBlockUsd.length>C.BLOCK_BASELINE_WINDOW) G.s.recentBlockUsd.shift();
+    while(arr.length>C.BLOCK_BASELINE_WINDOW) arr.shift();
   }
   /* A pool only ever gains funds when that pool finds a block. */
   function awardBlock(c, w){
@@ -402,7 +414,7 @@ export function installTick(G){
       if(Math.random()<c.orphan*(1-CONN_Q)){ G.s.orphaned++; G.say('bad','Orphaned on '+c.name); }
       else { G.s.wallet[c.id]+=full; G.today().earned+=full*G.price(c); G.today().blocks++;
         const usd=full*G.price(c);
-        const baseline=blockBaseline();
+        const baseline=blockBaseline(c.id);
         const record=usd>G.s.bestBlock;
         const jackpot=!record && baseline && usd>=baseline*C.JACKPOT_MULT;
         if(jackpot) G.say('jackpot','Jackpot on '+c.name+' — '+(usd/baseline).toFixed(1)+'x your usual',
@@ -413,7 +425,7 @@ export function installTick(G){
         else if(jackpot) G.pop('Jackpot','+'+fmt.usd2(usd)+' — '+(usd/baseline).toFixed(1)+'x your usual',
           'jackpot',{always:true});
         else G.pop('Block solved','+'+fmt.c(full)+' '+c.tick,'',{kind:'block'});
-        trackBlockUsd(usd); }
+        trackBlockUsd(c.id, usd); }
       return;
     }
     if(w.mine) G.s.blocksSolved++;
@@ -443,7 +455,7 @@ export function installTick(G){
         if(share>0.0002){
           if(w.mine){
             const usd=share*G.price(c);
-            const baseline=blockBaseline();
+            const baseline=blockBaseline(c.id);
             const jackpot=baseline && usd>=baseline*C.JACKPOT_MULT;
             if(jackpot){
               G.say('jackpot',w.group.name+' solved the '+c.name+' pool block — '
@@ -454,7 +466,7 @@ export function installTick(G){
               G.say('block',w.group.name+' solved the '+c.name+' pool block','+'+fmt.c(share),share,c.tick);
               G.pop(w.group.name+' found it','+'+fmt.c(share)+' '+c.tick,'',{kind:'block'});
             }
-            trackBlockUsd(usd);
+            trackBlockUsd(c.id, usd);
           }
           else G.say('pay',pool.name+' found a block','+'+fmt.c(share),share,c.tick);
         }
