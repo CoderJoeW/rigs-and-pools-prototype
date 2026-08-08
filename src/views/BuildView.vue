@@ -97,6 +97,35 @@ const ceilingNote=computed(()=>{
         +'/day however much you point at it, so this rig mostly divides '
         +'the same pot. Move the group to another chain and it earns on top.' };
 });
+/* Issue #6: a brand-new player's first Build-tab numbers can be a same-day
+   payback worth several times the starting balance — honest, but reads as
+   "this must be broken" with no context. It's real: below its floor a
+   chain pays every miner the same flat rate no matter how little hash
+   they bring (§1), so a first rig on an empty chain earns a rate the
+   chain can't sustain once it fills.
+
+   The flat rate is governed by diffOf's own condition (dispatch.js:
+   Math.max(c.floor, c.obs)*c.target), not by raw chainHash — obs can sit
+   stale-high after a brownout (more likely since #19 raised BASE_WEAR),
+   in which case the chain is NOT paying the flat floor rate even while
+   chainHash itself is still under the floor. Gating on chainHash alone
+   both undersold that gap and, combined with an incorrect assumption
+   that this was mutually exclusive with ceilingNote, silently hid the
+   note in exactly the case it matters most: chainCeiling(c, dp.mh)
+   projects the NEXT rig's hash forward, so right after the first rig
+   lands (~192 MH, still under Tessera's 350 floor) a second rig's draft
+   already reads as "at ceiling" even though the currently-quoted rate is
+   still the fully undiluted flat one. Both are true at once, so both
+   notes render — clarifying rather than contradicting: "you're on the
+   welcome rate right now, and this next rig would end it." */
+const subsidyNote=computed(()=>{
+  const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
+  if(!c || c.obs>c.floor) return null;
+  return { label:c.name+' is paying a new-miner premium',
+    fix:'Below its floor, '+c.name+' pays every miner the same rate regardless '
+        +'of how little hash they bring — the fast payback is a deliberate '
+        +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
+});
 const verdict=computed(()=>{
   const c=g.checks, dp=g.dp, ex=g.draftExpected;
   const gr=g.draftGroup();
@@ -105,7 +134,7 @@ const verdict=computed(()=>{
       rows:[ {k:'Parts', v:fmt.usd(dp.cost)},
              {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(ex.net)+'/day'},
              {k:'Expected payback', v:isFinite(ex.payback)?Math.round(ex.payback)+' days':'never'} ],
-      checks:[c[5]], note:ceilingNote.value },
+      checks:[c[5]], notes:[ceilingNote.value,subsidyNote.value].filter(Boolean) },
     { t:'Hashrate & MH/W',
       rows:[ {k:'Hashrate', v:fmt.hash(dp.mh)},
              {k:'MH/W', v:g.draftEff.toFixed(3)} ],
@@ -182,9 +211,9 @@ const verdict=computed(()=>{
             <div v-for="(c,i) in vg.checks" :key="i" class="chk" :class="c.ok?'ok':'no'">
               <span class="ic">{{ c.ok?'✓':'✗' }}</span>
               <span>{{ c.label }}<div v-if="!c.ok" class="fix">{{ c.fix }}</div></span></div>
-            <div v-if="vg.note" class="chk note-chk">
+            <div v-for="(n,i) in (vg.notes||[])" :key="'n'+i" class="chk note-chk">
               <span class="ic">!</span>
-              <span>{{ vg.note.label }}<div class="fix">{{ vg.note.fix }}</div></span></div>
+              <span>{{ n.label }}<div class="fix">{{ n.fix }}</div></span></div>
           </div>
         </div>
         <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}</dd></div>
