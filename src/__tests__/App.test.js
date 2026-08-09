@@ -13,7 +13,7 @@ beforeEach(() => {
   // App.vue keeps this meta tag (normally written once in index.html) in
   // sync at runtime; the test document needs it present to have something
   // to sync into, the same way the real page does.
-  document.head.insertAdjacentHTML('beforeend', '<meta name="theme-color" content="#F5F6F4">');
+  document.head.insertAdjacentHTML('beforeend', '<meta name="theme-color" content="#F7F6F1">');
 });
 afterEach(async () => {
   await flushPromises();
@@ -147,14 +147,14 @@ describe('App', () => {
     mounted.push(wrapper);
     await flushPromises();
     const meta = document.querySelector('meta[name="theme-color"]');
-    expect(meta.getAttribute('content')).toBe('#F5F6F4'); // auto, no matchMedia in jsdom -> light
+    expect(meta.getAttribute('content')).toBe('#F7F6F1'); // auto, no matchMedia in jsdom -> light
 
     store.s.theme = 'dark';
     await wrapper.vm.$nextTick();
-    expect(meta.getAttribute('content')).toBe('#14181A');
+    expect(meta.getAttribute('content')).toBe('#0A0D0A');
 
     store.s.theme = 'light';
     await wrapper.vm.$nextTick();
-    expect(meta.getAttribute('content')).toBe('#F5F6F4');
+    expect(meta.getAttribute('content')).toBe('#F7F6F1');
   });
 });
