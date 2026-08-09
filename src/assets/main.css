@@ -32,7 +32,6 @@
      --card, past the 3:1 a non-text indicator needs. */
   --chain-l:.55; --chain-c:.15;
   --top-bg:rgba(247,246,241,.92);
-  --radius-lg:8px; --radius-md:6px; --radius-sm:4px;
   --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
   /* Press response (see the ":active" section at the bottom of this file).
