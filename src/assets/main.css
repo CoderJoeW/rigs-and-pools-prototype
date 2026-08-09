@@ -18,22 +18,23 @@
      already flattens every transition-duration, this one included. */
   transition:--amb-lum 1.6s linear, --amb-warm 1.6s linear,
              --amb-cool 1.6s linear, --amb-haze 1.6s linear;
-  --bg:#F5F6F4; --backdrop:#EDEFEB; --card:#FFF; --ink:#12171A; --ink-2:#4C5551; --ink-3:#8F9995;
-  --line:#E5E8E4; --line-2:#F0F2EE;
-  --green:#137A55; --green-t:#E9F4EF;
-  --gold:#C98A0B;  --gold-t:#FCF2DC; --amber:#C98A0B;
-  --red:#BE443A;   --red-t:#FAEDEB;
-  --blue:#2E6BA8;  --blue-t:#E9F0F7;
+  --bg:#F7F6F1; --backdrop:#ECEAE1; --card:#FFF; --ink:#14180F; --ink-2:#535E4F; --ink-3:#8C9587;
+  --line:#DEDBCC; --line-2:#EEECE2;
+  --green:#0E9C57; --green-t:#E4F6EC;
+  --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A;
+  --red:#D33A2C;   --red-t:#FBEAE7;
+  --blue:#3457C7;  --blue-t:#E9ECFA;
   /* Chain identity (see chains.js): each chain owns an OKLCH hue, both themes
      own the lightness and chroma. Set here rather than per chain so all five
      shift together — one number darkens the whole set against a white card and
      another lightens it against a dark one, and no chain can drift out of step
-     with the others. Light theme: L .58 puts every mark at 3.8:1 or better on
+     with the others. Light theme: L .55 puts every mark at 3.8:1 or better on
      --card, past the 3:1 a non-text indicator needs. */
-  --chain-l:.58; --chain-c:.13;
-  --top-bg:rgba(245,246,244,.92);
-  --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
-  --mono:'DM Mono',ui-monospace,Menlo,monospace;
+  --chain-l:.55; --chain-c:.15;
+  --top-bg:rgba(247,246,241,.92);
+  --radius-lg:8px; --radius-md:6px; --radius-sm:4px;
+  --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
   /* Press response (see the ":active" section at the bottom of this file).
      Held as tokens so the whole app's tactile feel is tuned in one place —
      every interactive family splices --press into its own transition list
@@ -50,34 +51,34 @@
    var(--ink) as a background and need a matching fix (see .ev.big, .toast.dark). */
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#14181A; --backdrop:#0D1011; --card:#1C2123; --ink:#EDEFEC; --ink-2:#9BA6A0; --ink-3:#67716C;
-    --line:#2B3133; --line-2:#202628;
-    --green:#2FB27E; --green-t:#15302A;
-    --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
-    --red:#E2685C;   --red-t:#3A211E;
-    --blue:#5B9AD9;  --blue-t:#1C2A3A;
-    /* Lifted, not just re-tinted: .58 on the dark card is a smudge. .76 lands
+    --bg:#0A0D0A; --backdrop:#050605; --card:#121613; --ink:#E9F1EA; --ink-2:#8FA093; --ink-3:#586359;
+    --line:#212C22; --line-2:#191F1A;
+    --green:#26E88C; --green-t:#0E3524;
+    --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33;
+    --red:#FF6459;   --red-t:#3B1815;
+    --blue:#5C9CFF;  --blue-t:#132546;
+    /* Lifted, not just re-tinted: .55 on the dark card is a smudge. .78 lands
        every chain at 7:1 or better there. */
-    --chain-l:.76; --chain-c:.13;
-    --top-bg:rgba(20,24,26,.85);
+    --chain-l:.78; --chain-c:.15;
+    --top-bg:rgba(10,13,10,.85);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#14181A; --backdrop:#0D1011; --card:#1C2123; --ink:#EDEFEC; --ink-2:#9BA6A0; --ink-3:#67716C;
-  --line:#2B3133; --line-2:#202628;
-  --green:#2FB27E; --green-t:#15302A;
-  --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
-  --red:#E2685C;   --red-t:#3A211E;
-  --blue:#5B9AD9;  --blue-t:#1C2A3A;
-  --chain-l:.76; --chain-c:.13;
-  --top-bg:rgba(20,24,26,.85);
+  --bg:#0A0D0A; --backdrop:#050605; --card:#121613; --ink:#E9F1EA; --ink-2:#8FA093; --ink-3:#586359;
+  --line:#212C22; --line-2:#191F1A;
+  --green:#26E88C; --green-t:#0E3524;
+  --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33;
+  --red:#FF6459;   --red-t:#3B1815;
+  --blue:#5C9CFF;  --blue-t:#132546;
+  --chain-l:.78; --chain-c:.15;
+  --top-bg:rgba(10,13,10,.85);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{background:var(--backdrop);color:var(--ink);font-family:var(--sans);font-size:15px;
   line-height:1.45;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
-:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:4px}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:3px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0,0,0,0);white-space:nowrap;border:0}
 /* height, not min-height, so the nav is a real flex child pinned to the bottom.
@@ -115,25 +116,33 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
    like. Every number below sits so that a clear afternoon lands within a point
    or two of the flat 24/22/20 this layer used before. */
 .ambient{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-.ambient::before{content:'';position:absolute;inset:-12%;
+/* Redesign: the old build washed the shell in soft drifting colour blobs — a
+   "living room" read. This one leans into the hardware the game is actually
+   about: a fine instrument-grid (::after) under a single scanning glow that
+   rides the top edge (::before), the way a rack of gear reads under one strip
+   light rather than ambient room lighting. Same four --amb-* factors as
+   before (App.vue owns the sim-to-CSS mapping and needs no changes): --amb-lum
+   still brightens the green glow, --amb-warm the gold one, --amb-cool the blue
+   one, --amb-haze still desaturates the whole layer under cloud cover. */
+.ambient::before{content:'';position:absolute;inset:-8% -10%;
   background:
-    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) calc(10% + 16% * var(--amb-lum)), transparent), transparent 62%),
-    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) calc(8% + 17% * var(--amb-cool)), transparent), transparent 62%),
-    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) calc(4% + 26% * var(--amb-warm)), transparent), transparent 62%);
-  opacity:calc(.58 + .42 * max(var(--amb-lum), var(--amb-warm)));
-  filter:saturate(calc(1 - .45 * var(--amb-haze)));
-  animation:ambientDrift 24s ease-in-out infinite alternate}
+    radial-gradient(58% 42% at 50% -8%, color-mix(in srgb, var(--green) calc(6% + 15% * var(--amb-lum)), transparent), transparent 68%),
+    radial-gradient(36% 28% at 102% 10%, color-mix(in srgb, var(--gold) calc(4% + 20% * var(--amb-warm)), transparent), transparent 66%),
+    radial-gradient(32% 24% at -2% 92%, color-mix(in srgb, var(--blue) calc(4% + 15% * var(--amb-cool)), transparent), transparent 66%);
+  opacity:calc(.5 + .5 * max(var(--amb-lum), var(--amb-warm)));
+  filter:saturate(calc(1 - .5 * var(--amb-haze)));
+  animation:ambientDrift 26s ease-in-out infinite alternate}
 .ambient::after{content:'';position:absolute;inset:0;
-  opacity:calc((.42 + .34 * var(--amb-lum)) * (1 - .3 * var(--amb-haze)));
+  opacity:calc((.32 + .26 * var(--amb-lum)) * (1 - .35 * var(--amb-haze)));
   background-image:linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size:25px 25px;
-  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 60px, #000 calc(100% - 60px), transparent);
-  mask-image:linear-gradient(to bottom, transparent, #000 60px, #000 calc(100% - 60px), transparent)}
+  background-size:22px 22px;
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 50px, #000 calc(100% - 90px), transparent);
+  mask-image:linear-gradient(to bottom, transparent, #000 50px, #000 calc(100% - 90px), transparent)}
 @keyframes ambientDrift{
   0%{transform:translate3d(0,0,0) scale(1)}
-  50%{transform:translate3d(-2.5%,2%,0) scale(1.05)}
-  100%{transform:translate3d(2%,-1.5%,0) scale(1.02)}}
+  50%{transform:translate3d(-2%,1.4%,0) scale(1.04)}
+  100%{transform:translate3d(1.6%,-1%,0) scale(1.015)}}
 
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
@@ -141,10 +150,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .hint{font-size:11.5px;color:var(--ink-3);line-height:1.4;margin-top:4px}
 .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--gold)} .blu{color:var(--blue)}
 
-.top{flex:none;z-index:20;padding:calc(env(safe-area-inset-top) + 10px) 15px 9px;
+.top{flex:none;z-index:20;position:relative;padding:calc(env(safe-area-inset-top) + 10px) 15px 9px;
   background:var(--top-bg);backdrop-filter:saturate(180%) blur(14px);
   -webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);
   display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* A thin spectrum strip along the very top edge — the same three signal
+   colours the rest of the shell uses for status (green/gold/blue) rather than
+   a fourth new colour, so it reads as this app's palette rather than decor. */
+.top::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--green),var(--gold) 50%,var(--blue));opacity:.65}
 .wordmark{font-size:15.5px;font-weight:600;letter-spacing:-.02em;display:inline-flex;align-items:center;gap:7px}
 .brandmark{flex:none;width:18px;height:18px;color:var(--green);
   filter:drop-shadow(0 0 5px color-mix(in srgb, var(--green) 55%, transparent))}
@@ -188,7 +202,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   .speedlbl{flex:1 1 100%}
   .speedset{margin-left:auto}
 }
-.speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px;
+.speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:5px;
   color:var(--ink-3);background:var(--line-2);transition:var(--press),background-color .15s,color .15s}
 .speedbtn.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
@@ -203,7 +217,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .sndtog.on{background:var(--gold-t);color:var(--gold)}
 
 .body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 16px;-webkit-overflow-scrolling:touch}
-.card{background:var(--card);border:1px solid var(--line);border-radius:11px;
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;
   margin-bottom:9px;overflow:hidden}
 .card-hd{display:flex;align-items:center;justify-content:space-between;padding:9px 12px 7px}
 .card-bd{padding:0 12px 12px}
@@ -236,7 +250,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .rigfld label{display:block;font-size:9.5px;font-weight:600;letter-spacing:.06em;
   text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
 .rigfld select{font:inherit;font-size:13px;background:var(--card);border:1px solid var(--line);
-  border-radius:8px;padding:8px;width:100%;color:var(--ink)}
+  border-radius:6px;padding:8px;width:100%;color:var(--ink)}
 .rowline{display:flex;align-items:center;gap:9px;padding:8px 12px;width:100%;border-top:1px solid var(--line-2)}
 .rowline:first-child{border-top:none}
 .rowline .nm{font-size:13.5px;font-weight:500;letter-spacing:-.01em}
@@ -251,14 +265,14 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .pickrow .val .s{font-size:10.5px;color:var(--ink-3);margin-top:1px}
 .pickrow .ch{color:var(--ink-3);font-size:15px;flex:none}
 
-.tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:5px;
+.tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:4px;
   background:var(--line-2);color:var(--ink-2)}
 .tag.g{background:var(--green-t);color:var(--green)}
 .tag.r{background:var(--red-t);color:var(--red)}
 .tag.d{background:var(--gold-t);color:var(--gold)}
 .tag.b{background:var(--blue-t);color:var(--blue)}
 
-.btn{font-size:13px;font-weight:500;padding:8px 12px;border-radius:9px;background:var(--line-2);
+.btn{font-size:13px;font-weight:500;padding:8px 12px;border-radius:7px;background:var(--line-2);
   color:var(--ink);white-space:nowrap;text-align:center;
   transition:var(--press),background-color .12s,box-shadow .12s}
 .btn:active{background:var(--line)}
@@ -272,7 +286,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 }
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-wide{width:100%;padding:11px}
-.btn-sm{padding:6px 9px;font-size:12px;border-radius:8px}
+.btn-sm{padding:6px 9px;font-size:12px;border-radius:6px}
 .btn-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .switch{width:40px;height:24px;border-radius:99px;background:var(--line);position:relative;flex:none;
   transition:background-color .15s,box-shadow .15s}
@@ -299,7 +313,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   box-shadow:0 0 6px color-mix(in srgb, var(--green) 55%, transparent);
   transition:width .4s cubic-bezier(.2,.8,.2,1)}
 .cd-s{font-size:9.5px;color:var(--ink-3)}
-.cmp{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
+.cmp{border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-top:8px}
 .cmp-hd{display:flex;justify-content:space-between;padding:7px 11px;background:var(--line-2);
   font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
 .cmp-r{display:flex;align-items:center;gap:9px;padding:7px 11px;border-top:1px solid var(--line-2);width:100%}
@@ -364,7 +378,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    pair of L/C values could not hold five hues at one weight. It costs nothing
    in support: this file already leans on color-mix() and @property, which land
    in the same browsers or later. */
-.cmk{display:inline-block;flex:none;width:8px;height:8px;border-radius:2.5px;
+.cmk{display:inline-block;flex:none;width:8px;height:8px;border-radius:2px;
   vertical-align:-.5px;margin-right:5px;
   background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));
   box-shadow:0 0 5px oklch(var(--chain-l) var(--chain-c) var(--chain-h) / .45)}
@@ -380,7 +394,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .rigrow .rt{flex:none;text-align:right}
 .rigrow .rt .v{font-family:var(--mono);font-size:13.5px;font-weight:500;line-height:1.15}
 .rigrow .rt .k{font-size:9.5px;color:var(--ink-3)}
-.rigrow .box{flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line);
+.rigrow .box{flex:none;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--line);
   display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent}
 .rigrow .box.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .wearbar{height:3px;border-radius:2px;background:var(--line-2);margin-top:5px;overflow:hidden}
@@ -440,7 +454,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .selbar .c{font-size:12px;font-weight:600;flex:1}
 .fix{color:var(--ink-2);font-size:12px;margin-top:2px}
 .totals{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
-  border-radius:9px;overflow:hidden;margin:10px 0}
+  border-radius:7px;overflow:hidden;margin:10px 0}
 .totals div{background:var(--line-2);padding:7px 8px}
 .totals .k{font-size:9px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
 .totals .v{font-family:var(--mono);font-size:12.5px;font-weight:500;margin-top:1px}
@@ -468,7 +482,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .dl dt{color:var(--ink-3)} .dl dd{font-family:var(--mono);font-size:12.5px;text-align:right}
 .spark{width:100%;height:34px;display:block}
 
-.seg2{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:9px 12px 0}
+.seg2{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin:9px 12px 0}
 .seg2 button{flex:1;text-align:center;padding:8px 4px;font-size:12.5px;font-weight:500;color:var(--ink-2);
   transition:var(--press),background-color .15s,color .15s}
 .seg2 button.on{background:var(--green);color:#fff}
@@ -476,7 +490,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 
 .slotwrap{padding:10px 12px 2px}
 .slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px}
-.slotcell{aspect-ratio:1;border-radius:7px;border:1.5px solid var(--line);
+.slotcell{aspect-ratio:1;border-radius:5px;border:1.5px solid var(--line);
   display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-3);
   transition:background-color .2s,border-color .2s}
 .slotcell.filled{background:var(--green);border-color:var(--green);color:#fff}
@@ -505,7 +519,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    in lockstep reads as a strobing wall. */
 .rigwrap{padding:10px 12px 12px}
 .riggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:5px}
-.rigtile{aspect-ratio:1;border-radius:7px;border:1.5px solid var(--line);
+.rigtile{aspect-ratio:1;border-radius:5px;border:1.5px solid var(--line);
   display:flex;align-items:center;justify-content:center;
   font-family:var(--mono);font-size:10px;color:var(--ink-3);
   transition:var(--press),background-color .2s,border-color .2s}
@@ -541,7 +555,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .empty{padding:26px 18px;text-align:center}
 .empty h3{font-size:16px;font-weight:600;letter-spacing:-.02em;margin-bottom:5px}
 .empty p{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin-bottom:12px}
-.warnbox{margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--red-t);color:var(--red);
+.warnbox{margin-top:8px;padding:8px 10px;border-radius:7px;background:var(--red-t);color:var(--red);
   font-size:12.5px;line-height:1.45}
 .warnbox b{font-weight:600}
 .warnbox.hard{background:var(--ink);color:var(--card)} .warnbox.hard b{color:var(--gold)}
@@ -554,15 +568,20 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .sheet-hd .t{font-size:14.5px;font-weight:600;letter-spacing:-.02em;flex:1}
 .sheet-bd{flex:1;overflow-y:auto;padding:10px 12px calc(env(safe-area-inset-bottom) + 16px)}
 
+/* Redesign: the old scalloped cutout along the tab bar's top edge (a bitten-
+   coupon look) is gone in favour of a flat instrument-panel edge — a single
+   hairline border plus a per-tab accent bar that slides in under whichever
+   tab is active, closer to a hardware monitor's status strip. */
 .tabs{flex:none;z-index:30;display:flex;position:relative;background:var(--card);
+  border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
-.tabs::before{content:'';position:absolute;left:0;right:0;top:-7px;height:7px;
-  background:
-    linear-gradient(-45deg, var(--card) 5px, transparent 0) 0 4px,
-    linear-gradient(45deg, var(--card) 5px, transparent 0) 0 4px;
-  background-repeat:repeat-x; background-size:14px 14px; background-color:var(--bg)}
-.tab{flex:1;padding:7px 2px 8px;text-align:center;color:var(--ink-3);font-size:9.5px;font-weight:500;
+.tab{flex:1;position:relative;padding:8px 2px 8px;text-align:center;color:var(--ink-3);font-size:9.5px;font-weight:500;
   display:flex;flex-direction:column;align-items:center;gap:3px;transition:var(--press),color .15s}
+.tab::before{content:'';position:absolute;top:-1px;left:18%;right:18%;height:2px;border-radius:0 0 2px 2px;
+  background:var(--green);opacity:0;transform:scaleX(.4);
+  transition:opacity .15s,transform .15s}
+.tab.on::before{opacity:1;transform:scaleX(1);
+  box-shadow:0 1px 8px color-mix(in srgb, var(--green) 65%, transparent)}
 .tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;
   stroke-linecap:round;stroke-linejoin:round;transition:filter .15s}
 .tab.on{color:var(--green)}
@@ -577,7 +596,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 
 .toast{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;z-index:60;
   transform:translateX(-50%);max-width:400px;width:calc(100% - 30px);background:var(--gold);color:#fff;
-  padding:10px 14px;border-radius:11px;display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;
   gap:10px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(201,138,11,.3);
   animation:tst 2.6s cubic-bezier(.2,.8,.2,1) forwards}
 .toast.dark{background:var(--ink);color:var(--card)} .toast.grn{background:var(--green)} .toast.blu{background:var(--blue)}
@@ -623,7 +642,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    have been covered, since `*` does not match ::before/::after. */
 .toast.rankup{
   flex-direction:column;align-items:center;text-align:center;gap:4px;
-  padding:13px 18px 15px;border-radius:14px;
+  padding:13px 18px 15px;border-radius:10px;
   background:linear-gradient(140deg,
     color-mix(in srgb, var(--green) 40%, var(--ink)) 0%,
     var(--ink) 55%,

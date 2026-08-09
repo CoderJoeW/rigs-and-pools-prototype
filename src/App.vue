@@ -18,7 +18,7 @@ const g = useGameStore();
 // has no such query-based equivalent for content, so it's kept in sync here
 // instead — including tracking a live system-preference change while on auto.
 // loadSave() may overwrite g.s.theme after boot, and this reacts to that too.
-const LIGHT_BG='#F5F6F4', DARK_BG='#14181A';
+const LIGHT_BG='#F7F6F1', DARK_BG='#0A0D0A';
 const darkMedia = typeof matchMedia==='function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 function applyTheme(theme){
   if(theme==='light'||theme==='dark') document.documentElement.dataset.theme=theme;
