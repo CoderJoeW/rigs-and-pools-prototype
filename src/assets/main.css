@@ -335,9 +335,12 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .pill.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--amber) 55%, transparent)}
 
+/* The divider belongs to the .rigswipe wrapper rather than to the row now
+   (issue #49, see below): the row slides sideways, and a border that slides
+   with it would tear a gap in the list mid-drag. Same line, same place —
+   it just no longer moves. */
 .rigrow{display:flex;align-items:center;gap:10px;padding:9px 12px;width:100%;
-  border-top:1px solid var(--line-2);text-align:left}
-.rigrow:first-child{border-top:none}
+  text-align:left;touch-action:pan-y pinch-zoom}
 .rigrow.sel{background:var(--blue-t)}
 .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ink-3)}
 .dot.run{background:var(--green);animation:dotPulse 2.4s ease-out infinite}
@@ -384,6 +387,53 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .wearbar i{display:block;height:100%;background:var(--green);
   transition:width .4s cubic-bezier(.2,.8,.2,1),background-color .2s}
 .wearbar i.w{background:var(--amber)} .wearbar i.b{background:var(--red)}
+
+/* ---- Swipe a rig off its power switch (issue #49) -------------------
+   The row is drawn back to uncover an action lying underneath it. Two
+   elements do that, and they are separate on purpose:
+
+     .rigslide  slides. It carries the row's opaque background, because it
+                is what has to hide .rigswact when shut.
+     .rigrow    still takes the #44 press-scale.
+
+   Splitting them is what keeps the two from fighting: a transform is one
+   property, so a translate and a scale on the SAME element would have to
+   share one transition, and the press's .09s snap and the swipe's .22s
+   settle cannot both be that. On two elements each keeps its own timing and
+   the browser composes them. (During an actual drag the press-scale is
+   suppressed below — a row shrinking while it slides reads as a wobble.)
+
+   The transform lives behind a .sx class so that only the row being dragged
+   is promoted to its own compositor layer; a list of thirty rows all holding
+   an idle translate3d is memory a phone should not be spending.
+
+   touch-action:pan-y on .rigrow (above) is what keeps this off the
+   scroller's toes: a mostly-vertical drag never reaches our handlers at all,
+   the browser scrolls, and we get a pointercancel.
+
+   The revealed panel is the full row underneath, right-aligned, so what
+   surfaces first as the row pulls back is the label. Colour says which
+   direction you are going — red to cut power, green to restore it — and the
+   pale tint holds until the drag passes the fire threshold, where it fills
+   in and reads "let go now". Text on the filled state is var(--card) rather
+   than white: the dark theme's --red/--green are light enough that white on
+   them is under 3.5:1, while the card colour it sits on is well clear in
+   both themes (the same trick .pill.on uses). */
+.rigswipe{position:relative;border-top:1px solid var(--line-2)}
+.rigswipe:first-child{border-top:none}
+.rigslide{position:relative;z-index:1;background:var(--card);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.rigslide.sx{transform:translate3d(calc(-1 * var(--sx,0px)),0,0)}
+.rigslide.drag{transition:none}
+.rigswipe.dragging button.rigrow:active{transform:none}
+.rigswact{position:absolute;inset:0;z-index:0;display:flex;align-items:center;
+  justify-content:flex-end;gap:6px;padding:0 12px;
+  background:var(--red-t);color:var(--red);font-size:12px;font-weight:600;
+  transition:background-color .15s,color .15s}
+.rigswact .ic{font-size:15px;line-height:1}
+.rigswact.go{background:var(--green-t);color:var(--green)}
+.rigswact.arm{background:var(--red);color:var(--card)}
+.rigswact.go.arm{background:var(--green);color:var(--card)}
 
 .selbar{position:sticky;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);
   padding:9px 12px;display:flex;gap:7px;align-items:center;margin:0 -12px -12px}
