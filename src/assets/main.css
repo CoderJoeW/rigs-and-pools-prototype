@@ -45,6 +45,29 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 #app{max-width:440px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);
   display:flex;flex-direction:column;position:relative;overflow:hidden}
 
+/* Ambient atmosphere — a slow-drifting glow behind the whole shell plus a
+   near-invisible grid, so the farm reads as a living room full of hardware
+   rather than a flat list. Sits behind every flex child (.top/.body/.tabs
+   already carry z-index as flex items); color-mix() pulls straight from the
+   theme tokens so the glow brightens on dark without any separate palette. */
+.ambient{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ambient::before{content:'';position:absolute;inset:-12%;
+  background:
+    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) 24%, transparent), transparent 62%),
+    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 62%),
+    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) 20%, transparent), transparent 62%);
+  animation:ambientDrift 24s ease-in-out infinite alternate}
+.ambient::after{content:'';position:absolute;inset:0;opacity:.7;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:25px 25px;
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 60px, #000 calc(100% - 60px), transparent);
+  mask-image:linear-gradient(to bottom, transparent, #000 60px, #000 calc(100% - 60px), transparent)}
+@keyframes ambientDrift{
+  0%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(-2.5%,2%,0) scale(1.05)}
+  100%{transform:translate3d(2%,-1.5%,0) scale(1.02)}}
+
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
 .note{font-size:12.5px;color:var(--ink-2);line-height:1.5}
@@ -55,10 +78,24 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   background:var(--top-bg);backdrop-filter:saturate(180%) blur(14px);
   -webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);
   display:flex;align-items:center;justify-content:space-between;gap:10px}
-.wordmark{font-size:15.5px;font-weight:600;letter-spacing:-.02em}
+.wordmark{font-size:15.5px;font-weight:600;letter-spacing:-.02em;display:inline-flex;align-items:center;gap:7px}
+.brandmark{flex:none;width:18px;height:18px;color:var(--green);
+  filter:drop-shadow(0 0 5px color-mix(in srgb, var(--green) 55%, transparent))}
+.brandmark svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.live{flex:none;width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:livePulse 2.4s ease-out infinite}
+@keyframes livePulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 55%, transparent)}
+  70%{box-shadow:0 0 0 7px color-mix(in srgb, var(--green) 0%, transparent)}
+  100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent)}}
 .chip{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:99px;
   background:var(--line-2);color:var(--ink-2);margin-left:6px}
-.top-cash{font-family:var(--mono);font-size:17px;font-weight:500;text-align:right}
+.top-cash{font-family:var(--mono);font-size:17px;font-weight:500;text-align:right;
+  animation:cashBreathe 4.5s ease-in-out infinite}
+@keyframes cashBreathe{
+  0%,100%{text-shadow:0 0 0 transparent}
+  50%{text-shadow:0 0 10px color-mix(in srgb, var(--green) 35%, transparent)}}
 .top-sub{font-size:10px;color:var(--ink-3);font-family:var(--mono);text-align:right}
 .speedbar{flex:none;z-index:19;display:flex;align-items:center;
   justify-content:space-between;gap:8px;padding:4px 15px 5px;background:var(--card);
@@ -67,10 +104,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .speedset{display:flex;gap:2px}
 .speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px;
   color:var(--ink-3);background:var(--line-2);transition:background-color .15s,color .15s}
-.speedbtn.on{background:var(--green);color:#fff}
+.speedbtn.on{background:var(--green);color:#fff;
+  box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
 .helptog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
-  transition:background-color .15s,color .15s}
-.helptog.on{background:var(--green);color:#fff}
+  transition:background-color .15s,color .15s,box-shadow .15s}
+.helptog.on{background:var(--green);color:#fff;
+  box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
 
 .body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 16px;-webkit-overflow-scrolling:touch}
 .card{background:var(--card);border:1px solid var(--line);border-radius:11px;
@@ -84,6 +123,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .hero{padding:13px 12px 11px}
 .hero-lbl{font-size:11px;color:var(--ink-3)}
 .hero-val{font-family:var(--mono);font-size:40px;font-weight:500;line-height:1;letter-spacing:-.035em}
+.hero-val.pos{text-shadow:0 0 18px color-mix(in srgb, var(--green) 40%, transparent)}
+.hero-val.neg{text-shadow:0 0 18px color-mix(in srgb, var(--red) 35%, transparent)}
 .statline{display:flex;flex-wrap:wrap;border-top:1px solid var(--line)}
 .statline .s{flex:1 1 33%;min-width:33%;padding:7px 12px;border-right:1px solid var(--line-2);
   border-bottom:1px solid var(--line-2)}
@@ -127,25 +168,35 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .tag.b{background:var(--blue-t);color:var(--blue)}
 
 .btn{font-size:13px;font-weight:500;padding:8px 12px;border-radius:9px;background:var(--line-2);
-  color:var(--ink);white-space:nowrap;text-align:center;transition:background-color .12s}
+  color:var(--ink);white-space:nowrap;text-align:center;transition:background-color .12s,box-shadow .12s}
 .btn:active{background:var(--line)}
-.btn-pri{background:var(--green);color:#fff} .btn-pri:active{background:#0F6446}
+.btn-pri{background:var(--green);color:#fff;
+  box-shadow:0 2px 12px color-mix(in srgb, var(--green) 35%, transparent)}
+.btn-pri:active{background:#0F6446}
 .btn-ghost{background:transparent;border:1px solid var(--line)}
+@media (hover:hover){
+  .btn-pri:hover{box-shadow:0 2px 18px color-mix(in srgb, var(--green) 55%, transparent)}
+  .rigrow:hover,.pickrow:hover,.rowline:hover,.cmp-r:hover{background:var(--line-2)}
+}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-wide{width:100%;padding:11px}
 .btn-sm{padding:6px 9px;font-size:12px;border-radius:8px}
 .btn-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .switch{width:40px;height:24px;border-radius:99px;background:var(--line);position:relative;flex:none;
-  transition:background-color .15s}
+  transition:background-color .15s,box-shadow .15s}
 .switch i{position:absolute;top:2.5px;left:2.5px;width:19px;height:19px;border-radius:50%;
   background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
-.switch.on{background:var(--green)} .switch.on i{transform:translateX(16px)}
+.switch.on{background:var(--green);
+  box-shadow:0 0 10px color-mix(in srgb, var(--green) 45%, transparent)}
+.switch.on i{transform:translateX(16px)}
 input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 
 .track{height:5px;border-radius:99px;background:var(--line-2);margin:10px 0 6px;overflow:hidden;display:flex}
-.track i{display:block;height:100%;transition:width .4s cubic-bezier(.2,.8,.2,1)}
-.track i.g{background:var(--green)} .track i.w{background:var(--gold)} .track i.o{background:var(--red)}
-.track i.b{background:var(--blue)}
+.track i{display:block;height:100%;transition:width .4s cubic-bezier(.2,.8,.2,1),box-shadow .4s}
+.track i.g{background:var(--green);box-shadow:0 0 8px color-mix(in srgb, var(--green) 60%, transparent)}
+.track i.w{background:var(--gold);box-shadow:0 0 8px color-mix(in srgb, var(--gold) 60%, transparent)}
+.track i.o{background:var(--red);box-shadow:0 0 8px color-mix(in srgb, var(--red) 60%, transparent)}
+.track i.b{background:var(--blue);box-shadow:0 0 8px color-mix(in srgb, var(--blue) 60%, transparent)}
 .track-cap{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3)}
 .track-cap b{font-family:var(--mono);font-weight:400;color:var(--ink-2)}
 
@@ -153,6 +204,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .cd-t{font-family:var(--mono);font-size:13px;font-weight:500;display:block}
 .cd-bar{display:block;height:3px;border-radius:99px;background:var(--line-2);margin:3px 0 2px;overflow:hidden}
 .cd-bar i{display:block;height:100%;background:var(--green);border-radius:99px;
+  box-shadow:0 0 6px color-mix(in srgb, var(--green) 55%, transparent);
   transition:width .4s cubic-bezier(.2,.8,.2,1)}
 .cd-s{font-size:9.5px;color:var(--ink-3)}
 .cmp{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
@@ -183,15 +235,23 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chip.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .chip .n{font-family:var(--mono);font-size:11px;opacity:.75}
 .chip.alert{border-color:var(--amber);color:var(--amber)}
-.chip.alert.on{background:var(--amber);border-color:var(--amber);color:#fff}
+.chip.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
+  box-shadow:0 0 10px color-mix(in srgb, var(--amber) 55%, transparent)}
 
 .rigrow{display:flex;align-items:center;gap:10px;padding:9px 12px;width:100%;
   border-top:1px solid var(--line-2);text-align:left}
 .rigrow:first-child{border-top:none}
 .rigrow.sel{background:var(--blue-t)}
 .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ink-3)}
-.dot.run{background:var(--green)} .dot.off{background:var(--ink-3)}
-.dot.bad{background:var(--red)} .dot.warn{background:var(--amber)} .dot.build{background:var(--blue)}
+.dot.run{background:var(--green);animation:dotPulse 2.4s ease-out infinite}
+@keyframes dotPulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 50%, transparent)}
+  70%{box-shadow:0 0 0 6px color-mix(in srgb, var(--green) 0%, transparent)}
+  100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent)}}
+.dot.off{background:var(--ink-3)}
+.dot.bad{background:var(--red);box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
+.dot.warn{background:var(--amber);box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
+.dot.build{background:var(--blue);box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
 .rigrow .mid{flex:1;min-width:0}
 .rigrow .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
 .rigrow .sb{font-size:10.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;
@@ -223,11 +283,13 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .ev-t{font-family:var(--mono);font-size:10px;color:var(--ink-3);flex:none;width:52px}
 .ev-x{flex:1;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev-a{font-family:var(--mono);font-size:11.5px;flex:none}
-.ev.block{background:var(--gold-t);box-shadow:inset 2px 0 0 var(--gold)}
+.ev.block{background:var(--gold-t);
+  box-shadow:inset 2px 0 0 var(--gold), 0 0 14px color-mix(in srgb, var(--gold) 20%, transparent)}
 .ev.block .ev-x,.ev.block .ev-a{color:var(--gold);font-weight:500}
 .ev.pay .ev-a{color:var(--green)}
 .ev.bad .ev-x{color:var(--red)}
-.ev.big,.ev.jackpot{background:var(--ink)}
+.ev.big,.ev.jackpot{background:var(--ink);
+  box-shadow:0 0 16px color-mix(in srgb, var(--gold) 25%, transparent)}
 .ev.big .ev-x,.ev.big .ev-t,.ev.big .ev-a,.ev.jackpot .ev-x,.ev.jackpot .ev-t,.ev.jackpot .ev-a{
   color:var(--card);font-weight:500}
 .ev.site .ev-x{color:var(--blue)}
@@ -269,7 +331,8 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .warnbox.hard{background:var(--ink);color:var(--card)} .warnbox.hard b{color:var(--gold)}
 
 .sheet{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;
-  max-width:440px;margin:0 auto}
+  max-width:440px;margin:0 auto;animation:sheetIn .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetIn{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:translateY(0)}}
 .sheet-hd{display:flex;align-items:center;gap:10px;
   padding:calc(env(safe-area-inset-top) + 11px) 13px 10px;border-bottom:1px solid var(--line);background:var(--card)}
 .sheet-hd .t{font-size:14.5px;font-weight:600;letter-spacing:-.02em;flex:1}
@@ -285,8 +348,16 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .tab{flex:1;padding:7px 2px 8px;text-align:center;color:var(--ink-3);font-size:9.5px;font-weight:500;
   display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .15s}
 .tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;
-  stroke-linecap:round;stroke-linejoin:round}
+  stroke-linecap:round;stroke-linejoin:round;transition:filter .15s}
 .tab.on{color:var(--green)}
+.tab.on svg{filter:drop-shadow(0 0 5px color-mix(in srgb, var(--green) 60%, transparent))}
+
+/* Tab-switch motion — the outgoing view fades/settles out, the incoming one
+   settles in; mode="out-in" on the Transition in App.vue means only one of
+   these classes is ever active at a time. */
+.viewfade-enter-active,.viewfade-leave-active{transition:opacity .16s ease,transform .16s ease}
+.viewfade-enter-from{opacity:0;transform:translateY(7px)}
+.viewfade-leave-to{opacity:0;transform:translateY(-5px)}
 
 .toast{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;z-index:60;
   transform:translateX(-50%);max-width:400px;width:calc(100% - 30px);background:var(--gold);color:#fff;
