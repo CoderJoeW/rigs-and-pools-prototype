@@ -7,9 +7,14 @@ import StatChart from '../components/StatChart.vue';
 
 const g = useGameStore();
 const doneN=computed(()=>Object.keys((g.s.mile&&g.s.mile.done)||{}).length);
-const rank=computed(()=>g.RANKS[(g.s.mile&&g.s.mile.rank)||0][1]);
+// Clamped with Number.isFinite, not ||0 (issue #14): this indexes g.RANKS,
+// and ||0 only catches falsy corruption (NaN, undefined) — a malformed
+// non-numeric value (e.g. a stringified rank from a bad save) is truthy
+// and would sail through ||0 straight into an array index.
+const rankIdx=computed(()=>Number.isFinite(g.s.mile&&g.s.mile.rank) ? g.s.mile.rank : 0);
+const rank=computed(()=>g.RANKS[rankIdx.value][1]);
 const nextRank=computed(()=>{
-  const i=((g.s.mile&&g.s.mile.rank)||0)+1;
+  const i=rankIdx.value+1;
   return i<g.RANKS.length ? g.RANKS[i] : null;
 });
 const tracks=computed(()=>{
@@ -62,7 +67,7 @@ const tracks=computed(()=>{
             fill="none" style="stroke:var(--green)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
       </div>
       <p class="hint">One point per ~18 game hours. Card generations land every
-        {{ g.C.GEN_DAYS }} days — generation {{ g.s.gen||0 }} is current.</p>
+        {{ g.C.GEN_DAYS }} days — generation {{ fmt.n(g.s.gen) }} is current.</p>
     </div></div>
   </div>
 </template>

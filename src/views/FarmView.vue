@@ -48,9 +48,9 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
           <div><div class="k">Power today</div>
             <div class="v neg">{{ fmt.usd2(g.powerDay) }}</div></div>
           <div><div class="k">Blocks today</div>
-            <div class="v">{{ (g.s.today&&g.s.today.blocks)||0 }}</div></div>
+            <div class="v">{{ fmt.n(g.s.today&&g.s.today.blocks) }}</div></div>
           <div><div class="k">Best block ever</div>
-            <div class="v">{{ fmt.usd2(g.s.bestBlock||0) }}</div></div>
+            <div class="v">{{ Number.isFinite(g.s.bestBlock) ? fmt.usd2(g.s.bestBlock) : '—' }}</div></div>
         </div>
       </div></div>
 

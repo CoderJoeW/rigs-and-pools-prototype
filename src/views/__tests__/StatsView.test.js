@@ -28,4 +28,15 @@ describe('StatsView', () => {
     });
     expect(wrapper.text()).toContain('1 /');
   });
+
+  it('falls back to rank 0 on a malformed (non-numeric) rank instead of indexing with it (issue #14)', () => {
+    // g.RANKS is indexed by g.s.mile.rank. ||0 only catches falsy
+    // corruption (NaN, undefined) — a truthy non-numeric value, like a
+    // stringified rank from a mangled save, would sail through ||0
+    // straight into the array index. Number.isFinite catches that too.
+    const { wrapper } = mountWithStore(StatsView, {
+      seed: g => { g.s.mile.rank = 'not-a-rank'; },
+    });
+    expect(wrapper.text()).toContain('Hobbyist');
+  });
 });

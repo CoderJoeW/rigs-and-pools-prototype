@@ -93,4 +93,19 @@ describe('FarmView', () => {
     });
     expect(wrapper.text()).not.toContain('sitting idle');
   });
+
+  it('surfaces a NaN "blocks today"/"best block" instead of silently rendering it as a plausible 0 (issue #14)', () => {
+    // Same failure shape as issue #5's original bug: a NaN state field read
+    // through `X||0` renders a plausible-looking 0, hiding the corruption
+    // instead of surfacing it.
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        g.s.today.blocks = NaN;
+        g.s.bestBlock = NaN;
+      },
+    });
+    expect(wrapper.text()).toContain('Blocks today—');
+    expect(wrapper.text()).toContain('Best block ever—');
+  });
 });
