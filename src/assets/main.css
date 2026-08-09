@@ -62,12 +62,26 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 /* height, not min-height, so the nav is a real flex child pinned to the bottom.
    100dvh follows the mobile URL bar; 100vh is the fallback. */
 #app{max-width:440px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);
-  display:flex;flex-direction:column;position:relative;overflow:hidden}
+  display:flex;flex-direction:column;position:relative;isolation:isolate;overflow:hidden}
 
 /* Ambient atmosphere — a slow-drifting glow behind the whole shell plus a
    near-invisible grid, so the farm reads as a living room full of hardware
-   rather than a flat list. Sits behind every flex child (.top/.body/.tabs
-   already carry z-index as flex items); color-mix() pulls straight from the
+   rather than a flat list.
+
+   z-index:-1 plus isolation:isolate on #app (not transform/filter/contain,
+   which would also make #app a new containing block and break .sheet/.toast's
+   position:fixed) is load-bearing, not decoration: .body/.top's other flex
+   siblings are ordinary flow content with z-index:auto, which paints in an
+   EARLIER step than any *positioned* z-index:0-or-more box regardless of DOM
+   order (CSS2.1 Appendix E — positioned descendants paint after in-flow
+   ones). A positioned .ambient at z-index:0 therefore painted OVER every
+   card, not under it — invisible at this layer's original low opacity, but
+   the day/night pass raised both blobs and grid enough that it visibly
+   washed out text everywhere. Negative z-index is the only reliable way for
+   a *positioned* decorative layer to sit behind ordinary flow content, and
+   isolation:isolate is what keeps that -1 scoped to #app's own background
+   instead of escaping to the page root and going behind #app's opaque bg too
+   (invisible again, just the other way). color-mix() pulls straight from the
    theme tokens so the glow brightens on dark without any separate palette.
 
    The three blobs are wired to the sim's sky through the --amb-* factors, so
@@ -79,7 +93,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
    whole layer instead of dimming it, which is what overcast actually looks
    like. Every number below sits so that a clear afternoon lands within a point
    or two of the flat 24/22/20 this layer used before. */
-.ambient{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ambient{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .ambient::before{content:'';position:absolute;inset:-12%;
   background:
     radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) calc(10% + 16% * var(--amb-lum)), transparent), transparent 62%),
