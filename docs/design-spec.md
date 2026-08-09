@@ -1098,7 +1098,7 @@ That leaves roughly **twenty days with no purchase worth making.** The proportio
 
 **Deliberately: no cash, no perks.** Free money inflates the economy the game *is*; permanent perks are prestige power-creep by another door; daily-chore quests are the manipulation §13 refuses. A milestone is a *record* — celebration and direction, not payment. The economy itself remains the only source of power.
 
-Measured: a stewarded six-rig farm on a deep chain reaches **14/24 (Engineer) by day 42**, with exactly the long-horizon ten remaining. Milestones fire once, survive reload, and old saves start the board fresh with counters defaulting to zero.
+Measured: a stewarded six-rig farm on a deep chain reaches **14/24 (Engineer) by day 42**, with exactly the long-horizon ten remaining. Milestones fire once, survive reload, and old saves start the board fresh with counters defaulting to zero. *(This figure predates issue #10's b2/b3 threshold raise — a farm committed to a slow chain from the start now clears fewer of the two block-count milestones by day 42, though Engineer rank itself, which only needs 12, still holds. Needs re-measuring against the current thresholds.)*
 
 **Running a pool remains the second progression axis** (§5) — capital rather than hardware — and the Pools track ties the board to it: founder, PPS operator, terahash pool, five thousand withdrawn.
 

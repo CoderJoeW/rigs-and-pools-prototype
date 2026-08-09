@@ -405,6 +405,11 @@ describe('milestones', () => {
     expect(g.s.mile.done.b1).toBeTypeOf('number');
     expect(g.s.mile.done.b2).toBeUndefined();
     expect(g.s.mile.done.b3).toBeUndefined();
-    expect(g.s.mile.rank).toBeLessThan(1); // still Hobbyist, not Tinkerer, from block volume alone
+    // exactly h1, b1, c2 fire from one passive day on the preset rig — pin
+    // the whole set, not just a rank number, so a future milestone that
+    // starts firing passively fails loudly here instead of silently
+    // creeping the margin against Tinkerer's 4-milestone bar
+    expect(Object.keys(g.s.mile.done).sort()).toEqual(['b1', 'c2', 'h1']);
+    expect(g.s.mile.rank).toBe(0); // still Hobbyist, not Tinkerer, from block volume alone
   });
 });

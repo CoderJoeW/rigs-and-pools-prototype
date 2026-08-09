@@ -23,13 +23,20 @@ export const MILESTONES=[
   // opening build. h1/b1 stay untouched on purpose: h1 deliberately mirrors
   // onboarding's 'earn' step (see onboarding.js), and b1 is meant to be a
   // quick, celebratory first-block moment — both are supposed to fire fast.
-  // These two are raised to actually require sustained, multi-day
-  // operation: ~7,500 (~3 days at that same passive rate) for "habit";
-  // ~50,000 for "machine" takes considerably longer on an untouched single
-  // rig — the network's simulated hashrate keeps growing while this one
-  // doesn't, so its share of blocks thins over time (measured: over a
-  // month, not weeks, for one static rig; a real engaged, multi-rig farm
-  // clears it far sooner). Both stay in reach of patient idle play
+  // These two are raised to actually require sustained operation: ~7,500
+  // (~3 days at that same passive rate) for "habit". ~50,000 for "machine"
+  // is out of reach of a rig left running with zero further attention —
+  // wear drags a never-repaired rig's own output down over time, and it
+  // permanently brownouts (measured: around day 12, plateaued near 25k
+  // blocks) well short of 50k, same "neglect has real consequences" bar the
+  // wear/brownout system already sets elsewhere. Reaching it means either
+  // some stewardship (a repair, an added rig) or the ordinary early-game
+  // path of banking blocks on fast Tessera before migrating elsewhere — it
+  // does NOT require staying on Tessera forever, since blocksSolved is a
+  // lifetime total that a chain switch never resets, but it does mean this
+  // one track is inherently paced by how much fast-chain volume a run
+  // accumulates, the same way the Pools track is paced by whether a run
+  // ever founds one. Both remain within reach of patient idle play
   // (design-spec §12 explicitly protects that pattern) without being
   // clearable before breakfast on day one.
   { id:'b2', track:'Blocks', name:'Block habit', desc:'7,500 blocks found',
