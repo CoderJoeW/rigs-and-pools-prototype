@@ -27,7 +27,7 @@ export const MILESTONES=[
   // (~3 days at that same passive rate) for "habit". ~50,000 for "machine"
   // is out of reach of a rig left running with zero further attention —
   // wear drags a never-repaired rig's own output down over time, and it
-  // permanently brownouts (measured: around day 12, plateaued near 25k
+  // permanently brownouts (measured: day 12-14, plateaued around 24k-28k
   // blocks) well short of 50k, same "neglect has real consequences" bar the
   // wear/brownout system already sets elsewhere. Reaching it means either
   // some stewardship (a repair, an added rig) or the ordinary early-game
