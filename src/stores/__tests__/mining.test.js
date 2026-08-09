@@ -323,6 +323,64 @@ describe('jackpot blocks', () => {
     expect(g.s.orphaned).toBeGreaterThan(0);
     expect(g.s.recentBlockUsd.tessera).toBeUndefined(); // never even lazily created
   });
+
+  it('keys the baseline by chain+pool, not chain alone, so a PPLNS share never mixes with the solo window (issue #36)', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly, mining solo on Tessera
+
+    g.s.bestBlock = 1e9; // isolate from the record path
+    g.s.recentBlockUsd = { tessera: [0.1, 0.1, 0.1, 0.1, 0.1] };
+
+    // a hefty fee (30%) so a pooled share is a visibly different magnitude
+    // from a solo block, same shape as the false-jackpot scenario filed —
+    // leaving a pool for solo (or vice versa) on the SAME chain
+    g.foundPool('tessera', 'PPLNS', 0.30);
+    const pool = g.s.pools.find(p => p.owner === 'you');
+    g.setGroupPool(g.s.groups[0], pool.id);
+    expect(g.poolHash(pool)).toBeGreaterThan(0); // your group is the pool's only hash — ph===mh
+
+    const key = 'tessera|' + pool.id;
+    let guard = 0;
+    while (!g.s.recentBlockUsd[key] && guard++ < 4000) g.stepTick(5);
+
+    // the pooled payout landed in its own chain+pool window...
+    expect(g.s.recentBlockUsd[key]).toBeTruthy();
+    // ...and never touched the solo window it would have shared under the old chain-only key
+    expect(g.s.recentBlockUsd.tessera).toEqual([0.1, 0.1, 0.1, 0.1, 0.1]);
+  });
+
+  it('tracks a PPLNS share credited to you even when your own group did not draw the winning ticket (issue #32)', () => {
+    const g = freshStore();
+    // Tessera has no rivals (SIM_CHAINS excludes it), so use Ferro — a
+    // rival pool with a dominant simulated hashrate makes "the pool found
+    // it, not your group" (w.mine===false) overwhelmingly the common case,
+    // while your group still holds a real, nonzero share of the pool.
+    const pool = g.s.pools.find(p => p.chain === 'ferro' && p.owner === 'rival');
+    pool.scheme = 'PPLNS'; pool.fee = 0.02; pool.live = true;
+    const sim = g.s.sims.find(m => m.chain === 'ferro');
+    sim.pool = pool.id;
+    sim.hash = 1e6; // dwarfs a starter rig, so the sim wins nearly every draw
+
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    g.setGroupChain(g.s.groups[0], 'ferro');
+    g.setGroupPool(g.s.groups[0], pool.id);
+    expect(g.poolHash(pool)).toBeGreaterThan(0);
+
+    g.s.recentBlockUsd = {};
+    const key = 'ferro|' + pool.id;
+    let guard = 0;
+    while (!g.s.recentBlockUsd[key] && guard++ < 4000) g.stepTick(5);
+
+    // credited to your group's pending balance, and entered into this
+    // pool's own baseline, despite the sim (not you) almost certainly
+    // having drawn the winning ticket every time
+    expect(g.s.groups[0].pending).toBeGreaterThan(0);
+    expect(g.s.recentBlockUsd[key]).toBeTruthy();
+  });
 });
 
 describe('chain price', () => {

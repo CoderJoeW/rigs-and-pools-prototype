@@ -402,15 +402,30 @@ export function installTick(G){
      chain graduation (the exact motivating scenario for this fix, turned
      into exactly the feed-spam issue #4 already fixed once). Keying by
      chain id makes "usual" mean usual for THAT chain, matching what the
-     comment always claimed. */
-  function blockBaseline(chainId){
-    const arr=G.s.recentBlockUsd[chainId];
+     comment always claimed.
+
+     PER POOL too (issue #36): a solo block is the whole reward, a PPLNS
+     payout is only your slice of one, and at a 10% pool share those differ
+     ~10x — comfortably over JACKPOT_MULT — inside a single chain's window.
+     Leaving a pool for solo on the same chain (or running one solo group
+     and one pooled group on the same chain at once) mixed the two
+     magnitudes and fired false jackpots. baselineKey keeps the solo key
+     identical to the chain id (so old save data and existing tests still
+     line up) and gives every pool its own sub-window.
+
+     Also tracks every credited PPLNS share, not just the ones your own
+     group personally found (issue #32) — `share` doesn't depend on
+     w.mine, so a small pool member's real income was mostly invisible to
+     its own baseline before this. */
+  function baselineKey(c, pool){ return pool ? c.id+'|'+pool.id : c.id; }
+  function blockBaseline(key){
+    const arr=G.s.recentBlockUsd[key];
     if(!arr || arr.length<C.BLOCK_BASELINE_MIN) return null;
     const s=[...arr].sort((a,b)=>a-b), mid=Math.floor(s.length/2);
     return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
   }
-  function trackBlockUsd(chainId, usd){
-    const arr=G.s.recentBlockUsd[chainId]||(G.s.recentBlockUsd[chainId]=[]);
+  function trackBlockUsd(key, usd){
+    const arr=G.s.recentBlockUsd[key]||(G.s.recentBlockUsd[key]=[]);
     arr.push(usd);
     // while, not if: a single shift only ever prevents further growth from
     // an already-correctly-sized array — it can't recover one that's
@@ -479,9 +494,10 @@ export function installTick(G){
         }
         G.s.wallet[c.id]+=out; G.today().earned+=out*G.price(c); G.today().blocks++;
         if(share>0.0002){
+          const usd=share*G.price(c);
+          const key=baselineKey(c,pool);
+          const baseline=blockBaseline(key);
           if(w.mine){
-            const usd=share*G.price(c);
-            const baseline=blockBaseline(c.id);
             const jackpot=baseline && usd>=baseline*C.JACKPOT_MULT;
             if(jackpot){
               G.say('jackpot',w.group.name+' solved the '+c.name+' pool block — '
@@ -492,9 +508,9 @@ export function installTick(G){
               G.say('block',w.group.name+' solved the '+c.name+' pool block','+'+fmt.c(share),share,c.tick);
               G.pop(w.group.name+' found it','+'+fmt.c(share)+' '+c.tick,'',{kind:'block'});
             }
-            trackBlockUsd(c.id, usd);
           }
           else G.say('pay',pool.name+' found a block','+'+fmt.c(share),share,c.tick);
+          trackBlockUsd(key, usd);
         }
       }
     } else if(w.mine){
