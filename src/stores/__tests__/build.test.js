@@ -9,6 +9,34 @@ describe('build', () => {
     expect(g.dp.cost).toBeLessThanOrEqual(g.s.cash);
   });
 
+  it('openBuildCost (via idleCashAdvice) quotes exactly what generatePreset would draft under unlimited cash (issue #27)', () => {
+    // openBuildCost (the Farm idle-cash advisory) and generatePreset (the
+    // Build tab) used to run two near-identical, hand-duplicated copies of
+    // the same site-aware search — already caught silently diverging once
+    // (a missing psu.price term). Both now share one candidateBuilds
+    // generator; this pins them staying in exact agreement across a couple
+    // of site/catalogue shapes rather than relying on a future reader to
+    // notice a hand-edit only landed in one of the two. openBuildCost
+    // itself isn't part of the store's public surface, so this reads it
+    // through idleCashAdvice.cost, the one thing that actually calls it.
+    const g = freshStore();
+    g.s.cash = 1e9; // clear of both the cash check AND the 2x-idle threshold
+
+    expect(g.generatePreset()).toBe(true);
+    expect(g.idleCashAdvice.cost).toBeCloseTo(g.dp.cost, 5);
+
+    // again after actually building once, so the catalogue/site state has
+    // moved (a rig now occupies a position and draws power) — extra power
+    // added directly (bypassing the source's install queue) so a second
+    // rig has real headroom to search against, isolating this from the
+    // unrelated "no capacity at all" case both functions already agree on
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    g.active.sources.push({ p: 's-400', n: 1 });
+    expect(g.generatePreset()).toBe(true);
+    expect(g.idleCashAdvice.cost).toBeCloseTo(g.dp.cost, 5);
+  });
+
   it('spends cash, adds a rig under construction, and switches to the Rigs tab', () => {
     const g = freshStore();
     g.generatePreset();
