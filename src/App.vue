@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
@@ -30,6 +30,49 @@ function applyTheme(theme){
 watch(()=>g.s.theme, applyTheme, {immediate:true});
 const onSystemThemeChange=()=>{ if(g.s.theme==='auto') applyTheme('auto'); };
 if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
+
+/* Ambient atmosphere — the decorative .ambient layer reads the simulation's own
+   sky rather than sitting still. Purely presentational: it consumes the same
+   values the TopBar already puts on screen as chips (solarFactor, ambient temp,
+   cloud cover) and publishes four unitless 0..1 factors that main.css folds into
+   .ambient's color-mix() gradients. Set on documentElement next to the
+   theme-color sync above for the same reason: it's a document-level paint
+   detail, not something a component should own.
+
+   The hour is restated here because timeOfDay.js keeps hourOf() internal (it
+   isn't on the store's export surface). `elev` is that module's own
+   sin(pi*(h-6)/12) solar curve, kept SIGNED instead of clamped at 0 so it stays
+   continuous through the night: +1 at noon, 0 at 06:00/18:00, -1 at midnight.
+   That sign is what makes dawn and dusk a smooth crossing rather than a jump. */
+const clamp01 = v => v<0 ? 0 : v>1 ? 1 : v;
+const atmosphere = computed(()=>{
+  const h = (((g.s.t%86400)+86400)%86400)/3600;
+  const elev = Math.sin(Math.PI*(h-6)/12);
+  const cloud = clamp01(g.s.weather ? g.s.weather.now.cloud : 0);
+  const day = clamp01((elev+0.15)/0.55);              // 0 through the night, 1 by mid-morning
+  const golden = clamp01(1-Math.abs(elev)/0.40);      // sun near the horizon, either side
+  const heat = clamp01((g.ambient-g.C.AMBIENT_LOW)/(g.C.AMBIENT_HIGH-g.C.AMBIENT_LOW));
+  const solar = clamp01(g.solarFactor);               // already cloud-attenuated by sky()
+  return {
+    // How much light there is at all: mostly solar, with a floor of daylight so
+    // an overcast noon still outranks midnight.
+    '--amb-lum': clamp01(0.08+0.62*solar+0.30*day).toFixed(3),
+    // Golden hour, dulled by cloud, plus a little of the afternoon's heat.
+    '--amb-warm': clamp01(0.80*golden*(1-0.55*cloud)+0.20*heat*day).toFixed(3),
+    // The night's cool cast — time of day only, independent of how bright it is.
+    '--amb-cool': (1-day).toFixed(3),
+    // Cloud cover, which desaturates everything rather than dimming it.
+    '--amb-haze': cloud.toFixed(3),
+  };
+});
+const AMB_KEYS=['--amb-lum','--amb-warm','--amb-cool','--amb-haze'];
+const ambApplied={};
+/* Ticks land every TICK_MS, so only the values that actually moved are written
+   — at 1x most ticks change nothing past 3 decimals. */
+watch(atmosphere, vals=>{
+  const st=document.documentElement.style;
+  for(const k of AMB_KEYS) if(ambApplied[k]!==vals[k]){ ambApplied[k]=vals[k]; st.setProperty(k,vals[k]); }
+}, {immediate:true});
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
@@ -44,6 +87,7 @@ onMounted(async ()=>{
 onUnmounted(()=>{ clearInterval(timer); clearInterval(saver);
   window.removeEventListener('pagehide',onLeave);
   document.removeEventListener('visibilitychange',onHide);
+  for(const k of AMB_KEYS) document.documentElement.style.removeProperty(k);
   if(darkMedia) darkMedia.removeEventListener('change',onSystemThemeChange); });
 const views={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
              chains:ChainsView,market:MarketView,stats:StatsView};

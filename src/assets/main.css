@@ -1,4 +1,23 @@
+/* Ambient sky factors, written by App.vue from the live simulation (see the
+   .ambient rules below for what each one does). Registering them as typed
+   properties is what lets the color-mix() gradients they feed INTERPOLATE — an
+   unregistered custom property has no type, so it would snap from one value to
+   the next and the sky would step rather than drift. The initial values are a
+   clear afternoon, which is also what the :root declarations below restate so
+   the layer still paints in a browser without @property, and before App.vue's
+   first watch fires. These are theme-independent: the dark palette leaves them
+   alone and the color-mix() picks up the dark tokens for free. */
+@property --amb-lum { syntax:'<number>'; inherits:true; initial-value:0.85 }
+@property --amb-warm{ syntax:'<number>'; inherits:true; initial-value:0.2 }
+@property --amb-cool{ syntax:'<number>'; inherits:true; initial-value:0 }
+@property --amb-haze{ syntax:'<number>'; inherits:true; initial-value:0 }
 :root{
+  --amb-lum:.85; --amb-warm:.2; --amb-cool:0; --amb-haze:0;
+  /* Ticks arrive ten times a second and jump in whole sim-hours on 3600x, so
+     the factors are eased rather than applied raw. Global prefers-reduced-motion
+     already flattens every transition-duration, this one included. */
+  transition:--amb-lum 1.6s linear, --amb-warm 1.6s linear,
+             --amb-cool 1.6s linear, --amb-haze 1.6s linear;
   --bg:#F5F6F4; --backdrop:#EDEFEB; --card:#FFF; --ink:#12171A; --ink-2:#4C5551; --ink-3:#8F9995;
   --line:#E5E8E4; --line-2:#F0F2EE;
   --green:#137A55; --green-t:#E9F4EF;
@@ -49,15 +68,28 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
    near-invisible grid, so the farm reads as a living room full of hardware
    rather than a flat list. Sits behind every flex child (.top/.body/.tabs
    already carry z-index as flex items); color-mix() pulls straight from the
-   theme tokens so the glow brightens on dark without any separate palette. */
+   theme tokens so the glow brightens on dark without any separate palette.
+
+   The three blobs are wired to the sim's sky through the --amb-* factors, so
+   the room outside the window is the same one the rigs are running in: the
+   green production glow tracks solar output, the blue one is the night's cool
+   cast, and the gold one is sunrise/sunset plus the afternoon's heat. Overall
+   opacity follows whichever of light or warmth is stronger, so a sunset stays
+   present after solar has already fallen to zero; heavy cloud desaturates the
+   whole layer instead of dimming it, which is what overcast actually looks
+   like. Every number below sits so that a clear afternoon lands within a point
+   or two of the flat 24/22/20 this layer used before. */
 .ambient{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .ambient::before{content:'';position:absolute;inset:-12%;
   background:
-    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) 24%, transparent), transparent 62%),
-    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 62%),
-    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) 20%, transparent), transparent 62%);
+    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) calc(10% + 16% * var(--amb-lum)), transparent), transparent 62%),
+    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) calc(8% + 17% * var(--amb-cool)), transparent), transparent 62%),
+    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) calc(4% + 26% * var(--amb-warm)), transparent), transparent 62%);
+  opacity:calc(.58 + .42 * max(var(--amb-lum), var(--amb-warm)));
+  filter:saturate(calc(1 - .45 * var(--amb-haze)));
   animation:ambientDrift 24s ease-in-out infinite alternate}
-.ambient::after{content:'';position:absolute;inset:0;opacity:.7;
+.ambient::after{content:'';position:absolute;inset:0;
+  opacity:calc((.42 + .34 * var(--amb-lum)) * (1 - .3 * var(--amb-haze)));
   background-image:linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size:25px 25px;
