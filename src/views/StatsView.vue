@@ -48,9 +48,9 @@ const tracks=computed(()=>{
       </div>
     </div>
 
-    <StatChart title="Net per day" :data="g.s.netHist" money color="#137A55" />
-    <StatChart title="Hashrate" :data="g.s.hashHist||[]" color="#2E6BA8" />
-    <StatChart title="Cash" :data="g.s.cashHist||[]" money color="#C98A0B" />
+    <StatChart title="Net per day" :data="g.s.netHist" money color="var(--green)" />
+    <StatChart title="Hashrate" :data="g.s.hashHist||[]" color="var(--blue)" />
+    <StatChart title="Cash" :data="g.s.cashHist||[]" money color="var(--gold)" />
     <div class="sec"><span class="eyebrow">Coin prices</span>
       <span class="eyebrow">last ~80 days</span></div>
     <div class="card"><div class="card-bd pt">
@@ -59,7 +59,7 @@ const tracks=computed(()=>{
         <svg viewBox="0 0 100 22" preserveAspectRatio="none"
              style="width:100%;height:34px;display:block" aria-hidden="true">
           <path :d="sparkPath(c.hist, 20, 18)"
-            fill="none" stroke="#137A55" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
+            fill="none" style="stroke:var(--green)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
       </div>
       <p class="hint">One point per ~18 game hours. Card generations land every
         {{ g.C.GEN_DAYS }} days — generation {{ g.s.gen||0 }} is current.</p>

@@ -72,8 +72,8 @@ const decommission=()=>{
 // the site page had grown to one very long scroll; each section now folds
 // behind a summary line, with the dashboard at the top always visible
 const sec=reactive({power:false,batt:false,cool:false});
-const FLOW_C={ solar:'#C98A0B', battery:'#2E6BA8', grid:'#8A8F98',
-  rigs:'#137A55', cooling:'#2E6BA8', charging:'#C98A0B', unserved:'#B4232A' };
+const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
+  rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
 const segs=(parts,total)=>parts.map(([k,w])=>({k,w,
   pct: total>0?Math.max(0,w)/total*100:0, c:FLOW_C[k]}));
 /* sitePlan/flowOf each re-walk and re-sort the site's sources; the power and

@@ -17,7 +17,7 @@ const hi = computed(()=> p.data&&p.data.length?Math.max(...p.data):0);
     <div class="card-bd">
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" style="width:100%;height:64px;display:block"
            aria-hidden="true">
-        <path :d="path" fill="none" :stroke="p.color||'#137A55'" stroke-width="1.6"
+        <path :d="path" fill="none" :style="{stroke: p.color||'var(--green)'}" stroke-width="1.6"
               vector-effect="non-scaling-stroke"/></svg>
       <div class="track-cap"><span>{{ p.money?fmt.usd2(lo):fmt.hash(lo) }}</span>
         <b>{{ p.money?fmt.usd2(hi):fmt.hash(hi) }}</b></div>
