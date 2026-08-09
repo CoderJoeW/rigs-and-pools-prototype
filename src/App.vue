@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
@@ -73,6 +73,42 @@ watch(atmosphere, vals=>{
   const st=document.documentElement.style;
   for(const k of AMB_KEYS) if(ambApplied[k]!==vals[k]){ ambApplied[k]=vals[k]; st.setProperty(k,vals[k]); }
 }, {immediate:true});
+/* Rank-up flourish (issue #47) — the screen acknowledges a rank-up, not just
+   the toast. #40 gave a rank-up its own toast, but a toast is one fixed box at
+   the top of the screen the player may not be looking at, and the rarest,
+   most permanent event in the game (5-6 in a whole run) occupied exactly the
+   same amount of the visual field as a routine "Biggest block yet".
+
+   Detected here rather than pushed from tick.js for the same reason the
+   --amb-* factors above are computed here: this is a presentational,
+   document-level reaction to a game-state change, and the game has no
+   business knowing the screen flashed. pop() already funnels every "worth
+   interrupting the player for" moment through one place and stamps it with a
+   cls, and s.toast.n is the counter that increments once per toast that
+   actually lands — so watching it catches exactly the rank-ups that reached
+   the screen, and none that pop()'s rate limit swallowed. It fires only for
+   cls==='rankup'; every other kind of toast is unaccompanied, as before.
+
+   Nothing is watched deeply and nothing is read on the first tick: the watch
+   is not immediate, so a save restored with a rank-up toast still in s.toast
+   does not re-flash it on reload.
+
+   The element is mounted for FLASH_MS and then removed, which is what makes
+   the reduced-motion fallback work: with motion suppressed the layer is a
+   static edge glow that is simply present for that window and then gone (see
+   .rankflash in main.css). The CSS animation is shorter than the window, so
+   it has already settled to transparent before the node leaves. The :key is
+   the counter, so two rank-ups in quick succession restart the animation
+   rather than the second one landing on an element mid-fade. */
+const FLASH_MS=900;
+const rankFlash=ref(0);
+let flashTimer=null;
+watch(()=>g.s.toast.n, ()=>{
+  if(g.s.toast.cls!=='rankup') return;
+  rankFlash.value++;
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
+});
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
@@ -84,7 +120,7 @@ onMounted(async ()=>{
   window.addEventListener('pagehide',onLeave);
   document.addEventListener('visibilitychange',onHide);
 });
-onUnmounted(()=>{ clearInterval(timer); clearInterval(saver);
+onUnmounted(()=>{ clearInterval(timer); clearInterval(saver); clearTimeout(flashTimer);
   window.removeEventListener('pagehide',onLeave);
   document.removeEventListener('visibilitychange',onHide);
   for(const k of AMB_KEYS) document.documentElement.style.removeProperty(k);
@@ -116,6 +152,7 @@ const allTabs=[
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
+  <div v-if="rankFlash" class="rankflash" :key="'rf'+rankFlash" aria-hidden="true"></div>
   <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n"
        :role="g.s.toast.cls==='dark'?'alert':'status'" aria-live="polite" aria-atomic="true">
     <span>{{ g.s.toast.text }}</span><span class="num">{{ g.s.toast.amount }}</span></div>

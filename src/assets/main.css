@@ -592,6 +592,66 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   10%{opacity:1;transform:translate(-50%,2px) scale(1.02)}
   18%,86%{opacity:1;transform:translate(-50%,0) scale(1)}
   100%{opacity:0;transform:translate(-50%,-14px) scale(.99)}}
+/* Issue #47: the SCREEN acknowledges a rank-up, not just the toast. #40 gave
+   the moment its own plaque, but a plaque is one fixed box at the top of the
+   viewport, and a rank-up — 5-6 in an entire run, permanent, unpayable —
+   occupied exactly as much of the player's visual field as a routine
+   "Biggest block yet". This is the accompaniment: a soft bloom that opens
+   from behind the toast, washes the shell, and is gone. Mounted by App.vue
+   for ~900ms on a cls==='rankup' toast only (see the watch there).
+
+   Deliberately an ACCOMPANIMENT and nothing more:
+     - z-index 55 sits above the tab bar (30) and top bar (20), so the whole
+       shell is touched, but UNDER .toast (60) — the toast is never tinted,
+       dimmed or overlapped by it — and under .sheet (80), so an open sheet
+       keeps the screen it owns.
+     - all of the motion is over inside .78s, against the toast's 4.6s hold,
+       so it reads as the toast's arrival rather than as a second event
+       competing with it, and the screen is settled long before the player
+       has finished reading the rank name.
+     - pointer-events:none and aria-hidden: it can neither swallow a tap nor
+       reach a screen reader, which already hears the toast's own live region.
+
+   position:absolute inside #app rather than fixed, so on a desktop-width
+   window it covers the 440px shell — the thing the player is actually looking
+   at — instead of flooding the empty backdrop either side of it.
+
+   Colour comes from color-mix() on --gold/--green, the same two tokens
+   .toast.rankup builds its plaque from, so it is theme-adaptive for free the
+   way .ambient is: the dark palette's brighter tokens light the bloom without
+   a second set of colours to keep in sync.
+
+   Only opacity and transform animate — both compositor properties, so a
+   phone paints this once and moves a layer, rather than re-rasterising a
+   full-shell gradient every frame the way an animated background-size or an
+   @property-driven gradient stop would. Everything that moves is one
+   animation on the ELEMENT (no ::before/::after sweep), which matters
+   because the blanket reduced-motion rule at the bottom of this file uses
+   `*` and does not match pseudo-elements. transform-origin is the top
+   centre: the light opens from behind the toast, where the eye already is.
+
+   No transform is on any ANCESTOR of the toast — this is its sibling — so
+   .toast's position:fixed containing block is untouched. */
+.rankflash{position:absolute;inset:0;z-index:55;pointer-events:none;
+  transform-origin:50% 0;
+  background:
+    radial-gradient(74% 40% at 50% 0%, color-mix(in srgb, var(--gold) 30%, transparent), transparent 70%),
+    radial-gradient(140% 112% at 50% 0%, color-mix(in srgb, var(--green) 17%, transparent), transparent 78%);
+  animation:rankflash .78s cubic-bezier(.16,.84,.24,1) forwards}
+@keyframes rankflash{0%{opacity:0;transform:scale(.88)}
+  16%{opacity:1}
+  100%{opacity:0;transform:scale(1.1)}}
+/* The blanket rule below collapses any animation to nothing, which for a
+   flourish means it would simply not happen — and #47 asks for a static
+   acknowledgment rather than silence. So under reduced motion the bloom is
+   dropped for its opposite: a still edge glow, no scale and no fade, present
+   for the same ~900ms window App.vue mounts the element for and then gone.
+   Nothing moves; the screen is briefly lit at its border. */
+@media (prefers-reduced-motion:reduce){
+  .rankflash{animation:none;opacity:1;transform:none;background:none;
+    box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--gold) 42%, transparent),
+               inset 0 0 34px 4px color-mix(in srgb, var(--green) 20%, transparent)}
+}
 /* ---- Press response (issue #44) -------------------------------------
    Everything in this app used to answer a tap with a background swap and
    nothing else, and the hover states added by the overhaul are gated behind
