@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
+import ChainMark from '../components/ChainMark.vue';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
@@ -85,7 +86,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
               </div>
             </template>
             <div v-else style="display:flex;align-items:baseline;gap:8px">
-              <b style="flex:1">{{ gr.name }}
+              <b style="flex:1"><ChainMark :chain="gr.chain" />{{ gr.name }}
                 <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:2px"
                         :aria-label="'Rename '+gr.name" @click="startRenameGroup(gr)">Rename</button>
                 <span v-if="advice" class="tag"

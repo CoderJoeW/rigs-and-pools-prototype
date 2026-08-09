@@ -24,6 +24,13 @@
   --gold:#C98A0B;  --gold-t:#FCF2DC; --amber:#C98A0B;
   --red:#BE443A;   --red-t:#FAEDEB;
   --blue:#2E6BA8;  --blue-t:#E9F0F7;
+  /* Chain identity (see chains.js): each chain owns an OKLCH hue, both themes
+     own the lightness and chroma. Set here rather than per chain so all five
+     shift together — one number darkens the whole set against a white card and
+     another lightens it against a dark one, and no chain can drift out of step
+     with the others. Light theme: L .58 puts every mark at 3.8:1 or better on
+     --card, past the 3:1 a non-text indicator needs. */
+  --chain-l:.58; --chain-c:.13;
   --top-bg:rgba(245,246,244,.92);
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;
@@ -49,6 +56,9 @@
     --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
     --red:#E2685C;   --red-t:#3A211E;
     --blue:#5B9AD9;  --blue-t:#1C2A3A;
+    /* Lifted, not just re-tinted: .58 on the dark card is a smudge. .76 lands
+       every chain at 7:1 or better there. */
+    --chain-l:.76; --chain-c:.13;
     --top-bg:rgba(20,24,26,.85);
   }
 }
@@ -59,6 +69,7 @@
   --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
   --red:#E2685C;   --red-t:#3A211E;
   --blue:#5B9AD9;  --blue-t:#1C2A3A;
+  --chain-l:.76; --chain-c:.13;
   --top-bg:rgba(20,24,26,.85);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -309,6 +320,27 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .dot.bad{background:var(--red);box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
 .dot.warn{background:var(--amber);box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
 .dot.build{background:var(--blue);box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
+
+/* Chain mark — the same accent-and-glow idiom as .dot above, deliberately cut
+   to a different SHAPE. A .dot is a circle and always means status; a .cmk is a
+   rounded square and always means identity, so the two never have to be told
+   apart by colour alone in a row like "· Main · Tessera" that carries both. The
+   hue arrives as --chain-h from the ChainMark component (see chains.js); the
+   rest of the colour is the theme's.
+   oklch() rather than hsl() because hsl lightness is not perceptual — hsl(50%)
+   yellow and hsl(50%) blue are nowhere near the same brightness, so one shared
+   pair of L/C values could not hold five hues at one weight. It costs nothing
+   in support: this file already leans on color-mix() and @property, which land
+   in the same browsers or later. */
+.cmk{display:inline-block;flex:none;width:8px;height:8px;border-radius:2.5px;
+  vertical-align:-.5px;margin-right:5px;
+  background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));
+  box-shadow:0 0 5px oklch(var(--chain-l) var(--chain-c) var(--chain-h) / .45)}
+/* On a chain's own row in the Chains tab there is nothing else to identify, so
+   the mark carries more weight — it is the legend the rest of the app refers
+   back to. */
+.cmk.lg{width:10px;height:10px;border-radius:3px;vertical-align:0;margin-right:6px;
+  box-shadow:0 0 8px oklch(var(--chain-l) var(--chain-c) var(--chain-h) / .5)}
 .rigrow .mid{flex:1;min-width:0}
 .rigrow .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
 .rigrow .sb{font-size:10.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;

@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
+import ChainMark from '../components/ChainMark.vue';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
@@ -213,7 +214,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
           <span class="nm">{{ r.name }}
             <span v-if="stateOf(r).k!=='run'" class="sb" style="margin:0">{{ stateOf(r).label }}</span></span>
           <div class="sb">{{ r.units.length }}× {{ g.PART(r.units[0].p).name }}
-            · {{ g.groupOf(r).name }} · {{ g.chain(g.groupOf(r).chain).name }}</div>
+            · {{ g.groupOf(r).name }} · <ChainMark :chain="g.groupOf(r).chain"
+            />{{ g.chain(g.groupOf(r).chain).name }}</div>
           <div class="wearbar" role="img" :aria-label="'Wear '+(avgWear(r)*100).toFixed(0)+'%'">
             <i :class="avgWear(r)>0.6?'b':avgWear(r)>0.35?'w':''"
                :style="{width:(avgWear(r)*100).toFixed(0)+'%'}"></i></div>
