@@ -64,19 +64,25 @@ export function installDispatch(G){
   const siteSlots    = f => SHELLS.find(x=>x.id===f.shell).slots;
   const siteRigs     = f => G.s.rigs.filter(r=>r.site===f.id);
 
-  /* A card at full wear still runs, badly — 25% of its hashrate for its full
-     power draw. Total failure was an absorbing state: a farm whose cards all
-     died had no income, so it could never fund the repair that would revive
-     it, and the run was silently over. Limping keeps a recovery path open and
-     makes the repair obviously worth doing. */
-  const WORN_OUT = 0.25;
+  /* A card at full wear still runs, badly — 60% of its hashrate for its full
+     power draw (design-spec §3: decay is asymptotic, hashrate bounded
+     toward ~60% of original, "approaching rather than passing"). Total
+     failure was an absorbing state: a farm whose cards all died had no
+     income, so it could never fund the repair that would revive it, and the
+     run was silently over. Limping keeps a recovery path open and makes the
+     repair obviously worth doing. A separate w>=1 branch used to drop this
+     to 0.25 instead — a discontinuous 35-point cliff on top of the linear
+     ramp, which both overshot the spec's bound and undercut the very
+     anti-absorbing-state goal this comment describes (issue #20): letting
+     the same linear formula reach its natural endpoint is simpler and a
+     stronger floor than the special case it replaces. */
   const liveUnits = r => r.units;
   const rigLive = r => r.on && r.building<=0 && liveUnits(r).length>0;
   const rigHash = r => {
     if(!rigLive(r)) return 0;
     const gr=groupOf(r); const c=gr&&G.chain(gr.chain); if(!c) return 0;
     const f=G.site(r.site);
-    const raw=liveUnits(r).reduce((a,u)=>a+PART(u.p).mh*(u.w>=1?WORN_OUT:1-0.4*u.w),0)*(1+(r.tune||0));
+    const raw=liveUnits(r).reduce((a,u)=>a+PART(u.p).mh*(1-0.4*u.w),0)*(1+(r.tune||0));
     return raw*(f?throttleOf(f):1);
   };
   const chassisW = r => (r.kind==='gpu'
@@ -366,5 +372,5 @@ export function installDispatch(G){
   const lifetimeNet = computed(()=> G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
 
-  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,WORN_OUT,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
+  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
 }

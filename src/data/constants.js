@@ -27,7 +27,7 @@ export const C = {
      (14), not safely inside it: repairing within the first week, well
      before the brownout, the next generation, or full wear-out, is the
      actual point — ignore all of that and the rig either disciplines
-     itself into an outage or grinds down to WORN_OUT hashrate. Repairing
+     itself into an outage or grinds down to its ~60% worn-out hashrate floor. Repairing
      clears the excess draw along with the wear, so on a capacity-bound
      site the brownout is a backstop for neglect, not a new dead end. */
   BASE_WEAR:0.05,

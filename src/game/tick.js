@@ -285,8 +285,13 @@ export function installTick(G){
   function netIfOn(r){
     const gr=G.groupOf(r);
     const c=gr&&G.chain(gr.chain), f=G.site(r.site); if(!c||!f) return -999;
-    const us=r.units.filter(u=>u.w<1); if(!us.length) return -999;
-    const mh=us.reduce((a,u)=>a+PART(u.p).mh*(u.w>=1?G.WORN_OUT:1-0.4*u.w),0)*(1+(r.tune||0));
+    // Mirrors rigHash (dispatch.js): no w<1 filter — a fully-worn card still
+    // limps at 60%, not 0, so a rig whose cards are all worn out is a real
+    // net-positive-or-negative question, not an automatic -999 (issue #20:
+    // this filter used to make the u.w>=1 branch below dead code, and
+    // desynced this "mirrored" expression from what rigHash actually pays).
+    const us=r.units; if(!us.length) return -999;
+    const mh=us.reduce((a,u)=>a+PART(u.p).mh*(1-0.4*u.w),0)*(1+(r.tune||0));
     const w=(G.chassisW(r)+us.reduce((a,u)=>a+PART(u.p).w*(1+0.5*u.w),0)*(1+(r.tune||0)*1.9))/PART(r.psu).eff;
     return mh*G.revPerMh(c)*G.evMult(G.poolOf(gr.pool)) - w/1000*24*G.margRate(f);
   }
