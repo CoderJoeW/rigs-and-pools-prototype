@@ -104,12 +104,19 @@ describe('swapWorn (repair)', () => {
     // tune=0 crosses the 0.35 repair line even for the unluckiest card —
     // wr's floor is 0.75 (random.js), and 0.35/(0.05*0.75) ≈ 9.3 days — so
     // this isn't relying on getting lucky rolls. Actual site heat is >=1
-    // (tick.js), so real ambient swings only get there faster, never slower.
+    // (tick.js), so real ambient swings only get there faster, never slower
+    // — and this now genuinely exercises that swing (issue #22): stepping
+    // by exactly one day at a time samples the SAME time-of-day every
+    // iteration (86400s ≡ 0 mod a day), pinning ambient at its daily
+    // minimum for the whole run and never letting site heat cross the 58°C
+    // point where the wear-accelerating heat term actually engages.
+    // 3-hour steps rotate through the full diurnal cycle instead, over the
+    // same 10 sim-days (80*10800 = 864000s).
     const g = freshStore();
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
-    for (let i = 0; i < 10; i++) g.stepTick(86400); // 10 sim-days, full tilt
+    for (let i = 0; i < 80; i++) g.stepTick(10800); // 10 sim-days, full tilt, rotating through the day
 
     const rig = g.s.rigs[0];
     expect(rig.units.every(u => u.w > 0)).toBe(true); // wear is actually accruing
