@@ -1,8 +1,14 @@
 <script setup>
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
+/* The cash figure is the most-looked-at number in the app, so it counts to
+   its new value rather than swapping to it — a payout landing should look
+   different from a page reload (issue #43). Display only: g.s.cash is still
+   the truth everything else reads. */
+const cashShown = useTweenedNumber(() => g.s.cash);
 </script>
 
 <template>
@@ -24,7 +30,7 @@ const g = useGameStore();
         grid {{ g.band==='off'?'off-peak':g.band }}</span>
       <span v-if="g.s.weather&&g.s.weather.now.cloud>0.45" class="chip">
         {{ g.s.weather.now.cloud>0.75?'overcast':'cloudy' }}</span></div>
-    <div><div class="top-cash">{{ fmt.usd(g.s.cash) }}</div>
+    <div><div class="top-cash">{{ fmt.usd(cashShown) }}</div>
       <div class="top-sub">{{ fmt.usd(g.walletUsd) }} unsold</div></div>
   </header>
   <div class="speedbar">
