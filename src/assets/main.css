@@ -425,4 +425,51 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   8%{opacity:1;transform:translate(-50%,0) scale(1.08)}
   16%,78%{opacity:1;transform:translate(-50%,0) scale(1)}
   100%{opacity:0;transform:translate(-50%,-10px) scale(1)}}
+/* Issue #40: a rank-up is the rarest beat in the game — the design doc
+   measures 5-6 across an entire run against the board's 24 milestones — it is
+   permanent, and it deliberately pays nothing but the title. So the title is
+   the reward, and it gets a class of its own rather than the 'grn' that every
+   ordinary milestone uses (indistinguishable) or 'jackpot' (a lucky one-off
+   payout, which is a different promise from a standing rank).
+
+   The flex row is flipped to a column FOR THIS CLASS ONLY, which inverts the
+   usual toast hierarchy without touching App.vue's markup: pop()'s text
+   becomes a small uppercase eyebrow ("RANK UP · 4 OF 6") and its amount — the
+   rank name — becomes the headline, in the same mono face the Stats hero
+   already prints the rank in.
+
+   Colour is anchored on --ink/--card, the one pairing that survives the theme
+   flip intact (they swap together, as .toast.dark and .ev.big already rely
+   on): a deep plaque with pale type in light, a pale plaque with deep type in
+   dark. The board's green bleeds into one corner and gold into the other, and
+   the gold accents are mixed toward --card rather than used raw, so they stay
+   legible on whichever side of the flip they land — raw --gold on the dark
+   theme's near-white plaque would be unreadable.
+
+   Slower in, and held far longer than the 2.6s standard: at most six of these
+   exist in a run, so it can afford to interrupt. Everything that moves here is
+   one animation on the element itself, so the blanket prefers-reduced-motion
+   rule below reaches all of it — a decorative pseudo-element sweep would not
+   have been covered, since `*` does not match ::before/::after. */
+.toast.rankup{
+  flex-direction:column;align-items:center;text-align:center;gap:4px;
+  padding:13px 18px 15px;border-radius:14px;
+  background:linear-gradient(140deg,
+    color-mix(in srgb, var(--green) 40%, var(--ink)) 0%,
+    var(--ink) 55%,
+    color-mix(in srgb, var(--gold) 22%, var(--ink)) 100%);
+  color:var(--card);
+  box-shadow:0 14px 40px color-mix(in srgb, var(--green) 26%, transparent),
+             inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent);
+  animation:rankup 4.6s cubic-bezier(.16,.84,.24,1) forwards}
+.toast.rankup>span:first-child{font-size:9.5px;font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;color:color-mix(in srgb, var(--gold) 55%, var(--card))}
+/* Lit from within rather than swept by a moving highlight — the same static
+   text-shadow idiom the Stats hero uses for a positive net figure. */
+.toast.rankup .num{font-size:23px;font-weight:500;letter-spacing:-.03em;line-height:1.12;
+  text-shadow:0 0 20px color-mix(in srgb, var(--gold) 40%, transparent)}
+@keyframes rankup{0%{opacity:0;transform:translate(-50%,-26px) scale(.94)}
+  10%{opacity:1;transform:translate(-50%,2px) scale(1.02)}
+  18%,86%{opacity:1;transform:translate(-50%,0) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-14px) scale(.99)}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}

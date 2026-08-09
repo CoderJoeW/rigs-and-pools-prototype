@@ -31,6 +31,37 @@ describe('game store boot', () => {
     expect(Number.isFinite(g.s.cash)).toBe(true);
   });
 
+  /* Issue #40: the rank ladder moves 5-6 times in a whole run, so the toast it
+     raises has to actually survive to the screen. It very nearly did not:
+     pop() drops even always:true toasts within 900ms of the last one and
+     G.s.toast is a single slot, so the 'Milestone' toast fired microseconds
+     earlier ate the rank-up. These two pin the resolution — rank-up wins its
+     own tick, an ordinary milestone is untouched. */
+  it('a rank-up raises its own toast instead of the milestone that triggered it', () => {
+    const g = freshStore();
+    // three placeholders so the first real milestone is the 4th — Tinkerer
+    g.s.mile = { done: { seedA: 1, seedB: 1, seedC: 1 }, rank: 0 };
+    g.s.blocksSolved = 1; // satisfies the real 'First block' check
+    g.stepTick();
+    expect(g.s.mile.rank).toBe(1);
+    expect(g.s.toast.cls).toBe('rankup');
+    expect(g.s.toast.amount).toBe('Tinkerer'); // the rank name is the headline
+    // the feed still records both the milestone and the rank-up
+    const feed = g.s.feed.map(f => f.text);
+    expect(feed.some(t => t.includes('Rank up — you are now a Tinkerer'))).toBe(true);
+    expect(feed.some(t => t.startsWith('Milestone — '))).toBe(true);
+  });
+
+  it('an ordinary milestone with no rank change still raises the plain toast', () => {
+    const g = freshStore();
+    g.s.mile = { done: { a: 1, b: 1, c: 1, d: 1 }, rank: 1 }; // already Tinkerer
+    g.s.blocksSolved = 1;
+    g.stepTick();
+    expect(g.s.mile.rank).toBe(1);
+    expect(g.s.toast.cls).toBe('grn');
+    expect(g.s.toast.text).toBe('Milestone');
+  });
+
   it('a long run under high speed stays numerically sane', () => {
     const g = freshStore();
     g.s.speed = 3600;

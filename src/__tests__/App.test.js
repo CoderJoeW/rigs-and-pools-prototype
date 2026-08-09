@@ -65,6 +65,23 @@ describe('App', () => {
     expect(wrapper.find('.toast.dark').attributes('role')).toBe('alert');
   });
 
+  // Issue #40: a rank-up is rare and permanent, so it carries its own class
+  // rather than the 'grn' every ordinary milestone uses. The rank name rides
+  // in on the amount slot, which .toast.rankup promotes to the headline.
+  it('a rank-up toast gets its own class and leads with the rank name', async () => {
+    const { wrapper, store } = mountWithStore(App);
+    mounted.push(wrapper);
+    await flushPromises();
+    store.s.toast = { n: 1, text: 'Rank up · 4 of 6', amount: 'Engineer', cls: 'rankup' };
+    await wrapper.vm.$nextTick();
+    const toast = wrapper.find('.toast.rankup');
+    expect(toast.exists()).toBe(true);
+    expect(toast.attributes('role')).toBe('status'); // celebratory, not urgent
+    expect(toast.attributes('aria-live')).toBe('polite');
+    expect(toast.find('.num').text()).toBe('Engineer');
+    expect(toast.text()).toContain('Rank up · 4 of 6');
+  });
+
   it('applies data-theme to the document root, and clears it for auto', async () => {
     const { wrapper, store } = mountWithStore(App);
     mounted.push(wrapper);
