@@ -10,7 +10,7 @@ const g = useGameStore();
 const f=computed(()=>g.active);
 
 /* One function decides a rig's state, and everything downstream — dot
-   colour, chip counts, filters, the sheet's header — reads it. The old
+   colour, pill counts, filters, the sheet's header — reads it. The old
    page derived "is this rig fine" three separate ways. It now lives on the
    store (dispatch.js) because the Sites floor plan needs the same verdict;
    these are local names for the same thing, so the template is unchanged. */
@@ -173,18 +173,18 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         <div class="s"><div class="k">Net / day</div>
           <div class="v" :class="siteNet>=0?'pos':'neg'">{{ fmt.usd2(siteNet) }}</div></div>
       </div>
-      <div v-if="g.s.sites.length>1" class="chips">
-        <button v-for="st in g.s.sites" :key="st.id" class="chip"
+      <div v-if="g.s.sites.length>1" class="pills">
+        <button v-for="st in g.s.sites" :key="st.id" class="pill"
                 :class="{on:st.id===g.s.activeSite}" :aria-current="st.id===g.s.activeSite?'true':null"
                 @click="g.s.activeSite=st.id">
           {{ st.name }} <span class="n">{{ g.siteRigs(st).length }}</span></button>
       </div>
     </div>
 
-    <!-- FIND: chips carry their counts, so a problem shows before you look for it -->
+    <!-- FIND: filter pills carry their counts, so a problem shows before you look for it -->
     <div class="card" v-if="siteRigs.length">
-      <div class="chips">
-        <button v-for="x in FILTERS" :key="x.k" class="chip"
+      <div class="pills">
+        <button v-for="x in FILTERS" :key="x.k" class="pill"
                 :class="{on:filt===x.k, alert:x.alert&&counts[x.k]>0}"
                 @click="filt=x.k">{{ x.label }} <span class="n">{{ counts[x.k] }}</span></button>
       </div>
@@ -198,8 +198,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
           <button class="btn btn-sm btn-ghost" style="margin-left:5px"
                   @click="fleetOpen=true">Fleet actions</button></span>
       </div>
-      <div v-if="sortOpen" class="chips" style="border-top:1px solid var(--line-2)">
-        <button v-for="x in SORTS" :key="x.k" class="chip" :class="{on:sortBy===x.k}"
+      <div v-if="sortOpen" class="pills" style="border-top:1px solid var(--line-2)">
+        <button v-for="x in SORTS" :key="x.k" class="pill" :class="{on:sortBy===x.k}"
                 @click="sortBy=x.k; sortOpen=false">{{ x.label }}</button>
       </div>
     </div>

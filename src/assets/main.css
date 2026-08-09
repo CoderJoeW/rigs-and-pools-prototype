@@ -156,8 +156,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 55%, transparent)}
   70%{box-shadow:0 0 0 7px color-mix(in srgb, var(--green) 0%, transparent)}
   100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent)}}
+/* The top bar's compact readout badge — a static <span>, never a control. It
+   shared the name .chip with the Rigs page's tappable filter pill (now .pill,
+   further down) at equal specificity, so that later rule won here and these
+   badges rendered as full-width bordered rows: the pill is display:flex, which
+   makes an inline <span> a block-level flex container. nowrap is the one thing
+   carried over from the collision — without it "grid off-peak" wraps mid-badge
+   and its background tears in two. */
 .chip{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:99px;
-  background:var(--line-2);color:var(--ink-2);margin-left:6px}
+  background:var(--line-2);color:var(--ink-2);margin-left:6px;white-space:nowrap}
 .top-cash{font-family:var(--mono);font-size:17px;font-weight:500;text-align:right;
   animation:cashBreathe 4.5s ease-in-out infinite}
 @keyframes cashBreathe{
@@ -295,15 +302,20 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chk.note-chk{color:var(--amber)} .chk.note-chk .ic{color:var(--amber)}
 
 /* ---- Rigs page (v64) ---- */
-.chips{display:flex;gap:6px;overflow-x:auto;padding:9px 12px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
+/* .pill is the larger, bordered, tappable filter/switcher pill. It used to be
+   called .chip too, which meant it and the top bar's compact .chip badge (above)
+   shared a name at the same specificity — this rule came later in the file, so it
+   won everywhere and the compact badge never rendered anywhere. Two different
+   controls, two names now: .chip is the static readout, .pill is the button. */
+.pills{display:flex;gap:6px;overflow-x:auto;padding:9px 12px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
   border:1px solid var(--line);font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;
   transition:var(--press),background-color .15s,border-color .15s,color .15s}
-.chip.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
-.chip .n{font-family:var(--mono);font-size:11px;opacity:.75}
-.chip.alert{border-color:var(--amber);color:var(--amber)}
-.chip.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
+.pill.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.pill .n{font-family:var(--mono);font-size:11px;opacity:.75}
+.pill.alert{border-color:var(--amber);color:var(--amber)}
+.pill.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--amber) 55%, transparent)}
 
 .rigrow{display:flex;align-items:center;gap:10px;padding:9px 12px;width:100%;
@@ -576,9 +588,10 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    Scoped by tag rather than by class alone, because :active matches ANY
    element being pressed, including non-interactive ones. Several of these
    classes are used for both: .rowline and .pickrow render as plain <div>
-   read-out rows in ChainsView/SitesView/FarmView/BuildView, .chip is a
-   static <span> readout in the top bar, and Compare.vue's .cmp-r switches
-   between <button> and <div> on whether a pick handler was passed. The
+   read-out rows in ChainsView/SitesView/FarmView/BuildView, and Compare.vue's
+   .cmp-r switches between <button> and <div> on whether a pick handler was
+   passed. (.pill is only ever a <button>; the top bar's static <span> readout
+   is the separate .chip, which takes no press.) The
    `button` prefix is what keeps the press from firing on things that do not
    respond to being pressed. Same reasoning for :not(.locked) on .cmp-r —
    a locked tier IS a <button>, but its click is a no-op, so it must not
@@ -606,7 +619,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    flattens transition-duration globally, which collapses the press to an
    instant state change. */
 button.rigrow,button.pickrow,button.rowline,button.cmp-r{transition:var(--press)}
-button.btn:active,button.chip:active,button.rigtile:active,
+button.btn:active,button.pill:active,button.rigtile:active,
 .speedbtn:active,.helptog:active,.tab:active,.seg2 button:active{
   transform:scale(var(--press-scale))}
 button.rigrow:active,button.pickrow:active,button.rowline:active,
