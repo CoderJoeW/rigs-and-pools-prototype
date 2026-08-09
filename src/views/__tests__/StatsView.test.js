@@ -29,6 +29,23 @@ describe('StatsView', () => {
     expect(wrapper.text()).toContain('1 /');
   });
 
+  it('shows a six-segment rank ladder with the current rank marked (issue #51)', () => {
+    const { wrapper, store } = mountWithStore(StatsView, {
+      seed: g => { g.s.mile.rank = 2; }, // Operator — one rank up from the start
+    });
+    const segs = wrapper.findAll('.track i');
+    expect(segs).toHaveLength(store.RANKS.length);
+    // ranks 0,1 (Hobbyist, Tinkerer) already passed
+    expect(segs[0].classes()).toContain('g');
+    expect(segs[1].classes()).toContain('g');
+    // rank 2 (Operator) is the current one — marked distinctly, not "past"
+    expect(segs[2].classes()).toContain('b');
+    expect(segs[2].classes()).not.toContain('g');
+    // ranks not yet reached carry neither tone
+    expect(segs[3].classes()).not.toContain('g');
+    expect(segs[3].classes()).not.toContain('b');
+  });
+
   it('falls back to rank 0 on a malformed (non-numeric) rank instead of indexing with it (issue #14)', () => {
     // g.RANKS is indexed by g.s.mile.rank. ||0 only catches falsy
     // corruption (NaN, undefined) — a truthy non-numeric value, like a

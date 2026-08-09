@@ -17,6 +17,15 @@ const nextRank=computed(()=>{
   const i=rankIdx.value+1;
   return i<g.RANKS.length ? g.RANKS[i] : null;
 });
+// A visual shape for "here's the whole climb, here's where I am on it"
+// (issue #51) — the rank-up moment already gets a toast, a sound and a
+// screen flourish, but the Stats tab itself only ever showed the current
+// rank as a word. Reuses the same .track/i.g/i.b progress-bar vocabulary
+// the app already uses for capacity/wear/reputation bars: past ranks
+// filled green, the current rank marked blue ("you are here"), ranks not
+// yet reached left empty.
+const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need,
+  cls: i<rankIdx.value ? 'g' : i===rankIdx.value ? 'b' : '' })));
 const tracks=computed(()=>{
   const by={};
   for(const m of g.MILESTONES){
@@ -39,6 +48,11 @@ const tracks=computed(()=>{
           <span class="sb">{{ doneN }} / {{ g.MILESTONES.length }} milestones</span></div>
         <p v-if="nextRank" class="hint" style="margin:4px 0 0">
           {{ nextRank[1] }} at {{ nextRank[0] }} milestones.</p>
+        <div class="track" role="img" style="height:8px;gap:3px;margin-top:10px"
+             :aria-label="'Rank ladder: '+rank+', '+(rankIdx+1)+' of '+g.RANKS.length">
+          <i v-for="r in ladder" :key="r.name" :class="r.cls" :title="r.name"
+             :style="{width:'calc('+(100/g.RANKS.length)+'% - 3px)'}"></i>
+        </div>
       </div>
       <div class="card-bd pt">
         <div v-for="t in tracks" :key="t.name" style="margin-bottom:10px">
