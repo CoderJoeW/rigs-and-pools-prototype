@@ -440,7 +440,14 @@ export function installTick(G){
           '+'+fmt.c(full),full,c.tick);
         else G.say('block','Block solved solo on '+c.name,'+'+fmt.c(full),full,c.tick);
         if(record){ G.s.bestBlock=usd;
-          G.pop('Biggest block yet','+'+fmt.usd2(usd),'',{always:true}); }
+          /* kind:'record' is a label, not a behaviour change — always:true
+             already bypasses the per-kind cap this key feeds, so the only
+             thing it alters is which bucket the counter lands in. It exists
+             so a new all-time record can be told apart from a routine block
+             by cls/kind alone, which is what audio.js keys off (issue #46):
+             a record is a jackpot to the ear even when the jackpot branch
+             below did not fire. */
+          G.pop('Biggest block yet','+'+fmt.usd2(usd),'',{always:true,kind:'record'}); }
         else if(jackpot) G.pop('Jackpot','+'+fmt.usd2(usd)+' — '+(usd/baseline).toFixed(1)+'x your usual',
           'jackpot',{always:true});
         else G.pop('Block solved','+'+fmt.c(full)+' '+c.tick,'',{kind:'block'});

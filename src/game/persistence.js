@@ -5,6 +5,7 @@ import { CARDS, PSUS, PART, RISER } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { storage } from '../services/storage.js';
+import { sfx } from '../services/audio.js';
 
 /* 13-persistence-and-exports.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -32,8 +33,17 @@ export function installPersistence(G){
   function advance(seconds){
     const credited=Math.min(seconds, C.OFFLINE_CAP);
     restoring=true;
+    /* Issue #46: catch-up replays up to a day of blocks in a couple of
+       seconds of wall clock. Audio's cooldowns are measured in real time, so
+       they would let a handful of cues through for events that already
+       happened — the "Welcome back" toast is the report on all of it. On a
+       cold load nothing could sound anyway (no gesture yet, so no context),
+       but an IMPORTED save runs this same path long after the player has
+       clicked, and that is where it would be heard. */
+    sfx.busy=true;
     let left=credited;
     while(left>0){ const step=Math.min(30,left); G.stepTick(step); left-=step; }
+    sfx.busy=false;
     restoring=false;
     return credited;
   }

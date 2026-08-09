@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_CHAINS, RIVAL_PER_CHAIN } from '../data/constants.js';
 import { mkRival } from './rivals.js';
 import { fmt } from '../utils/format.js';
+import { cue } from '../services/audio.js';
 
 /* 05-pools-and-market.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -259,6 +260,25 @@ export function installPoolMarket(G){
     if(restoring) return;
     opts=opts||{};
     const kind=opts.kind||text;
+    /* Issue #46: sound hangs off pop(), not off the twenty-odd individual
+       event sites, because pop() is already the single place the game says
+       "this moment is worth interrupting the player for" — and its cls/kind
+       vocabulary already separates the exact three moments that earn a cue.
+       Nothing new has to be threaded through tick.js, and no future event can
+       be silently missed.
+
+       Placed ABOVE the caps deliberately. TOAST_CAP is a TEACHING cap — "the
+       first few land while you are learning, then the activity feed carries
+       it silently" — and it applies because a toast covers the screen. Sound
+       does the opposite job: it is for the player who is NOT looking, which
+       is precisely later in the run, so a block cue that went quiet after the
+       third block would be a bug rather than restraint. The real hazard the
+       cap also happens to guard — a fast-forward burst turning income into a
+       machine gun — is handled instead by audio.js's own per-cue cooldowns,
+       measured in the same real (not game) milliseconds as TOAST_GAP, so no
+       speed multiplier can outrun them. TOAST_GAP itself still applies to the
+       toast below, unchanged. */
+    cue(cls, kind);
     toastSeen[kind]=(toastSeen[kind]||0)+1;
     const now=Date.now();
     if(!opts.always){

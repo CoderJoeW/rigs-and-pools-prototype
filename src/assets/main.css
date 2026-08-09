@@ -175,15 +175,32 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   justify-content:space-between;gap:8px;padding:4px 15px 5px;background:var(--card);
   border-bottom:1px solid var(--line)}
 .speedlbl{font-size:10px;color:var(--ink-3)}
-.speedset{display:flex;gap:2px}
+.speedset{display:flex;gap:2px;flex:none}
+/* The strip is capped at 440 px and, at the longest speed label, fitted on one
+   line only because the label wraps internally down to its longest word. The
+   sound pill (issue #46) ate the last of that slack on narrow phones, where
+   the buttons — with nowhere to go in a nowrap row — were pushed off the right
+   edge instead. Below the cap the label gets its own line and the controls
+   drop beneath it, right-aligned; nothing is clipped and nothing is dropped.
+   At 440 px and up the row is exactly what it always was. */
+@media (max-width:439px){
+  .speedbar{flex-wrap:wrap;row-gap:1px}
+  .speedlbl{flex:1 1 100%}
+  .speedset{margin-left:auto}
+}
 .speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px;
   color:var(--ink-3);background:var(--line-2);transition:var(--press),background-color .15s,color .15s}
 .speedbtn.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
-.helptog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
+.helptog,.sndtog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
+  white-space:nowrap;
   transition:var(--press),background-color .15s,color .15s,box-shadow .15s}
 .helptog.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
+/* The sound pill is a preference, not a mode the game is in — it borrows the
+   help pill's shape but not its lit "switched on and doing something" green,
+   so a glowing top bar still means one thing. */
+.sndtog.on{background:var(--gold-t);color:var(--gold)}
 
 .body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 16px;-webkit-overflow-scrolling:touch}
 .card{background:var(--card);border:1px solid var(--line);border-radius:11px;
@@ -620,7 +637,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    instant state change. */
 button.rigrow,button.pickrow,button.rowline,button.cmp-r{transition:var(--press)}
 button.btn:active,button.pill:active,button.rigtile:active,
-.speedbtn:active,.helptog:active,.tab:active,.seg2 button:active{
+.speedbtn:active,.helptog:active,.sndtog:active,.tab:active,.seg2 button:active{
   transform:scale(var(--press-scale))}
 button.rigrow:active,button.pickrow:active,button.rowline:active,
 button.cmp-r:not(.locked):active{
