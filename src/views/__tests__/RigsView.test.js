@@ -82,6 +82,26 @@ describe('RigsView', () => {
     expect(bar.attributes('aria-label')).toBe('Wear 0%');
   });
 
+  /* The Sites floor plan opens the real rig sheet rather than a second,
+     lesser copy of it — the handoff is one id parked on the store. */
+  it('opens straight into the sheet for a rig handed over from the floor plan', async () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.focusRig = g.s.rigs[0].id; },
+    });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.sheet').exists()).toBe(true);
+    expect(wrapper.find('.sheet').text()).toContain(store.s.rigs[0].name);
+    expect(store.s.focusRig).toBeNull();   // read once, never a stale ambush
+  });
+
+  it('ignores a handoff for a rig that is not at the active site', () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].site = 999; g.s.focusRig = g.s.rigs[0].id; },
+    });
+    expect(wrapper.find('.sheet').exists()).toBe(false);
+    expect(store.s.focusRig).toBeNull();
+  });
+
   it('the mining-group select in the rig sheet is a real labeled control', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },

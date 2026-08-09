@@ -89,6 +89,48 @@ const flowOut=computed(()=>{ const x=flow.value;
   const tot=x.rigs+x.cool+x.charge;
   return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
 
+/* ---- floor plan ----
+   The first view in the game that draws a site as a PLACE rather than a
+   count: one square per rig position, tinted by the same live status
+   vocabulary (.dot.run/.bad/.warn/.build/.off) the Rigs list already uses,
+   with unoccupied positions dashed. Purely a read of existing state — the
+   store has no notion of WHICH position a rig sits in (a rig only carries
+   `site`), so order in `siteRigs` is the position, and a position is simply
+   occupied or free; there is no "built but unwired" tier to show. */
+/* A warehouse bay is 140 positions. Drawing all of them stops being a glance
+   and becomes a scroll, and drawing 125 empty squares is wallpaper, not
+   information — the count in the header already says how much room is left.
+   So: every rig up to a ceiling, then only enough empties to show that there
+   IS room, and a plain sentence for the rest. */
+const MAX_TILES=60, MAX_EMPTY=12;
+const rigsHere=computed(()=>g.siteRigs(f.value));
+const floor=computed(()=>{
+  const rigs=rigsHere.value, slots=Math.max(g.siteSlots(f.value), rigs.length), cells=[];
+  let running=0;
+  for(const r of rigs){
+    if(cells.length>=MAX_TILES) break;
+    const st=g.rigState(r);
+    if(st.dot==='run') running++;
+    cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, n:cells.length+1,
+      label:'Position '+(cells.length+1)+' — '+r.name+', '+st.label
+            +(st.sub?' ('+st.sub+')':'') });
+  }
+  const empties=Math.min(MAX_EMPTY, MAX_TILES-cells.length, slots-rigs.length);
+  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null });
+  return { cells, rigs:rigs.length, slots, running,
+           hidden:Math.max(0, slots-cells.length) };
+});
+const DOT_LABEL={ run:'Running', build:'Building', warn:'Wearing',
+                  bad:'Needs attention', off:'Off' };
+// colour alone should not carry the reading; the legend names what is on screen
+const legend=computed(()=>{
+  const n={};
+  for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
+  return ['run','build','warn','bad','off'].filter(k=>n[k])
+    .map(k=>({ k, n:n[k], label:DOT_LABEL[k] }));
+});
+const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
+
 const pickerSheetEl=ref(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
@@ -111,6 +153,35 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           <div class="sb">buy a shell, then install power and cooling yourself</div></span>
         <span class="ch">&rsaquo;</span></button>
     </div></div>
+
+    <!-- the site as a place: one square per rig position, lit by live status -->
+    <div class="card">
+      <div class="card-hd"><span class="eyebrow">Floor</span>
+        <span class="eyebrow">{{ floor.rigs }}/{{ floor.slots }} positions</span></div>
+      <div class="rigwrap">
+        <!-- a handful of tiles breathing reads as a farm running; twenty in
+             lockstep reads as a strobing wall, so past that they hold still -->
+        <div class="riggrid" :class="{calm:floor.running>20}">
+          <template v-for="c in floor.cells" :key="c.key">
+            <button v-if="c.id!==null" class="rigtile" :class="c.dot"
+                    :title="c.label" :aria-label="c.label"
+                    @click="openTile(c.id)">{{ c.n }}</button>
+            <div v-else class="rigtile empty" aria-hidden="true"></div>
+          </template>
+        </div>
+        <div v-if="legend.length" class="riglegend">
+          <span v-for="l in legend" :key="l.k"><i class="dot" :class="l.k"></i>{{ l.label }}
+            {{ l.n }}</span>
+        </div>
+        <div class="rigcap">
+          <template v-if="floor.rigs">Tap a position to open that rig.</template>
+          <template v-else>Nothing installed here yet &mdash; {{ floor.slots }}
+            position{{ floor.slots===1?'':'s' }} waiting.</template>
+          <span v-if="floor.hidden"> &middot; {{ floor.hidden }} further
+            position{{ floor.hidden===1?'':'s' }} not drawn</span>
+        </div>
+      </div>
+    </div>
 
     <div class="card"><div class="card-bd pt">
       <div class="card-hd" style="padding:0 0 7px"><span class="eyebrow">Manage {{ f.name }}</span>

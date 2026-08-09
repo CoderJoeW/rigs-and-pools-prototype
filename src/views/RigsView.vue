@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
@@ -8,19 +8,13 @@ import Compare from '../components/Compare.vue';
 const g = useGameStore();
 const f=computed(()=>g.active);
 
-const avgWear=r=>r.units.length?r.units.reduce((a,u)=>a+u.w,0)/r.units.length:0;
 /* One function decides a rig's state, and everything downstream — dot
    colour, chip counts, filters, the sheet's header — reads it. The old
-   page derived "is this rig fine" three separate ways. */
-const stateOf=r=>
-    r.building>0 ? {k:'build', dot:'build', label:'Building', sub:fmt.dur(r.building)}
-  : !r.on ? {k:'off', dot:'off',
-      label: r.cut==='broke' ? 'Stopped — no cash'
-           : r.cut==='brownout' ? 'Shed — site over capacity' : 'Off', sub:''}
-  : r.units.every(u=>u.w>=1) ? {k:'worn', dot:'bad', label:'Worn out', sub:'cards need replacing'}
-  : g.rigNet(r)<0 ? {k:'losing', dot:'bad', label:'Losing money', sub:'costs more than it earns'}
-  : avgWear(r)>0.6 ? {k:'wearing', dot:'warn', label:'Wearing', sub:'cards past 60%'}
-  : {k:'run', dot:'run', label:'Running', sub:''};
+   page derived "is this rig fine" three separate ways. It now lives on the
+   store (dispatch.js) because the Sites floor plan needs the same verdict;
+   these are local names for the same thing, so the template is unchanged. */
+const avgWear=r=>g.rigWear(r);
+const stateOf=r=>g.rigState(r);
 const needsEye=r=>['off','worn','losing','wearing'].includes(stateOf(r).k);
 
 const siteRigs=computed(()=>g.siteRigs(f.value));
@@ -138,6 +132,22 @@ const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
 
 // switching sites should not leave a stale selection or an open rig behind
 watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.value='all'; });
+
+/* Handoff from the Sites floor plan. Tapping a position tile there parks the
+   rig's id on the store and switches tab rather than reimplementing this
+   sheet a second time; App.vue keys the view by tab, so this view mounts
+   fresh with the id already waiting. Read once and cleared immediately, so a
+   later visit to the tab is never ambushed by a stale sheet, and taken in
+   onMounted rather than during setup so useSheetA11y still sees the sheet
+   open (its watcher is not immediate) and moves focus into it. */
+const takeFocusRig=()=>{
+  const id=g.s.focusRig; if(id==null) return;
+  g.s.focusRig=null;
+  const r=g.s.rigs.find(x=>x.id===id);
+  if(r && r.site===g.s.activeSite) openRig.value=id;
+};
+onMounted(takeFocusRig);
+watch(()=>g.s.focusRig, takeFocusRig);
 
 /* Escape/focus-trap/return-focus for each sheet, mirroring the on-screen
    back/cancel button each one already has. */

@@ -370,7 +370,55 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   transition:background-color .2s,border-color .2s}
 .slotcell.filled{background:var(--green);border-color:var(--green);color:#fff}
 .slotcell.locked{background:var(--line-2);border-style:dashed;color:var(--ink-3);opacity:.6}
-.slotcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
+.slotcap,.rigcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
+
+/* ---- site floor plan (issue #42) ------------------------------------
+   A SIBLING of .slotgrid/.slotcell, not a reuse of them. Those visualise the
+   card slots on the rig being designed in BuildView, where the states are
+   filled/locked; these are rigs standing at physical positions on a site,
+   where the state is the rig's live health. Same grid mechanics and the same
+   rounded square so the two read as one family, but the fill comes from the
+   .dot.* vocabulary above (run/warn/bad/build/off) — the app has exactly one
+   status taxonomy and this is it — and an unoccupied position borrows
+   .slotcell.locked's dashed outline.
+
+   Text on a coloured tile is var(--card), not #fff: the dark palette's green
+   and amber are light, so white numerals would wash out on the very tiles
+   that matter. --card flips with the theme and stays legible on both.
+
+   A running tile runs .dot.run's OWN dotPulse keyframes rather than a
+   lookalike, so there is one definition of "this is alive" to keep in tune,
+   and the blanket prefers-reduced-motion rule at the bottom of this file
+   reaches it for free. `.calm` switches the pulse off once the grid is
+   larger than a glance: four tiles breathing reads as a farm running, forty
+   in lockstep reads as a strobing wall. */
+.rigwrap{padding:10px 12px 12px}
+.riggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:5px}
+.rigtile{aspect-ratio:1;border-radius:7px;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;color:var(--ink-3);
+  transition:var(--press),background-color .2s,border-color .2s}
+/* --line is only a couple of percent off --card, so a dashed --line outline on
+   a --line-2 fill is invisible on the light theme; mixing the dashes toward
+   --ink-3 keeps an empty position legible as a POSITION on both themes without
+   letting it shout as loudly as an occupied one */
+.rigtile.empty{background:var(--line-2);border-style:dashed;
+  border-color:color-mix(in srgb, var(--ink-3) 40%, transparent)}
+.rigtile.run{background:var(--green);border-color:var(--green);color:var(--card);
+  animation:dotPulse 2.4s ease-out infinite}
+.riggrid.calm .rigtile.run{animation:none}
+/* filled, not hollow: .dot.off is a solid --ink-3 disc, and a hollow grey tile
+   would be a second way of saying "nothing here" that an empty position has
+   already claimed two rules up */
+.rigtile.off{background:var(--ink-3);border-color:var(--ink-3);color:var(--card)}
+.rigtile.bad{background:var(--red);border-color:var(--red);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
+.rigtile.warn{background:var(--amber);border-color:var(--amber);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
+.rigtile.build{background:var(--blue);border-color:var(--blue);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
+.riglegend{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:9px}
+.riglegend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-3)}
 
 .verdict{margin-top:2px}
 .vgroup{border-top:1px solid var(--line-2);padding:9px 0}
@@ -526,7 +574,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    flattens transition-duration globally, which collapses the press to an
    instant state change. */
 button.rigrow,button.pickrow,button.rowline,button.cmp-r{transition:var(--press)}
-button.btn:active,button.chip:active,
+button.btn:active,button.chip:active,button.rigtile:active,
 .speedbtn:active,.helptog:active,.tab:active,.seg2 button:active{
   transform:scale(var(--press-scale))}
 button.rigrow:active,button.pickrow:active,button.rowline:active,

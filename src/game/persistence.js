@@ -64,7 +64,7 @@ export function installPersistence(G){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
-    G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.speed=1; G.s.wipeArm=false;
+    G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
     G.s.unlocked=new Proxy({},{get:()=>true});   // a Proxy cannot survive JSON
     // v30 and earlier: assignment lived on the rig. Synthesize groups from the
     // distinct (chain, pool) combinations and pour each rig's pending into its
@@ -223,7 +223,7 @@ export function installPersistence(G){
   G.__exports={ s:G.s,C,SHELLS,SOURCES,PLANTS,STORAGE,PSUS:G.livePsus,
     RISER,PART,SITEPART,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
     solarFactor:G.solarFactor,ambient:G.ambient,band:G.band,cards:G.cards,battKwh:G.battKwh,battKw:G.battKw,sitePlan:G.sitePlan,srcOut:G.srcOut,siteCapacity:G.siteCapacity,siteCooling:G.siteCooling,sitePlantW:G.sitePlantW,siteHeat:G.siteHeat,throttleOf:G.throttleOf,siteSlots:G.siteSlots,siteRigs:G.siteRigs,siteDemand:G.siteDemand,siteTemp:G.siteTemp,
-    siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
+    siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,rigState:G.rigState,rigWear:G.rigWear,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
     revenueDay:G.revenueDay,powerDay:G.powerDay,netDay:G.netDay,walletUsd:G.walletUsd,runway:G.runway,lifetimeNet:G.lifetimeNet,poolEarned:G.poolEarned,myHash:G.myHash,diffOf:G.diffOf,mttb:G.mttb,
     dp:G.dp,checks:G.checks,canBuild:G.canBuild,draftEff:G.draftEff,buildTime:G.buildTime,unitEcon:G.unitEcon,draftExpected:G.draftExpected,generatePreset:G.generatePreset,
     blockValue:G.blockValue,bondReq:G.bondReq,poolTrust:G.poolTrust,TRUST_RAMP,poolCapLimit:G.poolCapLimit,poolHash:G.poolHash,poolProfit:G.poolProfit,withdrawProfit:G.withdrawProfit,
