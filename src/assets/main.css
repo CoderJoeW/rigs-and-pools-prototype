@@ -592,6 +592,38 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   10%{opacity:1;transform:translate(-50%,2px) scale(1.02)}
   18%,86%{opacity:1;transform:translate(-50%,0) scale(1)}
   100%{opacity:0;transform:translate(-50%,-14px) scale(.99)}}
+/* Issue #48: every toast above is `forwards` onto a 0-opacity end frame, and
+   the blanket rule at the bottom of this file collapses ALL durations to
+   .01ms under reduced motion — so the browser finished the animation before
+   the first paint and left the toast on that end frame. Toasts carry real
+   information (block records, milestones, rank-ups, insolvency, pool
+   failures), so for anyone with the OS preference set they were simply never
+   shown; only a screen reader picked them up, via the live region.
+
+   .rankflash (below) answers the same problem with `animation:none;opacity:1`
+   because App.vue mounts and unmounts it on a JS timer — the element leaves on
+   its own. A toast has no such timer: `v-if="g.s.toast.n"` is true forever
+   once the first toast fires (the counter only increments), so the animation
+   IS the toast's lifetime. Killing it would pin the toast to the screen
+   permanently. Instead the duration is restored and the keyframes swapped for
+   ones that carry the SAME opacity timeline with no transform at all: the
+   toast appears, holds for its normal window, and fades. Nothing travels and
+   nothing scales — a cross-fade is not the kind of motion the preference is
+   asking us to drop, and it is what keeps the toast self-dismissing.
+
+   The blanket rule's `animation-duration:.01ms!important` is beaten here on
+   specificity (.toast/.toast.rankup over `*`), which is why these need
+   !important of their own; source order is irrelevant between two importants.
+   No transform is declared, so .toast's own translateX(-50%) centring stands
+   through the whole animation. */
+@keyframes tstStill{0%{opacity:0}8%,78%{opacity:1}100%{opacity:0}}
+@keyframes rankupStill{0%{opacity:0}10%,86%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  /* covers .toast.jackpot too — same 2.6s window, and an !important on the
+     one-class selector outranks .jackpot's ordinary declaration. */
+  .toast{animation:tstStill 2.6s linear forwards!important}
+  .toast.rankup{animation:rankupStill 4.6s linear forwards!important}
+}
 /* Issue #47: the SCREEN acknowledges a rank-up, not just the toast. #40 gave
    the moment its own plaque, but a plaque is one fixed box at the top of the
    viewport, and a rank-up — 5-6 in an entire run, permanent, unpayable —
