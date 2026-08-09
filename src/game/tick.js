@@ -492,7 +492,12 @@ export function installTick(G){
           gr.pending+=part; const o=Math.max(0,gr.pending-part);
           gr.pending-=o; out+=o;
         }
-        G.s.wallet[c.id]+=out; G.today().earned+=out*G.price(c); G.today().blocks++;
+        // "blocks today" means a block that actually paid — same as the
+        // solo branch above, which only counts a non-orphaned find. The
+        // one-block PPLNS lag can make out===0 (nothing paid out yet, the
+        // first block after a group joins or forfeits), and that shouldn't
+        // count as a block landing (issue #13).
+        G.s.wallet[c.id]+=out; G.today().earned+=out*G.price(c); if(out>0) G.today().blocks++;
         if(share>0.0002){
           const usd=share*G.price(c);
           const key=baselineKey(c,pool);

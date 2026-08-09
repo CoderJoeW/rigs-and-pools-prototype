@@ -136,6 +136,36 @@ describe('solo block finding', () => {
   });
 });
 
+describe('PPLNS payouts', () => {
+  it('"blocks today" only counts a block once it actually pays, not the pending-lag block that credits nothing yet (issue #13)', () => {
+    const g = freshStore();
+    g.foundPool('tessera', 'PPLNS', 0.02);
+    const pool = g.s.pools.find(p => p.owner === 'you');
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    g.setGroupPool(g.s.groups[0], pool.id);
+    expect(g.poolHash(pool)).toBeGreaterThan(0);
+
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const walletBefore = g.s.wallet.tessera;
+    g.s.today.blocks = 0;
+
+    // the one-block PPLNS lag means the FIRST block after joining credits
+    // nothing (this tick's share becomes gr.pending, not a payout) — poll
+    // in small steps to isolate exactly that block, not a later one that
+    // would also release a real payout in the same tick
+    let guard = 0;
+    while (g.s.groups[0].pending === 0 && guard++ < 20000) g.stepTick(1);
+    expect(g.s.groups[0].pending).toBeGreaterThan(0);
+
+    // nothing was actually paid out yet, so "blocks today" must not move —
+    // same semantics as the solo path, which only counts a credited block
+    expect(g.s.wallet.tessera).toBe(walletBefore);
+    expect(g.s.today.blocks).toBe(0);
+  });
+});
+
 /* Issue #9: "Biggest block yet" only ever fires on a genuine all-time
    record — trivially broken almost immediately, then rarely challenged
    again — so a jackpot needs its own signal: far above what the player's
