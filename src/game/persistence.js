@@ -5,6 +5,7 @@ import { CARDS, PSUS, PART, RISER } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { storage } from '../services/storage.js';
+import { sfx } from '../services/audio.js';
 
 /* 13-persistence-and-exports.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -32,8 +33,17 @@ export function installPersistence(G){
   function advance(seconds){
     const credited=Math.min(seconds, C.OFFLINE_CAP);
     restoring=true;
+    /* Issue #46: catch-up replays up to a day of blocks in a couple of
+       seconds of wall clock. Audio's cooldowns are measured in real time, so
+       they would let a handful of cues through for events that already
+       happened — the "Welcome back" toast is the report on all of it. On a
+       cold load nothing could sound anyway (no gesture yet, so no context),
+       but an IMPORTED save runs this same path long after the player has
+       clicked, and that is where it would be heard. */
+    sfx.busy=true;
     let left=credited;
     while(left>0){ const step=Math.min(30,left); G.stepTick(step); left-=step; }
+    sfx.busy=false;
     restoring=false;
     return credited;
   }
@@ -64,7 +74,7 @@ export function installPersistence(G){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
-    G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.speed=1; G.s.wipeArm=false;
+    G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
     G.s.unlocked=new Proxy({},{get:()=>true});   // a Proxy cannot survive JSON
     // v30 and earlier: assignment lived on the rig. Synthesize groups from the
     // distinct (chain, pool) combinations and pour each rig's pending into its
@@ -223,7 +233,7 @@ export function installPersistence(G){
   G.__exports={ s:G.s,C,SHELLS,SOURCES,PLANTS,STORAGE,PSUS:G.livePsus,
     RISER,PART,SITEPART,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
     solarFactor:G.solarFactor,ambient:G.ambient,band:G.band,cards:G.cards,battKwh:G.battKwh,battKw:G.battKw,sitePlan:G.sitePlan,srcOut:G.srcOut,siteCapacity:G.siteCapacity,siteCooling:G.siteCooling,sitePlantW:G.sitePlantW,siteHeat:G.siteHeat,throttleOf:G.throttleOf,siteSlots:G.siteSlots,siteRigs:G.siteRigs,siteDemand:G.siteDemand,siteTemp:G.siteTemp,
-    siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
+    siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,rigState:G.rigState,rigWear:G.rigWear,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
     revenueDay:G.revenueDay,powerDay:G.powerDay,netDay:G.netDay,walletUsd:G.walletUsd,runway:G.runway,lifetimeNet:G.lifetimeNet,poolEarned:G.poolEarned,myHash:G.myHash,diffOf:G.diffOf,mttb:G.mttb,
     dp:G.dp,checks:G.checks,canBuild:G.canBuild,draftEff:G.draftEff,buildTime:G.buildTime,unitEcon:G.unitEcon,draftExpected:G.draftExpected,generatePreset:G.generatePreset,
     blockValue:G.blockValue,bondReq:G.bondReq,poolTrust:G.poolTrust,TRUST_RAMP,poolCapLimit:G.poolCapLimit,poolHash:G.poolHash,poolProfit:G.poolProfit,withdrawProfit:G.withdrawProfit,

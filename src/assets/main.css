@@ -1,13 +1,49 @@
+/* Ambient sky factors, written by App.vue from the live simulation (see the
+   .ambient rules below for what each one does). Registering them as typed
+   properties is what lets the color-mix() gradients they feed INTERPOLATE — an
+   unregistered custom property has no type, so it would snap from one value to
+   the next and the sky would step rather than drift. The initial values are a
+   clear afternoon, which is also what the :root declarations below restate so
+   the layer still paints in a browser without @property, and before App.vue's
+   first watch fires. These are theme-independent: the dark palette leaves them
+   alone and the color-mix() picks up the dark tokens for free. */
+@property --amb-lum { syntax:'<number>'; inherits:true; initial-value:0.85 }
+@property --amb-warm{ syntax:'<number>'; inherits:true; initial-value:0.2 }
+@property --amb-cool{ syntax:'<number>'; inherits:true; initial-value:0 }
+@property --amb-haze{ syntax:'<number>'; inherits:true; initial-value:0 }
 :root{
+  --amb-lum:.85; --amb-warm:.2; --amb-cool:0; --amb-haze:0;
+  /* Ticks arrive ten times a second and jump in whole sim-hours on 3600x, so
+     the factors are eased rather than applied raw. Global prefers-reduced-motion
+     already flattens every transition-duration, this one included. */
+  transition:--amb-lum 1.6s linear, --amb-warm 1.6s linear,
+             --amb-cool 1.6s linear, --amb-haze 1.6s linear;
   --bg:#F5F6F4; --backdrop:#EDEFEB; --card:#FFF; --ink:#12171A; --ink-2:#4C5551; --ink-3:#8F9995;
   --line:#E5E8E4; --line-2:#F0F2EE;
   --green:#137A55; --green-t:#E9F4EF;
   --gold:#C98A0B;  --gold-t:#FCF2DC; --amber:#C98A0B;
   --red:#BE443A;   --red-t:#FAEDEB;
   --blue:#2E6BA8;  --blue-t:#E9F0F7;
+  /* Chain identity (see chains.js): each chain owns an OKLCH hue, both themes
+     own the lightness and chroma. Set here rather than per chain so all five
+     shift together — one number darkens the whole set against a white card and
+     another lightens it against a dark one, and no chain can drift out of step
+     with the others. Light theme: L .58 puts every mark at 3.8:1 or better on
+     --card, past the 3:1 a non-text indicator needs. */
+  --chain-l:.58; --chain-c:.13;
   --top-bg:rgba(245,246,244,.92);
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;
+  /* Press response (see the ":active" section at the bottom of this file).
+     Held as tokens so the whole app's tactile feel is tuned in one place —
+     every interactive family splices --press into its own transition list
+     rather than restating the timing. Deliberately faster than any other
+     transition here: a press-down has to read as the finger landing, not as
+     an animation, so it has to complete well inside the ~120ms where motion
+     still feels like direct manipulation. */
+  --press:transform .09s ease-out;
+  --press-scale:.97;
+  --press-scale-row:.98;
 }
 /* Dark palette mirrors the light one token-for-token, so every rule built on
    var(--x) repaints for free — only two rules elsewhere hardcode #fff over
@@ -20,6 +56,9 @@
     --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
     --red:#E2685C;   --red-t:#3A211E;
     --blue:#5B9AD9;  --blue-t:#1C2A3A;
+    /* Lifted, not just re-tinted: .58 on the dark card is a smudge. .76 lands
+       every chain at 7:1 or better there. */
+    --chain-l:.76; --chain-c:.13;
     --top-bg:rgba(20,24,26,.85);
   }
 }
@@ -30,6 +69,7 @@
   --gold:#E0A937;  --gold-t:#3A2E14; --amber:#E0A937;
   --red:#E2685C;   --red-t:#3A211E;
   --blue:#5B9AD9;  --blue-t:#1C2A3A;
+  --chain-l:.76; --chain-c:.13;
   --top-bg:rgba(20,24,26,.85);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -43,21 +83,48 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 /* height, not min-height, so the nav is a real flex child pinned to the bottom.
    100dvh follows the mobile URL bar; 100vh is the fallback. */
 #app{max-width:440px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);
-  display:flex;flex-direction:column;position:relative;overflow:hidden}
+  display:flex;flex-direction:column;position:relative;isolation:isolate;overflow:hidden}
 
 /* Ambient atmosphere — a slow-drifting glow behind the whole shell plus a
    near-invisible grid, so the farm reads as a living room full of hardware
-   rather than a flat list. Sits behind every flex child (.top/.body/.tabs
-   already carry z-index as flex items); color-mix() pulls straight from the
-   theme tokens so the glow brightens on dark without any separate palette. */
-.ambient{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+   rather than a flat list.
+
+   z-index:-1 plus isolation:isolate on #app (not transform/filter/contain,
+   which would also make #app a new containing block and break .sheet/.toast's
+   position:fixed) is load-bearing, not decoration: .body/.top's other flex
+   siblings are ordinary flow content with z-index:auto, which paints in an
+   EARLIER step than any *positioned* z-index:0-or-more box regardless of DOM
+   order (CSS2.1 Appendix E — positioned descendants paint after in-flow
+   ones). A positioned .ambient at z-index:0 therefore painted OVER every
+   card, not under it — invisible at this layer's original low opacity, but
+   the day/night pass raised both blobs and grid enough that it visibly
+   washed out text everywhere. Negative z-index is the only reliable way for
+   a *positioned* decorative layer to sit behind ordinary flow content, and
+   isolation:isolate is what keeps that -1 scoped to #app's own background
+   instead of escaping to the page root and going behind #app's opaque bg too
+   (invisible again, just the other way). color-mix() pulls straight from the
+   theme tokens so the glow brightens on dark without any separate palette.
+
+   The three blobs are wired to the sim's sky through the --amb-* factors, so
+   the room outside the window is the same one the rigs are running in: the
+   green production glow tracks solar output, the blue one is the night's cool
+   cast, and the gold one is sunrise/sunset plus the afternoon's heat. Overall
+   opacity follows whichever of light or warmth is stronger, so a sunset stays
+   present after solar has already fallen to zero; heavy cloud desaturates the
+   whole layer instead of dimming it, which is what overcast actually looks
+   like. Every number below sits so that a clear afternoon lands within a point
+   or two of the flat 24/22/20 this layer used before. */
+.ambient{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .ambient::before{content:'';position:absolute;inset:-12%;
   background:
-    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) 24%, transparent), transparent 62%),
-    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 62%),
-    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) 20%, transparent), transparent 62%);
+    radial-gradient(40% 32% at 16% -4%, color-mix(in srgb, var(--green) calc(10% + 16% * var(--amb-lum)), transparent), transparent 62%),
+    radial-gradient(36% 32% at 106% 24%, color-mix(in srgb, var(--blue) calc(8% + 17% * var(--amb-cool)), transparent), transparent 62%),
+    radial-gradient(46% 40% at 42% 104%, color-mix(in srgb, var(--gold) calc(4% + 26% * var(--amb-warm)), transparent), transparent 62%);
+  opacity:calc(.58 + .42 * max(var(--amb-lum), var(--amb-warm)));
+  filter:saturate(calc(1 - .45 * var(--amb-haze)));
   animation:ambientDrift 24s ease-in-out infinite alternate}
-.ambient::after{content:'';position:absolute;inset:0;opacity:.7;
+.ambient::after{content:'';position:absolute;inset:0;
+  opacity:calc((.42 + .34 * var(--amb-lum)) * (1 - .3 * var(--amb-haze)));
   background-image:linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size:25px 25px;
@@ -89,8 +156,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 55%, transparent)}
   70%{box-shadow:0 0 0 7px color-mix(in srgb, var(--green) 0%, transparent)}
   100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent)}}
+/* The top bar's compact readout badge — a static <span>, never a control. It
+   shared the name .chip with the Rigs page's tappable filter pill (now .pill,
+   further down) at equal specificity, so that later rule won here and these
+   badges rendered as full-width bordered rows: the pill is display:flex, which
+   makes an inline <span> a block-level flex container. nowrap is the one thing
+   carried over from the collision — without it "grid off-peak" wraps mid-badge
+   and its background tears in two. */
 .chip{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:99px;
-  background:var(--line-2);color:var(--ink-2);margin-left:6px}
+  background:var(--line-2);color:var(--ink-2);margin-left:6px;white-space:nowrap}
 .top-cash{font-family:var(--mono);font-size:17px;font-weight:500;text-align:right;
   animation:cashBreathe 4.5s ease-in-out infinite}
 @keyframes cashBreathe{
@@ -101,15 +175,32 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   justify-content:space-between;gap:8px;padding:4px 15px 5px;background:var(--card);
   border-bottom:1px solid var(--line)}
 .speedlbl{font-size:10px;color:var(--ink-3)}
-.speedset{display:flex;gap:2px}
+.speedset{display:flex;gap:2px;flex:none}
+/* The strip is capped at 440 px and, at the longest speed label, fitted on one
+   line only because the label wraps internally down to its longest word. The
+   sound pill (issue #46) ate the last of that slack on narrow phones, where
+   the buttons — with nowhere to go in a nowrap row — were pushed off the right
+   edge instead. Below the cap the label gets its own line and the controls
+   drop beneath it, right-aligned; nothing is clipped and nothing is dropped.
+   At 440 px and up the row is exactly what it always was. */
+@media (max-width:439px){
+  .speedbar{flex-wrap:wrap;row-gap:1px}
+  .speedlbl{flex:1 1 100%}
+  .speedset{margin-left:auto}
+}
 .speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px;
-  color:var(--ink-3);background:var(--line-2);transition:background-color .15s,color .15s}
+  color:var(--ink-3);background:var(--line-2);transition:var(--press),background-color .15s,color .15s}
 .speedbtn.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
-.helptog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
-  transition:background-color .15s,color .15s,box-shadow .15s}
+.helptog,.sndtog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
+  white-space:nowrap;
+  transition:var(--press),background-color .15s,color .15s,box-shadow .15s}
 .helptog.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
+/* The sound pill is a preference, not a mode the game is in — it borrows the
+   help pill's shape but not its lit "switched on and doing something" green,
+   so a glowing top bar still means one thing. */
+.sndtog.on{background:var(--gold-t);color:var(--gold)}
 
 .body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 16px;-webkit-overflow-scrolling:touch}
 .card{background:var(--card);border:1px solid var(--line);border-radius:11px;
@@ -168,7 +259,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .tag.b{background:var(--blue-t);color:var(--blue)}
 
 .btn{font-size:13px;font-weight:500;padding:8px 12px;border-radius:9px;background:var(--line-2);
-  color:var(--ink);white-space:nowrap;text-align:center;transition:background-color .12s,box-shadow .12s}
+  color:var(--ink);white-space:nowrap;text-align:center;
+  transition:var(--press),background-color .12s,box-shadow .12s}
 .btn:active{background:var(--line)}
 .btn-pri{background:var(--green);color:#fff;
   box-shadow:0 2px 12px color-mix(in srgb, var(--green) 35%, transparent)}
@@ -227,20 +319,28 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chk.note-chk{color:var(--amber)} .chk.note-chk .ic{color:var(--amber)}
 
 /* ---- Rigs page (v64) ---- */
-.chips{display:flex;gap:6px;overflow-x:auto;padding:9px 12px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
+/* .pill is the larger, bordered, tappable filter/switcher pill. It used to be
+   called .chip too, which meant it and the top bar's compact .chip badge (above)
+   shared a name at the same specificity — this rule came later in the file, so it
+   won everywhere and the compact badge never rendered anywhere. Two different
+   controls, two names now: .chip is the static readout, .pill is the button. */
+.pills{display:flex;gap:6px;overflow-x:auto;padding:9px 12px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
   border:1px solid var(--line);font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;
-  transition:background-color .15s,border-color .15s,color .15s}
-.chip.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
-.chip .n{font-family:var(--mono);font-size:11px;opacity:.75}
-.chip.alert{border-color:var(--amber);color:var(--amber)}
-.chip.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
+  transition:var(--press),background-color .15s,border-color .15s,color .15s}
+.pill.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.pill .n{font-family:var(--mono);font-size:11px;opacity:.75}
+.pill.alert{border-color:var(--amber);color:var(--amber)}
+.pill.alert.on{background:var(--amber);border-color:var(--amber);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--amber) 55%, transparent)}
 
+/* The divider belongs to the .rigswipe wrapper rather than to the row now
+   (issue #49, see below): the row slides sideways, and a border that slides
+   with it would tear a gap in the list mid-drag. Same line, same place —
+   it just no longer moves. */
 .rigrow{display:flex;align-items:center;gap:10px;padding:9px 12px;width:100%;
-  border-top:1px solid var(--line-2);text-align:left}
-.rigrow:first-child{border-top:none}
+  text-align:left;touch-action:pan-y pinch-zoom}
 .rigrow.sel{background:var(--blue-t)}
 .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ink-3)}
 .dot.run{background:var(--green);animation:dotPulse 2.4s ease-out infinite}
@@ -252,6 +352,27 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .dot.bad{background:var(--red);box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
 .dot.warn{background:var(--amber);box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
 .dot.build{background:var(--blue);box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
+
+/* Chain mark — the same accent-and-glow idiom as .dot above, deliberately cut
+   to a different SHAPE. A .dot is a circle and always means status; a .cmk is a
+   rounded square and always means identity, so the two never have to be told
+   apart by colour alone in a row like "· Main · Tessera" that carries both. The
+   hue arrives as --chain-h from the ChainMark component (see chains.js); the
+   rest of the colour is the theme's.
+   oklch() rather than hsl() because hsl lightness is not perceptual — hsl(50%)
+   yellow and hsl(50%) blue are nowhere near the same brightness, so one shared
+   pair of L/C values could not hold five hues at one weight. It costs nothing
+   in support: this file already leans on color-mix() and @property, which land
+   in the same browsers or later. */
+.cmk{display:inline-block;flex:none;width:8px;height:8px;border-radius:2.5px;
+  vertical-align:-.5px;margin-right:5px;
+  background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));
+  box-shadow:0 0 5px oklch(var(--chain-l) var(--chain-c) var(--chain-h) / .45)}
+/* On a chain's own row in the Chains tab there is nothing else to identify, so
+   the mark carries more weight — it is the legend the rest of the app refers
+   back to. */
+.cmk.lg{width:10px;height:10px;border-radius:3px;vertical-align:0;margin-right:6px;
+  box-shadow:0 0 8px oklch(var(--chain-l) var(--chain-c) var(--chain-h) / .5)}
 .rigrow .mid{flex:1;min-width:0}
 .rigrow .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
 .rigrow .sb{font-size:10.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;
@@ -266,6 +387,53 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .wearbar i{display:block;height:100%;background:var(--green);
   transition:width .4s cubic-bezier(.2,.8,.2,1),background-color .2s}
 .wearbar i.w{background:var(--amber)} .wearbar i.b{background:var(--red)}
+
+/* ---- Swipe a rig off its power switch (issue #49) -------------------
+   The row is drawn back to uncover an action lying underneath it. Two
+   elements do that, and they are separate on purpose:
+
+     .rigslide  slides. It carries the row's opaque background, because it
+                is what has to hide .rigswact when shut.
+     .rigrow    still takes the #44 press-scale.
+
+   Splitting them is what keeps the two from fighting: a transform is one
+   property, so a translate and a scale on the SAME element would have to
+   share one transition, and the press's .09s snap and the swipe's .22s
+   settle cannot both be that. On two elements each keeps its own timing and
+   the browser composes them. (During an actual drag the press-scale is
+   suppressed below — a row shrinking while it slides reads as a wobble.)
+
+   The transform lives behind a .sx class so that only the row being dragged
+   is promoted to its own compositor layer; a list of thirty rows all holding
+   an idle translate3d is memory a phone should not be spending.
+
+   touch-action:pan-y on .rigrow (above) is what keeps this off the
+   scroller's toes: a mostly-vertical drag never reaches our handlers at all,
+   the browser scrolls, and we get a pointercancel.
+
+   The revealed panel is the full row underneath, right-aligned, so what
+   surfaces first as the row pulls back is the label. Colour says which
+   direction you are going — red to cut power, green to restore it — and the
+   pale tint holds until the drag passes the fire threshold, where it fills
+   in and reads "let go now". Text on the filled state is var(--card) rather
+   than white: the dark theme's --red/--green are light enough that white on
+   them is under 3.5:1, while the card colour it sits on is well clear in
+   both themes (the same trick .pill.on uses). */
+.rigswipe{position:relative;border-top:1px solid var(--line-2)}
+.rigswipe:first-child{border-top:none}
+.rigslide{position:relative;z-index:1;background:var(--card);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.rigslide.sx{transform:translate3d(calc(-1 * var(--sx,0px)),0,0)}
+.rigslide.drag{transition:none}
+.rigswipe.dragging button.rigrow:active{transform:none}
+.rigswact{position:absolute;inset:0;z-index:0;display:flex;align-items:center;
+  justify-content:flex-end;gap:6px;padding:0 12px;
+  background:var(--red-t);color:var(--red);font-size:12px;font-weight:600;
+  transition:background-color .15s,color .15s}
+.rigswact .ic{font-size:15px;line-height:1}
+.rigswact.go{background:var(--green-t);color:var(--green)}
+.rigswact.arm{background:var(--red);color:var(--card)}
+.rigswact.go.arm{background:var(--green);color:var(--card)}
 
 .selbar{position:sticky;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);
   padding:9px 12px;display:flex;gap:7px;align-items:center;margin:0 -12px -12px}
@@ -302,7 +470,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 
 .seg2{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:9px 12px 0}
 .seg2 button{flex:1;text-align:center;padding:8px 4px;font-size:12.5px;font-weight:500;color:var(--ink-2);
-  transition:background-color .15s,color .15s}
+  transition:var(--press),background-color .15s,color .15s}
 .seg2 button.on{background:var(--green);color:#fff}
 .seg2 button+button{border-left:1px solid var(--line)}
 
@@ -313,7 +481,55 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   transition:background-color .2s,border-color .2s}
 .slotcell.filled{background:var(--green);border-color:var(--green);color:#fff}
 .slotcell.locked{background:var(--line-2);border-style:dashed;color:var(--ink-3);opacity:.6}
-.slotcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
+.slotcap,.rigcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
+
+/* ---- site floor plan (issue #42) ------------------------------------
+   A SIBLING of .slotgrid/.slotcell, not a reuse of them. Those visualise the
+   card slots on the rig being designed in BuildView, where the states are
+   filled/locked; these are rigs standing at physical positions on a site,
+   where the state is the rig's live health. Same grid mechanics and the same
+   rounded square so the two read as one family, but the fill comes from the
+   .dot.* vocabulary above (run/warn/bad/build/off) — the app has exactly one
+   status taxonomy and this is it — and an unoccupied position borrows
+   .slotcell.locked's dashed outline.
+
+   Text on a coloured tile is var(--card), not #fff: the dark palette's green
+   and amber are light, so white numerals would wash out on the very tiles
+   that matter. --card flips with the theme and stays legible on both.
+
+   A running tile runs .dot.run's OWN dotPulse keyframes rather than a
+   lookalike, so there is one definition of "this is alive" to keep in tune,
+   and the blanket prefers-reduced-motion rule at the bottom of this file
+   reaches it for free. `.calm` switches the pulse off once the grid is
+   larger than a glance: four tiles breathing reads as a farm running, forty
+   in lockstep reads as a strobing wall. */
+.rigwrap{padding:10px 12px 12px}
+.riggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:5px}
+.rigtile{aspect-ratio:1;border-radius:7px;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;color:var(--ink-3);
+  transition:var(--press),background-color .2s,border-color .2s}
+/* --line is only a couple of percent off --card, so a dashed --line outline on
+   a --line-2 fill is invisible on the light theme; mixing the dashes toward
+   --ink-3 keeps an empty position legible as a POSITION on both themes without
+   letting it shout as loudly as an occupied one */
+.rigtile.empty{background:var(--line-2);border-style:dashed;
+  border-color:color-mix(in srgb, var(--ink-3) 40%, transparent)}
+.rigtile.run{background:var(--green);border-color:var(--green);color:var(--card);
+  animation:dotPulse 2.4s ease-out infinite}
+.riggrid.calm .rigtile.run{animation:none}
+/* filled, not hollow: .dot.off is a solid --ink-3 disc, and a hollow grey tile
+   would be a second way of saying "nothing here" that an empty position has
+   already claimed two rules up */
+.rigtile.off{background:var(--ink-3);border-color:var(--ink-3);color:var(--card)}
+.rigtile.bad{background:var(--red);border-color:var(--red);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
+.rigtile.warn{background:var(--amber);border-color:var(--amber);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
+.rigtile.build{background:var(--blue);border-color:var(--blue);color:var(--card);
+  box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
+.riglegend{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:9px}
+.riglegend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-3)}
 
 .verdict{margin-top:2px}
 .vgroup{border-top:1px solid var(--line-2);padding:9px 0}
@@ -346,7 +562,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
     linear-gradient(45deg, var(--card) 5px, transparent 0) 0 4px;
   background-repeat:repeat-x; background-size:14px 14px; background-color:var(--bg)}
 .tab{flex:1;padding:7px 2px 8px;text-align:center;color:var(--ink-3);font-size:9.5px;font-weight:500;
-  display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .15s}
+  display:flex;flex-direction:column;align-items:center;gap:3px;transition:var(--press),color .15s}
 .tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;
   stroke-linecap:round;stroke-linejoin:round;transition:filter .15s}
 .tab.on{color:var(--green)}
@@ -379,4 +595,194 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   8%{opacity:1;transform:translate(-50%,0) scale(1.08)}
   16%,78%{opacity:1;transform:translate(-50%,0) scale(1)}
   100%{opacity:0;transform:translate(-50%,-10px) scale(1)}}
+/* Issue #40: a rank-up is the rarest beat in the game — the design doc
+   measures 5-6 across an entire run against the board's 24 milestones — it is
+   permanent, and it deliberately pays nothing but the title. So the title is
+   the reward, and it gets a class of its own rather than the 'grn' that every
+   ordinary milestone uses (indistinguishable) or 'jackpot' (a lucky one-off
+   payout, which is a different promise from a standing rank).
+
+   The flex row is flipped to a column FOR THIS CLASS ONLY, which inverts the
+   usual toast hierarchy without touching App.vue's markup: pop()'s text
+   becomes a small uppercase eyebrow ("RANK UP · 4 OF 6") and its amount — the
+   rank name — becomes the headline, in the same mono face the Stats hero
+   already prints the rank in.
+
+   Colour is anchored on --ink/--card, the one pairing that survives the theme
+   flip intact (they swap together, as .toast.dark and .ev.big already rely
+   on): a deep plaque with pale type in light, a pale plaque with deep type in
+   dark. The board's green bleeds into one corner and gold into the other, and
+   the gold accents are mixed toward --card rather than used raw, so they stay
+   legible on whichever side of the flip they land — raw --gold on the dark
+   theme's near-white plaque would be unreadable.
+
+   Slower in, and held far longer than the 2.6s standard: at most six of these
+   exist in a run, so it can afford to interrupt. Everything that moves here is
+   one animation on the element itself, so the blanket prefers-reduced-motion
+   rule below reaches all of it — a decorative pseudo-element sweep would not
+   have been covered, since `*` does not match ::before/::after. */
+.toast.rankup{
+  flex-direction:column;align-items:center;text-align:center;gap:4px;
+  padding:13px 18px 15px;border-radius:14px;
+  background:linear-gradient(140deg,
+    color-mix(in srgb, var(--green) 40%, var(--ink)) 0%,
+    var(--ink) 55%,
+    color-mix(in srgb, var(--gold) 22%, var(--ink)) 100%);
+  color:var(--card);
+  box-shadow:0 14px 40px color-mix(in srgb, var(--green) 26%, transparent),
+             inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent);
+  animation:rankup 4.6s cubic-bezier(.16,.84,.24,1) forwards}
+.toast.rankup>span:first-child{font-size:9.5px;font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;color:color-mix(in srgb, var(--gold) 55%, var(--card))}
+/* Lit from within rather than swept by a moving highlight — the same static
+   text-shadow idiom the Stats hero uses for a positive net figure. */
+.toast.rankup .num{font-size:23px;font-weight:500;letter-spacing:-.03em;line-height:1.12;
+  text-shadow:0 0 20px color-mix(in srgb, var(--gold) 40%, transparent)}
+@keyframes rankup{0%{opacity:0;transform:translate(-50%,-26px) scale(.94)}
+  10%{opacity:1;transform:translate(-50%,2px) scale(1.02)}
+  18%,86%{opacity:1;transform:translate(-50%,0) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-14px) scale(.99)}}
+/* Issue #48: every toast above is `forwards` onto a 0-opacity end frame, and
+   the blanket rule at the bottom of this file collapses ALL durations to
+   .01ms under reduced motion — so the browser finished the animation before
+   the first paint and left the toast on that end frame. Toasts carry real
+   information (block records, milestones, rank-ups, insolvency, pool
+   failures), so for anyone with the OS preference set they were simply never
+   shown; only a screen reader picked them up, via the live region.
+
+   .rankflash (below) answers the same problem with `animation:none;opacity:1`
+   because App.vue mounts and unmounts it on a JS timer — the element leaves on
+   its own. A toast has no such timer: `v-if="g.s.toast.n"` is true forever
+   once the first toast fires (the counter only increments), so the animation
+   IS the toast's lifetime. Killing it would pin the toast to the screen
+   permanently. Instead the duration is restored and the keyframes swapped for
+   ones that carry the SAME opacity timeline with no transform at all: the
+   toast appears, holds for its normal window, and fades. Nothing travels and
+   nothing scales — a cross-fade is not the kind of motion the preference is
+   asking us to drop, and it is what keeps the toast self-dismissing.
+
+   The blanket rule's `animation-duration:.01ms!important` is beaten here on
+   specificity (.toast/.toast.rankup over `*`), which is why these need
+   !important of their own; source order is irrelevant between two importants.
+   No transform is declared, so .toast's own translateX(-50%) centring stands
+   through the whole animation. */
+@keyframes tstStill{0%{opacity:0}8%,78%{opacity:1}100%{opacity:0}}
+@keyframes rankupStill{0%{opacity:0}10%,86%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  /* covers .toast.jackpot too — same 2.6s window, and an !important on the
+     one-class selector outranks .jackpot's ordinary declaration. */
+  .toast{animation:tstStill 2.6s linear forwards!important}
+  .toast.rankup{animation:rankupStill 4.6s linear forwards!important}
+}
+/* Issue #47: the SCREEN acknowledges a rank-up, not just the toast. #40 gave
+   the moment its own plaque, but a plaque is one fixed box at the top of the
+   viewport, and a rank-up — 5-6 in an entire run, permanent, unpayable —
+   occupied exactly as much of the player's visual field as a routine
+   "Biggest block yet". This is the accompaniment: a soft bloom that opens
+   from behind the toast, washes the shell, and is gone. Mounted by App.vue
+   for ~900ms on a cls==='rankup' toast only (see the watch there).
+
+   Deliberately an ACCOMPANIMENT and nothing more:
+     - z-index 55 sits above the tab bar (30) and top bar (20), so the whole
+       shell is touched, but UNDER .toast (60) — the toast is never tinted,
+       dimmed or overlapped by it — and under .sheet (80), so an open sheet
+       keeps the screen it owns.
+     - all of the motion is over inside .78s, against the toast's 4.6s hold,
+       so it reads as the toast's arrival rather than as a second event
+       competing with it, and the screen is settled long before the player
+       has finished reading the rank name.
+     - pointer-events:none and aria-hidden: it can neither swallow a tap nor
+       reach a screen reader, which already hears the toast's own live region.
+
+   position:absolute inside #app rather than fixed, so on a desktop-width
+   window it covers the 440px shell — the thing the player is actually looking
+   at — instead of flooding the empty backdrop either side of it.
+
+   Colour comes from color-mix() on --gold/--green, the same two tokens
+   .toast.rankup builds its plaque from, so it is theme-adaptive for free the
+   way .ambient is: the dark palette's brighter tokens light the bloom without
+   a second set of colours to keep in sync.
+
+   Only opacity and transform animate — both compositor properties, so a
+   phone paints this once and moves a layer, rather than re-rasterising a
+   full-shell gradient every frame the way an animated background-size or an
+   @property-driven gradient stop would. Everything that moves is one
+   animation on the ELEMENT (no ::before/::after sweep), which matters
+   because the blanket reduced-motion rule at the bottom of this file uses
+   `*` and does not match pseudo-elements. transform-origin is the top
+   centre: the light opens from behind the toast, where the eye already is.
+
+   No transform is on any ANCESTOR of the toast — this is its sibling — so
+   .toast's position:fixed containing block is untouched. */
+.rankflash{position:absolute;inset:0;z-index:55;pointer-events:none;
+  transform-origin:50% 0;
+  background:
+    radial-gradient(74% 40% at 50% 0%, color-mix(in srgb, var(--gold) 30%, transparent), transparent 70%),
+    radial-gradient(140% 112% at 50% 0%, color-mix(in srgb, var(--green) 17%, transparent), transparent 78%);
+  animation:rankflash .78s cubic-bezier(.16,.84,.24,1) forwards}
+@keyframes rankflash{0%{opacity:0;transform:scale(.88)}
+  16%{opacity:1}
+  100%{opacity:0;transform:scale(1.1)}}
+/* The blanket rule below collapses any animation to nothing, which for a
+   flourish means it would simply not happen — and #47 asks for a static
+   acknowledgment rather than silence. So under reduced motion the bloom is
+   dropped for its opposite: a still edge glow, no scale and no fade, present
+   for the same ~900ms window App.vue mounts the element for and then gone.
+   Nothing moves; the screen is briefly lit at its border. */
+@media (prefers-reduced-motion:reduce){
+  .rankflash{animation:none;opacity:1;transform:none;background:none;
+    box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--gold) 42%, transparent),
+               inset 0 0 34px 4px color-mix(in srgb, var(--green) 20%, transparent)}
+}
+/* ---- Press response (issue #44) -------------------------------------
+   Everything in this app used to answer a tap with a background swap and
+   nothing else, and the hover states added by the overhaul are gated behind
+   @media (hover:hover) — so on the phone-width viewport this is actually
+   built for, the primary input had no motion at the point of contact at all.
+   The three rules below are the whole fix: the system-wide touch convention of a
+   control shrinking a few percent while it is held. Layered ON TOP of the
+   existing colour feedback (.btn:active{background:var(--line)} etc.), never
+   replacing it — the rules below set transform only.
+
+   Scoped by tag rather than by class alone, because :active matches ANY
+   element being pressed, including non-interactive ones. Several of these
+   classes are used for both: .rowline and .pickrow render as plain <div>
+   read-out rows in ChainsView/SitesView/FarmView/BuildView, and Compare.vue's
+   .cmp-r switches between <button> and <div> on whether a pick handler was
+   passed. (.pill is only ever a <button>; the top bar's static <span> readout
+   is the separate .chip, which takes no press.) The
+   `button` prefix is what keeps the press from firing on things that do not
+   respond to being pressed. Same reasoning for :not(.locked) on .cmp-r —
+   a locked tier IS a <button>, but its click is a no-op, so it must not
+   claim to have registered. (Disabled controls need no such guard; they are
+   not activatable and never match :active.)
+
+   Two tiers, because the same percentage does not read the same at both
+   sizes: small controls take the full scale, while the full-bleed rows take
+   a gentler one — a wide row travels many more pixels for the same ratio,
+   and .98 already moves its edges ~4px at 440px, which is plenty.
+
+   Not covered on purpose:
+     .switch  — a 40x24 pill, where 3% is barely a pixel, and it is the one
+                control that already answers a press with motion of its own
+                (the knob's translateX). Squeezing the track while the knob
+                slides reads as wobble, not as a press.
+     .card    — a container, not a target; scaling a big box of nested rows
+                and absolutely-positioned bars looks janky.
+   No transform is added to any ANCESTOR: a transform creates a containing
+   block, which would break .sheet/.toast's position:fixed. Every .sheet is
+   a top-level sibling in its view and .toast lives at App.vue's root, so
+   nothing here is above them — but that is why this stays on leaf controls.
+
+   prefers-reduced-motion needs no special case: the blanket rule below
+   flattens transition-duration globally, which collapses the press to an
+   instant state change. */
+button.rigrow,button.pickrow,button.rowline,button.cmp-r{transition:var(--press)}
+button.btn:active,button.pill:active,button.rigtile:active,
+.speedbtn:active,.helptog:active,.sndtog:active,.tab:active,.seg2 button:active{
+  transform:scale(var(--press-scale))}
+button.rigrow:active,button.pickrow:active,button.rowline:active,
+button.cmp-r:not(.locked):active{
+  transform:scale(var(--press-scale-row))}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}

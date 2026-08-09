@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
+import ChainMark from '../components/ChainMark.vue';
 
 const g = useGameStore();
 const open=reactive({});
@@ -52,7 +53,7 @@ const projMargin=computed(()=>{
     <div class="card"><div class="list">
       <template v-for="c in g.s.chains" :key="c.id">
         <button class="rowline" @click="open[c.id]=!open[c.id]">
-          <span style="flex:1;min-width:0"><span class="nm">{{ c.name }}</span>
+          <span style="flex:1;min-width:0"><span class="nm"><ChainMark :chain="c.id" lg />{{ c.name }}</span>
             <span class="tag" style="margin-left:5px">
               {{ c.target<60 ? c.target+'s' : (c.target/60).toFixed(0)+' min' }} blocks</span>
             <span v-if="g.easeOf(c)>1.02" class="tag g" style="margin-left:3px">RUNNING EASY</span>
@@ -113,7 +114,8 @@ const projMargin=computed(()=>{
           <span class="nm">{{ p.name }}</span>
           <span class="tag" :class="p.owner==='you'?'b':''" style="margin-left:5px">{{ p.scheme }}</span>
           <span v-if="p.owner==='you'" class="tag b" style="margin-left:3px">YOURS</span>
-          <div class="sb">{{ g.chain(p.chain).name }} · {{ fmt.hash(g.poolHash(p)) }} of
+          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain).name }} ·
+            {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks</div></span>
         <span class="rt">{{ fmt.pct(p.fee) }}
           <div class="sb">{{ fmt.pct(g.poolRep(p),0) }} rep</div></span></div>
@@ -132,7 +134,8 @@ const projMargin=computed(()=>{
           <span class="tag" style="margin-left:5px">{{ p.scheme }}</span>
           <span v-if="g.poolHash(p)>=g.poolCapLimit(p)*0.95" class="tag b"
                 style="margin-left:4px">FULL</span>
-          <div class="sb">{{ g.chain(p.chain).name }} · {{ fmt.hash(g.poolHash(p)) }} of
+          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain).name }} ·
+            {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks</div>
           <div v-if="open[p.id]" class="sb" style="margin-top:3px">
             reputation {{ fmt.pct(g.poolRep(p),0) }} —
@@ -164,7 +167,8 @@ const projMargin=computed(()=>{
           <span class="tag b" style="margin-left:5px">{{ p.scheme }}</span>
           <span v-if="p.capped||g.poolHash(p)>=g.poolCapLimit(p)*0.95"
                 class="tag" style="background:var(--amber-t);color:var(--amber);margin-left:3px">FULL</span>
-          <div class="sb">{{ g.chain(p.chain).name }} · {{ fmt.hash(g.poolHash(p)) }} of
+          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain).name }} ·
+            {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks ·
             {{ fmt.pct(g.poolRep(p),0) }} rep</div></span>
         <span class="rt" style="text-align:right">{{ fmt.pct(p.fee) }}

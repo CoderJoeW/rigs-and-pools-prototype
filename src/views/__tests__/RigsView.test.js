@@ -82,6 +82,102 @@ describe('RigsView', () => {
     expect(bar.attributes('aria-label')).toBe('Wear 0%');
   });
 
+  /* The Sites floor plan opens the real rig sheet rather than a second,
+     lesser copy of it — the handoff is one id parked on the store. */
+  it('opens straight into the sheet for a rig handed over from the floor plan', async () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.focusRig = g.s.rigs[0].id; },
+    });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.sheet').exists()).toBe(true);
+    expect(wrapper.find('.sheet').text()).toContain(store.s.rigs[0].name);
+    expect(store.s.focusRig).toBeNull();   // read once, never a stale ambush
+  });
+
+  it('ignores a handoff for a rig that is not at the active site', () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].site = 999; g.s.focusRig = g.s.rigs[0].id; },
+    });
+    expect(wrapper.find('.sheet').exists()).toBe(false);
+    expect(store.s.focusRig).toBeNull();
+  });
+
+  /* Swipe-to-power (issue #49). jsdom has no layout and no real gesture
+     recognition, so what these can honestly check is the decision logic —
+     which drags claim the gesture, which thresholds fire, and that none of
+     it disturbs the tap and multi-select paths. The gesture itself was
+     verified in a real headless browser; see the issue. */
+  describe('swipe a row to flip its power', () => {
+    const built = g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; };
+    /* One press, one move, one release. A single move is enough: the handler
+       claims on the first sample that clears the slop, exactly as it does
+       against a stream of them. 200px clears the commit threshold, 60px
+       lands in the band that only reveals the action. */
+    const drag = async (row, dx, dy = 0) => {
+      await row.trigger('pointerdown', { pointerId: 1, button: 0, clientX: 300, clientY: 100 });
+      await row.trigger('pointermove', { pointerId: 1, clientX: 300 - dx, clientY: 100 + dy });
+      await row.trigger('pointerup', { pointerId: 1, clientX: 300 - dx, clientY: 100 + dy });
+      await row.trigger('click');   // the browser sends one after every release
+    };
+
+    it('a long leftward drag toggles the rig and does not open the sheet', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, { seed: built });
+      expect(store.s.rigs[0].on).toBe(true);
+      await drag(wrapper.find('.rigrow'), 200);
+      expect(store.s.rigs[0].on).toBe(false);
+      expect(wrapper.find('.sheet').exists()).toBe(false);
+    });
+
+    it('a short drag reveals the action instead of firing it, and the action fires it', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, { seed: built });
+      await drag(wrapper.find('.rigrow'), 60);
+      expect(store.s.rigs[0].on).toBe(true);           // nothing happened yet
+      const act = wrapper.find('.rigswact');
+      expect(act.exists()).toBe(true);
+      expect(act.text()).toContain('Power off');
+      expect(act.attributes('aria-label')).toContain('Power off');
+      await act.trigger('click');
+      expect(store.s.rigs[0].on).toBe(false);
+      expect(wrapper.find('.sheet').exists()).toBe(false);
+    });
+
+    it('a mostly-vertical drag is left to the scroller, and the tap still opens the sheet', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, { seed: built });
+      await drag(wrapper.find('.rigrow'), 6, 50);
+      expect(store.s.rigs[0].on).toBe(true);
+      expect(wrapper.find('.rigswact').exists()).toBe(false);
+      expect(wrapper.find('.sheet').exists()).toBe(true);   // read as an ordinary tap
+    });
+
+    it('a plain tap after a swipe still opens the sheet', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, { seed: built });
+      await drag(wrapper.find('.rigrow'), 200);
+      expect(store.s.rigs[0].on).toBe(false);
+      await wrapper.find('.rigrow').trigger('click');
+      expect(wrapper.find('.sheet').exists()).toBe(true);
+    });
+
+    it('a rig that is still being built cannot be swiped', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, {
+        seed: g => { g.generatePreset(); g.build(); },   // leaves building > 0
+      });
+      expect(store.s.rigs[0].building).toBeGreaterThan(0);
+      await drag(wrapper.find('.rigrow'), 200);
+      expect(store.s.rigs[0].on).toBe(true);
+      expect(wrapper.find('.rigswact').exists()).toBe(false);
+    });
+
+    it('selection mode keeps the row to itself — a drag there selects nothing and toggles nothing', async () => {
+      const { wrapper, store } = mountWithStore(RigsView, { seed: built });
+      const selectBtn = wrapper.findAll('button').find(b => b.text() === 'Select');
+      await selectBtn.trigger('click');
+      await drag(wrapper.find('.rigrow'), 200);
+      expect(store.s.rigs[0].on).toBe(true);
+      expect(wrapper.find('.rigswact').exists()).toBe(false);
+      expect(wrapper.text()).toContain('1 selected');   // the tap still chose it
+    });
+  });
+
   it('the mining-group select in the rig sheet is a real labeled control', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },

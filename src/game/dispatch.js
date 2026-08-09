@@ -304,6 +304,25 @@ export function installDispatch(G){
     const d=siteDemand(f); return d>0 ? siteCostPerHour(f)*24*(rigWallW(r)/d) : 0; };
   const rigNet = r => rigRev(r)-rigPow(r);
 
+  /* ---- one answer to "what state is this rig in" ----
+     Dot colour, the Rigs filter chips, the rig sheet's header and the Sites
+     floor plan all read this. It lived as a local `stateOf` in RigsView until
+     a second view needed the identical verdict; two copies of a five-branch
+     precedence rule is exactly how the three-different-answers bug §6f warns
+     about gets reintroduced, so it moved here next to the numbers it asks
+     about. `dot` is the .dot.* class name the CSS already defines, `k` the
+     finer-grained key the filters group by. */
+  const rigWear = r => r.units.length ? r.units.reduce((a,u)=>a+u.w,0)/r.units.length : 0;
+  const rigState = r =>
+      r.building>0 ? {k:'build', dot:'build', label:'Building', sub:fmt.dur(r.building)}
+    : !r.on ? {k:'off', dot:'off',
+        label: r.cut==='broke' ? 'Stopped — no cash'
+             : r.cut==='brownout' ? 'Shed — site over capacity' : 'Off', sub:''}
+    : r.units.every(u=>u.w>=1) ? {k:'worn', dot:'bad', label:'Worn out', sub:'cards need replacing'}
+    : rigNet(r)<0 ? {k:'losing', dot:'bad', label:'Losing money', sub:'costs more than it earns'}
+    : rigWear(r)>0.6 ? {k:'wearing', dot:'warn', label:'Wearing', sub:'cards past 60%'}
+    : {k:'run', dot:'run', label:'Running', sub:''};
+
   /* ---- the two quantities every projection needs ----
      What a marginal watt costs at a site, and what a hash is worth to the
      group a new rig would join. Both were written out longhand in three
@@ -347,5 +366,5 @@ export function installDispatch(G){
   const lifetimeNet = computed(()=> G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
 
-  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,WORN_OUT,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigWallW,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
+  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,WORN_OUT,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
 }

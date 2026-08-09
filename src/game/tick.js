@@ -90,13 +90,32 @@ export function installTick(G){
       if(hit){
         G.s.mile.done[m.id]=G.s.t;
         G.say('big','Milestone — '+m.name+': '+m.desc);
-        G.pop('Milestone',m.name,'grn',{always:true});
         const n=Object.keys(G.s.mile.done).length;
         let rk=0; for(const [need] of RANKS) if(n>=need) rk++;
-        if(rk-1>G.s.mile.rank){
+        const ranked=rk-1>G.s.mile.rank;
+        if(ranked){
           G.s.mile.rank=rk-1;
-          G.say('big','Rank up — you are now a '+RANKS[G.s.mile.rank][1]);
-          G.pop('Rank up',RANKS[G.s.mile.rank][1],'grn',{always:true});
+          const rank=RANKS[G.s.mile.rank][1];
+          G.say('big','Rank up — you are now '+(/^[AEIOU]/i.test(rank)?'an ':'a ')+rank);
+          /* Issue #40: a rank-up is not another milestone. The board fires 24
+             times; the ladder behind it moves 5-6 times in a whole run, is
+             permanent, and pays nothing but the title — so it gets its own
+             toast class instead of the 'grn' every ordinary milestone uses.
+             The rank NAME is passed as the amount because .toast.rankup makes
+             the amount the headline and the text a small eyebrow above it: the
+             new title is the thing worth reading, not a sentence around it.
+
+             It also has to be the ONLY toast this tick, which is why the
+             milestone pop moved into the else. pop() rate-limits even
+             always:true calls to one per 900ms of real time, and G.s.toast is
+             a single slot — so the milestone toast fired microseconds earlier
+             was swallowing the rank-up outright, and the rarest beat in the
+             game reached the screen as a plain green "Milestone". The feed
+             still records both lines; only the toast defers. */
+          G.pop('Rank up · '+(G.s.mile.rank+1)+' of '+RANKS.length,
+                rank,'rankup',{always:true,kind:'rankup'});
+        } else {
+          G.pop('Milestone',m.name,'grn',{always:true});
         }
       }
     }
@@ -421,7 +440,14 @@ export function installTick(G){
           '+'+fmt.c(full),full,c.tick);
         else G.say('block','Block solved solo on '+c.name,'+'+fmt.c(full),full,c.tick);
         if(record){ G.s.bestBlock=usd;
-          G.pop('Biggest block yet','+'+fmt.usd2(usd),'',{always:true}); }
+          /* kind:'record' is a label, not a behaviour change — always:true
+             already bypasses the per-kind cap this key feeds, so the only
+             thing it alters is which bucket the counter lands in. It exists
+             so a new all-time record can be told apart from a routine block
+             by cls/kind alone, which is what audio.js keys off (issue #46):
+             a record is a jackpot to the ear even when the jackpot branch
+             below did not fire. */
+          G.pop('Biggest block yet','+'+fmt.usd2(usd),'',{always:true,kind:'record'}); }
         else if(jackpot) G.pop('Jackpot','+'+fmt.usd2(usd)+' — '+(usd/baseline).toFixed(1)+'x your usual',
           'jackpot',{always:true});
         else G.pop('Block solved','+'+fmt.c(full)+' '+c.tick,'',{kind:'block'});

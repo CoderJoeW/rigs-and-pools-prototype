@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
@@ -30,6 +30,85 @@ function applyTheme(theme){
 watch(()=>g.s.theme, applyTheme, {immediate:true});
 const onSystemThemeChange=()=>{ if(g.s.theme==='auto') applyTheme('auto'); };
 if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
+
+/* Ambient atmosphere — the decorative .ambient layer reads the simulation's own
+   sky rather than sitting still. Purely presentational: it consumes the same
+   values the TopBar already puts on screen as chips (solarFactor, ambient temp,
+   cloud cover) and publishes four unitless 0..1 factors that main.css folds into
+   .ambient's color-mix() gradients. Set on documentElement next to the
+   theme-color sync above for the same reason: it's a document-level paint
+   detail, not something a component should own.
+
+   The hour is restated here because timeOfDay.js keeps hourOf() internal (it
+   isn't on the store's export surface). `elev` is that module's own
+   sin(pi*(h-6)/12) solar curve, kept SIGNED instead of clamped at 0 so it stays
+   continuous through the night: +1 at noon, 0 at 06:00/18:00, -1 at midnight.
+   That sign is what makes dawn and dusk a smooth crossing rather than a jump. */
+const clamp01 = v => v<0 ? 0 : v>1 ? 1 : v;
+const atmosphere = computed(()=>{
+  const h = (((g.s.t%86400)+86400)%86400)/3600;
+  const elev = Math.sin(Math.PI*(h-6)/12);
+  const cloud = clamp01(g.s.weather ? g.s.weather.now.cloud : 0);
+  const day = clamp01((elev+0.15)/0.55);              // 0 through the night, 1 by mid-morning
+  const golden = clamp01(1-Math.abs(elev)/0.40);      // sun near the horizon, either side
+  const heat = clamp01((g.ambient-g.C.AMBIENT_LOW)/(g.C.AMBIENT_HIGH-g.C.AMBIENT_LOW));
+  const solar = clamp01(g.solarFactor);               // already cloud-attenuated by sky()
+  return {
+    // How much light there is at all: mostly solar, with a floor of daylight so
+    // an overcast noon still outranks midnight.
+    '--amb-lum': clamp01(0.08+0.62*solar+0.30*day).toFixed(3),
+    // Golden hour, dulled by cloud, plus a little of the afternoon's heat.
+    '--amb-warm': clamp01(0.80*golden*(1-0.55*cloud)+0.20*heat*day).toFixed(3),
+    // The night's cool cast — time of day only, independent of how bright it is.
+    '--amb-cool': (1-day).toFixed(3),
+    // Cloud cover, which desaturates everything rather than dimming it.
+    '--amb-haze': cloud.toFixed(3),
+  };
+});
+const AMB_KEYS=['--amb-lum','--amb-warm','--amb-cool','--amb-haze'];
+const ambApplied={};
+/* Ticks land every TICK_MS, so only the values that actually moved are written
+   — at 1x most ticks change nothing past 3 decimals. */
+watch(atmosphere, vals=>{
+  const st=document.documentElement.style;
+  for(const k of AMB_KEYS) if(ambApplied[k]!==vals[k]){ ambApplied[k]=vals[k]; st.setProperty(k,vals[k]); }
+}, {immediate:true});
+/* Rank-up flourish (issue #47) — the screen acknowledges a rank-up, not just
+   the toast. #40 gave a rank-up its own toast, but a toast is one fixed box at
+   the top of the screen the player may not be looking at, and the rarest,
+   most permanent event in the game (5-6 in a whole run) occupied exactly the
+   same amount of the visual field as a routine "Biggest block yet".
+
+   Detected here rather than pushed from tick.js for the same reason the
+   --amb-* factors above are computed here: this is a presentational,
+   document-level reaction to a game-state change, and the game has no
+   business knowing the screen flashed. pop() already funnels every "worth
+   interrupting the player for" moment through one place and stamps it with a
+   cls, and s.toast.n is the counter that increments once per toast that
+   actually lands — so watching it catches exactly the rank-ups that reached
+   the screen, and none that pop()'s rate limit swallowed. It fires only for
+   cls==='rankup'; every other kind of toast is unaccompanied, as before.
+
+   Nothing is watched deeply and nothing is read on the first tick: the watch
+   is not immediate, so a save restored with a rank-up toast still in s.toast
+   does not re-flash it on reload.
+
+   The element is mounted for FLASH_MS and then removed, which is what makes
+   the reduced-motion fallback work: with motion suppressed the layer is a
+   static edge glow that is simply present for that window and then gone (see
+   .rankflash in main.css). The CSS animation is shorter than the window, so
+   it has already settled to transparent before the node leaves. The :key is
+   the counter, so two rank-ups in quick succession restart the animation
+   rather than the second one landing on an element mid-fade. */
+const FLASH_MS=900;
+const rankFlash=ref(0);
+let flashTimer=null;
+watch(()=>g.s.toast.n, ()=>{
+  if(g.s.toast.cls!=='rankup') return;
+  rankFlash.value++;
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
+});
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
@@ -41,9 +120,10 @@ onMounted(async ()=>{
   window.addEventListener('pagehide',onLeave);
   document.addEventListener('visibilitychange',onHide);
 });
-onUnmounted(()=>{ clearInterval(timer); clearInterval(saver);
+onUnmounted(()=>{ clearInterval(timer); clearInterval(saver); clearTimeout(flashTimer);
   window.removeEventListener('pagehide',onLeave);
   document.removeEventListener('visibilitychange',onHide);
+  for(const k of AMB_KEYS) document.documentElement.style.removeProperty(k);
   if(darkMedia) darkMedia.removeEventListener('change',onSystemThemeChange); });
 const views={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
              chains:ChainsView,market:MarketView,stats:StatsView};
@@ -72,6 +152,7 @@ const allTabs=[
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
+  <div v-if="rankFlash" class="rankflash" :key="'rf'+rankFlash" aria-hidden="true"></div>
   <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n"
        :role="g.s.toast.cls==='dark'?'alert':'status'" aria-live="polite" aria-atomic="true">
     <span>{{ g.s.toast.text }}</span><span class="num">{{ g.s.toast.amount }}</span></div>

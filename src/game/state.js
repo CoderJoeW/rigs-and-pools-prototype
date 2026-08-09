@@ -78,7 +78,7 @@ export function installState(G){
     today:{day:0,earned:0,power:0,blocks:0},
     // nothing is gated: every mechanic is available from the first minute
     unlocked:new Proxy({},{get:()=>true}),
-    picker:null, sitePicker:null, rebuild:null, saveInfo:'', wipeArm:false,
+    picker:null, sitePicker:null, rebuild:null, focusRig:null, saveInfo:'', wipeArm:false,
     shakeAt:0, shakeOn:null,
     onboardingDismissed:false,
     feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''}, tab:'build',

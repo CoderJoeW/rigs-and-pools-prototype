@@ -1,8 +1,20 @@
 <script setup>
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { useTweenedNumber } from '../composables/useTweenedNumber.js';
+import { sfx, cycleVolume, volumeLabel } from '../services/audio.js';
 
+/* The sound pill (issue #46) sits beside `help` because the speedbar is the
+   one strip visible from every tab, and because `help` already establishes it
+   as where this app keeps its "how much does this thing tell me" preferences.
+   It is NOT part of g.s: a mute is a property of this device, not of the save
+   — services/audio.js explains why that distinction matters. */
 const g = useGameStore();
+/* The cash figure is the most-looked-at number in the app, so it counts to
+   its new value rather than swapping to it — a payout landing should look
+   different from a page reload (issue #43). Display only: g.s.cash is still
+   the truth everything else reads. */
+const cashShown = useTweenedNumber(() => g.s.cash);
 </script>
 
 <template>
@@ -24,7 +36,7 @@ const g = useGameStore();
         grid {{ g.band==='off'?'off-peak':g.band }}</span>
       <span v-if="g.s.weather&&g.s.weather.now.cloud>0.45" class="chip">
         {{ g.s.weather.now.cloud>0.75?'overcast':'cloudy' }}</span></div>
-    <div><div class="top-cash">{{ fmt.usd(g.s.cash) }}</div>
+    <div><div class="top-cash">{{ fmt.usd(cashShown) }}</div>
       <div class="top-sub">{{ fmt.usd(g.walletUsd) }} unsold</div></div>
   </header>
   <div class="speedbar">
@@ -33,6 +45,11 @@ const g = useGameStore();
     <span class="speedset">
       <button class="helptog" :class="{on:g.s.help}" @click="g.s.help=!g.s.help"
               style="margin-right:6px">{{ g.s.help?'hide help':'help' }}</button>
+      <button class="sndtog" :class="{on:sfx.volume>0}" @click="cycleVolume()"
+              :aria-label="'Sound is '+volumeLabel()+'. Activate to change level.'"
+              :title="sfx.volume>0 ? 'Sound on — cycles louder, then off'
+                                   : 'Sound off — blocks, jackpots and rank-ups'"
+              style="margin-right:6px">{{ volumeLabel() }}</button>
       <button v-for="x in g.C.SPEEDS" :key="x" class="speedbtn" :class="{on:g.s.speed===x}"
               @click="g.s.speed=x">{{ x }}&times;</button></span>
   </div></div>

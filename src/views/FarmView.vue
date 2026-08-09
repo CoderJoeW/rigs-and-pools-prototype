@@ -4,8 +4,15 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
+import ChainMark from '../components/ChainMark.vue';
+import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
+/* The hero figure counts toward each new value instead of snapping to it
+   (issue #43). Its pos/neg colour still keys off the real g.netDay, so the
+   colour flips the instant the day actually goes into the red rather than
+   waiting for the animation to cross zero. */
+const netDayShown = useTweenedNumber(() => g.netDay);
 const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
 const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
 const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
@@ -79,7 +86,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
               </div>
             </template>
             <div v-else style="display:flex;align-items:baseline;gap:8px">
-              <b style="flex:1">{{ gr.name }}
+              <b style="flex:1"><ChainMark :chain="gr.chain" />{{ gr.name }}
                 <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:2px"
                         :aria-label="'Rename '+gr.name" @click="startRenameGroup(gr)">Rename</button>
                 <span v-if="advice" class="tag"
@@ -150,7 +157,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
               {{ g.binding==='power'?'power-bound':'cash-bound' }}</span></div>
           <div style="display:flex;align-items:flex-end;gap:10px;margin-top:2px">
             <span class="hero-val" :class="g.netDay>=0?'pos':'neg'" style="flex:none">
-              {{ fmt.usd2(g.netDay) }}</span>
+              {{ fmt.usd2(netDayShown) }}</span>
             <span class="sb" style="flex:none;margin-left:8px">so far today
               &middot; earning about {{ fmt.usd2(g.expectedDay-g.powerRateDay) }}/day
               at this hashrate</span>
