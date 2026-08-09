@@ -27,6 +27,16 @@
   --top-bg:rgba(245,246,244,.92);
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'DM Mono',ui-monospace,Menlo,monospace;
+  /* Press response (see the ":active" section at the bottom of this file).
+     Held as tokens so the whole app's tactile feel is tuned in one place —
+     every interactive family splices --press into its own transition list
+     rather than restating the timing. Deliberately faster than any other
+     transition here: a press-down has to read as the finger landing, not as
+     an animation, so it has to complete well inside the ~120ms where motion
+     still feels like direct manipulation. */
+  --press:transform .09s ease-out;
+  --press-scale:.97;
+  --press-scale-row:.98;
 }
 /* Dark palette mirrors the light one token-for-token, so every rule built on
    var(--x) repaints for free — only two rules elsewhere hardcode #fff over
@@ -149,11 +159,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .speedlbl{font-size:10px;color:var(--ink-3)}
 .speedset{display:flex;gap:2px}
 .speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px;
-  color:var(--ink-3);background:var(--line-2);transition:background-color .15s,color .15s}
+  color:var(--ink-3);background:var(--line-2);transition:var(--press),background-color .15s,color .15s}
 .speedbtn.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
 .helptog{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-3);
-  transition:background-color .15s,color .15s,box-shadow .15s}
+  transition:var(--press),background-color .15s,color .15s,box-shadow .15s}
 .helptog.on{background:var(--green);color:#fff;
   box-shadow:0 0 10px color-mix(in srgb, var(--green) 50%, transparent)}
 
@@ -214,7 +224,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .tag.b{background:var(--blue-t);color:var(--blue)}
 
 .btn{font-size:13px;font-weight:500;padding:8px 12px;border-radius:9px;background:var(--line-2);
-  color:var(--ink);white-space:nowrap;text-align:center;transition:background-color .12s,box-shadow .12s}
+  color:var(--ink);white-space:nowrap;text-align:center;
+  transition:var(--press),background-color .12s,box-shadow .12s}
 .btn:active{background:var(--line)}
 .btn-pri{background:var(--green);color:#fff;
   box-shadow:0 2px 12px color-mix(in srgb, var(--green) 35%, transparent)}
@@ -277,7 +288,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
   border:1px solid var(--line);font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;
-  transition:background-color .15s,border-color .15s,color .15s}
+  transition:var(--press),background-color .15s,border-color .15s,color .15s}
 .chip.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .chip .n{font-family:var(--mono);font-size:11px;opacity:.75}
 .chip.alert{border-color:var(--amber);color:var(--amber)}
@@ -348,7 +359,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 
 .seg2{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:9px 12px 0}
 .seg2 button{flex:1;text-align:center;padding:8px 4px;font-size:12.5px;font-weight:500;color:var(--ink-2);
-  transition:background-color .15s,color .15s}
+  transition:var(--press),background-color .15s,color .15s}
 .seg2 button.on{background:var(--green);color:#fff}
 .seg2 button+button{border-left:1px solid var(--line)}
 
@@ -392,7 +403,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
     linear-gradient(45deg, var(--card) 5px, transparent 0) 0 4px;
   background-repeat:repeat-x; background-size:14px 14px; background-color:var(--bg)}
 .tab{flex:1;padding:7px 2px 8px;text-align:center;color:var(--ink-3);font-size:9.5px;font-weight:500;
-  display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .15s}
+  display:flex;flex-direction:column;align-items:center;gap:3px;transition:var(--press),color .15s}
 .tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;
   stroke-linecap:round;stroke-linejoin:round;transition:filter .15s}
 .tab.on{color:var(--green)}
@@ -472,4 +483,54 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   10%{opacity:1;transform:translate(-50%,2px) scale(1.02)}
   18%,86%{opacity:1;transform:translate(-50%,0) scale(1)}
   100%{opacity:0;transform:translate(-50%,-14px) scale(.99)}}
+/* ---- Press response (issue #44) -------------------------------------
+   Everything in this app used to answer a tap with a background swap and
+   nothing else, and the hover states added by the overhaul are gated behind
+   @media (hover:hover) — so on the phone-width viewport this is actually
+   built for, the primary input had no motion at the point of contact at all.
+   The three rules below are the whole fix: the system-wide touch convention of a
+   control shrinking a few percent while it is held. Layered ON TOP of the
+   existing colour feedback (.btn:active{background:var(--line)} etc.), never
+   replacing it — the rules below set transform only.
+
+   Scoped by tag rather than by class alone, because :active matches ANY
+   element being pressed, including non-interactive ones. Several of these
+   classes are used for both: .rowline and .pickrow render as plain <div>
+   read-out rows in ChainsView/SitesView/FarmView/BuildView, .chip is a
+   static <span> readout in the top bar, and Compare.vue's .cmp-r switches
+   between <button> and <div> on whether a pick handler was passed. The
+   `button` prefix is what keeps the press from firing on things that do not
+   respond to being pressed. Same reasoning for :not(.locked) on .cmp-r —
+   a locked tier IS a <button>, but its click is a no-op, so it must not
+   claim to have registered. (Disabled controls need no such guard; they are
+   not activatable and never match :active.)
+
+   Two tiers, because the same percentage does not read the same at both
+   sizes: small controls take the full scale, while the full-bleed rows take
+   a gentler one — a wide row travels many more pixels for the same ratio,
+   and .98 already moves its edges ~4px at 440px, which is plenty.
+
+   Not covered on purpose:
+     .switch  — a 40x24 pill, where 3% is barely a pixel, and it is the one
+                control that already answers a press with motion of its own
+                (the knob's translateX). Squeezing the track while the knob
+                slides reads as wobble, not as a press.
+     .card    — a container, not a target; scaling a big box of nested rows
+                and absolutely-positioned bars looks janky.
+   No transform is added to any ANCESTOR: a transform creates a containing
+   block, which would break .sheet/.toast's position:fixed. Every .sheet is
+   a top-level sibling in its view and .toast lives at App.vue's root, so
+   nothing here is above them — but that is why this stays on leaf controls.
+
+   prefers-reduced-motion needs no special case: the blanket rule below
+   flattens transition-duration globally, which collapses the press to an
+   instant state change. */
+button.rigrow,button.pickrow,button.rowline,button.cmp-r{transition:var(--press)}
+button.btn:active,button.chip:active,
+.speedbtn:active,.helptog:active,.tab:active,.seg2 button:active{
+  transform:scale(var(--press-scale))}
+button.rigrow:active,button.pickrow:active,button.rowline:active,
+button.cmp-r:not(.locked):active{
+  transform:scale(var(--press-scale-row))}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
