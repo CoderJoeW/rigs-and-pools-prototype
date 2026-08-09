@@ -329,7 +329,8 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:4px 0;line-height:1.4}
 .chk .ic{font-family:var(--mono);flex:none;font-weight:500}
 .chk.ok .ic{color:var(--green)} .chk.no .ic{color:var(--red)} .chk.no{color:var(--red)}
-.chk.note-chk{color:var(--amber)} .chk.note-chk .ic{color:var(--amber)}
+.chk.note-chk.note-warn{color:var(--amber)} .chk.note-chk.note-warn .ic{color:var(--amber)}
+.chk.note-chk.note-good{color:var(--blue)} .chk.note-chk.note-good .ic{color:var(--blue)}
 
 /* ---- Rigs page (v64) ---- */
 /* .pill is the larger, bordered, tappable filter/switcher pill. It used to be

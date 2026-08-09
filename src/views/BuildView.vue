@@ -90,11 +90,18 @@ const ceilingNote=computed(()=>{
   const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
   const ceil=g.chainCeiling(c, g.dp.mh);
   if(!ceil) return null;
-  return { label:c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)
-             +' of it would be yours',
+  // chainCeiling is forward-looking — it folds this not-yet-built rig's
+  // hash into the gate — so the chain may currently be below its floor
+  // even when the projection clears it. Tense the copy accordingly
+  // (issue #25): "is at" only when the chain is already there today.
+  const already=g.chainHash(c)>c.floor;
+  return { tone:'warn',
+    label: already
+      ? c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours'
+      : 'This rig would put '+c.name+' at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours',
     fix:'Above its floor a chain pays its emission, not your hashrate: '
         +c.name+' hands out about '+fmt.usd(ceil.grossCap)
-        +'/day however much you point at it, so this rig mostly divides '
+        +'/day once it is at or above its floor, so this rig mostly divides '
         +'the same pot. Move the group to another chain and it earns on top.' };
 });
 /* Issue #6: a brand-new player's first Build-tab numbers can be a same-day
@@ -121,7 +128,7 @@ const ceilingNote=computed(()=>{
 const subsidyNote=computed(()=>{
   const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
   if(!c || c.obs>c.floor) return null;
-  return { label:c.name+' is paying a new-miner premium',
+  return { tone:'good', label:c.name+' is paying a new-miner premium',
     fix:'Below its floor, '+c.name+' pays every miner the same rate regardless '
         +'of how little hash they bring — the fast payback is a deliberate '
         +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
@@ -211,8 +218,8 @@ const verdict=computed(()=>{
             <div v-for="(c,i) in vg.checks" :key="i" class="chk" :class="c.ok?'ok':'no'">
               <span class="ic">{{ c.ok?'✓':'✗' }}</span>
               <span>{{ c.label }}<div v-if="!c.ok" class="fix">{{ c.fix }}</div></span></div>
-            <div v-for="(n,i) in (vg.notes||[])" :key="'n'+i" class="chk note-chk">
-              <span class="ic">!</span>
+            <div v-for="(n,i) in (vg.notes||[])" :key="'n'+i" class="chk note-chk" :class="'note-'+(n.tone||'warn')">
+              <span class="ic">{{ n.tone==='good' ? '★' : '!' }}</span>
               <span>{{ n.label }}<div class="fix">{{ n.fix }}</div></span></div>
           </div>
         </div>
