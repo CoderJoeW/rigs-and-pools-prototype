@@ -59,10 +59,15 @@ const allTabs=[
 </script>
 
 <template>
+  <div class="ambient" aria-hidden="true"></div>
   <TopBar />
   <OnboardingBanner />
   <main class="body">
-    <ErrorBoundary :key="g.s.tab"><component :is="views[g.s.tab]" /></ErrorBoundary>
+    <ErrorBoundary :key="g.s.tab">
+      <Transition name="viewfade" appear>
+        <component :is="views[g.s.tab]" />
+      </Transition>
+    </ErrorBoundary>
   </main>
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
       @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">

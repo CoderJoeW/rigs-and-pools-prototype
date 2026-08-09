@@ -8,7 +8,13 @@ const g = useGameStore();
 <template>
   <div>
   <header class="top">
-    <div><span class="wordmark">Rigs &amp; Pools</span>
+    <div><span class="wordmark">
+        <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
+          <circle cx="12" cy="12" r="2.5"/></svg></span>
+        Rigs &amp; Pools
+        <span class="live" role="status" aria-label="Simulation running"></span></span>
       <span class="chip">d{{ fmt.day(g.s.t) }} {{ fmt.clock(g.s.t) }}</span>
       <span v-if="g.solarFactor>0.05" class="chip" style="background:var(--gold-t);color:var(--gold)">
         sun {{ fmt.pct(g.solarFactor,0) }}</span>
