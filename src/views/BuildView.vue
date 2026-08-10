@@ -181,9 +181,15 @@ const verdict=computed(()=>{
       <div class="card-hd"><span class="eyebrow">Build a rig</span>
         <span class="eyebrow">{{ g.active.name }} · {{ fmt.usd(g.s.cash) }}</span></div>
 
-      <div class="seg2" :class="{custom:mode==='custom'}">
-        <button :class="{on:mode==='preset'}" @click="setMode('preset')">Quick pick</button>
-        <button :class="{on:mode==='custom'}" @click="setMode('custom')">Customise</button>
+      <!-- aria-pressed, not role="radio": the radio pattern's contract is a
+           package deal with roving tabindex and arrow-key navigation, and
+           claiming it without that keyboard support would be a worse lie
+           than the plain toggle-button semantics used here. -->
+      <div class="seg2" :class="{custom:mode==='custom'}" role="group" aria-label="Build mode">
+        <button :class="{on:mode==='preset'}" :aria-pressed="mode==='preset'"
+                @click="setMode('preset')">Quick pick</button>
+        <button :class="{on:mode==='custom'}" :aria-pressed="mode==='custom'"
+                @click="setMode('custom')">Customise</button>
       </div>
 
       <div class="slotwrap">

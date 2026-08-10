@@ -33,6 +33,25 @@ describe('BuildView', () => {
       expect(seg.classes()).not.toContain('custom');
     });
 
+    it('exposes which segment is active to assistive tech, not just sighted users', async () => {
+      // The thumb is a purely visual cue (a pseudo-element background) —
+      // without aria-pressed a screen reader has no way to tell the two
+      // segments apart from a pair of plain buttons.
+      const { wrapper } = mountWithStore(BuildView);
+      // the pair also needs its own accessible name — without it, a screen
+      // reader announces two anonymous toggle buttons with no indication of
+      // what they're toggling
+      expect(wrapper.find('.seg2').attributes('role')).toBe('group');
+      expect(wrapper.find('.seg2').attributes('aria-label')).toBe('Build mode');
+      const quick = () => wrapper.findAll('button').find(b => b.text() === 'Quick pick');
+      const custom = () => wrapper.findAll('button').find(b => b.text() === 'Customise');
+      expect(quick().attributes('aria-pressed')).toBe('true');
+      expect(custom().attributes('aria-pressed')).toBe('false');
+      await custom().trigger('click');
+      expect(quick().attributes('aria-pressed')).toBe('false');
+      expect(custom().attributes('aria-pressed')).toBe('true');
+    });
+
     it('pins the thumb’s slide rule so the class toggle above stays load-bearing', () => {
       // jsdom doesn't run layout/transitions, so the class-toggle test can't
       // see the thumb actually move — pin the CSS mechanism directly, the
