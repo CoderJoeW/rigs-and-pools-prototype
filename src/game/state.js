@@ -81,6 +81,10 @@ export function installState(G){
     picker:null, sitePicker:null, rebuild:null, focusRig:null, saveInfo:'', wipeArm:false,
     shakeAt:0, shakeOn:null,
     onboardingDismissed:false,
+    // issue #30: the Chains-tab rival-pool nudge is dismissed on its own,
+    // independent of onboardingDismissed — so the cheaper "second site"
+    // exit from the coach's 'grow' step can't silently erase it.
+    chainsNudgeDismissed:false,
     feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''}, tab:'build',
   };
   }

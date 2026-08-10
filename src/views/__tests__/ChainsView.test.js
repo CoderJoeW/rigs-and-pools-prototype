@@ -54,6 +54,24 @@ describe('ChainsView', () => {
     expect(wrapper.text()).toContain('Night Shift');
   });
 
+  it('shows the rival-pool nudge above Rival detail until dismissed', async () => {
+    const { wrapper, store } = mountWithStore(ChainsView);
+    expect(wrapper.text()).toContain('running real businesses');
+
+    const dismissBtn = wrapper.find('[aria-label="dismiss rival-pool nudge"]');
+    await dismissBtn.trigger('click');
+
+    expect(store.s.chainsNudgeDismissed).toBe(true);
+    expect(wrapper.text()).not.toContain('running real businesses');
+  });
+
+  it('hides the nudge once the player already founded a pool', () => {
+    const { wrapper } = mountWithStore(ChainsView, {
+      seed: g => g.foundPool('tessera', 'PPLNS', 0.02),
+    });
+    expect(wrapper.text()).not.toContain('running real businesses');
+  });
+
   it('the fee slider and Close button carry a discriminating label per pool', async () => {
     const { wrapper, store } = mountWithStore(ChainsView, {
       seed: g => g.foundPool('tessera', 'PPLNS', 0.02),
