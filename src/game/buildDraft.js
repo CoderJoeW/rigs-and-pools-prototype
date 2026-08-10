@@ -130,7 +130,7 @@ export function installBuildDraft(G){
   /* Issue #7's idle-cash advisory needs "is something buildable right now,
      and what would it cost" WITHOUT depending on the player having recently
      visited Build. G.s.draft is shared, global state that only refreshes on
-     BuildView's onMounted (or a manual re-preset), so reading dp/canBuild
+     BuildView's mount (or a manual re-preset), so reading dp/canBuild
      directly is stale the instant the site's real constraints move past
      whatever was last drafted — concretely, right after the site's power
      headroom is mostly spent on rig one, the still-drafted rig-one preset no

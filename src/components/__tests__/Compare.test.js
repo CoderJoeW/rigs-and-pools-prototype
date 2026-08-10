@@ -35,4 +35,16 @@ describe('Compare', () => {
     await buttons[0].trigger('click'); // unlocked row
     expect(picked).toEqual(['a']);
   });
+
+  it('staggers each row’s reveal by 22ms, capped past the 9th row', () => {
+    const longList = Array.from({ length: 12 }, (_, i) => ({ id: 'p' + i, name: 'Part ' + i }));
+    const wrapper = mount(Compare, { props: { rows: longList } });
+    const cells = wrapper.findAll('.cmp-r');
+    expect(cells[0].attributes('style')).toContain('animation-delay: 0ms');
+    expect(cells[3].attributes('style')).toContain('animation-delay: 66ms');
+    // rowDelay caps its index input at 8, so every row from the 9th on
+    // (index 8) shares the same delay instead of the queue growing further
+    expect(cells[8].attributes('style')).toContain('animation-delay: 176ms');
+    expect(cells[11].attributes('style')).toContain('animation-delay: 176ms');
+  });
 });

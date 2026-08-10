@@ -362,7 +362,10 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    component (capped, so a long catalogue's last rows don't wait through a
    growing queue), and `backwards` fill holds each row at its 0% frame
    until its own delay elapses instead of flashing in unstyled at full
-   opacity first. Reduced motion is covered by main.css's blanket rule. */
+   opacity first. The blanket reduced-motion rule below zeroes this delay
+   too (not just the duration it flattens everywhere else) — otherwise the
+   stagger itself, a `translateY` aside, is exactly the sequential motion
+   that setting asks to remove. */
 @keyframes cmpRowIn{0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:translateY(0)}}
 .cmp-r{display:flex;align-items:center;gap:9px;padding:7px 11px;border-top:1px solid var(--line-2);width:100%;
   animation:cmpRowIn .22s cubic-bezier(.2,.8,.2,1) backwards}
@@ -888,4 +891,5 @@ button.rigrow:active,button.pickrow:active,button.rowline:active,
 button.cmp-r:not(.locked):active{
   transform:scale(var(--press-scale-row))}
 
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;
+  animation-delay:0s!important}}

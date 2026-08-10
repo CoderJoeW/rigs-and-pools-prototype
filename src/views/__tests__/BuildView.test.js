@@ -7,7 +7,7 @@ import BuildView from '../BuildView.vue';
 describe('BuildView', () => {
   it('loads the preset on mount and shows an orderable draft', () => {
     const { wrapper, store } = mountWithStore(BuildView);
-    expect(store.canBuild).toBe(true); // onMounted ran generatePreset()
+    expect(store.canBuild).toBe(true); // generatePreset() ran during setup
     expect(wrapper.text()).toContain('Order parts');
     expect(wrapper.text()).toContain('Build a rig');
   });
@@ -120,7 +120,12 @@ describe('BuildView', () => {
     it('disables "+" once the card limit (frame vs. board, whichever binds) is reached', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
       await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      store.s.draft.n = 1;   // start below the limit so the loop below genuinely climbs
+      await nextTick();
       const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+      const nBefore = store.s.draft.n;
+      await plus().trigger('click');
+      expect(store.s.draft.n).toBe(nBefore + 1);   // a click in the enabled range actually acts
       for (let i = 0; i < 24 && plus().attributes('disabled') === undefined; i++) {
         await plus().trigger('click');
       }
@@ -151,14 +156,17 @@ describe('BuildView', () => {
   });
 
   describe('the verdict panel', () => {
-    it('shows the correct numbers immediately on mount, with no animate-in from zero', async () => {
-      // onMounted's generatePreset() can replace the draft state that
-      // rendered on the very first paint, which schedules a re-render that
-      // hasn't flushed the instant mount() returns — await nextTick() so
-      // both the store read and the DOM reflect the SAME settled draft.
+    it('shows the correct numbers immediately on mount, with no animate-in from zero', () => {
+      // generatePreset() now runs synchronously during setup, before the
+      // tweened refs are created, so the very first paint already reflects
+      // the real preset — no flush to wait on. Read the verdict panel's OWN
+      // "Parts" row specifically: the Quick-pick summary and the Order-parts
+      // button render the same raw g.dp.cost elsewhere on the page, so a
+      // plain wrapper.text() match would pass even if the tweened figure
+      // itself were still wrong.
       const { wrapper, store } = mountWithStore(BuildView);
-      await nextTick();
-      expect(wrapper.text()).toContain(fmt.usd(store.dp.cost));
+      const partsRow = wrapper.findAll('.vrow').find(r => r.find('.k').text() === 'Parts');
+      expect(partsRow.find('.v').text()).toBe(fmt.usd(store.dp.cost));
       expect(wrapper.text()).toContain(fmt.hash(store.dp.mh));
     });
 

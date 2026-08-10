@@ -12,16 +12,15 @@ const units=computed(()=>g.cards());
 const mode=ref('preset');           // 'preset' | 'custom' — preset first, always
 const presetFound=ref(true);
 function runPreset(){ presetFound.value=g.generatePreset(); }
+// Run once, right here, before the tweened refs below read their starting
+// value — otherwise they'd initialize off the default draft from state.js
+// and then immediately animate to the real preset on first paint, a
+// mismatch putting this in onMounted (a tick later) couldn't avoid.
+runPreset();
 function setMode(m){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
-
-// The preset needs to be picked BEFORE the tweened refs below read their
-// starting value — otherwise they'd initialize off the default draft from
-// state.js and then immediately animate to the real preset on first paint,
-// a mismatch onMounted (a tick later) couldn't avoid.
-if(mode.value==='preset') runPreset();
 
 /* The verdict panel is the one readout a player actually watches while
    iterating on a build — every part swap or stepper tap changes several of
