@@ -1,6 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import TopBar from '../TopBar.vue';
+
+// jsdom doesn't apply main.css, so the actual overflow behavior can't be
+// measured here (see the live-browser verification in the PR that added
+// this) — this reads the stylesheet instead, as a regression guard against
+// .top-left's wrap rule quietly disappearing again.
+const mainCss = fs.readFileSync(path.resolve(import.meta.dirname, '../../assets/main.css'), 'utf8');
+function cssRule(selector) {
+  const re = new RegExp('\\' + selector + '(?![\\w-])\\{([^}]*)\\}');
+  return mainCss.match(re)?.[1] || '';
+}
 
 describe('TopBar', () => {
   it('shows the wordmark, starting cash, and the day/clock chip', () => {
@@ -57,5 +69,25 @@ describe('TopBar', () => {
     await tourBtn.trigger('click');
     expect(store.showTour).toBe(true);
     expect(store.s.tourReplay).toBe(true);
+  });
+
+  it('renders the wordmark and cash into two distinct groups the CSS can wrap independently', () => {
+    // Structural precondition for the .top-left/.top-right CSS split
+    // (main.css) — a regression here would silently undo the fix, since
+    // the class names are all that ties this markup to those rules.
+    const { wrapper } = mountWithStore(TopBar);
+    expect(wrapper.find('.top-left').exists()).toBe(true);
+    expect(wrapper.find('.top-right').exists()).toBe(true);
+    expect(wrapper.find('.top-left').text()).toContain('Rigs & Pools');
+    expect(wrapper.find('.top-right').text()).toContain('$500.00');
+  });
+
+  it('main.css lets .top-left wrap instead of pushing the cash figure off-screen on a narrow phone', () => {
+    // Regression guard for a pre-existing bug the last review round found:
+    // header.top overflowed at 320px with several weather/status chips
+    // live at once, clipping the cash figure with no scroll to recover it
+    // — the same failure class issue #46 already documents for .speedbar.
+    expect(cssRule('.top-left')).toMatch(/flex-wrap:\s*wrap/);
+    expect(cssRule('.top-right')).toMatch(/flex:\s*none/);
   });
 });

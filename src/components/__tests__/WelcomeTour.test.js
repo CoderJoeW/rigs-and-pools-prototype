@@ -319,4 +319,25 @@ describe('WelcomeTour', () => {
     expect(wrapper.text()).toContain('Welcome to Rigs & Pools');
     expect(wrapper.text()).toContain('1 of 7');
   });
+
+  it('the last slide stops calling it your "first" rig once you have actually built one', async () => {
+    // TOUR_SLIDES is one fixed script shared by the automatic first-session
+    // run and a later replay — telling an established player with a full
+    // farm to build "your first rig" reads as broken, not just imprecise.
+    const { wrapper } = mountWithStore(WelcomeTour); // first session: nextId===1
+    for (let i = 0; i < 6; i++) {
+      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    }
+    expect(wrapper.text()).toContain('Let’s build your first rig');
+
+    const { wrapper: replayWrapper } = mountWithStore(WelcomeTour, {
+      seed: g => { g.generatePreset(); g.build(); g.restartTour(); }, // nextId>1, replaying
+    });
+    await replayWrapper.vm.$nextTick();
+    for (let i = 0; i < 6; i++) {
+      await replayWrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    }
+    expect(replayWrapper.text()).not.toContain('your first rig');
+    expect(replayWrapper.text()).toContain('Build another rig');
+  });
 });

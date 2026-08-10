@@ -20,7 +20,7 @@ const cashShown = useTweenedNumber(() => g.s.cash);
 <template>
   <div>
   <header class="top">
-    <div><span class="wordmark">
+    <div class="top-left"><span class="wordmark">
         <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24">
           <rect x="4" y="4" width="16" height="16" rx="2"/>
           <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
@@ -36,7 +36,7 @@ const cashShown = useTweenedNumber(() => g.s.cash);
         grid {{ g.band==='off'?'off-peak':g.band }}</span>
       <span v-if="g.s.weather&&g.s.weather.now.cloud>0.45" class="chip">
         {{ g.s.weather.now.cloud>0.75?'overcast':'cloudy' }}</span></div>
-    <div><div class="top-cash">{{ fmt.usd(cashShown) }}</div>
+    <div class="top-right"><div class="top-cash">{{ fmt.usd(cashShown) }}</div>
       <div class="top-sub">{{ fmt.usd(g.walletUsd) }} unsold</div></div>
   </header>
   <div class="speedbar">
