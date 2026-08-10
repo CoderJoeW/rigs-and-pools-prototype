@@ -75,11 +75,12 @@ describe('useSheetA11y', () => {
     wrapper.unmount();
   });
 
-  // WelcomeTour is the one .sheet in the app that can be open on its very
-  // first render (isOpen already true when the component mounts, no click
-  // ever transitions it false->true) — every other sheet in the app starts
-  // closed. Without `immediate` on the watcher, that starting state is
-  // never seen as a transition and focus never enters the dialog.
+  // Every .sheet in the app today starts closed, so this covers a case
+  // nothing currently hits — a sheet whose isOpen is already true when the
+  // component mounts, with no click ever transitioning it false->true.
+  // Without `immediate` on the watcher, that starting state would never be
+  // seen as a transition and focus would never enter the dialog. Kept as a
+  // defensive guarantee for whichever future sheet needs it.
   it('focuses the panel immediately when it starts already open, with no prior open transition', async () => {
     const wrapper = mount(makeHarness(() => {}, { startOpen: true }), { attachTo: document.body });
     await nextTick();

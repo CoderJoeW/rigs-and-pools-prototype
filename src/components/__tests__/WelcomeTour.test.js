@@ -197,8 +197,21 @@ describe('WelcomeTour', () => {
   });
 
   it('re-tracks the spotlight on scroll without re-centering the target (would fight the player\'s own scroll)', async () => {
-    const { wrapper } = mountWithTarget('sites'); // slide 2, so a plain scroll event doesn't also fire the tab-change watcher
-    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    // Real scroll events don't bubble, so this dispatches from a NESTED
+    // element (not window itself) with bubbles:false — the only way for
+    // window's listener to see it is the CAPTURING phase, which only a
+    // `capture:true` listener receives. A weaker test (dispatching
+    // directly on window, or only checking .tour-spot still .exists())
+    // would stay green even with the listener deleted outright or its
+    // `capture:true` silently dropped — this one mutation-tests both.
+    const Harness = defineComponent({
+      render: () => h('div', { id: 'scroll-container' }, [
+        h('div', { 'data-tour': 'sites' }),
+        h(WelcomeTour),
+      ]),
+    });
+    const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
+    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click'); // -> sites
     await settle();
     expect(wrapper.find('.tour-spot').exists()).toBe(true);
 
@@ -207,11 +220,18 @@ describe('WelcomeTour', () => {
     const target = document.querySelector('[data-tour="sites"]');
     target.scrollIntoView = () => {};
     const scrollSpy = vi.spyOn(target, 'scrollIntoView');
-    window.dispatchEvent(new Event('scroll'));
+    // simulate the target having actually moved, as a real scroll would
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(
+      { top:999, left:5, width:100, height:50, bottom:1049, right:105 });
+
+    document.getElementById('scroll-container')
+      .dispatchEvent(new Event('scroll', { bubbles:false }));
     await settle();
 
     expect(scrollSpy).not.toHaveBeenCalled(); // re-measured in place, not re-scrolled-to
-    expect(wrapper.find('.tour-spot').exists()).toBe(true); // still tracking correctly
+    const spot = wrapper.find('.tour-spot');
+    expect(spot.exists()).toBe(true);
+    expect(parseFloat(spot.element.style.top)).toBeCloseTo(999-6); // PAD=6, and it actually followed
     wrapper.unmount();
   });
 
