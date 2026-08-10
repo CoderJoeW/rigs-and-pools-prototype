@@ -225,7 +225,7 @@ const verdict=computed(()=>{
         </div>
         <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}</dd></div>
         <button class="btn btn-wide" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
-                :disabled="!g.canBuild" @click="g.build()">
+                data-tour="build" :disabled="!g.canBuild" @click="g.build()">
           {{ g.canBuild?'Order parts · '+fmt.usd(g.dp.cost):'Fix the crosses above' }}</button>
       </div>
     </div>

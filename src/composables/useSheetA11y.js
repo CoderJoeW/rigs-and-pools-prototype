@@ -29,13 +29,16 @@ export function useSheetA11y(elRef, isOpen, close){
     else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
   }
 
-  /* immediate: every other .sheet starts closed (picker/rebuild/etc. are
-     null until a click sets them), so a false->true transition was always
-     there to catch. WelcomeTour is the first sheet that can be open on
-     the very first render — a brand-new player has isOpen already true
-     before this watcher exists — and without `immediate` that initial
-     state is never seen as a transition, so focus never enters an
-     aria-modal="true" dialog that's sitting over the whole page. */
+  /* immediate: every .sheet in the app today starts closed (picker/rebuild/
+     etc. are null until a click sets them), so a false->true transition
+     has always been there to catch. Kept anyway as a defensive default —
+     a .sheet that CAN be open on its very first render (isOpen already
+     true before this watcher exists) would otherwise never see that
+     initial state as a transition, so focus would never enter an
+     aria-modal="true" dialog sitting over the whole page. Cheap enough to
+     hold for whichever sheet needs it next; costs nothing for the ones
+     that don't (the immediate call's `else` branch is a no-op when
+     lastFocused is still its initial null). */
   watch(isOpen, async open=>{
     if(open){
       lastFocused = document.activeElement;

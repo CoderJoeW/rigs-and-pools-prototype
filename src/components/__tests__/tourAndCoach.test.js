@@ -18,34 +18,34 @@ const Pair = defineComponent({
 describe('the walkthrough tour and the reactive coach, mounted together', () => {
   it('a brand-new player sees only the tour, never both at once', () => {
     const { wrapper } = mountWithStore(Pair);
-    expect(wrapper.find('.sheet').exists()).toBe(true);      // WelcomeTour
-    expect(wrapper.find('.card').exists()).toBe(false);       // OnboardingBanner stays quiet
+    expect(wrapper.find('.tour').exists()).toBe(true);   // WelcomeTour
+    expect(wrapper.findAll('.card')).toHaveLength(1);    // OnboardingBanner's v-if never even renders its card
   });
 
   it('skipping the tour hands off to the coach in the same render', async () => {
     const { wrapper } = mountWithStore(Pair);
     const skip = wrapper.findAll('button').find(b => b.text() === 'Skip');
     await skip.trigger('click');
-    expect(wrapper.find('.sheet').exists()).toBe(false);
-    expect(wrapper.find('.card').exists()).toBe(true);
+    expect(wrapper.find('.tour').exists()).toBe(false);
     expect(wrapper.text()).toContain('Build your first rig');
   });
 
-  it('building via Open Build on the last slide hands off to the coach\'s "earn" step, not "build"', async () => {
+  it('finishing the tour on its last (Build) slide hands off to the coach\'s "build" step, not "earn"', async () => {
     const { wrapper, store } = mountWithStore(Pair);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 6; i++) {
       await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
     }
-    await wrapper.findAll('button').find(b => b.text() === 'Open Build').trigger('click');
-    expect(wrapper.find('.sheet').exists()).toBe(false);
-    // Open Build only switches tabs — it doesn't build a rig itself, so the
-    // coach still opens on 'build', same as any other skip.
+    expect(store.s.tab).toBe('build');
+    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build").trigger('click');
+    expect(wrapper.find('.tour').exists()).toBe(false);
+    // the tour only navigated to Build — it never built anything itself, so
+    // the coach still opens on 'build', same as any other skip.
     expect(wrapper.text()).toContain('Build your first rig');
 
     store.generatePreset();
     store.build();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.sheet').exists()).toBe(false); // stays gone, nextId>1 now
+    expect(wrapper.find('.tour').exists()).toBe(false); // stays gone, nextId>1 now
     expect(wrapper.text()).toContain('Rig ordered'); // the coach's 'earn' step
   });
 
@@ -53,12 +53,12 @@ describe('the walkthrough tour and the reactive coach, mounted together', () => 
     const { wrapper, store } = mountWithStore(Pair, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    expect(wrapper.find('.sheet').exists()).toBe(false);
+    expect(wrapper.find('.tour').exists()).toBe(false);
 
     store.scrapRig(store.s.rigs[0].id);
     await wrapper.vm.$nextTick();
     expect(store.s.rigs).toHaveLength(0);
-    expect(wrapper.find('.sheet').exists()).toBe(false); // tour stays gone
-    expect(wrapper.find('.card').exists()).toBe(true);   // coach resumes normally
+    expect(wrapper.find('.tour').exists()).toBe(false); // tour stays gone
+    expect(wrapper.find('.card').exists()).toBe(true);  // coach resumes normally
   });
 });

@@ -150,11 +150,12 @@ describe('the walkthrough tour', () => {
     expect(g.showTour).toBe(true);
   });
 
-  it('has four slides, ending on the one that offers to open Build', () => {
+  it('has one slide per tab, ending on Build', () => {
     const g = freshStore();
-    expect(g.TOUR_SLIDES).toHaveLength(4);
+    const tabs = ['farm', 'sites', 'rigs', 'chains', 'market', 'stats', 'build'];
+    expect(g.TOUR_SLIDES).toHaveLength(tabs.length);
+    expect(g.TOUR_SLIDES.map(s => s.tab)).toEqual(tabs);
     expect(g.TOUR_SLIDES[0].title).toMatch(/welcome/i);
-    expect(g.TOUR_SLIDES[g.TOUR_SLIDES.length - 1].body).toMatch(/Order parts/);
   });
 
   it('dismissTour hides it without touching the current tab', () => {
@@ -163,13 +164,6 @@ describe('the walkthrough tour', () => {
     expect(g.showTour).toBe(false);
     expect(g.s.tourDismissed).toBe(true);
     expect(g.s.tab).toBe('farm');
-  });
-
-  it('beginFirstBuild opens Build and dismisses the tour in one action', () => {
-    const g = freshStore();
-    g.beginFirstBuild();
-    expect(g.s.tab).toBe('build');
-    expect(g.showTour).toBe(false);
   });
 
   it('clears once a first rig exists by any route, dismissed or not', () => {
@@ -184,8 +178,8 @@ describe('the walkthrough tour', () => {
     // rigs.length is not monotonic — scrapping the only rig, or insolvency
     // liquidating the whole farm, both take it back to 0 on an established
     // save that legitimately never sees the tour again. Gating showTour on
-    // that count alone would pop the full-screen tour back over a farm
-    // that's already been run for a while.
+    // that count alone would pop the tour back open over a farm that's
+    // already been run for a while.
     const g = freshStore();
     g.generatePreset();
     g.build();

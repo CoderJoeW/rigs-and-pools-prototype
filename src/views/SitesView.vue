@@ -155,7 +155,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
     </div></div>
 
     <!-- the site as a place: one square per rig position, lit by live status -->
-    <div class="card">
+    <div class="card" data-tour="sites">
       <div class="card-hd"><span class="eyebrow">Floor</span>
         <span class="eyebrow">{{ floor.rigs }}/{{ floor.slots }} positions</span></div>
       <div class="rigwrap">

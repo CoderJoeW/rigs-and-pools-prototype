@@ -34,7 +34,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
 
 <template>
   <div>
-    <div v-if="!g.s.rigs.length" class="card"><div class="empty">
+    <div v-if="!g.s.rigs.length" class="card" data-tour="farm"><div class="empty">
       <h3>Nothing installed</h3>
       <p>A spare bedroom, a 1.5 kW wall outlet and $500. No hardware, no coins, and no
         electricity bill until something is running.</p>

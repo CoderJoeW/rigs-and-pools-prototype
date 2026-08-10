@@ -8,20 +8,39 @@ import { computed } from 'vue';
    player has zero state for a predicate to read yet — no rig, no site
    choice, nothing to react to — so there is nothing for the reactive coach
    to say until 'build' resolves itself. The tour exists to fill exactly
-   that gap: game basics and the loop ahead, once, before the coach has
-   anything to work with. It gates on rigs.length itself (see showTour)
-   rather than tracking a slide index in a predicate, so it still can't
-   drift the way a tracked tour could — building a rig by any route ends
-   it outright, tour or no tour. */
+   that gap: game basics and every tab, once, before the coach has
+   anything to work with. It gates on nextId itself (see showTour) rather
+   than tracking a slide index in a predicate, so it still can't drift the
+   way a tracked tour could — building a rig by any route ends it outright,
+   tour or no tour.
+
+   Each slide names the real tab it's about AND a `target` — a CSS selector
+   for the one element on that tab worth actually looking at, tagged with a
+   data-tour attribute in the view itself (FarmView's empty-state card,
+   BuildView's Order-parts button, etc.). The tour drives navigation there
+   itself (WelcomeTour.vue watches the slide and sets s.tab to match), then
+   spotlights the target: everything else on screen dims, the target stays
+   lit. So a slide is always pointing at one real, live, specific thing —
+   not just the right tab in the abstract. It's a caption and a spotlight,
+   not a modal: the dimming is purely visual (pointer-events:none — nothing
+   here blocks tapping around, or through the highlight, on your own), and
+   doing the thing a slide is pointing at (e.g. actually building on the
+   last one) ends the tour exactly the same way skipping it would. */
 const TOUR_SLIDES = [
-  { title:'Welcome to Rigs & Pools',
-    body:'You’re running a cryptocurrency mining business — real time, no seasons, nothing ever resets. Build rigs from parts, host them at sites you construct, and mine across five chains that each pay differently and carry different risk. Rigs run 24/7, earning whether or not you’re watching.' },
-  { title:'Starting small, on purpose',
-    body:'$500 in cash, a spare bedroom, and a 1.5 kW wall outlet — nothing more. Every part and every site comes out of what you earn. Tessera, the starter chain, pays every newcomer the same welcoming rate, so your first rig earns from the moment it powers on.' },
-  { title:'The loop',
-    body:'Build a rig, then watch it earn. Reinvest in a second site or found your own pool once cash allows. Set up automation on Farm so a rig that starts losing money doesn’t cost you while you’re away. The Stats tab tracks every milestone along the way.' },
-  { title:'Let’s build your first rig',
-    body:'Open Build below — a starter pick is already loaded and priced for your $500. Tap Order parts to lock it in; assembly takes a few minutes, and then it’s earning.' },
+  { tab:'farm', target:'[data-tour="farm"]', title:'Welcome to Rigs & Pools',
+    body:'This is Farm, your dashboard. You’re starting with $500, a spare bedroom, and a 1.5 kW outlet. Rigs run 24/7, earning whether or not you’re watching — let’s walk through every tab so you know what you’re looking at.' },
+  { tab:'sites', target:'[data-tour="sites"]', title:'Sites — power and cooling you build',
+    body:'A site is floor space, power and cooling installed piece by piece — grid, solar, wind or diesel, then a cooling plant to keep cards fast. You start with one, a spare bedroom on a domestic outlet, and can run as many as you can afford.' },
+  { tab:'rigs', target:'[data-tour="rigs"]', title:'Rigs — your fleet, at a glance',
+    body:'Every machine you own lives here: live hashrate, wear and state. Group rigs by chain and pool so a whole batch shares one strategy, and tap into any rig for full detail, tuning and repair.' },
+  { tab:'chains', target:'[data-tour="chains"]', title:'Chains — five coins, five personalities',
+    body:'Each chain pays differently and carries different risk. Below its published floor a chain pays every miner the same flat rate — a newcomer’s welcome gift. The rival pools listed here are real businesses with live reputations; found your own to compete for their members.' },
+  { tab:'market', target:'[data-tour="market"]', title:'Market — turn coins into cash',
+    body:'Sell whatever you’ve mined, or buy in. Prices move on real order flow, so a big sale needs room to breathe — a few smaller ones beat dumping it all at once.' },
+  { tab:'stats', target:'[data-tour="stats"]', title:'Stats — milestones and rank',
+    body:'Your progress lives here: hashpower, blocks, infrastructure, pools, economy and craft. No shop, no cash reward — just the record of what you’ve actually built.' },
+  { tab:'build', target:'[data-tour="build"]', title:'Let’s build your first rig',
+    body:'This is where a rig is born. Quick pick has already loaded a smart, affordable preset — tap Order parts below to lock it in. Customise lets you choose every part yourself once you’re ready.' },
 ];
 const STEPS = [
   { id:'build',
@@ -85,8 +104,7 @@ export function installOnboarding(G){
      once, first session only" actually requires. */
   const showTour = computed(()=> !G.s.tourDismissed && G.s.nextId===1);
   const dismissTour = () => { G.s.tourDismissed = true; };
-  const beginFirstBuild = () => { G.s.tab='build'; dismissTour(); };
 
   Object.assign(G, {onboardingStep, dismissOnboarding, showChainsNudge, dismissChainsNudge,
-    TOUR_SLIDES, showTour, dismissTour, beginFirstBuild});
+    TOUR_SLIDES, showTour, dismissTour});
 }

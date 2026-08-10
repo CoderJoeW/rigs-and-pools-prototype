@@ -50,7 +50,7 @@ const projMargin=computed(()=>{
   <div>
     <div class="sec" style="margin-top:2px"><span class="eyebrow">Chains</span>
       <span class="eyebrow">$/day per MH/s</span></div>
-    <div class="card"><div class="list">
+    <div class="card" data-tour="chains"><div class="list">
       <template v-for="c in g.s.chains" :key="c.id">
         <button class="rowline" @click="open[c.id]=!open[c.id]">
           <span style="flex:1;min-width:0"><span class="nm"><ChainMark :chain="c.id" lg />{{ c.name }}</span>

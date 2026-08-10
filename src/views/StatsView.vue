@@ -40,7 +40,7 @@ const tracks=computed(()=>{
 
 <template>
   <div>
-    <div class="card">
+    <div class="card" data-tour="stats">
       <div class="hero">
         <span class="hero-lbl">Career</span>
         <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px">
