@@ -45,6 +45,7 @@ describe('BuildView', () => {
       expect(cssRule('.seg2')).toMatch(/position:\s*relative/);
       expect(cssRule('.seg2::before')).toMatch(/position:\s*absolute/);
       expect(cssRule('.seg2::before')).toMatch(/width:\s*50%/);
+      expect(cssRule('.seg2::before')).toMatch(/transition:\s*transform/); // the "slides" part, not just the geometry
       expect(cssRule('.seg2.custom::before')).toMatch(/transform:\s*translateX\(100%\)/);
     });
 
