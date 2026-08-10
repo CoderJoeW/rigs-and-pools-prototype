@@ -16,6 +16,13 @@ export function cssRule(selector) {
   return mainCss.match(re)?.[1] || '';
 }
 
+/* cssRule finds the FIRST `selector{...}` in the file — fine for a rule that
+   only appears once, but a selector like `*` reappears (the base reset,
+   the reduced-motion override). Search the whole stylesheet text directly
+   when a caller needs to pin a rule nested inside a specific block, e.g.
+   an `@media` query, rather than "the first bare match". */
+export function cssSource() { return mainCss; }
+
 export function cssNum(rule, prop) {
   const m = rule.match(new RegExp(prop + ':\\s*(-?\\d+)'));
   return m ? Number(m[1]) : null;

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { cssSource } from '../../test/cssRule.js';
 import Compare from '../Compare.vue';
 
 const rows = [
@@ -46,5 +47,20 @@ describe('Compare', () => {
     // (index 8) shares the same delay instead of the queue growing further
     expect(cells[8].attributes('style')).toContain('animation-delay: 176ms');
     expect(cells[11].attributes('style')).toContain('animation-delay: 176ms');
+  });
+
+  it('pins the reduced-motion rule that neutralizes the stagger above', () => {
+    // jsdom never runs the animation, so nothing here can prove the delay is
+    // VISUALLY gone under prefers-reduced-motion — this pins the mechanism
+    // instead: the blanket rule that zeroes animation-delay!important is the
+    // only thing standing between .cmp-r's inline delay and it still playing
+    // out under that OS setting (an author-!important beats an inline style
+    // with no !important of its own). It regressed once already by only
+    // flattening duration; guard the specific declaration this time. There
+    // are several `@media (prefers-reduced-motion:reduce)` blocks in the
+    // file (the toast/rankflash ones scope to their own classes) — the one
+    // that matters here is specifically the blanket `*{...}` rule.
+    const reduceBlock = cssSource().match(/prefers-reduced-motion:reduce\)\{\*\{([^}]*)\}\}/)?.[1] || '';
+    expect(reduceBlock).toMatch(/animation-delay:\s*0s\s*!important/);
   });
 });

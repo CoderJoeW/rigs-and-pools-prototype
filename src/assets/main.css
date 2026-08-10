@@ -535,11 +535,30 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .dl dt{color:var(--ink-3)} .dl dd{font-family:var(--mono);font-size:12.5px;text-align:right}
 .spark{width:100%;height:34px;display:block}
 
-.seg2{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin:9px 12px 0}
-.seg2 button{flex:1;text-align:center;padding:8px 4px;font-size:12.5px;font-weight:500;color:var(--ink-2);
-  transition:var(--press),background-color .15s,color .15s}
-.seg2 button.on{background:var(--green);color:#fff}
+/* The active segment used to just repaint on click, which reads as two
+   independent toggles rather than one choice moving between two positions.
+   A thumb that physically slides between them makes the relationship
+   explicit — exactly one of two fixed slots, always occupied. Fixed at two
+   even-width slots deliberately: this control only ever has these two
+   segments, so a generic N-way version would be speculative work this UI
+   doesn't need. */
+.seg2{position:relative;display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin:9px 12px 0}
+.seg2::before{content:'';position:absolute;inset:0;width:50%;background:var(--green);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.seg2.custom::before{transform:translateX(100%)}
+/* position:relative (no z-index) is enough for the buttons to paint above
+   the thumb — both are positioned with z-index:auto, so tree order alone
+   settles it (CSS2.1 Appendix E step 8); an explicit z-index would only
+   escalate them into #app's own stacking context for no benefit. */
+.seg2 button{position:relative;flex:1;text-align:center;padding:8px 4px;font-size:12.5px;
+  font-weight:500;color:var(--ink-2);transition:var(--press),color .22s cubic-bezier(.2,.8,.2,1)}
+.seg2 button.on{color:#fff}
 .seg2 button+button{border-left:1px solid var(--line)}
+/* The blanket reduced-motion rule below only reaches real elements (`*`
+   never matches a pseudo-element), so the thumb's slide needs its own
+   override — otherwise it would be the one motion left un-flattened by
+   that setting. */
+@media (prefers-reduced-motion:reduce){.seg2::before{transition:none}}
 
 .slotwrap{padding:10px 12px 2px}
 .slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px}

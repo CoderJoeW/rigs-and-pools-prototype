@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import { fmt } from '../../utils/format.js';
+import { cssRule, cssSource } from '../../test/cssRule.js';
 import BuildView from '../BuildView.vue';
 
 describe('BuildView', () => {
@@ -19,6 +20,44 @@ describe('BuildView', () => {
     expect(wrapper.text()).toContain('Frame');
     expect(wrapper.text()).toContain('Board');
     expect(wrapper.text()).toContain('Supply');
+  });
+
+  describe('the Quick pick / Customise segmented control', () => {
+    it('slides its thumb to the active segment instead of just repainting it', async () => {
+      const { wrapper } = mountWithStore(BuildView);
+      const seg = wrapper.find('.seg2');
+      expect(seg.classes()).not.toContain('custom'); // preset first, always
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      expect(seg.classes()).toContain('custom');
+      await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
+      expect(seg.classes()).not.toContain('custom');
+    });
+
+    it('pins the thumb’s slide rule so the class toggle above stays load-bearing', () => {
+      // jsdom doesn't run layout/transitions, so the class-toggle test can't
+      // see the thumb actually move — pin the CSS mechanism directly, the
+      // same way TopBar's tests pin its flex-wrap fix. position:relative on
+      // .seg2 and position:absolute on ::before are as load-bearing as the
+      // width/transform above: drop either and the thumb either becomes a
+      // flex item that shoves the buttons aside, or escapes .seg2's
+      // overflow:hidden clip entirely — both silent, both untouched by the
+      // width/transform assertions alone.
+      expect(cssRule('.seg2')).toMatch(/position:\s*relative/);
+      expect(cssRule('.seg2::before')).toMatch(/position:\s*absolute/);
+      expect(cssRule('.seg2::before')).toMatch(/width:\s*50%/);
+      expect(cssRule('.seg2::before')).toMatch(/transition:\s*transform/); // the "slides" part, not just the geometry
+      expect(cssRule('.seg2.custom::before')).toMatch(/transform:\s*translateX\(100%\)/);
+    });
+
+    it('has its own reduced-motion override, since the blanket rule never reaches a pseudo-element', () => {
+      // main.css's blanket `*{...}` reduced-motion rule matches real elements
+      // only — a pseudo-element's transition is invisible to it (the same
+      // reason .rankflash and .toast each carry their own override). Without
+      // this, the thumb would be the one motion this PR ships that a
+      // reduced-motion user could not turn off.
+      const override = cssSource().match(/prefers-reduced-motion:reduce\)\{\.seg2::before\{([^}]*)\}\}/)?.[1] || '';
+      expect(override).toMatch(/transition:\s*none/);
+    });
   });
 
   it('opening a part picker shows the Compare list', async () => {
@@ -165,9 +204,9 @@ describe('BuildView', () => {
       // plain wrapper.text() match would pass even if the tweened figure
       // itself were still wrong.
       const { wrapper, store } = mountWithStore(BuildView);
-      const partsRow = wrapper.findAll('.vrow').find(r => r.find('.k').text() === 'Parts');
-      expect(partsRow.find('.v').text()).toBe(fmt.usd(store.dp.cost));
-      expect(wrapper.text()).toContain(fmt.hash(store.dp.mh));
+      const vrow = label => wrapper.findAll('.vrow').find(r => r.find('.k').text() === label);
+      expect(vrow('Parts').find('.v').text()).toBe(fmt.usd(store.dp.cost));
+      expect(vrow('Hashrate').find('.v').text()).toBe(fmt.hash(store.dp.mh));
     });
 
     it('eases toward the new numbers instead of swapping instantly when the draft changes', async () => {
