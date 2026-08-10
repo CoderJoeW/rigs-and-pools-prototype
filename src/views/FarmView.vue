@@ -41,7 +41,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
       <button class="btn btn-pri" @click="g.s.tab='build'">Go shopping</button></div></div>
 
     <template v-else>
-      <div class="card"><div class="card-bd pt">
+      <div class="card" data-tour="farm"><div class="card-bd pt">
         <div class="totals">
           <div><div class="k">Earned today</div>
             <div class="v pos">{{ fmt.usd2(g.revenueDay) }}</div></div>

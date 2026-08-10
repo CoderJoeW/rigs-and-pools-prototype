@@ -19,9 +19,25 @@ describe('TopBar', () => {
   });
 
   it('the help toggle flips its own label', async () => {
+    // Found by its own text, not the bare .helptog class — the "tour"
+    // replay pill (below) shares that class and, wherever it renders
+    // first in the DOM, .find('.helptog') would silently grab IT instead
+    // whenever both are present, rather than the help toggle this test
+    // means to exercise.
     const { wrapper } = mountWithStore(TopBar);
-    const toggle = wrapper.find('.helptog');
+    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()));
     expect(toggle.text()).toBe('hide help'); // help defaults to on
+    await toggle.trigger('click');
+    expect(toggle.text()).toBe('help');
+  });
+
+  it('the help toggle still finds itself correctly even once the "tour" pill is also on screen', async () => {
+    const { wrapper } = mountWithStore(TopBar, {
+      seed: g => { g.generatePreset(); g.build(); }, // makes the tour pill render too
+    });
+    expect(wrapper.findAll('button').find(b => b.text() === 'tour')).toBeTruthy(); // sanity: both really are present
+    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()));
+    expect(toggle.text()).toBe('hide help');
     await toggle.trigger('click');
     expect(toggle.text()).toBe('help');
   });
