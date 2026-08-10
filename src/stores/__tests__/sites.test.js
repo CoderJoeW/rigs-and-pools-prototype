@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { freshStore } from '../../test/testStore.js';
+import { fmt } from '../../utils/format.js';
 
 describe('newSite', () => {
   it('refuses when cash is short', () => {
@@ -88,11 +89,15 @@ describe('rush', () => {
     expect(job.left).toBe(leftBefore);
   });
 
-  it('two same-part rushes at different costs stay as separate feed lines', () => {
-    // the feed's collapsing (say()) must not merge same-text events that
-    // carry different dollar amounts — that would silently under-report
-    // what was actually spent. rushCost depends on remaining hours, so two
-    // jobs of the same part queued at different times cost differently.
+  it('two same-part rushes at different costs collapse into one line with the correct summed total (issue #16)', () => {
+    // say() now carries a real signed USD number alongside the display
+    // string (issue #16), so a repeat can be collapsed into the feed's
+    // usual "xN" line without losing what was actually spent — unlike
+    // before, when a fixed-string amount had no numeric twin and merging
+    // would have meant silently dropping one of the two costs. rushCost
+    // depends on remaining hours, so two jobs of the same part queued at
+    // different times cost differently — the collapsed total must be
+    // their real sum, not either one alone.
     const g = freshStore();
     g.s.cash = 2000;
     const f = g.active;
@@ -108,8 +113,9 @@ describe('rush', () => {
     g.rush(f.id, 1);
 
     const rushLines = g.s.feed.filter(e => e.text === 'Paid to rush 30A service');
-    expect(rushLines).toHaveLength(2);
-    expect(new Set(rushLines.map(e => e.amount)).size).toBe(2); // both amounts preserved
+    expect(rushLines).toHaveLength(1);
+    expect(rushLines[0].n).toBe(2);
+    expect(rushLines[0].amount).toBe('-'+fmt.usd(costA+costB));
   });
 });
 
