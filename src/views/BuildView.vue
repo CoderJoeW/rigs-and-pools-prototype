@@ -181,7 +181,7 @@ const verdict=computed(()=>{
       <div class="card-hd"><span class="eyebrow">Build a rig</span>
         <span class="eyebrow">{{ g.active.name }} · {{ fmt.usd(g.s.cash) }}</span></div>
 
-      <div class="seg2">
+      <div class="seg2" :class="{custom:mode==='custom'}">
         <button :class="{on:mode==='preset'}" @click="setMode('preset')">Quick pick</button>
         <button :class="{on:mode==='custom'}" @click="setMode('custom')">Customise</button>
       </div>
