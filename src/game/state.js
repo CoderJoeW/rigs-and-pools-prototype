@@ -89,7 +89,9 @@ export function installState(G){
     // flag rather than reusing onboardingDismissed: skipping the tour
     // shouldn't silently skip the reactive coach too, and building a first
     // rig without ever opening the tour (e.g. an imported save mid-tour)
-    // shouldn't leave it dangling — showTour also gates on rigs.length.
+    // shouldn't leave it dangling — showTour also gates on nextId===1, so
+    // it can't linger past a rig actually existing, or resurface later if
+    // that rig is ever scrapped back to zero.
     tourDismissed:false,
     feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''},
     // A brand-new player lands on Farm — empty, but with its own "Go

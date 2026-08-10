@@ -566,8 +566,20 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    paints everything else dark. box-shadow is pure paint, never hit-tested,
    so nothing here ever intercepts a click — the dimming is visual only.
    z-index sits above ordinary content and the top/tab bars (20/30) but
-   below the tour's own caption card and any real .sheet (80), so a picker
-   opened from underneath the tour still takes over correctly. */
+   below any real .sheet (80), so a picker opened from underneath the tour
+   still takes over correctly.
+
+   .tour (the caption card) MUST outrank this. A positioned element with
+   z-index >= 0 paints above ALL non-positioned in-flow content regardless
+   of DOM order (CSS2.1 Appendix E) — .card is ordinary static content, so
+   without its own stacking position .tour-spot's shadow was painting
+   straight over the caption, dimming the one thing on screen that has to
+   stay legible throughout. Confirmed by pixel-sampling a live render:
+   the caption's background read as blue-tint blended 60% toward black
+   until .tour got position:relative + a higher z-index — the same
+   category of bug as .ambient's z-index note above (main.css:92-101),
+   just one layer previously not given a stacking position of its own. */
+.tour{position:relative;z-index:71}
 .tour-spot{position:fixed;z-index:70;border-radius:10px;pointer-events:none;
   box-shadow:0 0 0 9999px rgba(0,0,0,.6), 0 0 0 2px var(--blue);
   transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease}

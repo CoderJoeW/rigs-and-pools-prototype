@@ -14,28 +14,41 @@ const isLast = computed(()=>step.value===g.TOUR_SLIDES.length-1);
    — same "caption, not a lock" rule the rest of the tour follows. */
 const spot = ref(null); // {top,left,width,height} in viewport px, or null
 const PAD = 6;
-// Guards the retry chain below against outliving the component — it's a
-// plain requestAnimationFrame recursion, not a Vue watcher, so unmounting
-// mid-retry would otherwise keep it alive (and free to touch a torn-down
-// component's refs) until it ran itself out.
+// Guards the retry/settle chain below against outliving the component —
+// it's plain requestAnimationFrame/setTimeout recursion, not a Vue
+// watcher, so unmounting mid-chain would otherwise keep it alive (and
+// free to touch a torn-down component's refs) until it ran itself out.
 let alive = true;
+const currentTarget = () =>
+  slide.value && slide.value.target && document.querySelector(slide.value.target);
+function readRect(el){
+  const r = el.getBoundingClientRect();
+  spot.value = { top:r.top-PAD, left:r.left-PAD, width:r.width+PAD*2, height:r.height+PAD*2 };
+}
+// Re-measures WITHOUT scrolling — for resize/scroll, where the target
+// hasn't changed and re-centering it would fight the player's own scroll
+// input every time they tried to look at anything else.
+function retrack(){
+  const el = currentTarget();
+  if(el) readRect(el); else spot.value = null;
+}
+// Scrolls to and measures a NEWLY arrived-at target. views/main.css's
+// .viewfade transition (160ms, up to a 7px translateY) is still animating
+// when the target first exists, so an immediate read lands a few px off
+// its resting position — corrected by a second read once it's done.
 function measure(){
-  const el = slide.value && slide.value.target && document.querySelector(slide.value.target);
+  const el = currentTarget();
   if(!el){ spot.value = null; return; }
   if(el.scrollIntoView) el.scrollIntoView({ block:'center', behavior:'auto' });
-  requestAnimationFrame(()=>{
-    if(!alive) return;
-    const r = el.getBoundingClientRect();
-    spot.value = { top:r.top-PAD, left:r.left-PAD, width:r.width+PAD*2, height:r.height+PAD*2 };
-  });
+  requestAnimationFrame(()=>{ if(alive) readRect(el); });
+  setTimeout(()=>{ if(alive) retrack(); }, 200);
 }
 /* The tab switch, the view remount behind it, and the target actually
    existing in the DOM don't all land in the same tick — retries across a
    few animation frames rather than assuming one nextTick is enough. */
 function measureWhenReady(triesLeft=8){
   if(!alive) return;
-  const el = slide.value && slide.value.target && document.querySelector(slide.value.target);
-  if(el) measure();
+  if(currentTarget()) measure();
   else if(triesLeft>0) requestAnimationFrame(()=>measureWhenReady(triesLeft-1));
   else spot.value = null;
 }
@@ -44,7 +57,12 @@ async function reposition(){
   await nextTick();
   measureWhenReady();
 }
-const onResize = () => { if(g.showTour) measure(); };
+const onResize = () => { if(g.showTour) retrack(); };
+// capture:true — the .body panel is what actually scrolls (main.css:
+// overflow-y:auto), and a scroll on an inner element doesn't bubble to
+// window, but it does reach a capturing ancestor listener regardless of
+// which element scrolls, so this needs no reference to .body itself.
+const onScroll = () => { if(g.showTour) retrack(); };
 
 /* Each slide names the tab it's about; the tour drives navigation there
    itself so the spotlight always lands on the real screen it's
@@ -70,8 +88,15 @@ watch(() => g.s.tab, tab => {
   if(idx !== -1 && idx !== step.value) step.value = idx;
 });
 
-onMounted(()=>window.addEventListener('resize', onResize));
-onBeforeUnmount(()=>{ alive = false; window.removeEventListener('resize', onResize); });
+onMounted(()=>{
+  window.addEventListener('resize', onResize);
+  window.addEventListener('scroll', onScroll, true);
+});
+onBeforeUnmount(()=>{
+  alive = false;
+  window.removeEventListener('resize', onResize);
+  window.removeEventListener('scroll', onScroll, true);
+});
 </script>
 
 <template>

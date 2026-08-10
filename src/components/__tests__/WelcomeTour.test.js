@@ -1,7 +1,25 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import fs from 'node:fs';
+import path from 'node:path';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import WelcomeTour from '../WelcomeTour.vue';
+
+// jsdom doesn't apply main.css, so real paint/stacking order and
+// pointer-events behaviour can't be exercised at runtime — these read the
+// actual stylesheet instead, so a rule regressing silently (e.g. someone
+// bumping .tour-spot's z-index without noticing .tour needs to stay above
+// it) fails a test instead of just fading into an unwitnessed bug again.
+const mainCss = fs.readFileSync(path.resolve(import.meta.dirname, '../../assets/main.css'), 'utf8');
+function cssRule(selector) {
+  // negative lookahead so '.tour' doesn't also match '.tour-spot'
+  const re = new RegExp('\\' + selector + '(?![\\w-])\\{([^}]*)\\}');
+  return mainCss.match(re)?.[1] || '';
+}
+function cssNum(rule, prop) {
+  const m = rule.match(new RegExp(prop + ':\\s*(-?\\d+)'));
+  return m ? Number(m[1]) : null;
+}
 
 // The spotlight targets a real DOM element via a data-tour selector, which
 // only ever exists on the actual view components — not on WelcomeTour
@@ -178,7 +196,31 @@ describe('WelcomeTour', () => {
     wrapper.unmount();
   });
 
-  it('never blocks a click — the spotlight is decorative only (pointer-events:none)', async () => {
+  it('re-tracks the spotlight on scroll without re-centering the target (would fight the player\'s own scroll)', async () => {
+    const { wrapper } = mountWithTarget('sites'); // slide 2, so a plain scroll event doesn't also fire the tab-change watcher
+    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    await settle();
+    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+
+    // jsdom has no real scrollIntoView (the component itself guards for
+    // that, see WelcomeTour.vue) — stub one so it's spyable here.
+    const target = document.querySelector('[data-tour="sites"]');
+    target.scrollIntoView = () => {};
+    const scrollSpy = vi.spyOn(target, 'scrollIntoView');
+    window.dispatchEvent(new Event('scroll'));
+    await settle();
+
+    expect(scrollSpy).not.toHaveBeenCalled(); // re-measured in place, not re-scrolled-to
+    expect(wrapper.find('.tour-spot').exists()).toBe(true); // still tracking correctly
+    wrapper.unmount();
+  });
+
+  it('is marked purely decorative (aria-hidden) once lit', async () => {
+    // jsdom doesn't apply main.css, so it can't exercise the actual
+    // click-passthrough behaviour at runtime — that guarantee is
+    // main.css's `.tour-spot{pointer-events:none}` rule itself, checked
+    // statically below. This only confirms the element carries the
+    // aria-hidden marker a purely visual overlay should have.
     const { wrapper } = mountWithTarget('farm');
     await settle();
     await wrapper.vm.$nextTick();
@@ -186,5 +228,24 @@ describe('WelcomeTour', () => {
     expect(spot.exists()).toBe(true);
     expect(spot.attributes('aria-hidden')).toBe('true');
     wrapper.unmount();
+  });
+
+  it('main.css actually declares .tour-spot as pointer-events:none (the real click-passthrough guarantee)', () => {
+    expect(cssRule('.tour-spot')).toMatch(/pointer-events:\s*none/);
+  });
+
+  it('main.css keeps the caption (.tour) stacked above the spotlight (.tour-spot)', () => {
+    // Regression guard for a real bug caught in review: .card is ordinary
+    // static content, and a positioned element with z-index >= 0 paints
+    // above ALL static content regardless of DOM order (CSS2.1 Appendix
+    // E) — so without .tour claiming its own stacking position, the
+    // spotlight's box-shadow painted straight over the caption, dimming
+    // it along with everything else. Confirmed by pixel-sampling a live
+    // render before the fix: the caption's background read as its
+    // blue-tint blended 60% toward black, same as any other dimmed area.
+    const tour = cssRule('.tour');
+    const spot = cssRule('.tour-spot');
+    expect(tour).toMatch(/position:\s*relative/);
+    expect(cssNum(tour, 'z-index')).toBeGreaterThan(cssNum(spot, 'z-index'));
   });
 });
