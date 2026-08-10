@@ -174,6 +174,16 @@ describe('BuildView', () => {
   });
 
   describe('the card-count stepper', () => {
+    it('meets the WCAG AAA 44x44 touch-target minimum — it\'s the one control likely to get tapped repeatedly in a row', () => {
+      // jsdom doesn't run layout, so pin the CSS mechanism directly, same
+      // pattern as the segmented control's thumb tests.
+      const rule = cssRule('.stepper button');
+      const width = Number(rule.match(/width:\s*(\d+)px/)?.[1]);
+      const height = Number(rule.match(/height:\s*(\d+)px/)?.[1]);
+      expect(width).toBeGreaterThanOrEqual(44);
+      expect(height).toBeGreaterThanOrEqual(44);
+    });
+
     it('disables "-" at 1 card rather than silently clamping', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
       await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
