@@ -38,6 +38,11 @@ describe('BuildView', () => {
       // without aria-pressed a screen reader has no way to tell the two
       // segments apart from a pair of plain buttons.
       const { wrapper } = mountWithStore(BuildView);
+      // the pair also needs its own accessible name — without it, a screen
+      // reader announces two anonymous toggle buttons with no indication of
+      // what they're toggling
+      expect(wrapper.find('.seg2').attributes('role')).toBe('group');
+      expect(wrapper.find('.seg2').attributes('aria-label')).toBe('Build mode');
       const quick = () => wrapper.findAll('button').find(b => b.text() === 'Quick pick');
       const custom = () => wrapper.findAll('button').find(b => b.text() === 'Customise');
       expect(quick().attributes('aria-pressed')).toBe('true');
