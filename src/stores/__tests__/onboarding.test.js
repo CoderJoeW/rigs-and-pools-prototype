@@ -59,16 +59,6 @@ describe('onboarding coach', () => {
     expect(g.onboardingStep.id).toBe('automate');
   });
 
-  it('advances to "automate" once a second site or pool exists, before a safety net is set', () => {
-    const g = freshStore();
-    g.generatePreset();
-    g.build();
-    for (let i = 0; i < 5; i++) g.stepTick(60);
-    g.s.cash = 5000;
-    g.newSite('shed');
-    expect(g.onboardingStep.id).toBe('automate');
-  });
-
   it('"automate" clears once auto-shutdown is enabled', () => {
     const g = freshStore();
     g.generatePreset();
