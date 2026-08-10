@@ -195,11 +195,27 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
    the buttons — with nowhere to go in a nowrap row — were pushed off the right
    edge instead. Below the cap the label gets its own line and the controls
    drop beneath it, right-aligned; nothing is clipped and nothing is dropped.
-   At 440 px and up the row is exactly what it always was. */
+   At 440 px and up the row is exactly what it always was.
+
+   A SEVENTH control (the tour-replay pill) reopened the same trap: even
+   with the whole width to itself below the cap, .speedset's own row still
+   has nowhere to grow, so at the narrowest real phones (~320px) the last
+   speed button was pushed off-screen again — clipped, not wrapped, and
+   with no scroll to recover it. flex-wrap:wrap on .speedset alone does
+   NOT fix this: a flex item's preferred (flex-basis:auto) size is its
+   MAX-CONTENT width — every child laid out on one line, ignoring that its
+   own flex-wrap could make it narrower — and with the base rule's
+   flex:none (flex-shrink:0) it can never be compressed below that
+   preferred width to let the wrap actually engage. flex-shrink:1 here is
+   what lets it give way to .speedbar's real available width first, so
+   flex-wrap has room to fold the overflow onto a second line instead of
+   the item just overflowing at its full unwrapped width; flex-end keeps
+   both lines right-aligned under the label the same way the single row
+   already was. */
 @media (max-width:439px){
   .speedbar{flex-wrap:wrap;row-gap:1px}
   .speedlbl{flex:1 1 100%}
-  .speedset{margin-left:auto}
+  .speedset{margin-left:auto;flex-wrap:wrap;flex-shrink:1;justify-content:flex-end}
 }
 .speedbtn{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:5px;
   color:var(--ink-3);background:var(--line-2);transition:var(--press),background-color .15s,color .15s}

@@ -214,6 +214,39 @@ describe('the walkthrough tour', () => {
     expect(g2.showTour).toBe(false);
   });
 
+  it('restartTour brings it back for a player past their first session', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    expect(g.showTour).toBe(false); // nextId > 1 now, the automatic gate is closed
+
+    g.restartTour();
+    expect(g.showTour).toBe(true);
+    expect(g.s.tourReplay).toBe(true);
+  });
+
+  it('restartTour also un-does an earlier skip', () => {
+    const g = freshStore();
+    g.dismissTour();
+    expect(g.showTour).toBe(false);
+
+    g.restartTour();
+    expect(g.showTour).toBe(true);
+    expect(g.s.tourDismissed).toBe(false);
+  });
+
+  it('dismissing a replay (Skip or finishing) clears tourReplay too, so it does not silently reopen itself', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    g.restartTour();
+    expect(g.showTour).toBe(true);
+
+    g.dismissTour();
+    expect(g.showTour).toBe(false);
+    expect(g.s.tourReplay).toBe(false);
+  });
+
   it('the reactive coach stays quiet while the tour is up', () => {
     const g = freshStore();
     expect(g.showTour).toBe(true);

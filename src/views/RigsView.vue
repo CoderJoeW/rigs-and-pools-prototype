@@ -285,7 +285,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 <template>
   <div>
     <!-- ORIENT: is the farm healthy, and where am I -->
-    <div class="card">
+    <div class="card" data-tour="rigs">
       <div class="card-hd"><span class="eyebrow">{{ f.name }}</span>
         <span class="eyebrow">{{ g.siteRigs(f).length }}/{{ g.siteSlots(f) }} positions used</span></div>
       <div class="statline">
@@ -375,7 +375,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <div class="card" v-else data-tour="rigs"><div class="empty">
+    <div class="card" v-else><div class="empty">
       <p v-if="!siteRigs.length">No rigs at {{ f.name }} yet.</p>
       <p v-else>No rigs match &ldquo;{{ FILTERS.find(x=>x.k===filt).label }}&rdquo;.</p>
       <button v-if="!siteRigs.length" class="btn btn-pri" @click="g.s.tab='build'">Build one</button>
