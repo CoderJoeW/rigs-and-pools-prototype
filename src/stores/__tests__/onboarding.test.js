@@ -180,6 +180,23 @@ describe('the walkthrough tour', () => {
     expect(g.showTour).toBe(false);
   });
 
+  it('does not resurface after the farm drops back to zero rigs (scrap, or an insolvency sell-off)', () => {
+    // rigs.length is not monotonic — scrapping the only rig, or insolvency
+    // liquidating the whole farm, both take it back to 0 on an established
+    // save that legitimately never sees the tour again. Gating showTour on
+    // that count alone would pop the full-screen tour back over a farm
+    // that's already been run for a while.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    expect(g.s.rigs).toHaveLength(1);
+    expect(g.showTour).toBe(false);
+
+    g.scrapRig(g.s.rigs[0].id);
+    expect(g.s.rigs).toHaveLength(0);
+    expect(g.showTour).toBe(false);
+  });
+
   it('does not resurface for a save that already has a rig', async () => {
     const g1 = freshStore();
     g1.generatePreset();

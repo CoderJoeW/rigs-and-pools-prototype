@@ -6,10 +6,10 @@ import { useSheetA11y } from '../useSheetA11y.js';
 /* A minimal stand-in for one of the app's real ".sheet" panels: a trigger
    button outside it, and two focusable buttons inside — enough to exercise
    open-focus, Tab-trap and Escape without dragging in a whole view. */
-function makeHarness(closeSpy) {
+function makeHarness(closeSpy, { startOpen = false } = {}) {
   return defineComponent({
     setup() {
-      const open = ref(false);
+      const open = ref(startOpen);
       const sheetEl = ref(null);
       useSheetA11y(sheetEl, open, () => { open.value = false; closeSpy(); });
       return { open, sheetEl };
@@ -72,6 +72,19 @@ describe('useSheetA11y', () => {
     const ev = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
     document.dispatchEvent(ev);
     expect(document.activeElement).toBe(first);
+    wrapper.unmount();
+  });
+
+  // WelcomeTour is the one .sheet in the app that can be open on its very
+  // first render (isOpen already true when the component mounts, no click
+  // ever transitions it false->true) — every other sheet in the app starts
+  // closed. Without `immediate` on the watcher, that starting state is
+  // never seen as a transition and focus never enters the dialog.
+  it('focuses the panel immediately when it starts already open, with no prior open transition', async () => {
+    const wrapper = mount(makeHarness(() => {}, { startOpen: true }), { attachTo: document.body });
+    await nextTick();
+    await nextTick(); // the composable's own nextTick before focusing
+    expect(document.activeElement).toBe(wrapper.find('#first').element);
     wrapper.unmount();
   });
 

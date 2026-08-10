@@ -73,8 +73,17 @@ export function installOnboarding(G){
      again once one exists, tour-dismissed or not, so it can't reappear
      over a farm that's already running (an imported save, a second
      device). While it's up, the reactive banner stays quiet: both would
-     otherwise open on the same 'build your first rig' point at once. */
-  const showTour = computed(()=> !G.s.tourDismissed && G.s.rigs.length===0);
+     otherwise open on the same 'build your first rig' point at once.
+
+     Gated on nextId, NOT rigs.length: rigs.length is not monotonic —
+     scrapping the last rig, or an insolvency sell-off (insolvency.js)
+     taking the farm to zero, both drop it back to 0 on an established
+     save that legitimately dismissed the tour long ago. nextId only ever
+     increments (every real build, plus insolvency's last-rig grant) and
+     only resets via freshState/resetState — a genuine fresh start — so
+     nextId===1 means "no rig has EVER existed," which is what "shown
+     once, first session only" actually requires. */
+  const showTour = computed(()=> !G.s.tourDismissed && G.s.nextId===1);
   const dismissTour = () => { G.s.tourDismissed = true; };
   const beginFirstBuild = () => { G.s.tab='build'; dismissTour(); };
 
