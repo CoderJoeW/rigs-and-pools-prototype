@@ -35,13 +35,35 @@
    dispatch.js's diffOf/revPerMh): PAY*mult*floor*target/(86400*price)
      = 4.20*1.25*350*20/(86400*0.024) ≈ 17.72 (was 30).
 
-   This mult is chosen to land right once the clamp loss above is netted
-   out, which means it's coupled to that separate bug: fixing the price
-   floor (so Tessera's price can actually sit at its base 0.024 instead of
-   clamping to the global 0.02) would push Tessera's realized rate back up
-   to its full nominal ~5.25, past Ferro and Obelisk into 2nd place on the
-   ladder — this mult would need revisiting alongside that fix, not after
-   it lands unnoticed. */
+   Issue #18: `depth` was sized without accounting for how much a cheap
+   coin's price amplifies its own sell volume — Tessera's revPerMh is
+   calibrated to PAY*mult like every other chain, so coin volume scales as
+   1/price, and Tessera's price (0.024) is ~100x cheaper than Ferro's. A
+   single starter rig autoselling into depth:4200 saturated market impact
+   to its 0.85 cap within a few sim-hours and pinned price at the global
+   $0.02 floor indefinitely — permanently costing Tessera ~17% of its
+   nominal rate, right when a new player is forming their model of how
+   rates work. depth:4.0e5 puts Tessera in the same volume-to-depth regime
+   as the other four chains (their impact-added-per-day is 50-800x lower
+   at 4200), so its realized rate now actually reaches close to PAY*mult
+   under ordinary play instead of permanently clamping short of it.
+
+   mult dropped 1.25 -> 1.15 to match: the old 1.25 was deliberately tuned
+   to land at the ladder's middle only AFTER losing ~17% to the clamp
+   above — removing that loss without lowering mult would have pushed
+   Tessera's realized rate past Ferro and Obelisk into 2nd place, which
+   was never the intent (see the retune above this comment). Impact no
+   longer saturates at depth:4.0e5, but it isn't zero either — driven by
+   continuous drip-selling against `recover`'s daily decay, it settles
+   into a slow multi-day cycle (measured: roughly 0 to ~0.12 and back),
+   so revPerMh genuinely fluctuates around its target rather than sitting
+   dead-still. 1.05 (PAY*mult=4.41, matching 1.25-with-the-old-clamp
+   exactly) put that fluctuation's low point close enough to Nova's own
+   (stable, unclamped) rate to occasionally dip below it — an unforced
+   error the old permanently-pinned number never had a chance to make.
+   1.15 (PAY*mult=4.83, level with Obelisk) keeps the same "ladder's
+   middle, not literally best" intent while giving the low point of that
+   cycle real clearance above Nova. */
 /* `hue` is the chain's visual identity: an OKLCH hue angle, and ONLY the hue —
    lightness and chroma come from --chain-l/--chain-c in main.css, which the
    two themes set separately. Storing one number rather than a hex means the
@@ -67,8 +89,8 @@
      nova    285  indigo — the blue chip: calm, deep, crowded
      obelisk 320  purple — monolithic, imperial, ten minutes a block */
 export const CHAINS = [
-  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:17.72, price:0.024,
-    mult:1.25, floor:350, vol:0.030, depth:4200, recover:0.50, orphan:0.050, hue:200,
+  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:16.30, price:0.024,
+    mult:1.15, floor:350, vol:0.030, depth:4.0e5, recover:0.50, orphan:0.050, hue:200,
     blurb:'Twenty-second blocks and a tiny floor — constant small wins for one rig, worthless at scale.' },
   { id:'ferro', name:'Ferro', tick:'FRO', target:30, reward:2.124, price:4.12,
     mult:1.00, floor:6.0e3, vol:0.014, depth:15400, recover:0.40, orphan:0.045, hue:128,

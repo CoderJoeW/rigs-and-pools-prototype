@@ -30,6 +30,24 @@ describe('Tessera balance', () => {
     expect(g.revPerMh(tessera)).toBeGreaterThan(g.revPerMh(nova));
   });
 
+  it('does not permanently pin at the global $0.02 price floor (issue #18)', () => {
+    // Tessera's price is calibrated ~100x cheaper than Ferro's, so at the
+    // same revPerMh it moves ~100x the coin volume against its book — with
+    // the old depth:4200, a single starter rig autoselling saturated
+    // market impact to its 0.85 cap within a few sim-hours and pinned
+    // price at the $0.02 floor indefinitely (measured: exactly 0.02, every
+    // sample, for 5+ sim-days). depth:4.0e5 keeps that from happening.
+    const g = freshStore();
+    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    for (let i = 0; i < 5; i++) g.stepTick(3600); // a few sim-hours — enough to have pinned under the old depth
+
+    expect(g.price(tessera)).toBeGreaterThan(0.02);
+    expect(tessera.impact).toBeLessThan(0.85);
+  });
+
   it('the floor sits within reach of a modestly grown farm, not just a single rig forever', () => {
     // The lower-bound test above alone isn't enough: it's satisfied by the
     // OLD, over-powered numbers too (old Tessera also beat Nova on realized
