@@ -1,18 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { cssRule } from '../../test/cssRule.js';
 import TopBar from '../TopBar.vue';
-
-// jsdom doesn't apply main.css, so the actual overflow behavior can't be
-// measured here (see the live-browser verification in the PR that added
-// this) — this reads the stylesheet instead, as a regression guard against
-// .top-left's wrap rule quietly disappearing again.
-const mainCss = fs.readFileSync(path.resolve(import.meta.dirname, '../../assets/main.css'), 'utf8');
-function cssRule(selector) {
-  const re = new RegExp('\\' + selector + '(?![\\w-])\\{([^}]*)\\}');
-  return mainCss.match(re)?.[1] || '';
-}
 
 describe('TopBar', () => {
   it('shows the wordmark, starting cash, and the day/clock chip', () => {
@@ -87,6 +76,12 @@ describe('TopBar', () => {
     // header.top overflowed at 320px with several weather/status chips
     // live at once, clipping the cash figure with no scroll to recover it
     // — the same failure class issue #46 already documents for .speedbar.
+    // display:flex is what makes flex-wrap mean anything here at all — the
+    // chips are separated only by whitespace in the template, which Vue's
+    // default whitespace handling condenses away entirely; without a flex
+    // (or other) layout establishing soft-wrap points, the row has none
+    // and clips exactly as if flex-wrap were never added.
+    expect(cssRule('.top-left')).toMatch(/display:\s*flex/);
     expect(cssRule('.top-left')).toMatch(/flex-wrap:\s*wrap/);
     expect(cssRule('.top-right')).toMatch(/flex:\s*none/);
   });

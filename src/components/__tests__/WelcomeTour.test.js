@@ -1,25 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
-import fs from 'node:fs';
-import path from 'node:path';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { cssRule, cssNum } from '../../test/cssRule.js';
 import WelcomeTour from '../WelcomeTour.vue';
-
-// jsdom doesn't apply main.css, so real paint/stacking order and
-// pointer-events behaviour can't be exercised at runtime — these read the
-// actual stylesheet instead, so a rule regressing silently (e.g. someone
-// bumping .tour-spot's z-index without noticing .tour needs to stay above
-// it) fails a test instead of just fading into an unwitnessed bug again.
-const mainCss = fs.readFileSync(path.resolve(import.meta.dirname, '../../assets/main.css'), 'utf8');
-function cssRule(selector) {
-  // negative lookahead so '.tour' doesn't also match '.tour-spot'
-  const re = new RegExp('\\' + selector + '(?![\\w-])\\{([^}]*)\\}');
-  return mainCss.match(re)?.[1] || '';
-}
-function cssNum(rule, prop) {
-  const m = rule.match(new RegExp(prop + ':\\s*(-?\\d+)'));
-  return m ? Number(m[1]) : null;
-}
 
 // The spotlight targets a real DOM element via a data-tour selector, which
 // only ever exists on the actual view components — not on WelcomeTour
