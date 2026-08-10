@@ -1,6 +1,23 @@
 import { describe, it, expect } from 'vitest';
+import { defineComponent, h } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import WelcomeTour from '../WelcomeTour.vue';
+
+// The spotlight targets a real DOM element via a data-tour selector, which
+// only ever exists on the actual view components — not on WelcomeTour
+// itself. These tests supply a stand-in target, attached to the live
+// document (querySelector doesn't see a detached test tree), and give the
+// requestAnimationFrame retry chain a real tick to resolve.
+function mountWithTarget(dataTour) {
+  const Harness = defineComponent({
+    render: () => h('div', [
+      h('div', { 'data-tour': dataTour }),
+      h(WelcomeTour),
+    ]),
+  });
+  return mountWithStore(Harness, { attachTo: document.body });
+}
+const settle = () => new Promise(r => setTimeout(r, 50));
 
 describe('WelcomeTour', () => {
   it('shows the first slide for a brand-new player, on the Farm tab', () => {
@@ -100,5 +117,54 @@ describe('WelcomeTour', () => {
     store.build();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.tour').exists()).toBe(false); // no click on the tour's own button needed
+  });
+
+  it('has no spotlight yet on the frame it mounts — nothing to darken before the target is even found', () => {
+    const { wrapper } = mountWithStore(WelcomeTour);
+    expect(wrapper.find('.tour-spot').exists()).toBe(false);
+  });
+
+  it('spotlights the real target element once the current slide\'s selector resolves', async () => {
+    const { wrapper } = mountWithTarget('farm');
+    await settle();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('stays dark (no spotlight) when the current slide names a target that genuinely is not on the page', async () => {
+    const { wrapper } = mountWithTarget('sites'); // slide 1 is 'farm', not 'sites'
+    await settle();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.tour-spot').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('re-targets the spotlight to the new slide\'s element after Next, once it resolves', async () => {
+    const Harness = defineComponent({
+      render: () => h('div', [
+        h('div', { 'data-tour': 'farm' }),
+        h('div', { 'data-tour': 'sites' }),
+        h(WelcomeTour),
+      ]),
+    });
+    const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
+    await settle();
+    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+
+    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    await settle();
+    expect(wrapper.find('.tour-spot').exists()).toBe(true); // still lit — 'sites' target exists too
+    wrapper.unmount();
+  });
+
+  it('never blocks a click — the spotlight is decorative only (pointer-events:none)', async () => {
+    const { wrapper } = mountWithTarget('farm');
+    await settle();
+    await wrapper.vm.$nextTick();
+    const spot = wrapper.find('.tour-spot');
+    expect(spot.exists()).toBe(true);
+    expect(spot.attributes('aria-hidden')).toBe('true');
+    wrapper.unmount();
   });
 });

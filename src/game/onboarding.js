@@ -14,27 +14,32 @@ import { computed } from 'vue';
    way a tracked tour could — building a rig by any route ends it outright,
    tour or no tour.
 
-   Each slide names the real tab it's about, and the tour drives navigation
-   there itself (WelcomeTour.vue watches the slide and sets s.tab to
-   match) — so a slide is always sitting over the actual live screen it
-   describes, not a blank one standing in for it. It's a caption, not a
-   modal: nothing here blocks tapping around on your own, and doing the
-   thing a slide is pointing at (e.g. actually building on the last one)
-   ends the tour exactly the same way skipping it would. */
+   Each slide names the real tab it's about AND a `target` — a CSS selector
+   for the one element on that tab worth actually looking at, tagged with a
+   data-tour attribute in the view itself (FarmView's empty-state card,
+   BuildView's Order-parts button, etc.). The tour drives navigation there
+   itself (WelcomeTour.vue watches the slide and sets s.tab to match), then
+   spotlights the target: everything else on screen dims, the target stays
+   lit. So a slide is always pointing at one real, live, specific thing —
+   not just the right tab in the abstract. It's a caption and a spotlight,
+   not a modal: the dimming is purely visual (pointer-events:none — nothing
+   here blocks tapping around, or through the highlight, on your own), and
+   doing the thing a slide is pointing at (e.g. actually building on the
+   last one) ends the tour exactly the same way skipping it would. */
 const TOUR_SLIDES = [
-  { tab:'farm', title:'Welcome to Rigs & Pools',
+  { tab:'farm', target:'[data-tour="farm"]', title:'Welcome to Rigs & Pools',
     body:'This is Farm, your dashboard. You’re starting with $500, a spare bedroom, and a 1.5 kW outlet. Rigs run 24/7, earning whether or not you’re watching — let’s walk through every tab so you know what you’re looking at.' },
-  { tab:'sites', title:'Sites — power and cooling you build',
+  { tab:'sites', target:'[data-tour="sites"]', title:'Sites — power and cooling you build',
     body:'A site is floor space, power and cooling installed piece by piece — grid, solar, wind or diesel, then a cooling plant to keep cards fast. You start with one, a spare bedroom on a domestic outlet, and can run as many as you can afford.' },
-  { tab:'rigs', title:'Rigs — your fleet, at a glance',
+  { tab:'rigs', target:'[data-tour="rigs"]', title:'Rigs — your fleet, at a glance',
     body:'Every machine you own lives here: live hashrate, wear and state. Group rigs by chain and pool so a whole batch shares one strategy, and tap into any rig for full detail, tuning and repair.' },
-  { tab:'chains', title:'Chains — five coins, five personalities',
+  { tab:'chains', target:'[data-tour="chains"]', title:'Chains — five coins, five personalities',
     body:'Each chain pays differently and carries different risk. Below its published floor a chain pays every miner the same flat rate — a newcomer’s welcome gift. The rival pools listed here are real businesses with live reputations; found your own to compete for their members.' },
-  { tab:'market', title:'Market — turn coins into cash',
+  { tab:'market', target:'[data-tour="market"]', title:'Market — turn coins into cash',
     body:'Sell whatever you’ve mined, or buy in. Prices move on real order flow, so a big sale needs room to breathe — a few smaller ones beat dumping it all at once.' },
-  { tab:'stats', title:'Stats — milestones and rank',
+  { tab:'stats', target:'[data-tour="stats"]', title:'Stats — milestones and rank',
     body:'Your progress lives here: hashpower, blocks, infrastructure, pools, economy and craft. No shop, no cash reward — just the record of what you’ve actually built.' },
-  { tab:'build', title:'Let’s build your first rig',
+  { tab:'build', target:'[data-tour="build"]', title:'Let’s build your first rig',
     body:'This is where a rig is born. Quick pick has already loaded a smart, affordable preset — tap Order parts below to lock it in. Customise lets you choose every part yourself once you’re ready.' },
 ];
 const STEPS = [

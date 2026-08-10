@@ -373,7 +373,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <div class="card" v-else><div class="empty">
+    <div class="card" v-else data-tour="rigs"><div class="empty">
       <p v-if="!siteRigs.length">No rigs at {{ f.name }} yet.</p>
       <p v-else>No rigs match &ldquo;{{ FILTERS.find(x=>x.k===filt).label }}&rdquo;.</p>
       <button v-if="!siteRigs.length" class="btn btn-pri" @click="g.s.tab='build'">Build one</button>

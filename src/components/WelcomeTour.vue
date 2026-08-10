@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 
 const g = useGameStore();
@@ -7,16 +7,61 @@ const step = ref(0);
 const slide = computed(()=>g.TOUR_SLIDES[step.value]);
 const isLast = computed(()=>step.value===g.TOUR_SLIDES.length-1);
 
-/* The tour drives navigation itself — each slide names the tab it's about
-   (src/game/onboarding.js), so the caption always sits over the real
-   screen it's describing rather than a blank one. Runs immediately so the
-   very first slide lands correctly even though 'farm' is already the
-   default tab. Not a lock: nothing stops a player tapping another tab on
-   their own mid-tour, Next/Back just put them back on the right one. */
-watch(() => g.showTour && slide.value, s => { if (s) g.s.tab = s.tab; }, { immediate:true });
+/* The spotlight — a single element sized to the real target's own rect,
+   with a box-shadow spread wide enough to cover the rest of the viewport.
+   box-shadow is pure paint, never hit-tested, so this dims everything
+   without a second overlay element and without ever intercepting a click
+   — same "caption, not a lock" rule the rest of the tour follows. */
+const spot = ref(null); // {top,left,width,height} in viewport px, or null
+const PAD = 6;
+// Guards the retry chain below against outliving the component — it's a
+// plain requestAnimationFrame recursion, not a Vue watcher, so unmounting
+// mid-retry would otherwise keep it alive (and free to touch a torn-down
+// component's refs) until it ran itself out.
+let alive = true;
+function measure(){
+  const el = slide.value && slide.value.target && document.querySelector(slide.value.target);
+  if(!el){ spot.value = null; return; }
+  if(el.scrollIntoView) el.scrollIntoView({ block:'center', behavior:'auto' });
+  requestAnimationFrame(()=>{
+    if(!alive) return;
+    const r = el.getBoundingClientRect();
+    spot.value = { top:r.top-PAD, left:r.left-PAD, width:r.width+PAD*2, height:r.height+PAD*2 };
+  });
+}
+/* The tab switch, the view remount behind it, and the target actually
+   existing in the DOM don't all land in the same tick — retries across a
+   few animation frames rather than assuming one nextTick is enough. */
+function measureWhenReady(triesLeft=8){
+  if(!alive) return;
+  const el = slide.value && slide.value.target && document.querySelector(slide.value.target);
+  if(el) measure();
+  else if(triesLeft>0) requestAnimationFrame(()=>measureWhenReady(triesLeft-1));
+  else spot.value = null;
+}
+async function reposition(){
+  if(!g.showTour){ spot.value = null; return; }
+  await nextTick();
+  measureWhenReady();
+}
+const onResize = () => { if(g.showTour) measure(); };
+
+/* Each slide names the tab it's about; the tour drives navigation there
+   itself so the spotlight always lands on the real screen it's
+   describing, not a blank one. Runs immediately so the very first slide
+   is positioned correctly even though 'farm' is already the default tab.
+   Not a lock: nothing stops a player tapping another tab on their own
+   mid-tour, Next/Back just put them back on the right one. */
+watch(() => g.showTour && slide.value, s => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
+
+onMounted(()=>window.addEventListener('resize', onResize));
+onBeforeUnmount(()=>{ alive = false; window.removeEventListener('resize', onResize); });
 </script>
 
 <template>
+  <div v-if="g.showTour && spot" class="tour-spot" aria-hidden="true"
+       :style="{ top:spot.top+'px', left:spot.left+'px', width:spot.width+'px', height:spot.height+'px' }">
+  </div>
   <div v-if="g.showTour" class="card tour" aria-live="polite"
        style="margin:9px 12px 0;padding:12px 14px;background:var(--blue-t)">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
