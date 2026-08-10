@@ -155,6 +155,17 @@ const subsidyNote=computed(()=>{
         +'of how little hash they bring — the fast payback is a deliberate '
         +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
 });
+/* Sighted users watch the checkmarks flip live while editing in Customise;
+   a screen reader user gets no equivalent signal without re-reading the
+   whole panel after every change. This announces only the OUTCOME (built
+   from checks, which — unlike costShown etc. — read the real, untweened
+   store directly) so it updates once per actual draft change, never once
+   per tween frame. */
+const buildStatus=computed(()=>{
+  if(g.canBuild) return 'Ready to order for '+fmt.usd(g.dp.cost)+'.';
+  const reasons=g.checks.filter(c=>!c.ok).map(c=>c.label);
+  return 'Cannot build yet: '+reasons.join('; ')+'.';
+});
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
@@ -252,6 +263,7 @@ const verdict=computed(()=>{
           </div>
         </div>
         <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}</dd></div>
+        <p class="sr-only" aria-live="polite">{{ buildStatus }}</p>
         <button class="btn btn-wide" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
                 data-tour="build" :disabled="!g.canBuild" @click="g.build()">
           {{ g.canBuild?'Order parts · '+fmt.usd(g.dp.cost):'Fix the crosses above' }}</button>

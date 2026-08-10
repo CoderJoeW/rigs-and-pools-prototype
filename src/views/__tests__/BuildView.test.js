@@ -249,4 +249,53 @@ describe('BuildView', () => {
       expect(wrapper.text()).toContain(fmt.usd(costAfter));
     });
   });
+
+  describe('the build-status announcement', () => {
+    it('tells assistive tech the draft is ready to order, with no live region for sighted-only cues', () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      expect(store.canBuild).toBe(true); // the mounted preset always clears the gate
+      const live = wrapper.find('[aria-live="polite"].sr-only');
+      expect(live.exists()).toBe(true);
+      expect(live.text()).toBe('Ready to order for ' + fmt.usd(store.dp.cost) + '.');
+    });
+
+    it('names the actual blocking reasons instead of pointing at on-screen icons', async () => {
+      // the visible button says "Fix the crosses above" — fine for a sighted
+      // user scanning the panel, meaningless read out of context. The live
+      // region carries the real check labels instead.
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      store.s.cash = 0;   // fails the "you hold $X" cash check unconditionally
+      await nextTick();
+      expect(store.canBuild).toBe(false);
+      const live = wrapper.find('[aria-live="polite"].sr-only');
+      const failingLabel = store.checks.find(c => !c.ok).label;
+      expect(live.text()).toBe('Cannot build yet: ' + failingLabel + '.');
+    });
+
+    it('settles on the final outcome immediately, instead of trailing the tweened numbers', async () => {
+      // costShown eases toward its new value over ~320ms of animation
+      // frames; buildStatus reads dp.cost/checks directly from the
+      // untweened store, so it must already report the FINAL outcome the
+      // instant the draft changes, not an intermediate value, and must not
+      // move again later just because the visible "Parts" figure catches up.
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+
+      const { FRAMES } = await import('../../data/hardware.js');
+      const smallest = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
+      store.s.draft.frame = smallest.id;
+      await nextTick();
+
+      const expected = store.canBuild
+        ? 'Ready to order for ' + fmt.usd(store.dp.cost) + '.'
+        : 'Cannot build yet: ' + store.checks.filter(c => !c.ok).map(c => c.label).join('; ') + '.';
+      const live = wrapper.find('[aria-live="polite"].sr-only');
+      expect(live.text()).toBe(expected);
+
+      await new Promise(r => setTimeout(r, 400)); // well past costShown's ~320ms tween window
+      await nextTick();
+      expect(live.text()).toBe(expected); // unchanged — it never was animating
+    });
+  });
 });
