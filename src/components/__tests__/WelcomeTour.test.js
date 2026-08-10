@@ -60,14 +60,34 @@ describe('WelcomeTour', () => {
     expect(store.s.tab).toBe('sites');
   });
 
-  it('manually switching tabs mid-tour does not stick — the next Next/Back reasserts the slide\'s tab', async () => {
+  it('manually switching tabs mid-tour resyncs the tour to that slide, instead of snapping back', async () => {
+    // Every tab in the app is one of the tour's own slides, so following the
+    // player is strictly more coherent than overriding them: the caption
+    // never gets to describe a tab that isn't the one on screen.
     const { wrapper, store } = mountWithStore(WelcomeTour);
-    store.s.tab = 'market'; // player looks around on their own
+    store.s.tab = 'market'; // player looks around on their own, e.g. via the tab bar
     await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain('Market — turn coins into cash');
+    expect(wrapper.text()).toContain('5 of 7');
 
     const next = wrapper.findAll('button').find(b => b.text() === 'Next');
     await next.trigger('click');
-    expect(store.s.tab).toBe('sites'); // the tour's own second slide, not 'market'
+    expect(store.s.tab).toBe('stats'); // advances from wherever the player actually is
+  });
+
+  it('following a spotlighted CTA that jumps tabs on its own keeps the caption in sync', async () => {
+    // FarmView's "Go shopping" and RigsView's "Build one" both live INSIDE
+    // the highlighted card and both jump straight to Build on click — a
+    // real, plausible thing to tap mid-tour, not just a hypothetical.
+    // Simulated here as any other click that sets s.tab, since the actual
+    // buttons live in components this test doesn't mount.
+    const { wrapper, store } = mountWithStore(WelcomeTour);
+    store.s.tab = 'build'; // what "Build one" or "Go shopping" would do
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Let’s build your first rig');
+    expect(wrapper.text()).toContain('7 of 7');
+    expect(wrapper.findAll('button').find(b => b.text() === "Got it — let's build")).toBeTruthy();
   });
 
   it('walks through all seven tabs in order, ending on Build', async () => {

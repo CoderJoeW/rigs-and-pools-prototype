@@ -49,10 +49,26 @@ const onResize = () => { if(g.showTour) measure(); };
 /* Each slide names the tab it's about; the tour drives navigation there
    itself so the spotlight always lands on the real screen it's
    describing, not a blank one. Runs immediately so the very first slide
-   is positioned correctly even though 'farm' is already the default tab.
-   Not a lock: nothing stops a player tapping another tab on their own
-   mid-tour, Next/Back just put them back on the right one. */
+   is positioned correctly even though 'farm' is already the default tab. */
 watch(() => g.showTour && slide.value, s => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
+
+/* The other direction. Several of the tour's own spotlighted targets are
+   themselves live buttons that jump tabs on click — FarmView's "Go
+   shopping" and RigsView's "Build one" both point straight at Build,
+   right there inside the highlight. Clicking one used to leave the tour's
+   own step wherever Next/Back last put it: caption still reading "Rigs,"
+   spotlight hunting for a target that no longer exists on the Build tab
+   underneath. The tour follows instead — every tab is one of its own
+   slides, so any tab change while it's up (this button, or just tapping
+   the tab bar directly) resyncs the displayed slide to match, keeping
+   caption, spotlight and the real screen in agreement no matter which of
+   the two ever moves first. Guarded on actually differing so this can't
+   bounce against the watcher above. */
+watch(() => g.s.tab, tab => {
+  if(!g.showTour) return;
+  const idx = g.TOUR_SLIDES.findIndex(s => s.tab === tab);
+  if(idx !== -1 && idx !== step.value) step.value = idx;
+});
 
 onMounted(()=>window.addEventListener('resize', onResize));
 onBeforeUnmount(()=>{ alive = false; window.removeEventListener('resize', onResize); });
