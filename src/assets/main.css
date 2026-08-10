@@ -153,6 +153,17 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
   background:var(--top-bg);backdrop-filter:saturate(180%) blur(14px);
   -webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);
   display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* Same failure class as .speedbar's (issue #46, main.css:192+), on this bar's
+   own left group: the wordmark plus up to five .chip badges (day/clock, sun,
+   ambient, grid band, cloud) are nowrap siblings with nothing to give, so on
+   a narrow phone with several chips live at once, the group's full width can
+   exceed what's left after .top-right's cash figure — and since .top itself
+   never wraps, that overflow pushed the cash off the right edge instead of
+   dropping to a second line. flex-wrap here is unconditional (no media
+   query needed): it is a no-op whenever the chips already fit one line,
+   which is every width down to where they stop fitting on their own. */
+.top-left{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;min-width:0}
+.top-right{flex:none}
 /* A thin spectrum strip along the very top edge — the same three signal
    colours the rest of the shell uses for status (green/gold/blue) rather than
    a fourth new colour, so it reads as this app's palette rather than decor. */

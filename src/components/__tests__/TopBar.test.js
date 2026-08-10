@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { cssRule } from '../../test/cssRule.js';
 import TopBar from '../TopBar.vue';
 
 describe('TopBar', () => {
@@ -57,5 +58,31 @@ describe('TopBar', () => {
     await tourBtn.trigger('click');
     expect(store.showTour).toBe(true);
     expect(store.s.tourReplay).toBe(true);
+  });
+
+  it('renders the wordmark and cash into two distinct groups the CSS can wrap independently', () => {
+    // Structural precondition for the .top-left/.top-right CSS split
+    // (main.css) — a regression here would silently undo the fix, since
+    // the class names are all that ties this markup to those rules.
+    const { wrapper } = mountWithStore(TopBar);
+    expect(wrapper.find('.top-left').exists()).toBe(true);
+    expect(wrapper.find('.top-right').exists()).toBe(true);
+    expect(wrapper.find('.top-left').text()).toContain('Rigs & Pools');
+    expect(wrapper.find('.top-right').text()).toContain('$500.00');
+  });
+
+  it('main.css lets .top-left wrap instead of pushing the cash figure off-screen on a narrow phone', () => {
+    // Regression guard for a pre-existing bug the last review round found:
+    // header.top overflowed at 320px with several weather/status chips
+    // live at once, clipping the cash figure with no scroll to recover it
+    // — the same failure class issue #46 already documents for .speedbar.
+    // display:flex is what makes flex-wrap mean anything here at all — the
+    // chips are separated only by whitespace in the template, which Vue's
+    // default whitespace handling condenses away entirely; without a flex
+    // (or other) layout establishing soft-wrap points, the row has none
+    // and clips exactly as if flex-wrap were never added.
+    expect(cssRule('.top-left')).toMatch(/display:\s*flex/);
+    expect(cssRule('.top-left')).toMatch(/flex-wrap:\s*wrap/);
+    expect(cssRule('.top-right')).toMatch(/flex:\s*none/);
   });
 });

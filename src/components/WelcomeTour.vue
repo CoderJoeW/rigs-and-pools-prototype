@@ -6,6 +6,21 @@ const g = useGameStore();
 const step = ref(0);
 const slide = computed(()=>g.TOUR_SLIDES[step.value]);
 const isLast = computed(()=>step.value===g.TOUR_SLIDES.length-1);
+/* TOUR_SLIDES is one fixed script shared by the automatic first-session run
+   and a later replay (restartTour(), TopBar's "tour" pill) — the ONLY slide
+   whose wording actually goes wrong for the second case is the last one,
+   which frames Build as "your first rig" (nextId===1). An established
+   player replaying it already has one; everything else in TOUR_SLIDES reads
+   fine either way (explanations of what a tab IS, not claims about the
+   player's current state), so this overrides just that one slide rather
+   than threading a isReplay flag through the whole script. */
+const displaySlide = computed(()=>{
+  const s = slide.value;
+  if(isLast.value && g.s.nextId>1) return { ...s,
+    title:'Build another rig',
+    body:'Quick pick keeps a fresh, affordable preset ready any time — tap Order parts below whenever you want to add to the farm.' };
+  return s;
+});
 
 /* The spotlight — a single element sized to the real target's own rect,
    with a box-shadow spread wide enough to cover the rest of the viewport.
@@ -139,8 +154,8 @@ onBeforeUnmount(()=>{
       <button class="btn btn-sm btn-ghost" @click="g.dismissTour()">Skip</button>
     </div>
     <h3 style="font-size:15px;font-weight:600;letter-spacing:-.02em;margin-bottom:5px;color:var(--ink)">
-      {{ slide.title }}</h3>
-    <p style="font-size:12.5px;line-height:1.5;color:var(--ink)">{{ slide.body }}</p>
+      {{ displaySlide.title }}</h3>
+    <p style="font-size:12.5px;line-height:1.5;color:var(--ink)">{{ displaySlide.body }}</p>
     <div style="display:flex;gap:5px;justify-content:center;margin:10px 0 2px">
       <span v-for="(s,i) in g.TOUR_SLIDES" :key="i" aria-hidden="true"
             :style="{width:'6px',height:'6px',borderRadius:'50%',
