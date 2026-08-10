@@ -143,3 +143,88 @@ describe('the Chains-tab rival-pool nudge (issue #30)', () => {
     expect(g2.showChainsNudge).toBe(false);
   });
 });
+
+describe('the walkthrough tour', () => {
+  it('shows for a brand-new player, before anything is built', () => {
+    const g = freshStore();
+    expect(g.showTour).toBe(true);
+  });
+
+  it('has four slides, ending on the one that offers to open Build', () => {
+    const g = freshStore();
+    expect(g.TOUR_SLIDES).toHaveLength(4);
+    expect(g.TOUR_SLIDES[0].title).toMatch(/welcome/i);
+    expect(g.TOUR_SLIDES[g.TOUR_SLIDES.length - 1].body).toMatch(/Order parts/);
+  });
+
+  it('dismissTour hides it without touching the current tab', () => {
+    const g = freshStore();
+    g.dismissTour();
+    expect(g.showTour).toBe(false);
+    expect(g.s.tourDismissed).toBe(true);
+    expect(g.s.tab).toBe('farm');
+  });
+
+  it('beginFirstBuild opens Build and dismisses the tour in one action', () => {
+    const g = freshStore();
+    g.beginFirstBuild();
+    expect(g.s.tab).toBe('build');
+    expect(g.showTour).toBe(false);
+  });
+
+  it('clears once a first rig exists by any route, dismissed or not', () => {
+    const g = freshStore();
+    expect(g.showTour).toBe(true);
+    g.generatePreset();
+    g.build();
+    expect(g.showTour).toBe(false);
+  });
+
+  it('does not resurface after the farm drops back to zero rigs (scrap, or an insolvency sell-off)', () => {
+    // rigs.length is not monotonic — scrapping the only rig, or insolvency
+    // liquidating the whole farm, both take it back to 0 on an established
+    // save that legitimately never sees the tour again. Gating showTour on
+    // that count alone would pop the full-screen tour back over a farm
+    // that's already been run for a while.
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    expect(g.s.rigs).toHaveLength(1);
+    expect(g.showTour).toBe(false);
+
+    g.scrapRig(g.s.rigs[0].id);
+    expect(g.s.rigs).toHaveLength(0);
+    expect(g.showTour).toBe(false);
+  });
+
+  it('does not resurface for a save that already has a rig', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    await g1.saveNow();
+
+    const { reopenStore } = await import('../../test/testStore.js');
+    const g2 = reopenStore();
+    await g2.loadSave();
+    expect(g2.showTour).toBe(false);
+  });
+
+  it('a skip survives a save/load round trip', async () => {
+    const g1 = freshStore();
+    g1.dismissTour();
+    await g1.saveNow();
+
+    const { reopenStore } = await import('../../test/testStore.js');
+    const g2 = reopenStore();
+    await g2.loadSave();
+    expect(g2.showTour).toBe(false);
+  });
+
+  it('the reactive coach stays quiet while the tour is up', () => {
+    const g = freshStore();
+    expect(g.showTour).toBe(true);
+    expect(g.onboardingStep.id).toBe('build'); // the predicate still resolves...
+    // ...but OnboardingBanner itself is the thing that checks showTour
+    // before rendering it (see components/__tests__/OnboardingBanner.test.js)
+  });
+});

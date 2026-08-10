@@ -85,7 +85,18 @@ export function installState(G){
     // independent of onboardingDismissed — so the cheaper "second site"
     // exit from the coach's 'grow' step can't silently erase it.
     chainsNudgeDismissed:false,
-    feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''}, tab:'build',
+    // The walkthrough tour (src/game/onboarding.js's showTour) is its own
+    // flag rather than reusing onboardingDismissed: skipping the tour
+    // shouldn't silently skip the reactive coach too, and building a first
+    // rig without ever opening the tour (e.g. an imported save mid-tour)
+    // shouldn't leave it dangling — showTour also gates on rigs.length.
+    tourDismissed:false,
+    feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''},
+    // A brand-new player lands on Farm — empty, but with its own "Go
+    // shopping" prompt — rather than straight into the Build tab's picker,
+    // so the walkthrough tour (not the tab itself) is what explains the
+    // game before asking for a decision.
+    tab:'farm',
   };
   }
   const s = reactive(freshState());

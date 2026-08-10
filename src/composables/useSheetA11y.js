@@ -29,6 +29,13 @@ export function useSheetA11y(elRef, isOpen, close){
     else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
   }
 
+  /* immediate: every other .sheet starts closed (picker/rebuild/etc. are
+     null until a click sets them), so a false->true transition was always
+     there to catch. WelcomeTour is the first sheet that can be open on
+     the very first render — a brand-new player has isOpen already true
+     before this watcher exists — and without `immediate` that initial
+     state is never seen as a transition, so focus never enters an
+     aria-modal="true" dialog that's sitting over the whole page. */
   watch(isOpen, async open=>{
     if(open){
       lastFocused = document.activeElement;
@@ -39,7 +46,7 @@ export function useSheetA11y(elRef, isOpen, close){
       lastFocused.focus();
       lastFocused=null;
     }
-  });
+  }, {immediate:true});
 
   onMounted(()=>document.addEventListener('keydown',onKeydown));
   onUnmounted(()=>document.removeEventListener('keydown',onKeydown));

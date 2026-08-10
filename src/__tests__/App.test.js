@@ -25,22 +25,29 @@ afterEach(async () => {
 });
 
 describe('App', () => {
-  it('renders the top bar, the default (Build) tab, and the bottom nav', async () => {
+  it('renders the top bar, the default (Farm) tab, and the bottom nav', async () => {
     const { wrapper } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
     expect(wrapper.text()).toContain('Rigs & Pools');
-    expect(wrapper.text()).toContain('Build a rig'); // BuildView is the default tab
+    expect(wrapper.text()).toContain('Nothing installed'); // FarmView is the default tab
     expect(wrapper.findAll('nav.tabs .tab')).toHaveLength(7);
   });
 
-  it('switching tabs swaps the rendered view', async () => {
+  it('a brand-new player sees the walkthrough tour over the empty farm', async () => {
     const { wrapper } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
-    const farmTab = wrapper.findAll('nav.tabs .tab').find(t => t.text().includes('Farm'));
-    await farmTab.trigger('click');
-    expect(wrapper.text()).toContain('Nothing installed'); // FarmView's empty state
+    expect(wrapper.text()).toContain('Welcome to Rigs & Pools');
+  });
+
+  it('switching tabs swaps the rendered view', async () => {
+    const { wrapper } = mountWithStore(App, { seed: g => g.dismissTour() });
+    mounted.push(wrapper);
+    await flushPromises();
+    const buildTab = wrapper.findAll('nav.tabs .tab').find(t => t.text().includes('Build'));
+    await buildTab.trigger('click');
+    expect(wrapper.text()).toContain('Build a rig'); // BuildView, reached from the default Farm tab
   });
 
   it('a toast appears with the class matching its kind, announced as a polite status', async () => {

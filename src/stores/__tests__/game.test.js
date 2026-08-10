@@ -13,6 +13,11 @@ describe('game store boot', () => {
     expect(g.s.groups[0].chain).toBe('tessera');
   });
 
+  it('lands a new player on Farm, not straight into the Build picker', () => {
+    const g = freshStore();
+    expect(g.s.tab).toBe('farm');
+  });
+
   it('seeds a rival pool field on every simulated chain', () => {
     const g = freshStore();
     for (const cid of ['ferro', 'halcyon', 'nova', 'obelisk']) {

@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
+import WelcomeTour from './components/WelcomeTour.vue';
 import ErrorBoundary from './components/ErrorBoundary.vue';
 import FarmView from './views/FarmView.vue';
 import SitesView from './views/SitesView.vue';
@@ -142,6 +143,7 @@ const allTabs=[
   <div class="ambient" aria-hidden="true"></div>
   <TopBar />
   <OnboardingBanner />
+  <WelcomeTour />
   <main class="body">
     <ErrorBoundary :key="g.s.tab">
       <Transition name="viewfade" appear>
