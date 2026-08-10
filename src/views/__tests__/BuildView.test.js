@@ -251,7 +251,7 @@ describe('BuildView', () => {
   });
 
   describe('the build-status announcement', () => {
-    it('tells assistive tech the draft is ready to order, with no live region for sighted-only cues', () => {
+    it('tells assistive tech the draft is ready to order', () => {
       const { wrapper, store } = mountWithStore(BuildView);
       expect(store.canBuild).toBe(true); // the mounted preset always clears the gate
       const live = wrapper.find('[aria-live="polite"].sr-only');
@@ -273,29 +273,101 @@ describe('BuildView', () => {
       expect(live.text()).toBe('Cannot build yet: ' + failingLabel + '.');
     });
 
+    it('joins multiple simultaneous failures into one announcement', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      store.s.cash = 0;                 // fails the cash check
+      store.s.draft.frame = 'f2';       // and, with the mounted preset's n, the slot check too
+      await nextTick();
+      const failing = store.checks.filter(c => !c.ok);
+      expect(failing.length).toBeGreaterThan(1); // otherwise this isn't exercising the join at all
+      const live = wrapper.find('[aria-live="polite"].sr-only');
+      expect(live.text()).toBe('Cannot build yet: ' + failing.map(c => c.label).join('; ') + '.');
+    });
+
     it('settles on the final outcome immediately, instead of trailing the tweened numbers', async () => {
       // costShown eases toward its new value over ~320ms of animation
       // frames; buildStatus reads dp.cost/checks directly from the
       // untweened store, so it must already report the FINAL outcome the
       // instant the draft changes, not an intermediate value, and must not
       // move again later just because the visible "Parts" figure catches up.
+      // n=1 on the smallest frame keeps every check clear throughout, so
+      // this lands on the READY branch (which actually renders dp.cost)
+      // rather than a blocked one — a swap that flips canBuild would pass
+      // even with a tweened figure in the wrong place, since neither
+      // branch's text would include a cost at all.
       const { wrapper, store } = mountWithStore(BuildView);
       await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-
-      const { FRAMES } = await import('../../data/hardware.js');
-      const smallest = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
-      store.s.draft.frame = smallest.id;
+      store.s.draft.n = 1;
+      store.s.draft.frame = 'f2';
       await nextTick();
+      expect(store.canBuild).toBe(true);
 
-      const expected = store.canBuild
-        ? 'Ready to order for ' + fmt.usd(store.dp.cost) + '.'
-        : 'Cannot build yet: ' + store.checks.filter(c => !c.ok).map(c => c.label).join('; ') + '.';
+      const before = store.dp.cost;
+      store.s.draft.frame = 'f6';   // pricier frame, same n — cost changes, gate stays open
+      await nextTick();
+      const after = store.dp.cost;
+      expect(after).not.toBe(before);
+      expect(store.canBuild).toBe(true);
+
       const live = wrapper.find('[aria-live="polite"].sr-only');
-      expect(live.text()).toBe(expected);
+      expect(live.text()).toBe('Ready to order for ' + fmt.usd(after) + '.');
 
       await new Promise(r => setTimeout(r, 400)); // well past costShown's ~320ms tween window
       await nextTick();
-      expect(live.text()).toBe(expected); // unchanged — it never was animating
+      expect(live.text()).toBe('Ready to order for ' + fmt.usd(after) + '.'); // unchanged — it never was animating
+    });
+
+    it('does not re-announce on every simulation tick while an already-failing check merely drifts', async () => {
+      // Two of the six check labels embed live figures — cash ("Parts cost
+      // X, you hold Y") and site power draw — that move on every tick even
+      // while the pass/fail OUTCOME hasn't changed. A naive computed would
+      // re-announce a fresh cash figure up to 10x/second at high speed,
+      // which aria-live="polite" would queue and read out as an unbroken
+      // stream of stale numbers. The gate (which checks pass/fail) is what
+      // must drive the announcement, not the labels' own text.
+      //
+      // A rig has to actually be running for this to exercise anything: with
+      // zero rigs built, the site draws no power and cash never moves at
+      // all, so a naive per-render computed would ALSO look silent here —
+      // not because it's gated correctly, but because nothing is drifting
+      // for it to leak. build() first so electricity really is billed
+      // against cash on every tick.
+      const { wrapper, store } = mountWithStore(BuildView);
+      store.build();
+      for (let i = 0; i < 5; i++) store.stepTick(60); // finish assembly, so it's actually drawing power
+
+      store.s.cash = 1;   // unaffordable, and ticking only drains it further
+      await nextTick();
+      expect(store.canBuild).toBe(false);
+      const live = () => wrapper.find('[aria-live="polite"].sr-only').text();
+      const seen = new Set([live()]);
+      for (let i = 0; i < 100; i++) {
+        store.stepTick(60);
+        await nextTick();
+        seen.add(live());
+      }
+      expect(store.s.cash).not.toBe(1); // sanity: cash genuinely drifted under the failing check...
+      expect(seen.size).toBe(1); // ...yet the gate never flipped, so the announcement never should have either
+    });
+
+    it('still announces when the world — not the player — flips the gate, like cash finally catching up', async () => {
+      // The tick-spam test above proves silence is correct while nothing
+      // actually changes; this proves the union key doesn't overcorrect
+      // into silence forever. gateKey alone still has to fire when canBuild
+      // flips even though the DRAFT never moved — an idle player watching
+      // their cash cross the threshold is exactly that case.
+      const { wrapper, store } = mountWithStore(BuildView);
+      store.s.cash = 0;
+      await nextTick();
+      expect(store.canBuild).toBe(false);
+      const live = () => wrapper.find('[aria-live="polite"].sr-only').text();
+      expect(live()).toContain('Cannot build yet');
+
+      store.s.cash = 100000;   // income arriving over time, not a player edit to the draft
+      await nextTick();
+      expect(store.canBuild).toBe(true);
+      expect(live()).toBe('Ready to order for ' + fmt.usd(store.dp.cost) + '.');
     });
   });
 });
