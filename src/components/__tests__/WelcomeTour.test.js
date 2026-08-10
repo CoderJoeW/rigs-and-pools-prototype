@@ -235,6 +235,30 @@ describe('WelcomeTour', () => {
     wrapper.unmount();
   });
 
+  it('drops its own CSS transition while actively scrolling, so it tracks instead of chasing', async () => {
+    const Harness = defineComponent({
+      render: () => h('div', { id: 'scroll-container-2' }, [
+        h('div', { 'data-tour': 'sites' }),
+        h(WelcomeTour),
+      ]),
+    });
+    const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
+    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click'); // -> sites
+    await settle();
+    expect(wrapper.find('.tour-spot').element.style.transition).toBe(''); // normal (CSS-defined) by default
+
+    document.getElementById('scroll-container-2')
+      .dispatchEvent(new Event('scroll', { bubbles:false }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.tour-spot').element.style.transition).toBe('none');
+
+    // settles back to normal a moment after the scroll stops, not forever
+    await new Promise(r => setTimeout(r, 200));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.tour-spot').element.style.transition).toBe('');
+    wrapper.unmount();
+  });
+
   it('is marked purely decorative (aria-hidden) once lit', async () => {
     // jsdom doesn't apply main.css, so it can't exercise the actual
     // click-passthrough behaviour at runtime — that guarantee is
@@ -267,5 +291,32 @@ describe('WelcomeTour', () => {
     const spot = cssRule('.tour-spot');
     expect(tour).toMatch(/position:\s*relative/);
     expect(cssNum(tour, 'z-index')).toBeGreaterThan(cssNum(spot, 'z-index'));
+  });
+
+  it('a replay (restartTour) always starts over from slide 1, not wherever a previous run left off', async () => {
+    const { wrapper, store } = mountWithStore(WelcomeTour, {
+      seed: g => { g.generatePreset(); g.build(); }, // past the first-session gate already
+    });
+    expect(wrapper.find('.tour').exists()).toBe(false);
+
+    store.restartTour();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Welcome to Rigs & Pools');
+    expect(wrapper.text()).toContain('1 of 7');
+  });
+
+  it('a replay started from the last slide of a PRIOR run still resets to slide 1, not slide 7', async () => {
+    const { wrapper, store } = mountWithStore(WelcomeTour);
+    // walk to the end, then skip — same as a player who finished it once
+    for (let i = 0; i < 6; i++) {
+      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    }
+    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build").trigger('click');
+    expect(wrapper.find('.tour').exists()).toBe(false);
+
+    store.restartTour();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Welcome to Rigs & Pools');
+    expect(wrapper.text()).toContain('1 of 7');
   });
 });

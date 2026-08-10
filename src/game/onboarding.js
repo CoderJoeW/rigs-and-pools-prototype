@@ -101,10 +101,18 @@ export function installOnboarding(G){
      increments (every real build, plus insolvency's last-rig grant) and
      only resets via freshState/resetState — a genuine fresh start — so
      nextId===1 means "no rig has EVER existed," which is what "shown
-     once, first session only" actually requires. */
-  const showTour = computed(()=> !G.s.tourDismissed && G.s.nextId===1);
-  const dismissTour = () => { G.s.tourDismissed = true; };
+     once, first session only" actually requires.
+
+     tourReplay is the escape hatch from "once" — TopBar's "tour" pill,
+     for a player who skipped it, wants a refresher, or is just curious.
+     It's a second, independent way IN rather than a hole punched in the
+     nextId gate itself, so the automatic first-session trigger stays
+     exactly as strict as the comment above claims. */
+  const showTour = computed(()=>
+    !G.s.tourDismissed && (G.s.nextId===1 || G.s.tourReplay));
+  const dismissTour = () => { G.s.tourDismissed = true; G.s.tourReplay = false; };
+  const restartTour = () => { G.s.tourReplay = true; G.s.tourDismissed = false; };
 
   Object.assign(G, {onboardingStep, dismissOnboarding, showChainsNudge, dismissChainsNudge,
-    TOUR_SLIDES, showTour, dismissTour});
+    TOUR_SLIDES, showTour, dismissTour, restartTour});
 }

@@ -58,11 +58,38 @@ async function reposition(){
   measureWhenReady();
 }
 const onResize = () => { if(g.showTour) retrack(); };
-// capture:true — the .body panel is what actually scrolls (main.css:
-// overflow-y:auto), and a scroll on an inner element doesn't bubble to
-// window, but it does reach a capturing ancestor listener regardless of
-// which element scrolls, so this needs no reference to .body itself.
-const onScroll = () => { if(g.showTour) retrack(); };
+// .tour-spot's CSS transition (main.css) is what makes moving to a NEW
+// slide's target feel like a deliberate pop rather than a jump-cut — but
+// during an active scroll, retrack() fires many times a second, and that
+// same transition makes the highlight visibly lag a beat behind the
+// content it's supposed to be glued to, chasing rather than tracking.
+// scrolling flags that window off: no transition while a scroll is live,
+// restored once it's been quiet for a moment (not on every single event,
+// since a scroll gesture is a stream of them, not one).
+const scrolling = ref(false);
+let scrollSettleTimer = null;
+const onScroll = () => {
+  if(!g.showTour) return;
+  scrolling.value = true;
+  clearTimeout(scrollSettleTimer);
+  scrollSettleTimer = setTimeout(()=>{ scrolling.value = false; }, 150);
+  retrack();
+};
+
+/* Resets to the first slide whenever the tour transitions from hidden to
+   shown — covers both the ordinary first-session case (step is already 0,
+   a no-op) and a later replay via TopBar's "tour" pill (restartTour()),
+   where step would otherwise still be wherever a previous run left off —
+   often the last slide, since that's usually how a run ends. Registered
+   BEFORE the tab-sync watcher below so it always resolves first within
+   the same reactive flush: the pill sets tourReplay, both watchers wake
+   on the same showTour change, and the tab-sync watcher's own read of
+   slide.value needs step already back at 0 by the time it runs. */
+let tourWasShown = false;
+watch(() => g.showTour, shown => {
+  if(shown && !tourWasShown) step.value = 0;
+  tourWasShown = shown;
+}, { immediate:true });
 
 /* Each slide names the tab it's about; the tour drives navigation there
    itself so the spotlight always lands on the real screen it's
@@ -94,6 +121,7 @@ onMounted(()=>{
 });
 onBeforeUnmount(()=>{
   alive = false;
+  clearTimeout(scrollSettleTimer);
   window.removeEventListener('resize', onResize);
   window.removeEventListener('scroll', onScroll, true);
 });
@@ -101,7 +129,8 @@ onBeforeUnmount(()=>{
 
 <template>
   <div v-if="g.showTour && spot" class="tour-spot" aria-hidden="true"
-       :style="{ top:spot.top+'px', left:spot.left+'px', width:spot.width+'px', height:spot.height+'px' }">
+       :style="{ top:spot.top+'px', left:spot.left+'px', width:spot.width+'px', height:spot.height+'px',
+                 transition: scrolling ? 'none' : undefined }">
   </div>
   <div v-if="g.showTour" class="card tour" aria-live="polite"
        style="margin:9px 12px 0;padding:12px 14px;background:var(--blue-t)">

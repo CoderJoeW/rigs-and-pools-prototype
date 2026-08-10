@@ -93,6 +93,13 @@ export function installState(G){
     // it can't linger past a rig actually existing, or resurface later if
     // that rig is ever scrapped back to zero.
     tourDismissed:false,
+    // A manual re-run of the tour (TopBar's "tour" pill) past the first
+    // session, when nextId===1 no longer holds. Separate from
+    // tourDismissed rather than just clearing that flag, because clearing
+    // it would ALSO be true for "never seen it" — this marks "asked to see
+    // it again" specifically, and dismissTour() clears it right back off
+    // so a Skip mid-replay doesn't leave it armed to reopen on its own.
+    tourReplay:false,
     feed:[], feedId:1, toast:{n:0,text:'',amount:'',cls:''},
     // A brand-new player lands on Farm — empty, but with its own "Go
     // shopping" prompt — rather than straight into the Build tab's picker,

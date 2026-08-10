@@ -43,6 +43,8 @@ const cashShown = useTweenedNumber(() => g.s.cash);
     <span class="speedlbl">{{ g.s.speed===1?'Real time':'Fast-forward · '+g.s.speed+'×' }}
       <span v-if="g.s.saveInfo" style="color:var(--ink-3)"> · {{ g.s.saveInfo }}</span></span>
     <span class="speedset">
+      <button v-if="!g.showTour" class="helptog" @click="g.restartTour()"
+              title="Replay the getting-started tour" style="margin-right:6px">tour</button>
       <button class="helptog" :class="{on:g.s.help}" @click="g.s.help=!g.s.help"
               style="margin-right:6px">{{ g.s.help?'hide help':'help' }}</button>
       <button class="sndtog" :class="{on:sfx.volume>0}" @click="cycleVolume()"

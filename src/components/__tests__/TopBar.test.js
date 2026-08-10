@@ -25,4 +25,21 @@ describe('TopBar', () => {
     await toggle.trigger('click');
     expect(toggle.text()).toBe('help');
   });
+
+  it('the "tour" replay pill stays hidden while the tour is already up', () => {
+    const { wrapper } = mountWithStore(TopBar); // fresh store: the tour is showing by default
+    expect(wrapper.findAll('button').find(b => b.text() === 'tour')).toBeUndefined();
+  });
+
+  it('the "tour" pill appears once the tour is out of the way, and restarts it on click', async () => {
+    const { wrapper, store } = mountWithStore(TopBar, {
+      seed: g => { g.generatePreset(); g.build(); }, // past the tour's own gate
+    });
+    const tourBtn = wrapper.findAll('button').find(b => b.text() === 'tour');
+    expect(tourBtn).toBeTruthy();
+
+    await tourBtn.trigger('click');
+    expect(store.showTour).toBe(true);
+    expect(store.s.tourReplay).toBe(true);
+  });
 });
