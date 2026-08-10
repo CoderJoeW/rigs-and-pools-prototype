@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 import Compare from '../components/Compare.vue';
 
 const g = useGameStore();
@@ -11,11 +12,32 @@ const units=computed(()=>g.cards());
 const mode=ref('preset');           // 'preset' | 'custom' — preset first, always
 const presetFound=ref(true);
 function runPreset(){ presetFound.value=g.generatePreset(); }
-onMounted(()=>{ if(mode.value==='preset') runPreset(); });
+// Run once, right here, before the tweened refs below read their starting
+// value — otherwise they'd initialize off the default draft from state.js
+// and then immediately animate to the real preset on first paint, a
+// mismatch putting this in onMounted (a tick later) couldn't avoid.
+runPreset();
 function setMode(m){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
+
+/* The verdict panel is the one readout a player actually watches while
+   iterating on a build — every part swap or stepper tap changes several of
+   these at once, and a flat swap-on-render reads as a spreadsheet
+   recalculating rather than a build coming together. Tweened the same way
+   TopBar's cash and Farm's "Net today" already are (useTweenedNumber's own
+   header comment names those as the deliberately short list this opts
+   into — draft numbers are the third case it's meant for: a discrete,
+   player-initiated change, not an ambient value ticking in the background).
+   Formatting stays exactly what it was — fmt.* is only ever handed the
+   CURRENT eased value, one frame at a time. */
+const costShown = useTweenedNumber(()=>g.dp.cost);
+const netShown = useTweenedNumber(()=>g.draftExpected.net);
+const paybackShown = useTweenedNumber(()=>g.draftExpected.payback);
+const hashShown = useTweenedNumber(()=>g.dp.mh);
+const effShown = useTweenedNumber(()=>g.draftEff);
+const drawShown = useTweenedNumber(()=>g.dp.coreW/g.dp.psu.eff);
 
 /* Frame and board both cap the card count, which was the confusion. The fix
    is to state each one's job in the label and to show, permanently, which of
@@ -134,20 +156,20 @@ const subsidyNote=computed(()=>{
         +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
 });
 const verdict=computed(()=>{
-  const c=g.checks, dp=g.dp, ex=g.draftExpected;
+  const c=g.checks;
   const gr=g.draftGroup();
   return [
     { t:'Cost & payback',
-      rows:[ {k:'Parts', v:fmt.usd(dp.cost)},
-             {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(ex.net)+'/day'},
-             {k:'Expected payback', v:isFinite(ex.payback)?Math.round(ex.payback)+' days':'never'} ],
+      rows:[ {k:'Parts', v:fmt.usd(costShown.value)},
+             {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
+             {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ],
       checks:[c[5]], notes:[ceilingNote.value,subsidyNote.value].filter(Boolean) },
     { t:'Hashrate & MH/W',
-      rows:[ {k:'Hashrate', v:fmt.hash(dp.mh)},
-             {k:'MH/W', v:g.draftEff.toFixed(3)} ],
+      rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)},
+             {k:'MH/W', v:effShown.value.toFixed(3)} ],
       checks:[c[0],c[2],c[1]] },
     { t:'Site impact',
-      rows:[ {k:'Draw', v:fmt.w(dp.coreW/dp.psu.eff)} ],
+      rows:[ {k:'Draw', v:fmt.w(drawShown.value)} ],
       checks:[c[4],c[3]] },
   ];
 });
@@ -201,11 +223,11 @@ const verdict=computed(()=>{
               <span style="color:var(--ink-3)">· frame fits {{ cardLimit.frame }},
                 board drives {{ cardLimit.mobo }}</span></div>
             <div class="s">{{ g.s.draft.n }} risers · {{ fmt.usd(g.s.draft.n*g.RISER.price) }}</div></span>
-          <span class="stepper" style="display:flex;align-items:center;border:1px solid var(--line);border-radius:8px">
-            <button style="width:32px;height:32px;text-align:center" aria-label="Decrease card count"
+          <span class="stepper">
+            <button aria-label="Decrease card count" :disabled="g.s.draft.n<=1"
                     @click="g.s.draft.n=Math.max(1,g.s.draft.n-1)">&minus;</button>
-            <span class="num" style="min-width:24px;text-align:center">{{ g.s.draft.n }}</span>
-            <button style="width:32px;height:32px;text-align:center" aria-label="Increase card count"
+            <span class="num">{{ g.s.draft.n }}</span>
+            <button aria-label="Increase card count" :disabled="g.s.draft.n>=cardLimit.n"
                     @click="g.s.draft.n=Math.min(cardLimit.n,g.s.draft.n+1)">+</button></span></div>
       </template>
 

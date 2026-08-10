@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { fmt } from '../../utils/format.js';
 import BuildView from '../BuildView.vue';
 
 describe('BuildView', () => {
   it('loads the preset on mount and shows an orderable draft', () => {
     const { wrapper, store } = mountWithStore(BuildView);
-    expect(store.canBuild).toBe(true); // onMounted ran generatePreset()
+    expect(store.canBuild).toBe(true); // generatePreset() ran during setup
     expect(wrapper.text()).toContain('Order parts');
     expect(wrapper.text()).toContain('Build a rig');
   });
@@ -99,5 +100,95 @@ describe('BuildView', () => {
     const notes = wrapper.findAll('.note-chk');
     expect(notes.some(n => n.classes('note-good'))).toBe(true);
     expect(notes.some(n => n.classes('note-warn'))).toBe(true);
+  });
+
+  describe('the card-count stepper', () => {
+    it('disables "-" at 1 card rather than silently clamping', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      store.s.draft.n = 1;
+      await nextTick();
+      const minus = wrapper.find('.stepper button[aria-label="Decrease card count"]');
+      expect(minus.attributes('disabled')).toBeDefined();
+      // a disabled button never fires its handler in a real browser, but
+      // jsdom's .trigger('click') does not enforce that on its own — assert
+      // the click is genuinely inert, not just that the attribute is present
+      await minus.trigger('click');
+      expect(store.s.draft.n).toBe(1);
+    });
+
+    it('disables "+" once the card limit (frame vs. board, whichever binds) is reached', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      store.s.draft.n = 1;   // start below the limit so the loop below genuinely climbs
+      await nextTick();
+      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+      const nBefore = store.s.draft.n;
+      await plus().trigger('click');
+      expect(store.s.draft.n).toBe(nBefore + 1);   // a click in the enabled range actually acts
+      for (let i = 0; i < 24 && plus().attributes('disabled') === undefined; i++) {
+        await plus().trigger('click');
+      }
+      expect(plus().attributes('disabled')).toBeDefined();
+      const nAtLimit = store.s.draft.n;
+      await plus().trigger('click'); // inert past the limit
+      expect(store.s.draft.n).toBe(nAtLimit);
+    });
+
+    it('re-enables "+" after switching to a frame/board pair with more room', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+      for (let i = 0; i < 24 && plus().attributes('disabled') === undefined; i++) {
+        await plus().trigger('click');
+      }
+      expect(plus().attributes('disabled')).toBeDefined();
+
+      // the limit is min(frame slots, board PCIe) — raise BOTH to the
+      // roomiest option in their own catalogues, so whichever one was
+      // actually binding before is guaranteed to loosen
+      const { FRAMES, MOBOS } = await import('../../data/hardware.js');
+      store.s.draft.frame = FRAMES.reduce((a, b) => b.slots > a.slots ? b : a).id;
+      store.s.draft.mobo = MOBOS.reduce((a, b) => b.pcie > a.pcie ? b : a).id;
+      await nextTick();
+      expect(plus().attributes('disabled')).toBeUndefined();
+    });
+  });
+
+  describe('the verdict panel', () => {
+    it('shows the correct numbers immediately on mount, with no animate-in from zero', () => {
+      // generatePreset() now runs synchronously during setup, before the
+      // tweened refs are created, so the very first paint already reflects
+      // the real preset — no flush to wait on. Read the verdict panel's OWN
+      // "Parts" row specifically: the Quick-pick summary and the Order-parts
+      // button render the same raw g.dp.cost elsewhere on the page, so a
+      // plain wrapper.text() match would pass even if the tweened figure
+      // itself were still wrong.
+      const { wrapper, store } = mountWithStore(BuildView);
+      const partsRow = wrapper.findAll('.vrow').find(r => r.find('.k').text() === 'Parts');
+      expect(partsRow.find('.v').text()).toBe(fmt.usd(store.dp.cost));
+      expect(wrapper.text()).toContain(fmt.hash(store.dp.mh));
+    });
+
+    it('eases toward the new numbers instead of swapping instantly when the draft changes', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+
+      const costBefore = store.dp.cost;
+      // switching to the smallest frame in the catalogue changes the whole
+      // draft's cost, independent of whatever the default preset picked
+      const { FRAMES } = await import('../../data/hardware.js');
+      const smallest = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
+      store.s.draft.frame = smallest.id;
+      await nextTick();
+
+      const costAfter = store.dp.cost;
+      expect(costAfter).not.toBe(costBefore); // the real source changed immediately...
+      // ...but give the eased display real time to actually reach it, same
+      // as any other tweened figure in the app
+      await new Promise(r => setTimeout(r, 500));
+      await nextTick();
+      expect(wrapper.text()).toContain(fmt.usd(costAfter));
+    });
   });
 });
