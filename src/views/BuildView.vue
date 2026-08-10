@@ -253,7 +253,8 @@ const verdict=computed(()=>{
       </template>
 
       <template v-else>
-        <button v-for="fl in FIELDS" :key="fl.k" class="pickrow" @click="g.s.picker=fl.k">
+        <button v-for="fl in FIELDS" :key="fl.k" class="pickrow" aria-haspopup="dialog"
+                @click="g.s.picker=fl.k">
           <span class="lab">{{ fl.label }}</span>
           <span class="val"><div class="n">{{ fl.part.name }}</div>
             <div class="s" v-if="g.s.help" style="color:var(--blue)">{{ fl.job }}</div>

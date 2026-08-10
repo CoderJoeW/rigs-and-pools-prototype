@@ -22,6 +22,19 @@ describe('BuildView', () => {
     expect(wrapper.text()).toContain('Supply');
   });
 
+  it('marks each part-picker row as opening a dialog, for assistive tech that announces it before activation', async () => {
+    const { wrapper } = mountWithStore(BuildView);
+    await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+    // .pickrow also matches the Cards row, a plain (non-button) div that
+    // doesn't open anything — scope to the actual picker-opening buttons
+    const pickrows = wrapper.findAll('button.pickrow');
+    expect(pickrows.length).toBe(5); // frame, mobo, cool, psu, unit
+    for (const row of pickrows) expect(row.attributes('aria-haspopup')).toBe('dialog');
+    // and the thing it actually opens really is one, so the announcement isn't a lie
+    await pickrows[0].trigger('click');
+    expect(wrapper.find('.sheet').attributes('role')).toBe('dialog');
+  });
+
   describe('the Quick pick / Customise segmented control', () => {
     it('slides its thumb to the active segment instead of just repainting it', async () => {
       const { wrapper } = mountWithStore(BuildView);
