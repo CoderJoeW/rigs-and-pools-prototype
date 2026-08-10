@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
@@ -155,6 +155,43 @@ const subsidyNote=computed(()=>{
         +'of how little hash they bring — the fast payback is a deliberate '
         +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
 });
+/* Sighted users watch the checkmarks flip live while editing in Customise;
+   a screen reader user gets no equivalent signal without re-reading the
+   whole panel after every change. This announces the OUTCOME, built from
+   checks — which, unlike costShown etc., read the real, untweened store
+   directly.
+
+   That directness is exactly why the naive version (a computed re-read on
+   every render) is wrong: two of the six check labels embed live figures —
+   cash (buildDraft.js's "Parts cost X, you hold Y") and site power draw —
+   that drift on EVERY simulation tick, not just on a real draft edit. A
+   plain computed would re-announce a fresh cash figure up to 10x/second at
+   high speed while sitting unaffordable, which is worse than the tween
+   spam this was written to avoid: aria-live="polite" queues every distinct
+   string it's given, so that reads as an unbroken stream of stale numbers
+   that blocks anything else from being announced.
+
+   Snapshotting only on gateKey (which checks pass/fail) closes that, but
+   is too coarse on its own: a part swap that changes the cost WITHOUT
+   flipping any check's pass/fail state (e.g. picking a pricier frame while
+   still comfortably affordable) would then never re-announce either, and
+   the reader would be stuck hearing an increasingly wrong price. draftKey
+   covers that other half — a snapshot of the draft's OWN fields, which
+   only change on a real player edit, never on a tick. Between the two:
+   draftKey changing always means the player did something; gateKey
+   changing (with draftKey held still) means the WORLD moved the outcome
+   out from under them, e.g. cash finally catching up to an affordable
+   total while they sat idle — both are worth announcing once. A tick that
+   moves neither (cash draining further under an already-failing check) is
+   the only case left, and correctly announces nothing. */
+const draftKey=computed(()=> JSON.stringify(g.s.draft));
+const gateKey=computed(()=> g.checks.map(c=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
+const buildStatus=ref('');
+watch(()=> draftKey.value+'|'+gateKey.value, ()=>{
+  buildStatus.value = g.canBuild
+    ? 'Ready to order for '+fmt.usd(g.dp.cost)+'.'
+    : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
+}, { immediate:true });
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
@@ -252,6 +289,7 @@ const verdict=computed(()=>{
           </div>
         </div>
         <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}</dd></div>
+        <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ buildStatus }}</p>
         <button class="btn btn-wide" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
                 data-tour="build" :disabled="!g.canBuild" @click="g.build()">
           {{ g.canBuild?'Order parts · '+fmt.usd(g.dp.cost):'Fix the crosses above' }}</button>
