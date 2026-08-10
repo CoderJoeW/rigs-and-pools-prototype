@@ -257,9 +257,11 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
    rig's id on the store and switches tab rather than reimplementing this
    sheet a second time; App.vue keys the view by tab, so this view mounts
    fresh with the id already waiting. Read once and cleared immediately, so a
-   later visit to the tab is never ambushed by a stale sheet, and taken in
-   onMounted rather than during setup so useSheetA11y still sees the sheet
-   open (its watcher is not immediate) and moves focus into it. */
+   later visit to the tab is never ambushed by a stale sheet.
+   Taken in onMounted, not during setup — useSheetA11y's watcher is
+   immediate now, so either placement reaches it, but the template ref it
+   focuses into isn't bound until mount regardless, and onMounted is the
+   natural place for a "reset a store field, react to it" side effect. */
 const takeFocusRig=()=>{
   const id=g.s.focusRig; if(id==null) return;
   g.s.focusRig=null;
