@@ -40,22 +40,55 @@ describe('onboarding coach', () => {
     expect(g.s.chains.filter(c => c.id !== 'tessera').some(c => text.includes(c.name))).toBe(true);
   });
 
-  it('clears once a second site or a player-owned pool exists', () => {
+  it('"grow" clears once a second site or a player-owned pool exists, handing off to "automate"', () => {
     const g = freshStore();
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    expect(g.onboardingStep).toBe(null);
+    expect(g.onboardingStep.id).toBe('automate');
   });
 
-  it('a second site alone also clears it, without needing a pool', () => {
+  it('a second site alone also clears "grow", without needing a pool', () => {
     const g = freshStore();
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.s.cash = 5000;
     g.newSite('shed');
+    expect(g.onboardingStep.id).toBe('automate');
+  });
+
+  it('advances to "automate" once a second site or pool exists, before a safety net is set', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.cash = 5000;
+    g.newSite('shed');
+    expect(g.onboardingStep.id).toBe('automate');
+  });
+
+  it('"automate" clears once auto-shutdown is enabled', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.cash = 5000;
+    g.newSite('shed');
+    expect(g.onboardingStep.id).toBe('automate');
+    g.s.autoOff = true;
+    expect(g.onboardingStep).toBe(null);
+  });
+
+  it('"automate" clears just as well from auto-replace alone', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.foundPool('tessera', 'PPLNS', 0.02);
+    expect(g.onboardingStep.id).toBe('automate');
+    g.s.autoFix = true;
     expect(g.onboardingStep).toBe(null);
   });
 
@@ -76,5 +109,47 @@ describe('onboarding coach', () => {
     const g2 = reopenStore();
     await g2.loadSave();
     expect(g2.onboardingStep).toBe(null);
+  });
+});
+
+describe('the Chains-tab rival-pool nudge (issue #30)', () => {
+  it('shows by default, independent of the global coach', () => {
+    const g = freshStore();
+    g.dismissOnboarding(); // the banner is gone...
+    expect(g.showChainsNudge).toBe(true); // ...but this survives that
+  });
+
+  it('survives the "second site" exit that used to clear the whole banner', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.cash = 5000;
+    g.newSite('shed'); // clears onboardingStep's old terminal condition
+    expect(g.showChainsNudge).toBe(true);
+  });
+
+  it('dismissChainsNudge hides it on its own', () => {
+    const g = freshStore();
+    g.dismissChainsNudge();
+    expect(g.showChainsNudge).toBe(false);
+    expect(g.s.chainsNudgeDismissed).toBe(true);
+  });
+
+  it('clears once the player founds their own pool, without needing a dismissal', () => {
+    const g = freshStore();
+    g.foundPool('tessera', 'PPLNS', 0.02);
+    expect(g.showChainsNudge).toBe(false);
+  });
+
+  it('a dismissal survives a save/load round trip', async () => {
+    const g1 = freshStore();
+    g1.dismissChainsNudge();
+    await g1.saveNow();
+
+    const { reopenStore } = await import('../../test/testStore.js');
+    const g2 = reopenStore();
+    await g2.loadSave();
+    expect(g2.showChainsNudge).toBe(false);
   });
 });

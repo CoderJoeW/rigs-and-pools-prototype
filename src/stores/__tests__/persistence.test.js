@@ -106,6 +106,30 @@ describe('saveNow / loadSave round trip', () => {
   });
 });
 
+describe('save invalidation across the onboarding-system update', () => {
+  it('a save written under the previous SAVE_VER is rejected, not migrated', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    g1.s.cash = 8675309;
+    await g1.saveNow();
+
+    // simulate a save left over from before this update: same shape, one
+    // version behind current — loadSave must treat it as unreadable rather
+    // than hydrating a coach step / nudge flag it never had a chance to set
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.ver = g1.C.SAVE_VER - 1;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const loaded = await g2.loadSave();
+
+    expect(loaded).toBe(false);
+    expect(g2.s.cash).toBe(500);
+    expect(g2.s.rigs).toEqual([]);
+  });
+});
+
 describe('a corrupted save', () => {
   it('does not brick the app — loadSave falls back to a fresh game instead of throwing', async () => {
     const g1 = freshStore();

@@ -44,7 +44,11 @@ export const C = {
   TOU:{ off:0.70, shoulder:1.00, peak:1.55 },
   OFF_START:23, OFF_END:7, PEAK_START:17, PEAK_END:21,
   GEN_DAYS:14,              // a new card generation lands every fortnight, forever
-  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:1,
+  // v2: the full onboarding pass (coach's 'automate' step, the Chains-tab
+  // rival-pool nudge, chainsNudgeDismissed) — bumped deliberately so every
+  // existing save starts the new coach from scratch rather than hydrating
+  // into steps it never saw introduced.
+  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:2,
   SAVE_EVERY:30,            // autosave cadence, real seconds
   OFFLINE_CAP:86400,        // offline progress credited, capped at one real day
   TOAST_GAP:4,              // real seconds between toasts, whatever the speed multiplier

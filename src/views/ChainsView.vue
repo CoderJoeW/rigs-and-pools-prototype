@@ -125,6 +125,15 @@ const projMargin=computed(()=>{
     <p v-if="g.s.help" class="hint" style="padding:0 2px 8px">Ranked by members. Fee and reputation
       are what miners weigh; capacity is what your capital allows.</p>
 
+    <div v-if="g.showChainsNudge" class="card" style="margin-bottom:8px;padding:10px 12px;
+         background:var(--blue-t);display:flex;gap:10px;align-items:flex-start">
+      <span style="flex:1;font-size:12.5px;line-height:1.5;color:var(--ink)">These {{
+        g.rivalPools.length }} operators below are running real businesses — live reputation,
+        fill state, a PPS/PPLNS mix — competing for the same miners you could recruit. Found a
+        pool of your own further down to take them on.</span>
+      <button @click="g.dismissChainsNudge()" aria-label="dismiss rival-pool nudge"
+              style="flex:none;font-size:16px;line-height:1;color:var(--blue)">&times;</button>
+    </div>
     <div class="sec"><span class="eyebrow">Rival detail</span>
       <span class="eyebrow">{{ g.rivalPools.length }} operators running</span></div>
     <div class="card"><div class="list">
