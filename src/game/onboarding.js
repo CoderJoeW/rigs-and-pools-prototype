@@ -1,13 +1,28 @@
 import { computed } from 'vue';
 
-/* Onboarding — a reactive coach, not a scripted tour.
-   The coach was removed in v57 (per the design spec) and nothing since has
-   explained the first hour to a new player. Rather than a step index the
-   player advances by clicking "next" (which drifts out of sync the moment
-   they do something out of order), each step is a predicate over real game
-   state: the first one not yet satisfied is what's shown. Dismissing it is
-   the only mutation this owns; everything else just falls out of state
-   that already exists for other reasons (milestones, sites, pools). */
+/* Onboarding — a reactive coach, plus one scripted walkthrough.
+   The coach below is still what v57's removal note describes: no step
+   index, no "next" to drift out of sync — each step is a predicate over
+   real game state, and the first one not yet satisfied is what's shown.
+   TOUR_SLIDES is deliberately the one click-through exception. A brand-new
+   player has zero state for a predicate to read yet — no rig, no site
+   choice, nothing to react to — so there is nothing for the reactive coach
+   to say until 'build' resolves itself. The tour exists to fill exactly
+   that gap: game basics and the loop ahead, once, before the coach has
+   anything to work with. It gates on rigs.length itself (see showTour)
+   rather than tracking a slide index in a predicate, so it still can't
+   drift the way a tracked tour could — building a rig by any route ends
+   it outright, tour or no tour. */
+const TOUR_SLIDES = [
+  { title:'Welcome to Rigs & Pools',
+    body:'You’re running a cryptocurrency mining business — real time, no seasons, nothing ever resets. Build rigs from parts, host them at sites you construct, and mine across five chains that each pay differently and carry different risk. Rigs run 24/7, earning whether or not you’re watching.' },
+  { title:'Starting small, on purpose',
+    body:'$500 in cash, a spare bedroom, and a 1.5 kW wall outlet — nothing more. Every part and every site comes out of what you earn. Tessera, the starter chain, pays every newcomer the same welcoming rate, so your first rig earns from the moment it powers on.' },
+  { title:'The loop',
+    body:'Build a rig, then watch it earn. Reinvest in a second site or found your own pool once cash allows. Set up automation on Farm so a rig that starts losing money doesn’t cost you while you’re away. The Stats tab tracks every milestone along the way.' },
+  { title:'Let’s build your first rig',
+    body:'Open Build below — a starter pick is already loaded and priced for your $500. Tap Order parts to lock it in; assembly takes a few minutes, and then it’s earning.' },
+];
 const STEPS = [
   { id:'build',
     done: G => G.s.rigs.length>0,
@@ -54,5 +69,15 @@ export function installOnboarding(G){
     !G.s.chainsNudgeDismissed && !G.s.pools.some(p=>p.owner==='you'));
   const dismissChainsNudge = () => { G.s.chainsNudgeDismissed = true; };
 
-  Object.assign(G, {onboardingStep, dismissOnboarding, showChainsNudge, dismissChainsNudge});
+  /* The walkthrough tour. Shown once, before the first rig — and never
+     again once one exists, tour-dismissed or not, so it can't reappear
+     over a farm that's already running (an imported save, a second
+     device). While it's up, the reactive banner stays quiet: both would
+     otherwise open on the same 'build your first rig' point at once. */
+  const showTour = computed(()=> !G.s.tourDismissed && G.s.rigs.length===0);
+  const dismissTour = () => { G.s.tourDismissed = true; };
+  const beginFirstBuild = () => { G.s.tab='build'; dismissTour(); };
+
+  Object.assign(G, {onboardingStep, dismissOnboarding, showChainsNudge, dismissChainsNudge,
+    TOUR_SLIDES, showTour, dismissTour, beginFirstBuild});
 }
