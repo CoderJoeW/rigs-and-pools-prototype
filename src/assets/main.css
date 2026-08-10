@@ -291,6 +291,19 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .pickrow .val .s{font-size:10.5px;color:var(--ink-3);margin-top:1px}
 .pickrow .ch{color:var(--ink-3);font-size:15px;flex:none}
 
+/* The card-count stepper on Build's "Cards" row (formerly three bare
+   inline-styled elements with no press feedback of their own — every
+   other button in the app answers a tap, this one didn't). Disabled at
+   its own bounds rather than silently clamping, same as every other gated
+   action here (canBuild, locked .cmp-r rows): a flat tap at the limit
+   should look like it did nothing, not feel like it might have. */
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stepper button{width:32px;height:32px;text-align:center;font-size:15px;font-weight:500;
+  color:var(--ink-2);transition:var(--press),background-color .15s,color .15s}
+.stepper button:active:not(:disabled){transform:scale(var(--press-scale));background:var(--line-2)}
+.stepper button:disabled{color:var(--ink-3);opacity:.4;cursor:not-allowed}
+.stepper .num{min-width:24px;text-align:center;font-family:var(--mono);font-weight:500;font-size:13px}
+
 .tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:4px;
   background:var(--line-2);color:var(--ink-2)}
 .tag.g{background:var(--green-t);color:var(--green)}
@@ -342,7 +355,17 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .cmp{border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-top:8px}
 .cmp-hd{display:flex;justify-content:space-between;padding:7px 11px;background:var(--line-2);
   font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
-.cmp-r{display:flex;align-items:center;gap:9px;padding:7px 11px;border-top:1px solid var(--line-2);width:100%}
+/* A picker sheet is a ranked ladder (§3's "cheapest first — more expensive
+   is always better"), so the rows arriving in a quick cascade rather than
+   all at once reads as the ranking itself settling into place, not just
+   motion for its own sake. animation-delay is set per-row from the
+   component (capped, so a long catalogue's last rows don't wait through a
+   growing queue), and `backwards` fill holds each row at its 0% frame
+   until its own delay elapses instead of flashing in unstyled at full
+   opacity first. Reduced motion is covered by main.css's blanket rule. */
+@keyframes cmpRowIn{0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:translateY(0)}}
+.cmp-r{display:flex;align-items:center;gap:9px;padding:7px 11px;border-top:1px solid var(--line-2);width:100%;
+  animation:cmpRowIn .22s cubic-bezier(.2,.8,.2,1) backwards}
 .cmp-r.cur{background:var(--green-t)}
 .cmp-r.locked{opacity:.42}
 .cmp-n{width:14px;font-family:var(--mono);font-size:10px;color:var(--ink-3);flex:none}
@@ -520,7 +543,17 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .slotcell{aspect-ratio:1;border-radius:5px;border:1.5px solid var(--line);
   display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-3);
   transition:background-color .2s,border-color .2s}
-.slotcell.filled{background:var(--green);border-color:var(--green);color:#fff}
+/* The stepper (or a part swap that changes the frame's slot count) turns a
+   cell filled instantly in state, but a flat colour-fade alone reads as a
+   value changing, not a card landing in a slot. The keyframe plays once,
+   exactly when a cell's OWN class list gains .filled — Vue only re-adds a
+   class that's already present if its value actually changed, so this
+   can't retrigger on an unrelated re-render, only on a real open->filled
+   transition (locked->filled, e.g. raising the frame's own slot count,
+   plays it too, which is correct: that cell just became usable). */
+@keyframes slotPop{0%{transform:scale(.55)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
+.slotcell.filled{background:var(--green);border-color:var(--green);color:#fff;
+  animation:slotPop .32s cubic-bezier(.2,.8,.2,1)}
 .slotcell.locked{background:var(--line-2);border-style:dashed;color:var(--ink-3);opacity:.6}
 .slotcap,.rigcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
 

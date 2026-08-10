@@ -8,11 +8,16 @@ import { onScopeDispose, ref, watch } from 'vue';
    eases the DISPLAYED number toward the real one over a short window, so the
    moment a value changed is visible without staring at the pixel (issue #43).
 
-   Presentation only — the source of truth is never touched, and only the
-   handful of highest-visibility figures opt in (TopBar cash, the Farm's
-   "Net today" hero). Formatting stays the caller's job: pass the ref this
-   returns through the same fmt.* helper the raw value used, so the
-   intermediate frames read in the same units and precision as the target.
+   Presentation only — the source of truth is never touched, and only a
+   deliberately short list of figures opts in: TopBar's cash and the Farm's
+   "Net today" hero (both AMBIENT — they move continuously in the
+   background whether or not the player is doing anything), and Build's
+   verdict panel (DISCRETE — it only moves because the player just swapped
+   a part or tapped the stepper, so the same easing reads as feedback on
+   that action rather than a live readout ticking on its own). Formatting
+   stays the caller's job: pass the ref this returns through the same
+   fmt.* helper the raw value used, so the intermediate frames read in the
+   same units and precision as the target.
 
    source: a getter (`() => g.s.cash`) or any ref/computed.
    duration: how long a change takes to land, in ms.
