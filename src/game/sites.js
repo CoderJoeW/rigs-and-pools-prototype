@@ -17,7 +17,7 @@ export function installSites(G){
       sources:[], plants:[{p:'p-open',n:1}], queue:[], wind:0.5 };
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
     G.s.sites.push(f); G.s.activeSite=f.id;
-    G.say('site','Broke ground on '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(sh.price));
+    G.say('site','Broke ground on '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(sh.price),undefined,undefined,-sh.price);
   }
   function addSitePart(fid,pid,kind){
     const f=G.site(fid), P=SITEPART(pid);
@@ -26,16 +26,16 @@ export function installSites(G){
     if(P.hours<=0){ if(kind==='source') G.addTo(f.sources,pid);
       else if(kind==='storage') G.addTo(f.storage=f.storage||[],pid);
       else G.addTo(f.plants,pid);
-      G.say('site',P.name+' installed at '+f.name,'-'+fmt.usd(P.price)); return; }
+      G.say('site',P.name+' installed at '+f.name,'-'+fmt.usd(P.price),undefined,undefined,-P.price); return; }
     f.queue.push({ p:pid, kind, left:P.hours, total:P.hours });
-    G.say('site','Started '+P.name+' at '+f.name+' — '+P.hours+' h','-'+fmt.usd(P.price));
+    G.say('site','Started '+P.name+' at '+f.name+' — '+P.hours+' h','-'+fmt.usd(P.price),undefined,undefined,-P.price);
   }
   function rushCost(job){ return Math.ceil(job.left*C.RUSH_PER_HOUR); }
   function rush(fid,idx){
     const f=G.site(fid), j=f.queue[idx]; if(!j) return;
     const c=rushCost(j); if(G.s.cash<c) return;
     G.s.cash-=c; G.s.spent+=c; j.left=0.0001;
-    G.say('site','Paid to rush '+SITEPART(j.p).name,'-'+fmt.usd(c));
+    G.say('site','Paid to rush '+SITEPART(j.p).name,'-'+fmt.usd(c),undefined,undefined,-c);
   }
   /* ---- site management: grow, rename, or close a site ----
      Founding (newSite) and growing (upgradeShell) used to be the same
@@ -54,7 +54,7 @@ export function installSites(G){
     if(G.s.cash<cost) return;
     G.s.cash-=cost; G.s.spent+=cost;
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
-    G.say('site','Expanding '+f.name+' to '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(cost));
+    G.say('site','Expanding '+f.name+' to '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(cost),undefined,undefined,-cost);
   }
   function renameSite(fid,name){
     const f=G.site(fid); if(!f) return;
@@ -71,7 +71,7 @@ export function installSites(G){
     G.s.cash+=back;
     G.s.sites=G.s.sites.filter(x=>x.id!==fid);
     if(G.s.activeSite===fid) G.s.activeSite=G.s.sites[0].id;
-    G.say('site','Decommissioned '+f.name,'+'+fmt.usd(back));
+    G.say('site','Decommissioned '+f.name,'+'+fmt.usd(back),undefined,undefined,back);
   }
 
   Object.assign(G, {addSitePart,decommissionSite,newSite,renameSite,rush,rushCost,upgradeShell});

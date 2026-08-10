@@ -2,14 +2,14 @@ export const C = {
   TICK_MS:100, DT:0.1, SPEEDS:[1,60,600,3600],
   AMBIENT_LOW:16, AMBIENT_HIGH:28,   // the day swings, peaking mid-afternoon
   /* At the old 0.003, an untuned card at a cool site (tw=1, heat=1) took
-     0.35/0.003 ≈ 117 days to cross the 35% repair threshold — so the
+     REPAIR_AT/0.003 ≈ 117 days to cross the repair threshold — so the
      "purely scheduled maintenance" §3 describes as one of the game's few
      recurring decisions, and the "Fifty repairs" Craft milestone, sat far
      outside any session ordinary play would reach (issue #3: a 46-hour
      playtest still read 1% wear with Repair disabled the whole time).
      Retuned so the repair line arrives within roughly a week — a real
      rhythm without being frantic:
-       0.35/0.05 = 7 days at wr's mean of 1 (the 0.75-1.25 spread in
+       REPAIR_AT/0.05 = 7 days at wr's mean of 1 (the 0.75-1.25 spread in
        random.js moves it between roughly 5.6 and 9.3 days per card;
        afternoon heat pulls it a little earlier still, so 7 days is a
        ceiling, not a guarantee).
@@ -27,10 +27,15 @@ export const C = {
      (14), not safely inside it: repairing within the first week, well
      before the brownout, the next generation, or full wear-out, is the
      actual point — ignore all of that and the rig either disciplines
-     itself into an outage or grinds down to WORN_OUT hashrate. Repairing
+     itself into an outage or grinds down to its ~60% worn-out hashrate floor. Repairing
      clears the excess draw along with the wear, so on a capacity-bound
      site the brownout is a backstop for neglect, not a new dead end. */
   BASE_WEAR:0.05,
+  // The manual repair line — RigsView's "worn past X%" — named so it isn't
+  // a bare literal BASE_WEAR is silently tuned against (issue #21). Not the
+  // same knob as state.js's fixAt (auto-replace's own, separately tunable
+  // threshold, defaulted higher at 0.45).
+  REPAIR_AT:0.35,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
   BUILD_BASE:22*60,         // rig assembly, real seconds

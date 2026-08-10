@@ -84,5 +84,20 @@ describe('BuildView', () => {
     expect(tessera.obs).toBeLessThanOrEqual(tessera.floor); // still the flat rate
     expect(wrapper.text()).toContain('new-miner premium');
     expect(wrapper.text()).toContain('at its ceiling');
+
+    // issue #25: the ceiling note is forward-looking (chainCeiling folds
+    // the not-yet-built rig's hash into the gate), and the chain is
+    // genuinely still below its floor here — so the note must not claim
+    // the chain "is" at its ceiling right now, only that this rig "would
+    // put" it there.
+    expect(store.chainHash(tessera)).toBeLessThanOrEqual(tessera.floor);
+    expect(wrapper.text()).not.toContain('is at its ceiling');
+    expect(wrapper.text()).toContain('would put');
+
+    // issue #24: the reassurance note (new-miner premium) and the warning
+    // note (at ceiling) must not render in the same visual voice
+    const notes = wrapper.findAll('.note-chk');
+    expect(notes.some(n => n.classes('note-good'))).toBe(true);
+    expect(notes.some(n => n.classes('note-warn'))).toBe(true);
   });
 });

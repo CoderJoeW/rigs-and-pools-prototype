@@ -230,24 +230,39 @@ export function installPoolMarket(G){
   const myPools = computed(()=> G.s.pools.filter(p=>p.owner==='you'&&p.live));
   const rivalPools = computed(()=> G.s.pools.filter(p=>p.owner==='rival'&&p.live));
 
-  function say(kind,text,amount,num,unit){
+  // A repeat's numeric total lives in ONE of two places, never both: `num`
+  // (a coin quantity, paired with `unit`) or `usd` (a signed dollar amount
+  // — positive in, negative out). `amount` is always the pre-formatted
+  // display string re-derived from whichever one is present; callers with
+  // neither (a fixed-string amount, or no amount at all) can still
+  // collapse repeats into "xN", they just can't accumulate a total (issue
+  // #16 — until now, USD-denominated events had no numeric channel at
+  // all, so a call site with a real amount to sum could never be told
+  // apart from one where the number was simply never captured).
+  function say(kind,text,amount,num,unit,usd){
     const top=G.s.feed[0];
     if(top && top.kind===kind && top.text===text){
       if(num!==undefined && top.num!==undefined){
         top.n=(top.n||1)+1; top.num+=num; top.t=fmt.hm(G.s.t);
         top.amount='+'+fmt.c(top.num)+(unit?' '+unit:''); return;
       }
+      if(usd!==undefined && top.usd!==undefined){
+        top.n=(top.n||1)+1; top.usd+=usd; top.t=fmt.hm(G.s.t);
+        top.amount=(top.usd<0?'-':'+')+fmt.usd(Math.abs(top.usd)); return;
+      }
       // Same event, no quantity to accumulate AND no dollar amount either
       // (e.g. "Orphaned on X") — still worth collapsing into one "×N" line
-      // rather than one line per repeat. Gated on amount too, not just num:
-      // plenty of calls (rush, site installs) carry a fixed-string amount
-      // with no num — those differ order to order and must stay separate
-      // lines, or the feed would silently under-report what was spent.
-      if(num===undefined && top.num===undefined && !amount && !top.amount){
+      // rather than one line per repeat. Gated on amount too, not just
+      // num/usd: plenty of calls (rush, site installs) carry a fixed-string
+      // amount with no num/usd — those differ order to order and must stay
+      // separate lines, or the feed would silently under-report what was
+      // spent.
+      if(num===undefined && top.num===undefined && usd===undefined && top.usd===undefined
+         && !amount && !top.amount){
         top.n=(top.n||1)+1; top.t=fmt.hm(G.s.t); return;
       }
     }
-    G.s.feed.unshift({id:G.s.feedId++,t:fmt.hm(G.s.t),kind,text,amount:amount||'',num,n:1});
+    G.s.feed.unshift({id:G.s.feedId++,t:fmt.hm(G.s.t),kind,text,amount:amount||'',num,usd,n:1});
     if(G.s.feed.length>70) G.s.feed.length=70;
   }
   /* Toasts are gated in REAL time, so a speed multiplier cannot turn a fast

@@ -21,7 +21,7 @@ export function installActions(G){
       open:false, name:'Rig '+G.s.nextId });
     G.s.tab='rigs';                                  // and takes you to where it lives
     G.s.nextId++;
-    G.say('sys','Ordered parts for Rig '+(G.s.nextId-1),'-'+fmt.usd(p.cost));
+    G.say('sys','Ordered parts for Rig '+(G.s.nextId-1),'-'+fmt.usd(p.cost),undefined,undefined,-p.cost);
   }
   function renameRig(id,name){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
@@ -31,7 +31,7 @@ export function installActions(G){
   function scrapRig(id){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
     const back=G.rigSalvage(r); G.s.cash+=back; G.s.rigs=G.s.rigs.filter(x=>x.id!==id);
-    G.say('sys','Stripped '+r.name+' for parts','+'+fmt.usd(back));
+    G.say('sys','Stripped '+r.name+' for parts','+'+fmt.usd(back),undefined,undefined,back);
   }
   function swapWorn(id,th){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
@@ -41,7 +41,7 @@ export function installActions(G){
     G.s.cash-=cost; G.s.spent+=cost; G.s.repairs=(G.s.repairs||0)+worn.length; r.deadNote=false;
     for(const u of r.units) if(u.w>=th) u.w=0;
     r.refurb++;
-    G.say('sys','Replaced '+worn.length+' card'+(worn.length>1?'s':'')+' in '+r.name,'-'+fmt.usd(cost));
+    G.say('sys','Replaced '+worn.length+' card'+(worn.length>1?'s':'')+' in '+r.name,'-'+fmt.usd(cost),undefined,undefined,-cost);
   }
   /* ---- rebuild planner ----
      A retrofit is a REBUILD: stage any set of changes to one rig, confirm the

@@ -7,6 +7,29 @@ import { freshStore } from '../../test/testStore.js';
    of it. These guard clauses are what keeps that warning from firing on a
    perfectly normal, un-concentrated farm; a bug here would show players a
    misleading "you've outgrown this chain" nudge when they haven't. */
+describe('rigHash wear decay', () => {
+  it('is asymptotic at w=1: hashrate approaches ~60% and never cliffs past it (issue #20)', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
+    const rig = g.s.rigs[0];
+
+    rig.units.forEach(u => u.w = 0.999999);
+    const justBelow = g.rigHash(rig);
+    rig.units.forEach(u => u.w = 1);
+    const atCeiling = g.rigHash(rig);
+
+    // continuous — no discontinuous drop crossing w=1, unlike the old
+    // WORN_OUT=0.25 special case (a 0.6->0.25 cliff)
+    expect(atCeiling).toBeCloseTo(justBelow, 2);
+    // bounded at the spec's ~60% floor (design-spec.md §3), not below it
+    rig.units.forEach(u => u.w = 0);
+    const unworn = g.rigHash(rig);
+    expect(atCeiling / unworn).toBeCloseTo(0.6, 2);
+  });
+});
+
 describe('chainCeiling', () => {
   it('returns null for a missing chain', () => {
     const g = freshStore();

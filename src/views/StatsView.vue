@@ -7,11 +7,25 @@ import StatChart from '../components/StatChart.vue';
 
 const g = useGameStore();
 const doneN=computed(()=>Object.keys((g.s.mile&&g.s.mile.done)||{}).length);
-const rank=computed(()=>g.RANKS[(g.s.mile&&g.s.mile.rank)||0][1]);
+// Clamped with Number.isFinite, not ||0 (issue #14): this indexes g.RANKS,
+// and ||0 only catches falsy corruption (NaN, undefined) — a malformed
+// non-numeric value (e.g. a stringified rank from a bad save) is truthy
+// and would sail through ||0 straight into an array index.
+const rankIdx=computed(()=>Number.isFinite(g.s.mile&&g.s.mile.rank) ? g.s.mile.rank : 0);
+const rank=computed(()=>g.RANKS[rankIdx.value][1]);
 const nextRank=computed(()=>{
-  const i=((g.s.mile&&g.s.mile.rank)||0)+1;
+  const i=rankIdx.value+1;
   return i<g.RANKS.length ? g.RANKS[i] : null;
 });
+// A visual shape for "here's the whole climb, here's where I am on it"
+// (issue #51) — the rank-up moment already gets a toast, a sound and a
+// screen flourish, but the Stats tab itself only ever showed the current
+// rank as a word. Reuses the same .track/i.g/i.b progress-bar vocabulary
+// the app already uses for capacity/wear/reputation bars: past ranks
+// filled green, the current rank marked blue ("you are here"), ranks not
+// yet reached left empty.
+const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need,
+  cls: i<rankIdx.value ? 'g' : i===rankIdx.value ? 'b' : '' })));
 const tracks=computed(()=>{
   const by={};
   for(const m of g.MILESTONES){
@@ -34,6 +48,11 @@ const tracks=computed(()=>{
           <span class="sb">{{ doneN }} / {{ g.MILESTONES.length }} milestones</span></div>
         <p v-if="nextRank" class="hint" style="margin:4px 0 0">
           {{ nextRank[1] }} at {{ nextRank[0] }} milestones.</p>
+        <div class="track" role="img" style="height:8px;gap:3px;margin-top:10px"
+             :aria-label="'Rank ladder: '+rank+', '+(rankIdx+1)+' of '+g.RANKS.length">
+          <i v-for="r in ladder" :key="r.name" :class="r.cls" :title="r.name"
+             :style="{width:'calc('+(100/g.RANKS.length)+'% - 3px)'}"></i>
+        </div>
       </div>
       <div class="card-bd pt">
         <div v-for="t in tracks" :key="t.name" style="margin-bottom:10px">
@@ -48,9 +67,9 @@ const tracks=computed(()=>{
       </div>
     </div>
 
-    <StatChart title="Net per day" :data="g.s.netHist" money color="#137A55" />
-    <StatChart title="Hashrate" :data="g.s.hashHist||[]" color="#2E6BA8" />
-    <StatChart title="Cash" :data="g.s.cashHist||[]" money color="#C98A0B" />
+    <StatChart title="Net per day" :data="g.s.netHist" money color="var(--green)" />
+    <StatChart title="Hashrate" :data="g.s.hashHist||[]" color="var(--blue)" />
+    <StatChart title="Cash" :data="g.s.cashHist||[]" money color="var(--gold)" />
     <div class="sec"><span class="eyebrow">Coin prices</span>
       <span class="eyebrow">last ~80 days</span></div>
     <div class="card"><div class="card-bd pt">
@@ -59,10 +78,10 @@ const tracks=computed(()=>{
         <svg viewBox="0 0 100 22" preserveAspectRatio="none"
              style="width:100%;height:34px;display:block" aria-hidden="true">
           <path :d="sparkPath(c.hist, 20, 18)"
-            fill="none" stroke="#137A55" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
+            fill="none" style="stroke:var(--green)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
       </div>
       <p class="hint">One point per ~18 game hours. Card generations land every
-        {{ g.C.GEN_DAYS }} days — generation {{ g.s.gen||0 }} is current.</p>
+        {{ g.C.GEN_DAYS }} days — generation {{ fmt.n(g.s.gen) }} is current.</p>
     </div></div>
   </div>
 </template>

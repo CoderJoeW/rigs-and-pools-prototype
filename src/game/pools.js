@@ -48,14 +48,14 @@ export function installPools(G){
   function addBond(p,amt){
     amt=Math.min(Math.round(amt), Math.floor(G.s.cash)); if(amt<=0) return;
     G.s.cash-=amt; p.bond+=amt; p.bond0=Math.max(p.bond0,p.bond);
-    G.say('sys','Added '+fmt.usd(amt)+' to '+p.name+"'s bond",'-'+fmt.usd(amt));
+    G.say('sys','Added '+fmt.usd(amt)+' to '+p.name+"'s bond",'-'+fmt.usd(amt),undefined,undefined,-amt);
   }
   function releaseBond(p,amt){
     const room=Math.max(0, p.bond-bondFloor(p));
     amt=Math.min(Math.round(amt), Math.floor(room)); if(amt<=0) return;
     p.bond-=amt; G.s.cash+=amt;
     p.bond0=p.bond;      // a deliberate downsize is an announcement, not a default:
-    G.say('sys','Released '+fmt.usd(amt)+' from '+p.name+"'s bond",'+'+fmt.usd(amt));
+    G.say('sys','Released '+fmt.usd(amt)+' from '+p.name+"'s bond",'+'+fmt.usd(amt),undefined,undefined,amt);
   }                      // losses still push bond below bond0 and cost you trust
   function topUpBond(p,amt){ addBond(p,amt); }
   const poolProfit = p => Math.max(0, p.bond - p.bond0);
@@ -63,13 +63,13 @@ export function installPools(G){
     const amt=Math.round(poolProfit(p));
     if(amt<=0) return;
     p.bond-=amt; G.s.cash+=amt; G.s.poolTake=(G.s.poolTake||0)+amt;
-    G.say('sys','Withdrew profit from '+p.name,'+'+fmt.usd(amt));
+    G.say('sys','Withdrew profit from '+p.name,'+'+fmt.usd(amt),undefined,undefined,amt);
   }
   function closePool(p){
     const back=Math.round(p.bond);
     p.live=false; G.s.cash+=back;
     G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ G.forfeitGroup(gr,'when you closed the pool'); gr.pool='solo'; });
-    G.say('sys','Closed '+p.name+' — bond returned','+'+fmt.usd(back));
+    G.say('sys','Closed '+p.name+' — bond returned','+'+fmt.usd(back),undefined,undefined,back);
   }
   function doSell(c,amt,quiet){
     if(!Number.isFinite(amt)||amt<=0) return;   // one bad argument must not poison a price forever

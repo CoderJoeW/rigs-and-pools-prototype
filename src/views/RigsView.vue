@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
+import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 import ChainMark from '../components/ChainMark.vue';
@@ -190,7 +191,8 @@ const saveRenameRig=()=>{ g.renameRig(rig.value.id,renameDraft.value); renameOpe
 const fleetOpen=ref(false);
 const fleetGroup=ref(1), fleetCard=ref('c8');
 const specInfo=computed(()=> g.fleetSpecInfo(g.draftSpec(), scopeId.value));
-const wornInfo=computed(()=> g.fleetWorn(0.35, scopeId.value));
+const REPAIR_AT=C.REPAIR_AT;
+const wornInfo=computed(()=> g.fleetWorn(REPAIR_AT, scopeId.value));
 const moveInfo=computed(()=> g.fleetMoveInfo(fleetGroup.value, scopeId.value));
 const refitInfo=computed(()=> g.fleetRefitInfo(fleetCard.value, scopeId.value));
 
@@ -342,7 +344,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                 · {{ g.groupOf(r).name }} · <ChainMark :chain="g.groupOf(r).chain"
                 />{{ g.chain(g.groupOf(r).chain).name }}</div>
               <div class="wearbar" role="img" :aria-label="'Wear '+(avgWear(r)*100).toFixed(0)+'%'">
-                <i :class="avgWear(r)>0.6?'b':avgWear(r)>0.35?'w':''"
+                <i :class="avgWear(r)>0.6?'b':avgWear(r)>REPAIR_AT?'w':''"
                    :style="{width:(avgWear(r)*100).toFixed(0)+'%'}"></i></div>
             </span>
             <span class="rt">
@@ -415,7 +417,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <div class="s"><div class="k">Hashrate</div><div class="v">{{ fmt.hash(g.rigHash(rig)) }}</div></div>
             <div class="s"><div class="k">Draw</div><div class="v">{{ fmt.w(g.rigWallW(rig)) }}</div></div>
             <div class="s"><div class="k">Wear</div>
-              <div class="v" :class="avgWear(rig)>0.6?'neg':avgWear(rig)>0.35?'amb':''">
+              <div class="v" :class="avgWear(rig)>0.6?'neg':avgWear(rig)>REPAIR_AT?'amb':''">
                 {{ fmt.pct(avgWear(rig),0) }}</div></div>
           </div>
           <div class="card-bd pt">
@@ -463,13 +465,13 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
               <div class="s">Swap any parts, add or remove cards, one bill — the rig goes down
                 for the assembly time.</div></span>
             <span class="ch">&rsaquo;</span></button>
-          <button class="pickrow" :disabled="!wornN(rig,0.35)||g.s.cash<wornCost(rig,0.35)"
-                  @click="g.swapWorn(rig.id,0.35)">
+          <button class="pickrow" :disabled="!wornN(rig,REPAIR_AT)||g.s.cash<wornCost(rig,REPAIR_AT)"
+                  @click="g.swapWorn(rig.id,REPAIR_AT)">
             <span class="lab">Repair</span>
-            <span class="val"><div class="n">{{ wornN(rig,0.35)
-              ? 'Replace '+wornN(rig,0.35)+' worn card'+(wornN(rig,0.35)===1?'':'s')
-                +' · '+fmt.usd(wornCost(rig,0.35))
-              : 'No cards worn past 35% yet' }}</div>
+            <span class="val"><div class="n">{{ wornN(rig,REPAIR_AT)
+              ? 'Replace '+wornN(rig,REPAIR_AT)+' worn card'+(wornN(rig,REPAIR_AT)===1?'':'s')
+                +' · '+fmt.usd(wornCost(rig,REPAIR_AT))
+              : 'No cards worn past '+fmt.pct(REPAIR_AT,0)+' yet' }}</div>
               <div class="s">Cards are swapped in place; the rig keeps running.</div></span></button>
           <button class="pickrow" @click="g.scrapRig(rig.id); openRig=null">
             <span class="lab">Strip</span>
@@ -497,12 +499,12 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <button class="btn btn-wide"
                     :class="wornInfo.n&&g.s.cash>=wornInfo.cost?'btn-pri':''"
                     :disabled="!wornInfo.n||g.s.cash<wornInfo.cost"
-                    @click="g.fleetRepair(0.35,scopeId)">
+                    @click="g.fleetRepair(REPAIR_AT,scopeId)">
               {{ wornInfo.n
                  ? 'Replace '+wornInfo.n+' card'+(wornInfo.n===1?'':'s')
                    +' across '+wornInfo.rigs+' rig'+(wornInfo.rigs===1?'':'s')
                    +' · '+fmt.usd(wornInfo.cost)
-                 : 'Nothing worn past 35%' }}</button></div>
+                 : 'Nothing worn past '+fmt.pct(REPAIR_AT,0) }}</button></div>
 
           <div class="rigfld"><label for="fleet-group-select">Move to a group</label>
             <select id="fleet-group-select" v-model.number="fleetGroup">

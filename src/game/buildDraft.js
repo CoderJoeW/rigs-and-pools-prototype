@@ -84,13 +84,19 @@ export function installBuildDraft(G){
      its own watts while only dividing the plant's share, so below about
      three cards it always makes the power check HARDER, and "nothing fits"
      only ever happens at one card. See §6n. */
-  function generatePreset(){
-    const f=G.active.value;
+  /* The one search both generatePreset and openBuildCost run — used to be
+     two ~13-line near-copies that had already silently diverged once
+     (issue #27): openBuildCost's cool-delta expression was missing the
+     divide-by-zero guard checks.value's has (now shared below). Yields
+     buildable-on-paper candidates in strategy order; each caller applies
+     its own acceptance test to the tail — generatePreset writes the draft
+     and runs the full canBuild gate (incl. cash); openBuildCost skips cash
+     and tests power headroom directly, read-only. */
+  function* candidateBuilds(f){
     const flip = G.siteDemand(f) >= G.siteCapacity(f)*C.FLIP_AT;
     const pool = G.cards();
     const order = flip ? [...pool].sort((a,b)=>(b.mh/b.w)-(a.mh/a.w)) : pool;
     const maxCards = Math.min(FRAMES[FRAMES.length-1].slots, MOBOS[MOBOS.length-1].pcie);
-    const before = { ...G.s.draft };                 // restore this if nothing fits
     for(const unit of order){
       for(let n=maxCards; n>=1; n--){
         const frame=FRAMES.find(x=>x.slots>=n);
@@ -100,10 +106,17 @@ export function installBuildDraft(G){
         const core=frame.w+mobo.w+cool.w+n*RISER.w+n*unit.w;
         const psu=G.livePsus.find(x=>G.psuUsableW(x)>=core && x.conn>=n*unit.conn);
         if(!psu) continue;
-        G.s.draft.kind='gpu'; G.s.draft.frame=frame.id; G.s.draft.mobo=mobo.id;
-        G.s.draft.cool=cool.id; G.s.draft.psu=psu.id; G.s.draft.unit=unit.id; G.s.draft.n=n;
-        if(canBuild.value) return true;
+        yield {unit,n,frame,mobo,cool,core,psu};
       }
+    }
+  }
+  function generatePreset(){
+    const f=G.active.value;
+    const before = { ...G.s.draft };                 // restore this if nothing fits
+    for(const {unit,n,frame,mobo,cool,psu} of candidateBuilds(f)){
+      G.s.draft.kind='gpu'; G.s.draft.frame=frame.id; G.s.draft.mobo=mobo.id;
+      G.s.draft.cool=cool.id; G.s.draft.psu=psu.id; G.s.draft.unit=unit.id; G.s.draft.n=n;
+      if(canBuild.value) return true;
     }
     Object.assign(G.s.draft, before);   // the search scribbles on the draft; put it back
     return false;
@@ -130,24 +143,11 @@ export function installBuildDraft(G){
   const siteRigsOpen = f => G.siteSlots(f)-G.siteRigs(f).length;
   const openBuildCost = f => {
     if(siteRigsOpen(f)<=0) return null;
-    const flip = G.siteDemand(f) >= G.siteCapacity(f)*C.FLIP_AT;
-    const pool = G.cards();
-    const order = flip ? [...pool].sort((a,b)=>(b.mh/b.w)-(a.mh/a.w)) : pool;
-    const maxCards = Math.min(FRAMES[FRAMES.length-1].slots, MOBOS[MOBOS.length-1].pcie);
-    for(const unit of order){
-      for(let n=maxCards; n>=1; n--){
-        const frame=FRAMES.find(x=>x.slots>=n);
-        const mobo=MOBOS.find(x=>x.pcie>=n);
-        if(!frame||!mobo) continue;
-        const cool=COOLERS[0];
-        const core=frame.w+mobo.w+cool.w+n*RISER.w+n*unit.w;
-        const psu=G.livePsus.find(x=>G.psuUsableW(x)>=core && x.conn>=n*unit.conn);
-        if(!psu) continue;
-        const coolDelta=G.sitePlantW(f, core/(frame.air*cool.fac))-G.sitePlantW(f);
-        const after=G.siteDemand(f)+core/psu.eff+coolDelta;
-        if(after>G.siteCapacity(f)+G.battFirm(f)) continue;
-        return frame.price+mobo.price+cool.price+psu.price+n*(unit.price+RISER.price);
-      }
+    for(const {unit,n,frame,mobo,cool,core,psu} of candidateBuilds(f)){
+      const coolDelta=G.sitePlantW(f, core/Math.max(0.01,frame.air*cool.fac))-G.sitePlantW(f);
+      const after=G.siteDemand(f)+core/psu.eff+coolDelta;
+      if(after>G.siteCapacity(f)+G.battFirm(f)) continue;
+      return frame.price+mobo.price+cool.price+psu.price+n*(unit.price+RISER.price);
     }
     return null;
   };

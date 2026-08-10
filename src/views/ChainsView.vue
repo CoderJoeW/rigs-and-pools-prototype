@@ -74,7 +74,7 @@ const projMargin=computed(()=>{
         <div v-if="open[c.id]" class="card-bd" style="padding-top:8px">
           <p class="note">{{ c.blurb }}</p>
           <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
-            <path :d="spark(c)" fill="none" stroke="#137A55" stroke-width="1.4"
+            <path :d="spark(c)" fill="none" style="stroke:var(--green)" stroke-width="1.4"
                   vector-effect="non-scaling-stroke"/></svg>
           <div class="dl"><dt>Your hashrate</dt><dd>{{ fmt.hash(g.myHash(c)) }}</dd></div>
           <div class="dl"><dt>Your mean time to a block</dt><dd>{{ fmt.eta(g.mttb(c)) }}</dd></div>
@@ -258,7 +258,7 @@ const projMargin=computed(()=>{
         <div v-if="(p.hist||[]).length>2">
           <svg viewBox="0 0 100 34" preserveAspectRatio="none"
                style="width:100%;height:40px;display:block;margin-top:6px" aria-hidden="true">
-            <path :d="spark(p.hist)" fill="none" stroke="#137A55" stroke-width="1.5"
+            <path :d="spark(p.hist)" fill="none" style="stroke:var(--green)" stroke-width="1.5"
                   vector-effect="non-scaling-stroke"/></svg>
           <div class="track-cap"><span>Members, last seven days</span>
             <b :class="p.hist[p.hist.length-1]>=p.hist[0]?'pos':'neg'">{{

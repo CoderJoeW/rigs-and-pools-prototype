@@ -11,6 +11,13 @@ export function partSub(slot, p){
 }
 
 export const fmt = {
+  // For counters/totals that should always hold a real number by render
+  // time (issue #5's root cause: `X||0` on a NaN state field silently
+  // rendered a plausible-looking 0 instead of surfacing the bug). Use this
+  // instead of `||0` wherever the field being missing/NaN is corruption,
+  // not a legitimate "not set yet" state — a genuine "not yet" case should
+  // keep its own explicit default rather than this sentinel (issue #14).
+  n(x){ return Number.isFinite(x) ? x : '—'; },
   hash(mh){ return mh>=1e6?(mh/1e6).toFixed(2)+' TH/s':mh>=1000?(mh/1000).toFixed(2)+' GH/s':mh.toFixed(0)+' MH/s'; },
   usd(n){ const a=Math.abs(n);
     return (n<0?'-$':'$')+(a>=10000?a.toLocaleString('en-US',{maximumFractionDigits:0}):a.toFixed(2)); },

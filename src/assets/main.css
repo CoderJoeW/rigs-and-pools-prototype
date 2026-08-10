@@ -21,7 +21,7 @@
   --bg:#F7F6F1; --backdrop:#ECEAE1; --card:#FFF; --ink:#14180F; --ink-2:#535E4F; --ink-3:#8C9587;
   --line:#DEDBCC; --line-2:#EEECE2;
   --green:#0E9C57; --green-t:#E4F6EC;
-  --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A;
+  --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A; --amber-t:#FCEBDA;
   --red:#D33A2C;   --red-t:#FBEAE7;
   --blue:#3457C7;  --blue-t:#E9ECFA;
   /* Chain identity (see chains.js): each chain owns an OKLCH hue, both themes
@@ -53,7 +53,7 @@
     --bg:#0A0D0A; --backdrop:#050605; --card:#121613; --ink:#E9F1EA; --ink-2:#8FA093; --ink-3:#586359;
     --line:#212C22; --line-2:#191F1A;
     --green:#26E88C; --green-t:#0E3524;
-    --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33;
+    --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33; --amber-t:#3D260E;
     --red:#FF6459;   --red-t:#3B1815;
     --blue:#5C9CFF;  --blue-t:#132546;
     /* Lifted, not just re-tinted: .55 on the dark card is a smudge. .78 lands
@@ -66,7 +66,7 @@
   --bg:#0A0D0A; --backdrop:#050605; --card:#121613; --ink:#E9F1EA; --ink-2:#8FA093; --ink-3:#586359;
   --line:#212C22; --line-2:#191F1A;
   --green:#26E88C; --green-t:#0E3524;
-  --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33;
+  --gold:#FF9E33;  --gold-t:#3D260E; --amber:#FF9E33; --amber-t:#3D260E;
   --red:#FF6459;   --red-t:#3B1815;
   --blue:#5C9CFF;  --blue-t:#132546;
   --chain-l:.78; --chain-c:.15;
@@ -329,7 +329,8 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:4px 0;line-height:1.4}
 .chk .ic{font-family:var(--mono);flex:none;font-weight:500}
 .chk.ok .ic{color:var(--green)} .chk.no .ic{color:var(--red)} .chk.no{color:var(--red)}
-.chk.note-chk{color:var(--amber)} .chk.note-chk .ic{color:var(--amber)}
+.chk.note-chk.note-warn{color:var(--amber)} .chk.note-chk.note-warn .ic{color:var(--amber)}
+.chk.note-chk.note-good{color:var(--blue)} .chk.note-chk.note-good .ic{color:var(--blue)}
 
 /* ---- Rigs page (v64) ---- */
 /* .pill is the larger, bordered, tappable filter/switcher pill. It used to be

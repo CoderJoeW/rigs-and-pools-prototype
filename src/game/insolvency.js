@@ -50,7 +50,7 @@ export function installInsolvency(G){
       for(const r of G.s.rigs) if(rigSalvage(r)<rigSalvage(worst)) worst=r;
       const back=rigSalvage(worst); G.s.cash+=back;
       G.s.rigs=G.s.rigs.filter(x=>x.id!==worst.id);
-      G.say('bad','Sold '+worst.name+' to cover the bill','+'+fmt.usd(back)); return;
+      G.say('bad','Sold '+worst.name+' to cover the bill','+'+fmt.usd(back),undefined,undefined,back); return;
     }
     if(G.s.cash<FLOOR_COST){
       G.s.rigs.push({ id:G.s.nextId++, kind:'gpu', frame:'f2', mobo:'m2', psu:'p450', cool:'x0',

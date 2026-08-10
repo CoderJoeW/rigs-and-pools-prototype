@@ -48,9 +48,9 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
           <div><div class="k">Power today</div>
             <div class="v neg">{{ fmt.usd2(g.powerDay) }}</div></div>
           <div><div class="k">Blocks today</div>
-            <div class="v">{{ (g.s.today&&g.s.today.blocks)||0 }}</div></div>
+            <div class="v">{{ fmt.n(g.s.today&&g.s.today.blocks) }}</div></div>
           <div><div class="k">Best block ever</div>
-            <div class="v">{{ fmt.usd2(g.s.bestBlock||0) }}</div></div>
+            <div class="v">{{ Number.isFinite(g.s.bestBlock) ? fmt.usd2(g.s.bestBlock) : '—' }}</div></div>
         </div>
       </div></div>
 
@@ -164,7 +164,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
             <span style="flex:1;min-width:0">
               <svg v-if="g.s.netHist.length>2" class="spark" viewBox="0 0 100 34"
                    preserveAspectRatio="none" aria-hidden="true">
-                <path :d="netPath" fill="none" :stroke="g.netDay>=0?'#137A55':'#BE443A'"
+                <path :d="netPath" fill="none" :style="{stroke: g.netDay>=0?'var(--green)':'var(--red)'}"
                       stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
               <span style="font-size:10px;color:var(--ink-3)">{{ trend }}</span></span></div>
           <div v-if="g.netDay<0 && g.s.cash>0" class="warnbox">
