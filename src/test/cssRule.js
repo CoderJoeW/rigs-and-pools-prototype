@@ -10,9 +10,16 @@ import path from 'node:path';
    needs it, rather than each pasting its own. */
 const mainCss = fs.readFileSync(path.resolve(import.meta.dirname, '../assets/main.css'), 'utf8');
 
+// Full escape, not just the leading character — a compound selector like
+// '.btn-order.btn-pri' has a SECOND regex-special '.' that a bare leading
+// backslash never touched, so it matched as "any character" rather than a
+// literal dot. Harmless while every selector in the file happened to be
+// one edit away from nothing else, but not something worth relying on.
+const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export function cssRule(selector) {
   // negative lookahead so e.g. '.tour' doesn't also match '.tour-spot'
-  const re = new RegExp('\\' + selector + '(?![\\w-])\\{([^}]*)\\}');
+  const re = new RegExp(escapeRegExp(selector) + '(?![\\w-])\\{([^}]*)\\}');
   return mainCss.match(re)?.[1] || '';
 }
 

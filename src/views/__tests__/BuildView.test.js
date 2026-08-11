@@ -308,7 +308,7 @@ describe('BuildView', () => {
   });
 
   describe('the Order-parts button', () => {
-    it('uses a fixed dark ink when active, not white — same WCAG AA failure already fixed on this tab\'s other green fills', () => {
+    it('uses a fixed dark ink when buildable, not white — same WCAG AA failure already fixed on this tab\'s other green fills', () => {
       // .btn-pri's #fff fails 4.5:1 in both themes (~3.55:1 light,
       // ~1.62:1 dark) — this is the same failure already fixed on .seg2's
       // thumb and the slot grid, just on .btn-pri's shared style instead
@@ -320,6 +320,20 @@ describe('BuildView', () => {
       const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'));
       expect(orderBtn.classes()).toContain('btn-order');
       expect(orderBtn.classes()).toContain('btn-pri'); // the mounted preset is always buildable
+    });
+
+    it('keeps the resting green through :active, instead of inheriting .btn-pri\'s darkened press background', () => {
+      // .btn-pri:active swaps to a hardcoded #0F6446 — dark enough that
+      // --ink-on-accent on it drops to 2.58:1, WORSE than the #fff this
+      // whole fix exists to replace (7.16:1 there). Every other green-fill
+      // ink fix on this tab (.seg2, .slotcell) happened to have no
+      // background-swapping :active rule to collide with; .btn-pri does,
+      // so it needs its own override rather than reusing that pattern
+      // blindly. Pinning :active is what press feedback (button.btn:active's
+      // scale transform, main.css) actually verifies — asserting it merely
+      // EXISTS would pass on a version that darkens the background back to
+      // the failing state, so this checks the value.
+      expect(cssRule('.btn-order.btn-pri:active')).toMatch(/background:\s*var\(--green\)/);
     });
   });
 
