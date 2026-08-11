@@ -355,6 +355,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .btn-pri{background:var(--green);color:#fff;
   box-shadow:0 2px 12px color-mix(in srgb, var(--green) 35%, transparent)}
 .btn-pri:active{background:#0F6446}
+/* Build's own Order-parts CTA — .btn-pri's #fff fails WCAG AA in both
+   themes (~3.55:1 light, ~1.62:1 dark; see --ink-on-accent's definition),
+   same failure already fixed on .seg2/.slotcell elsewhere on this tab.
+   Scoped to .btn-order rather than changing .btn-pri itself: that class is
+   the primary-action style used across every view in the app, and fixing
+   its contrast everywhere is a real design-system decision, not something
+   a Build-tab pass should decide unilaterally — this is the one instance
+   of it that's squarely this tab's own call to make. */
+.btn-order.btn-pri{color:var(--ink-on-accent)}
 .btn-ghost{background:transparent;border:1px solid var(--line)}
 @media (hover:hover){
   .btn-pri:hover{box-shadow:0 2px 18px color-mix(in srgb, var(--green) 55%, transparent)}

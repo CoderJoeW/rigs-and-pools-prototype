@@ -307,6 +307,22 @@ describe('BuildView', () => {
     });
   });
 
+  describe('the Order-parts button', () => {
+    it('uses a fixed dark ink when active, not white — same WCAG AA failure already fixed on this tab\'s other green fills', () => {
+      // .btn-pri's #fff fails 4.5:1 in both themes (~3.55:1 light,
+      // ~1.62:1 dark) — this is the same failure already fixed on .seg2's
+      // thumb and the slot grid, just on .btn-pri's shared style instead
+      // of a Build-only one. Scoped to .btn-order (a class only this
+      // button carries) rather than changing .btn-pri itself, which is
+      // the primary-action style used everywhere else in the app.
+      expect(cssRule('.btn-order.btn-pri')).toMatch(/color:\s*var\(--ink-on-accent\)/);
+      const { wrapper } = mountWithStore(BuildView);
+      const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'));
+      expect(orderBtn.classes()).toContain('btn-order');
+      expect(orderBtn.classes()).toContain('btn-pri'); // the mounted preset is always buildable
+    });
+  });
+
   describe('the build-status announcement', () => {
     it('tells assistive tech the draft is ready to order', () => {
       const { wrapper, store } = mountWithStore(BuildView);
