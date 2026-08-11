@@ -178,9 +178,10 @@ describe('a corrupted save', () => {
     // spying on the export never reaches the real call site. A rig with a
     // null `units` survives the rig-shape migration (which never touches
     // that field) but throws the instant something reads its .length —
-    // dispatch.js's rigWear, reached from inside the first stepTick() the
-    // catch-up loop runs — a genuine engine fault arriving from inside the
-    // awaited advance(), not a synthetic one.
+    // dispatch.js's rigLive/liveUnits (via rigHash's groupHash reduce),
+    // reached from inside the first stepTick() the catch-up loop runs —
+    // a genuine engine fault arriving from inside the awaited advance(),
+    // not a synthetic one.
     const g1 = freshStore();
     g1.generatePreset();
     g1.build();
