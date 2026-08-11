@@ -1,8 +1,9 @@
 import { C, TRUST_RAMP, SIM_RATIO, SIM_GROWTH, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
-import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART } from '../data/site-parts.js';
+import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
-import { CARDS, PSUS, PART, RISER } from '../data/hardware.js';
+import { CARDS, PSUS, PART, PART_MAP, RISER } from '../data/hardware.js';
+import { DESIGN_AXES, MAX_AXIS_POINTS, designTotals, designStats, designCost } from '../data/customParts.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { storage } from '../services/storage.js';
@@ -143,7 +144,15 @@ export function installPersistence(G){
     // regardless, since it describes a run that's either finished or (the
     // hydrating guard above) can't have overlapped with this one anyway
     G.s.catchUp=null;
-    G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
+    G.s.picker=null; G.s.sitePicker=null; G.s.design=null;
+    G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
+    // PART_MAP is a page-load-scoped singleton (exactly like the generation
+    // catalogue below on the next line) — a save's customParts survive in
+    // G.s, but every id inside it needs re-registering here too, or PART(id)
+    // for a loaded rig wearing a custom part resolves to undefined the
+    // instant this session's own module graph is the one asking
+    if(!Array.isArray(G.s.customParts)) G.s.customParts=[];
+    for(const p of G.s.customParts) PART_MAP.set(p.id, p);
     G.s.unlocked=new Proxy({},{get:()=>true});   // a Proxy cannot survive JSON
     // v30 and earlier: assignment lived on the rig. Synthesize groups from the
     // distinct (chain, pool) combinations and pour each rig's pending into its
@@ -305,7 +314,9 @@ export function installPersistence(G){
   G.say('sys','A spare bedroom, a 1.5 kW outlet and $500');
 
   G.__exports={ s:G.s,C,SHELLS,SOURCES,PLANTS,STORAGE,FABS,FAB,PSUS:G.livePsus,
-    RISER,PART,SITEPART,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
+    DESIGN_AXES,MAX_AXIS_POINTS,designTotals,designStats,designCost,
+    openDesign:G.openDesign,closeDesign:G.closeDesign,bumpDesignPick:G.bumpDesignPick,manufacturePart:G.manufacturePart,
+    RISER,PART,SITEPART,jobPart,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
     solarFactor:G.solarFactor,ambient:G.ambient,band:G.band,cards:G.cards,battKwh:G.battKwh,battKw:G.battKw,sitePlan:G.sitePlan,srcOut:G.srcOut,siteCapacity:G.siteCapacity,siteCooling:G.siteCooling,sitePlantW:G.sitePlantW,siteHeat:G.siteHeat,throttleOf:G.throttleOf,siteSlots:G.siteSlots,siteRigs:G.siteRigs,siteDemand:G.siteDemand,siteTemp:G.siteTemp,
     siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,rigState:G.rigState,rigWear:G.rigWear,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
     revenueDay:G.revenueDay,powerDay:G.powerDay,netDay:G.netDay,walletUsd:G.walletUsd,runway:G.runway,lifetimeNet:G.lifetimeNet,poolEarned:G.poolEarned,myHash:G.myHash,diffOf:G.diffOf,mttb:G.mttb,

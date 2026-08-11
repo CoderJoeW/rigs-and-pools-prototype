@@ -53,8 +53,15 @@ export const SITEPART_MAP = new Map([...SHELLS,...SOURCES,...PLANTS,...STORAGE].
 export const SITEPART = id => SITEPART_MAP.get(id);
 
 /* A construction-queue job's `p` is a shell/source/plant/storage id for
-   every kind except 'fab', which looks up FABS instead — the one catalogue
-   this file doesn't own. Every place that turns a job back into its part
-   (rush, insolvency's cancel-a-job branch, ...) needs this discrimination;
-   giving it one shared home means a new job kind only has to teach it here. */
-export const jobPart = j => j.kind==='fab' ? FAB(j.p) : SITEPART(j.p);
+   every kind except 'fab' (looks up FABS instead) and 'mfg' — a fab-designed
+   custom part (data/customParts.js), which carries its own finished part
+   object on the job rather than an id into any catalogue, since it was never
+   in one to begin with. `paidCash` on an 'mfg' job is what rush/insolvency
+   need `.price` to mean here: what was actually paid to queue it, which is
+   NOT the same number as the part's own `.price` (that's the unit price
+   Build charges each time the finished design gets used to build a rig).
+   Every place that turns a job back into its part (rush, insolvency's
+   cancel-a-job branch, ...) needs this discrimination; giving it one shared
+   home means a new job kind only has to teach it here. */
+export const jobPart = j => j.kind==='mfg' ? { name:j.part.name, price:j.paidCash }
+  : j.kind==='fab' ? FAB(j.p) : SITEPART(j.p);

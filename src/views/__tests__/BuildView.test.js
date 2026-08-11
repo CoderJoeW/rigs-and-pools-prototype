@@ -457,4 +457,40 @@ describe('BuildView', () => {
       expect(live()).toBe('Ready to order for ' + fmt.usd(store.dp.cost) + '.');
     });
   });
+
+  describe('Custom parts', () => {
+    // manufactures a custom cooler at the active site's fab, finishing
+    // construction instantly (the rush-style shortcut used throughout the
+    // fab test suites — real build times are hours too long to loop to)
+    const withCustomCooler = g => {
+      const f = g.active;
+      g.s.cash = 1000000;
+      g.chooseFab(f.id, 'fab-bench');
+      f.queue[0].left = 0.0001; g.stepTick(1);
+      g.openDesign(f.id, 'cool');
+      g.bumpDesignPick(g.DESIGN_AXES.cool[0].key, 2);
+      g.manufacturePart();
+      f.queue[0].left = 0.0001; g.stepTick(1);
+    };
+
+    it('a manufactured part appears in its slot\'s Customise picker, past the catalogue', async () => {
+      const { wrapper } = mountWithStore(BuildView, { seed: withCustomCooler });
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      const coolRow = wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling'));
+      await coolRow.trigger('click');
+      expect(wrapper.text()).toContain('Custom cooler');
+    });
+
+    it('picking it sets the draft to it, and its stats and price flow into the verdict', async () => {
+      const { wrapper, store } = mountWithStore(BuildView, { seed: withCustomCooler });
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling')).trigger('click');
+      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Custom cooler'));
+      await row.trigger('click');
+
+      const part = store.s.customParts[0];
+      expect(store.s.draft.cool).toBe(part.id);
+      expect(store.dp.air).toBeCloseTo(store.PART(store.s.draft.frame).air * part.fac, 5);
+    });
+  });
 });

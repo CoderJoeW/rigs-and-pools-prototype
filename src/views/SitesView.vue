@@ -149,6 +149,24 @@ const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
 // section would keep reading "not installed" through the entire build
 const fabQueued=computed(()=>f.value.queue.find(j=>j.kind==='fab'));
 
+/* ---- designing a custom part ----
+   Two small sheets, not one: `sitePicker==='design'` picks WHICH slot type
+   (a plain list, not a Compare — there's no price to compare yet), then
+   `g.s.design` (opened by openDesignKind) is the actual tuner. They're
+   mutually exclusive by construction — opening the tuner always closes the
+   picker sheet first — so only one is ever on screen. */
+const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
+const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
+const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
+const designPreview=computed(()=>{
+  const d=g.s.design; if(!d) return null;
+  return { axes:g.DESIGN_AXES[d.kind], fab:g.FAB(f.value.fab),
+    totals:g.designTotals(d.kind,d.picks), stats:g.designStats(d.kind,d.picks),
+    cost:g.designCost(d.kind,d.picks) };
+});
+const designSheetEl=ref(null);
+useSheetA11y(designSheetEl, computed(()=>!!g.s.design), ()=>{ g.closeDesign(); });
+
 const pickerSheetEl=ref(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
@@ -382,6 +400,8 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           parts with numbers nothing in any catalogue can match.</p>
         <button v-if="!fabQueued" class="btn btn-wide" style="margin-top:9px" @click="g.s.sitePicker='fab'">
           {{ f.fab?'Upgrade the fab':'Install a fab' }}</button>
+        <button v-if="f.fab" class="btn btn-wide btn-ghost" style="margin-top:6px"
+                @click="g.s.sitePicker='design'">Design a part</button>
       </div>
     </div>
 
@@ -389,7 +409,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
       <div class="card-hd"><span class="eyebrow">Under construction</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="rowline">
-          <span style="flex:1;min-width:0"><span class="nm">{{ j.kind==='fab'?g.FAB(j.p).name:g.SITEPART(j.p).name }}</span>
+          <span style="flex:1;min-width:0"><span class="nm">{{ g.jobPart(j).name }}</span>
             <div class="sb">{{ j.left.toFixed(1) }} h remaining of {{ j.total }}</div>
             <div class="track" style="margin:6px 0 0"><i class="b"
               :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></div></span>
@@ -407,7 +427,8 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           g.s.sitePicker==='expand'?'Expand '+f.name:
           g.s.sitePicker==='source'?'Power sources':
           g.s.sitePicker==='storage'?'Batteries':
-          g.s.sitePicker==='fab'?(f.fab?'Upgrade the fab':'Install a fab'):'Cooling' }}</span></div>
+          g.s.sitePicker==='fab'?(f.fab?'Upgrade the fab':'Install a fab'):
+          g.s.sitePicker==='design'?'Design a part':'Cooling' }}</span></div>
       <div class="sheet-bd">
         <Compare v-if="g.s.sitePicker==='shell'" title="Cheapest first" metric="cost"
                  :rows="shellRows" :pick="chooseShell" />
@@ -419,6 +440,13 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
                  :rows="storageRows" :pick="chooseStorage" />
         <Compare v-else-if="g.s.sitePicker==='fab'" title="Cheapest first" metric="cost"
                  :rows="fabRows" :pick="chooseFabPick" />
+        <template v-else-if="g.s.sitePicker==='design'">
+          <div class="list">
+            <button v-for="k in designKinds" :key="k" class="rowline" @click="openDesignKind(k)">
+              <span style="flex:1"><span class="nm">{{ KIND_LABEL[k] }}</span></span>
+              <span class="ch">&rsaquo;</span></button>
+          </div>
+        </template>
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
         <!-- kept outside the v-if/else-if chain above on purpose: a plain
              element with its own v-if between two v-else-if links would
@@ -436,8 +464,46 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <p v-else-if="g.s.sitePicker==='fab'" class="hint" style="padding:0 2px">Only tiers bigger than
           the current one are listed. Half the old fab's price is credited toward the new one.
           Construction takes real hours, same as everything else here — you can pay again to rush it.</p>
+        <p v-else-if="g.s.sitePicker==='design'" class="hint" style="padding:0 2px">What you can spend
+          tuning it comes from the fab's design budget, not your wallet — the next screen shows both.</p>
         <p v-else class="hint" style="padding:0 2px">Construction starts as soon as you pay, and takes
           real hours. You can pay again to rush it.</p>
+      </div>
+    </div>
+
+    <div v-if="g.s.design" class="sheet" ref="designSheetEl" role="dialog" aria-modal="true"
+         aria-labelledby="design-sheet-title">
+      <div class="sheet-hd">
+        <button class="btn btn-sm btn-ghost" @click="g.closeDesign()">&lsaquo; Back</button>
+        <span class="t" id="design-sheet-title">Design a {{ KIND_LABEL[g.s.design.kind] }}</span></div>
+      <div class="sheet-bd">
+        <div class="track"><i class="b"
+          :style="{width:Math.min(100,designPreview.totals.budget/designPreview.fab.budget*100)+'%'}"></i></div>
+        <div class="track-cap"><span>Design budget spent</span>
+          <b>{{ designPreview.totals.budget }} / {{ designPreview.fab.budget }}</b></div>
+
+        <div v-for="ax in designPreview.axes" :key="ax.key" class="dl">
+          <dt>{{ ax.label }}</dt>
+          <dd>{{ designPreview.stats[ax.key] }}
+            <span class="stepper">
+              <button aria-label="Decrease" :disabled="!(g.s.design.picks[ax.key]>0)"
+                      @click="g.bumpDesignPick(ax.key,-1)">&minus;</button>
+              <span class="num">{{ g.s.design.picks[ax.key]||0 }}</span>
+              <button aria-label="Increase" @click="g.bumpDesignPick(ax.key,1)">+</button>
+            </span></dd>
+        </div>
+
+        <div class="dl"><dt>Manufacturing cost</dt><dd>{{ fmt.usd(designPreview.cost.buildCash) }}</dd></div>
+        <div class="dl"><dt>Build time</dt><dd>{{ designPreview.cost.hours }} h</dd></div>
+        <div class="dl"><dt>Price each time it's used to build a rig</dt>
+          <dd>{{ fmt.usd(designPreview.cost.unitPrice) }}</dd></div>
+        <p v-if="g.s.help" class="hint">Every point spent on one axis costs more than the last — the
+          budget is what forces a real choice between axes, not a ceiling you're expected to hit.</p>
+
+        <button class="btn btn-wide btn-pri" style="margin-top:9px"
+                :disabled="g.s.cash<designPreview.cost.buildCash"
+                @click="g.manufacturePart()">Manufacture &middot;
+          {{ fmt.usd(designPreview.cost.buildCash) }}</button>
       </div>
     </div>
   </div>

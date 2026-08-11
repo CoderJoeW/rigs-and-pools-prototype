@@ -10,6 +10,7 @@ import { installTick } from '../game/tick.js';
 import { installInsolvency } from '../game/insolvency.js';
 import { installActions } from '../game/actions.js';
 import { installSites } from '../game/sites.js';
+import { installFab } from '../game/fab.js';
 import { installPools } from '../game/pools.js';
 import { installFleetActions } from '../game/fleetActions.js';
 import { installOnboarding } from '../game/onboarding.js';
@@ -43,6 +44,7 @@ export const useGameStore = defineStore('game', () => {
   installInsolvency(G);
   installActions(G);
   installSites(G);
+  installFab(G);
   installPools(G);
   installFleetActions(G);
   installOnboarding(G);

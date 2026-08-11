@@ -185,4 +185,75 @@ describe('SitesView', () => {
       expect(wrapper.text()).toContain('already at the top tier');
     });
   });
+
+  describe('Designing a custom part', () => {
+    const withBench = g => {
+      const f = g.active;
+      g.s.cash = 1000000;
+      g.chooseFab(f.id, 'fab-bench'); // slots: cool, psu
+      f.queue[0].left = 0.0001;
+      g.stepTick(1);
+    };
+
+    it('the Design a part button only appears once a fab is installed', () => {
+      const { wrapper } = mountWithStore(SitesView);
+      expect(wrapper.findAll('button').some(b => b.text() === 'Design a part')).toBe(false);
+    });
+
+    it('opens a kind chooser limited to what the installed tier supports', async () => {
+      const { wrapper } = mountWithStore(SitesView, { seed: withBench });
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      await toggle.trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
+
+      expect(wrapper.text()).toContain('Cooler');
+      expect(wrapper.text()).toContain('Supply');
+      expect(wrapper.text()).not.toContain('Frame'); // bench fab doesn't unlock frame designs
+    });
+
+    it('picking a kind opens the tuner, and bumping a stepper spends budget and improves the stat', async () => {
+      const { wrapper, store } = mountWithStore(SitesView, { seed: withBench });
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      await toggle.trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Cooler')).trigger('click');
+
+      expect(wrapper.text()).toContain('Design a Cooler');
+      expect(wrapper.text()).toContain('0 / 30'); // nothing spent yet
+
+      const plusBtns = wrapper.findAll('button[aria-label="Increase"]');
+      await plusBtns[0].trigger('click'); // first axis: Cooling factor
+      await wrapper.vm.$nextTick();
+
+      expect(store.s.design.picks[store.DESIGN_AXES.cool[0].key]).toBe(1);
+      expect(wrapper.text()).toContain('/ 30');
+      expect(wrapper.text()).not.toContain('0 / 30'); // some budget is now spent
+    });
+
+    it('manufacturing spends cash, queues a real job, and closes the sheet — completing it makes the part usable', async () => {
+      const { wrapper, store } = mountWithStore(SitesView, { seed: withBench });
+      const f = store.s.sites[0];
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      await toggle.trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Supply')).trigger('click');
+      await wrapper.find('button[aria-label="Increase"]').trigger('click');
+
+      const cashBefore = store.s.cash;
+      await wrapper.find('.btn-pri').trigger('click'); // Manufacture
+
+      expect(store.s.design).toBe(null);
+      expect(wrapper.find('.sheet').exists()).toBe(false);
+      expect(store.s.cash).toBeLessThan(cashBefore);
+      expect(f.queue.some(j => j.kind === 'mfg')).toBe(true);
+
+      const job = f.queue.find(j => j.kind === 'mfg');
+      job.left = 0.0001;
+      store.stepTick(1);
+
+      expect(store.s.customParts).toHaveLength(1);
+      expect(store.s.customParts[0].kind).toBe('psu');
+      expect(store.PART(store.s.customParts[0].id)).toBe(store.s.customParts[0]);
+    });
+  });
 });

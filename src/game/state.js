@@ -79,6 +79,10 @@ export function installState(G){
     // nothing is gated: every mechanic is available from the first minute
     unlocked:new Proxy({},{get:()=>true}),
     picker:null, sitePicker:null, rebuild:null, focusRig:null, saveInfo:'', wipeArm:false,
+    // fab-designed parts (data/customParts.js): finished designs live here,
+    // permanently available in Build's pickers once manufactured; `design`
+    // is the in-progress one, cleared on close/manufacture same as picker
+    customParts:[], design:null,
     catchUp:null,   // {credited,done} seconds while an offline catch-up is running, else null
     shakeAt:0, shakeOn:null,
     onboardingDismissed:false,
