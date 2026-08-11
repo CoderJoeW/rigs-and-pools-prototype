@@ -329,10 +329,10 @@ describe('BuildView', () => {
       // ink fix on this tab (.seg2, .slotcell) happened to have no
       // background-swapping :active rule to collide with; .btn-pri does,
       // so it needs its own override rather than reusing that pattern
-      // blindly. Pinning :active is what press feedback (button.btn:active's
-      // scale transform, main.css) actually verifies — asserting it merely
+      // blindly — press feedback still comes through separately, via
+      // button.btn:active's scale transform. Asserting this rule merely
       // EXISTS would pass on a version that darkens the background back to
-      // the failing state, so this checks the value.
+      // the failing state, so this checks the actual value.
       expect(cssRule('.btn-order.btn-pri:active')).toMatch(/background:\s*var\(--green\)/);
     });
   });
