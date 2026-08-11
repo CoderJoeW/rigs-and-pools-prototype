@@ -1,5 +1,5 @@
 import { C } from '../data/constants.js';
-import { SHELLS, SITEPART } from '../data/site-parts.js';
+import { SHELLS, SITEPART, jobPart } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { fmt } from '../utils/format.js';
 
@@ -36,7 +36,7 @@ export function installSites(G){
     const f=G.site(fid), j=f.queue[idx]; if(!j) return;
     const c=rushCost(j); if(G.s.cash<c) return;
     G.s.cash-=c; G.s.spent+=c; j.left=0.0001;
-    G.say('site','Paid to rush '+SITEPART(j.p).name,'-'+fmt.usd(c),undefined,undefined,-c);
+    G.say('site','Paid to rush '+jobPart(j).name,'-'+fmt.usd(c),undefined,undefined,-c);
   }
   /* ---- site management: grow, rename, or close a site ----
      Founding (newSite) and growing (upgradeShell) used to be the same

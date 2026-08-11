@@ -89,6 +89,26 @@ describe('rush', () => {
     expect(job.left).toBe(leftBefore);
   });
 
+  // a fab job's `p` is a FAB id, not a SITEPART one — rush's feed message
+  // used to look it up in SITEPART regardless of kind, which throws for a fab job
+  it('rushes a queued fab job without throwing, naming it off the fab catalogue', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench');
+    const job = f.queue[0];
+    const cost = g.rushCost(job);
+    const cashBefore = g.s.cash;
+
+    expect(() => g.rush(f.id, 0)).not.toThrow();
+    expect(job.left).toBeLessThan(0.001);
+    expect(g.s.cash).toBeCloseTo(cashBefore - cost, 5);
+
+    g.stepTick(1);
+    expect(f.fab).toBe('fab-bench');
+    expect(g.s.feed.some(e => e.text === 'Paid to rush Bench fab')).toBe(true);
+  });
+
   it('two same-part rushes at different costs collapse into one line with the correct summed total (issue #16)', () => {
     // say() now carries a real signed USD number alongside the display
     // string (issue #16), so a repeat can be collapsed into the feed's

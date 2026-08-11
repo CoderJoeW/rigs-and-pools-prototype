@@ -156,5 +156,29 @@ describe('SitesView', () => {
       // half the bench fab's $150,000 credited toward the $500,000 clean tier
       expect(sheetText).toContain('$75,000 credited');
     });
+
+    it('while a fab job is queued, reads as under construction rather than not installed, and hides the dead Install button', async () => {
+      const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
+      const f = store.s.sites[0];
+      await openFabSection(wrapper);
+      await wrapper.findAll('button').find(b => b.text() === 'Install a fab').trigger('click');
+      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'));
+      await benchRow.trigger('click');
+      expect(f.queue).toHaveLength(1);
+
+      expect(wrapper.text()).toContain('under construction');
+      expect(wrapper.text()).not.toContain('not installed');
+      expect(wrapper.findAll('button').some(b => b.text() === 'Install a fab')).toBe(false);
+    });
+
+    it('once at the top tier, the picker explains there is nothing higher instead of showing an empty sheet', async () => {
+      const { wrapper } = mountWithStore(SitesView, {
+        seed: g => { g.s.cash = 1000000; g.s.sites[0].fab = 'fab-foundry'; },
+      });
+      await openFabSection(wrapper);
+      await wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab').trigger('click');
+
+      expect(wrapper.text()).toContain('already at the top tier');
+    });
   });
 });

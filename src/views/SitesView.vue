@@ -145,6 +145,9 @@ const legend=computed(()=>{
     .map(k=>({ k, n:n[k], label:DOT_LABEL[k] }));
 });
 const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
+// while a fab job is queued, f.fab hasn't moved yet — without this the
+// section would keep reading "not installed" through the entire build
+const fabQueued=computed(()=>f.value.queue.find(j=>j.kind==='fab'));
 
 const pickerSheetEl=ref(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
@@ -361,7 +364,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
     <div class="card">
       <button class="rig-hd" style="width:100%" @click="sec.fab=!sec.fab">
         <span style="flex:1;text-align:left"><span class="nm">Fabrication</span>
-          <div class="sb">{{ f.fab ? g.FAB(f.fab).name : 'not installed' }}</div></span>
+          <div class="sb">{{ f.fab ? g.FAB(f.fab).name : fabQueued ? 'under construction' : 'not installed' }}</div></span>
         <span style="font-size:14px">{{ sec.fab?'−':'+' }}</span></button>
       <div v-if="sec.fab" class="card-bd">
         <template v-if="f.fab">
@@ -373,10 +376,11 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
             pushing one stat further costs more of it the further you push. A bigger fab buys a bigger
             budget and more slot types, not better parts on its own.</p>
         </template>
+        <p v-else-if="fabQueued" class="note">Under construction — see the queue below for progress.</p>
         <p v-else class="note">No fabrication bay here. Installing one is the single biggest bet in
           the game — expensive and slow to build — but it is what lets you design and manufacture
           parts with numbers nothing in any catalogue can match.</p>
-        <button class="btn btn-wide" style="margin-top:9px" @click="g.s.sitePicker='fab'">
+        <button v-if="!fabQueued" class="btn btn-wide" style="margin-top:9px" @click="g.s.sitePicker='fab'">
           {{ f.fab?'Upgrade the fab':'Install a fab' }}</button>
       </div>
     </div>
@@ -409,8 +413,6 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
                  :rows="shellRows" :pick="chooseShell" />
         <Compare v-else-if="g.s.sitePicker==='expand'" title="Cheapest first" metric="cost"
                  :rows="expandRows" :pick="chooseExpand" />
-        <p v-if="g.s.sitePicker==='expand'&&!expandRows.length" class="note">
-          {{ f.name }} is already at the largest shell there is.</p>
         <Compare v-else-if="g.s.sitePicker==='source'" title="Cheapest first" metric="cost"
                  :rows="sourceRows" :pick="chooseSrc" />
         <Compare v-else-if="g.s.sitePicker==='storage'" title="Cheapest first" metric="cost"
@@ -418,6 +420,16 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <Compare v-else-if="g.s.sitePicker==='fab'" title="Cheapest first" metric="cost"
                  :rows="fabRows" :pick="chooseFabPick" />
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
+        <!-- kept outside the v-if/else-if chain above on purpose: a plain
+             element with its own v-if between two v-else-if links would
+             split that chain in two, and the second half's final v-else
+             (plants) would then fire for every picker that isn't its own
+             branch — the same bug that briefly existed here when the expand
+             note lived inline between two Compare elements. -->
+        <p v-if="g.s.sitePicker==='expand'&&!expandRows.length" class="note">
+          {{ f.name }} is already at the largest shell there is.</p>
+        <p v-if="g.s.sitePicker==='fab'&&!fabRows.length" class="note">
+          {{ f.name }}'s fab is already at the top tier.</p>
         <p v-if="g.s.sitePicker==='expand'" class="hint" style="padding:0 2px">Only shells bigger than
           {{ f.name }}'s current one are listed. Half the old shell's price is credited toward the new
           one, and everything at the site — rigs, power, cooling — keeps running through the build.</p>
