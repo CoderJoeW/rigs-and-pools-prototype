@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
+import { fmt } from './utils/format.js';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
 import WelcomeTour from './components/WelcomeTour.vue';
@@ -113,8 +114,18 @@ watch(()=>g.s.toast.n, ()=>{
 let timer=null, saver=null;
 const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
 const onLeave=()=>g.saveNow();
+/* loadSave() now yields periodically during a long offline catch-up (see
+   persistence.js) rather than running as one blocking synchronous task, so
+   the tab stays responsive — but Vue still mounts and paints the DEFAULT
+   state on the very first frame regardless, since loadSave hasn't resolved
+   yet. Without this flag that shows as a flash of a fresh $500 start
+   before the real save (and its catch-up) lands on top of it a moment
+   later. `booting` covers that gap with a loading screen instead, and
+   doubles as the catch-up progress display once g.s.catchUp is set. */
+const booting=ref(true);
 onMounted(async ()=>{
   await g.loadSave();                       // resume first, then start the clock
+  booting.value=false;
   timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);
   saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);
   g.saveNow();
@@ -140,6 +151,19 @@ const allTabs=[
 </script>
 
 <template>
+  <div v-if="booting" class="boot" role="status" aria-live="polite">
+    <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
+      <circle cx="12" cy="12" r="2.5"/></svg></span>
+    <template v-if="g.s.catchUp">
+      <p>Catching up on {{ fmt.dur(g.s.catchUp.credited) }} away&hellip;</p>
+      <span class="cd-bar">
+        <i :style="{width:(g.s.catchUp.done/g.s.catchUp.credited*100).toFixed(0)+'%'}"></i></span>
+    </template>
+    <p v-else>Loading&hellip;</p>
+  </div>
+  <template v-else>
   <div class="ambient" aria-hidden="true"></div>
   <TopBar />
   <OnboardingBanner />
@@ -158,4 +182,5 @@ const allTabs=[
   <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n"
        :role="g.s.toast.cls==='dark'?'alert':'status'" aria-live="polite" aria-atomic="true">
     <span>{{ g.s.toast.text }}</span><span class="num">{{ g.s.toast.amount }}</span></div>
+  </template>
 </template>

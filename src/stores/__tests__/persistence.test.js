@@ -208,6 +208,76 @@ describe('offline catch-up', () => {
     expect(g2.s.feed.some(e => e.text.startsWith('Away '))).toBe(true);
   });
 
+  it('yields to the event loop during a long catch-up instead of blocking it synchronously', async () => {
+    // A 24h catch-up is ~2,880 chunks — run as one tight synchronous loop
+    // (the shape this used to be) that's several real seconds of a fully
+    // frozen tab: no paint, no input, nothing to show it's "fast-forwarding"
+    // rather than just hung. Draining only MICROtasks (Promise.resolve(),
+    // not a real timer) proves the difference precisely: a synchronous
+    // implementation wrapped in `async function` still settles once its
+    // microtask queue drains, with no real macrotask boundary crossed —
+    // only a genuine `setTimeout`-based yield can make the promise still be
+    // pending after that. This is deterministic, not a timing guess — BUT
+    // the margin matters: loadSave -> storage.get -> hydrate -> hydrateUnsafe
+    // -> advance is several async layers deep, and each layer's `await` on
+    // an already-settled value still costs one microtask tick on its own.
+    // Measured: a fully synchronous 4-layer chain like that one resolves
+    // within 4 flushes flat. 200 is a wide enough margin above any plausible
+    // nesting depth that it can't produce that false pass, while a genuine
+    // setTimeout-based yield is still unreachable no matter how many
+    // microtask flushes run — only a real macrotask boundary crosses it.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    let resolved = false;
+    const done = g2.loadSave().then(() => { resolved = true; });
+    for (let i = 0; i < 200; i++) await Promise.resolve();
+    expect(resolved).toBe(false); // still mid-flight — it actually yielded
+    await done;
+    expect(resolved).toBe(true);
+  });
+
+  it('surfaces live progress on s.catchUp while running, and clears it when done', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    expect(g2.s.catchUp).toBe(null);
+    const donePromise = g2.loadSave();
+
+    // the object is assigned before the loop's first possible yield, so it
+    // appears after only a few microtask ticks — poll rather than assume an
+    // exact count, but bounded, so a real regression still fails loudly
+    // instead of hanging
+    let seen = null;
+    for (let i = 0; i < 50 && !seen; i++) {
+      if (g2.s.catchUp) seen = { ...g2.s.catchUp };
+      else await Promise.resolve();
+    }
+    expect(seen).not.toBe(null);
+    expect(seen.credited).toBeCloseTo(86400, 0); // capped, same as the dedicated cap test
+    expect(seen.done).toBeGreaterThanOrEqual(0);
+    expect(seen.done).toBeLessThanOrEqual(seen.credited);
+
+    await donePromise;
+    expect(g2.s.catchUp).toBe(null); // cleared once the real work is done
+  });
+
   it('does not fast-forward for a short absence', async () => {
     const g1 = freshStore();
     g1.generatePreset();

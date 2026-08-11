@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountWithStore } from '../test/mountWithStore.js';
+import { freshStore } from '../test/testStore.js';
 import App from '../App.vue';
 
 /* App.vue's onMounted is async (it awaits loadSave() before starting the
@@ -14,6 +15,11 @@ beforeEach(() => {
   // sync at runtime; the test document needs it present to have something
   // to sync into, the same way the real page does.
   document.head.insertAdjacentHTML('beforeend', '<meta name="theme-color" content="#F7F6F1">');
+  // most of these tests mount App against a fresh, save-less store — a
+  // save left in real localStorage by a test that writes one (the catch-up
+  // coverage below) would otherwise leak into whichever test runs next and
+  // have App boot from IT instead of a blank slate.
+  try { localStorage.clear(); } catch (e) {}
 });
 afterEach(async () => {
   await flushPromises();
@@ -32,6 +38,58 @@ describe('App', () => {
     expect(wrapper.text()).toContain('Rigs & Pools');
     expect(wrapper.text()).toContain('Nothing installed'); // FarmView is the default tab
     expect(wrapper.findAll('nav.tabs .tab')).toHaveLength(7);
+  });
+
+  it('shows a loading screen instead of a flash of default state before loadSave resolves', () => {
+    // Vue paints the DEFAULT state on the very first frame regardless —
+    // loadSave() hasn't resolved yet at that point. Without booting gating
+    // the real UI, that shows as a flash of a fresh $500 start even for a
+    // returning player, a beat before the real save lands on top of it.
+    const { wrapper } = mountWithStore(App);
+    mounted.push(wrapper);
+    // deliberately NOT flushed yet — this is the exact gap being covered
+    expect(wrapper.find('.boot').exists()).toBe(true);
+    expect(wrapper.find('nav.tabs').exists()).toBe(false); // the real shell isn't there yet either
+  });
+
+  it('replaces the loading screen with the real app once loadSave resolves', async () => {
+    const { wrapper } = mountWithStore(App);
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(wrapper.find('.boot').exists()).toBe(false);
+    expect(wrapper.find('nav.tabs').exists()).toBe(true);
+  });
+
+  it('shows live catch-up progress on the loading screen during a long offline return', async () => {
+    // seeded in real localStorage BEFORE mounting, so App's own onMounted
+    // finds it via the normal loadSave() path — same as a real returning
+    // player, not a shortcut around the mechanism being tested.
+    const seed = freshStore();
+    seed.generatePreset();
+    seed.build();
+    for (let i = 0; i < 60; i++) seed.stepTick(60);
+    await seed.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const { wrapper, store } = mountWithStore(App);
+    mounted.push(wrapper);
+
+    // give it a couple of real chunks to run, then check the loading
+    // screen actually reflects progress rather than sitting inert
+    await new Promise(r => setTimeout(r, 20));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.boot').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Catching up on');
+    expect(wrapper.find('.boot .cd-bar i').exists()).toBe(true);
+
+    // let the real catch-up finish (real seconds — same cost as the
+    // dedicated persistence.test.js coverage of the same 24h path) so
+    // nothing is left mid-flight when afterEach unmounts
+    while (store.s.catchUp) await new Promise(r => setTimeout(r, 50));
+    await flushPromises();
+    expect(wrapper.find('.boot').exists()).toBe(false);
   });
 
   it('a brand-new player sees the walkthrough tour over the empty farm', async () => {

@@ -26,11 +26,21 @@ export function installPersistence(G){
     const mode=await storage.set({ ver:C.SAVE_VER, savedAt:Date.now(), state:G.s });
     G.s.saveInfo = mode==='memory' ? 'not saved — no storage here' : 'saved · '+mode;
   }
+  const nowMs = ()=> typeof performance==='object'&&performance.now ? performance.now() : Date.now();
   /* Offline catch-up runs the REAL engine in 30-second chunks — solar cycles,
      wear, construction, pool settlement and block windows all simulate — so a
      return is a fast-forward of the same game, not a formula. Capped at one
-     real day; the exact-arrival block model keeps chunked time accurate. */
-  function advance(seconds){
+     real day; the exact-arrival block model keeps chunked time accurate.
+
+     A full 24h catch-up is ~2,880 of those chunks — measured at several
+     real seconds of CPU work, run as one synchronous loop it used to be a
+     multi-second frozen tab: no paint, no input, nothing to show it was
+     "fast-forwarding" rather than just hung. Yielding back to the browser
+     roughly every 50ms of real work (a MACROtask via setTimeout, not a
+     microtask — only a macrotask boundary lets the browser actually paint
+     or handle input) keeps the page responsive, and G.s.catchUp gives the
+     UI a live number to show while it waits instead of a blank stretch. */
+  async function advance(seconds){
     const credited=Math.min(seconds, C.OFFLINE_CAP);
     restoring=true;
     /* Issue #46: catch-up replays up to a day of blocks in a couple of
@@ -41,16 +51,26 @@ export function installPersistence(G){
        but an IMPORTED save runs this same path long after the player has
        clicked, and that is where it would be heard. */
     sfx.busy=true;
-    let left=credited;
-    while(left>0){ const step=Math.min(30,left); G.stepTick(step); left-=step; }
+    G.s.catchUp={ credited, done:0 };
+    let left=credited, sliceStart=nowMs();
+    while(left>0){
+      const step=Math.min(30,left);
+      G.stepTick(step); left-=step;
+      G.s.catchUp.done=credited-left;
+      if(nowMs()-sliceStart>50){
+        await new Promise(r=>setTimeout(r,0));
+        sliceStart=nowMs();
+      }
+    }
     sfx.busy=false;
     restoring=false;
+    G.s.catchUp=null;
     return credited;
   }
   async function loadSave(){
     const data=await storage.get();
     if(!data || data.ver!==C.SAVE_VER) return false;
-    return hydrate(data);
+    return await hydrate(data);
   }
   /* Shared by loadSave (from storage) and importSave (from a picked file) —
      a backup is just a save payload that arrived by a different door, so it
@@ -60,20 +80,22 @@ export function installPersistence(G){
      backup file) must never brick the app on load. Falling back to a fresh
      game beats a blank screen — the same choice loadSave already makes for
      a bare version mismatch, just widened to cover mid-migration crashes. */
-  function hydrate(data){
-    try{ return hydrateUnsafe(data); }
+  async function hydrate(data){
+    try{ return await hydrateUnsafe(data); }
     catch(e){
       restoring=false;
+      G.s.catchUp=null;
       console.warn('save failed to load, starting fresh:', e.message);
       resetState();
       G.pop('Save could not be read','starting a fresh game','dark',{always:true});
       return false;
     }
   }
-  function hydrateUnsafe(data){
+  async function hydrateUnsafe(data){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
+    G.s.catchUp=null;   // a save mid-catch-up (shouldn't happen, but not persisted state anyway)
     G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
     G.s.unlocked=new Proxy({},{get:()=>true});   // a Proxy cannot survive JSON
     // v30 and earlier: assignment lived on the rig. Synthesize groups from the
@@ -174,7 +196,7 @@ export function installPersistence(G){
     const away=Math.max(0,(Date.now()-data.savedAt)/1000);
     if(away>60 && G.s.rigs.length){
       const cashBefore=G.s.cash, coinsBefore=G.walletUsd.value;
-      const credited=advance(away);
+      const credited=await advance(away);
       const gain=(G.s.cash-cashBefore)+(G.walletUsd.value-coinsBefore);
       const hrs=(credited/3600);
       G.pop('Welcome back','+'+fmt.usd(Math.max(0,gain))+' while away '+
@@ -214,7 +236,7 @@ export function installPersistence(G){
     let data;
     try{ data=JSON.parse(text); }catch(e){ return false; }
     if(!data || typeof data!=='object' || data.ver!==C.SAVE_VER || !data.state) return false;
-    const ok=hydrate(data);
+    const ok=await hydrate(data);
     if(ok) await saveNow();
     return ok;
   }
