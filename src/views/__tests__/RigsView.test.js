@@ -53,10 +53,13 @@ describe('RigsView', () => {
     });
     await wrapper.find('.rigrow').trigger('click');
     await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
-    const labels = wrapper.findAll('.pickrow .lab').map(l => l.text());
-    expect(labels).toContain('Cards');
-    expect(labels).toContain('Quantity');
-    expect(new Set(labels).size).toBe(labels.length);
+    // scoped to the open sheet, and anchored per-row (not just "the set of
+    // labels is distinct") so a swap that left the model picker headed
+    // Count and the stepper headed Cards would still fail this
+    const stepperRow = wrapper.findAll('.sheet .pickrow').find(r => r.find('.stepper').exists());
+    const modelRow = wrapper.findAll('.sheet button.pickrow').find(r => r.text().includes('MH/W'));
+    expect(stepperRow.find('.lab').text()).toBe('Count');
+    expect(modelRow.find('.lab').text()).toBe('Cards');
   });
 
   it('the rebuild planner\'s card-count stepper disables at its bounds instead of silently clamping', async () => {

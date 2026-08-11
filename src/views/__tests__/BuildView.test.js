@@ -25,19 +25,23 @@ describe('BuildView', () => {
   it('labels the card-model picker and the card-count stepper differently, since they used to both say "Cards"', async () => {
     // one row picks WHICH card, the other picks HOW MANY — identical
     // headers on two adjacent rows made it look like one was a redundant
-    // duplicate of the other rather than two different controls.
+    // duplicate of the other rather than two different controls. Anchored
+    // to each row specifically (not just "the set of labels is distinct")
+    // so a future edit that swapped the two labels — leaving the model
+    // picker headed "Count" and the stepper headed "Cards" — would fail
+    // this the same way it would have failed the original bug report.
     const { wrapper } = mountWithStore(BuildView);
     await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-    const labels = wrapper.findAll('.pickrow .lab').map(l => l.text());
-    expect(labels).toContain('Cards');
-    expect(labels).toContain('Quantity');
-    expect(new Set(labels).size).toBe(labels.length); // no two rows share a label
+    const stepperRow = wrapper.findAll('.pickrow').find(r => r.find('.stepper').exists());
+    const modelRow = wrapper.findAll('button.pickrow').find(r => r.text().includes('MH/W'));
+    expect(stepperRow.find('.lab').text()).toBe('Count');
+    expect(modelRow.find('.lab').text()).toBe('Cards');
   });
 
   it('marks each part-picker row as opening a dialog, for assistive tech that announces it before activation', async () => {
     const { wrapper } = mountWithStore(BuildView);
     await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-    // .pickrow also matches the Quantity stepper row, a plain (non-button)
+    // .pickrow also matches the Count stepper row, a plain (non-button)
     // div that doesn't open anything — scope to the actual picker buttons
     const pickrows = wrapper.findAll('button.pickrow');
     expect(pickrows.length).toBe(5); // frame, mobo, cool, psu, unit

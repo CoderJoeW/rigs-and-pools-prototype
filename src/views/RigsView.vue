@@ -595,7 +595,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                 <span v-if="fl.changed" class="tag b" style="margin-left:5px">CHANGED</span></div>
                 <div class="s">{{ fl.sub }}</div></span>
               <span class="ch">&rsaquo;</span></button>
-            <div class="pickrow"><span class="lab">Quantity</span>
+            <div class="pickrow"><span class="lab">Count</span>
               <span class="val"><div class="n">{{ rbD.n }} × {{ g.PART(rbD.unit).name }}
                 <span v-if="rbD.n!==rbRig.units.length" class="tag b" style="margin-left:5px">
                   {{ rbD.n>rbRig.units.length?'+':'' }}{{ rbD.n-rbRig.units.length }}</span></div>
