@@ -53,9 +53,24 @@ const expandRows=computed(()=>{
       locked:g.s.cash<cost };
   });
 });
+/* Same shape as expandRows: fab tiers only ever grow, and half the current
+   tier's price is credited toward the next one. Unlike shells there's no
+   from-nothing floor row missing here — FABS has no free tier, since the
+   whole point is that this is the single biggest bet in the game. */
+const fabRows=computed(()=>{
+  const cur=f.value.fab?g.FAB(f.value.fab):null;
+  return g.FABS.filter(p=>!cur||p.tier>cur.tier).map(p=>{
+    const credit=cur?Math.round(cur.price*0.5):0, cost=Math.max(0,p.price-credit);
+    return { id:p.id, name:p.name,
+      sub:p.slots.join(', ')+' · '+p.budget+' design budget · '+p.hours+' h to build',
+      value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'',
+      locked:g.s.cash<cost };
+  });
+});
 const chooseSrc=id=>{ g.addSitePart(f.value.id,id,'source'); g.s.sitePicker=null; };
 const choosePlant=id=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=null; };
 const chooseShell=id=>{ g.newSite(id); g.s.sitePicker=null; };
+const chooseFabPick=id=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
 const chooseExpand=id=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
 const renameDraft=ref('');
 const renameOpen=ref(false);
@@ -71,7 +86,7 @@ const decommission=()=>{
 };
 // the site page had grown to one very long scroll; each section now folds
 // behind a summary line, with the dashboard at the top always visible
-const sec=reactive({power:false,batt:false,cool:false});
+const sec=reactive({power:false,batt:false,cool:false,fab:false});
 const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
   rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
 const segs=(parts,total)=>parts.map(([k,w])=>({k,w,
@@ -343,11 +358,34 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
       </div>
     </div>
 
+    <div class="card">
+      <button class="rig-hd" style="width:100%" @click="sec.fab=!sec.fab">
+        <span style="flex:1;text-align:left"><span class="nm">Fabrication</span>
+          <div class="sb">{{ f.fab ? g.FAB(f.fab).name : 'not installed' }}</div></span>
+        <span style="font-size:14px">{{ sec.fab?'−':'+' }}</span></button>
+      <div v-if="sec.fab" class="card-bd">
+        <template v-if="f.fab">
+          <div class="dl"><dt>Tier</dt><dd>{{ g.FAB(f.fab).tier }} of {{ g.FABS.length }}</dd></div>
+          <div class="dl"><dt>Design budget</dt><dd>{{ g.FAB(f.fab).budget }}</dd></div>
+          <div class="dl"><dt>Can manufacture</dt><dd style="text-transform:capitalize">
+            {{ g.FAB(f.fab).slots.join(', ') }}</dd></div>
+          <p v-if="g.s.help" class="hint">The design budget is what a custom part's tuning can spend —
+            pushing one stat further costs more of it the further you push. A bigger fab buys a bigger
+            budget and more slot types, not better parts on its own.</p>
+        </template>
+        <p v-else class="note">No fabrication bay here. Installing one is the single biggest bet in
+          the game — expensive and slow to build — but it is what lets you design and manufacture
+          parts with numbers nothing in any catalogue can match.</p>
+        <button class="btn btn-wide" style="margin-top:9px" @click="g.s.sitePicker='fab'">
+          {{ f.fab?'Upgrade the fab':'Install a fab' }}</button>
+      </div>
+    </div>
+
     <div v-if="f.queue.length" class="card">
       <div class="card-hd"><span class="eyebrow">Under construction</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="rowline">
-          <span style="flex:1;min-width:0"><span class="nm">{{ g.SITEPART(j.p).name }}</span>
+          <span style="flex:1;min-width:0"><span class="nm">{{ j.kind==='fab'?g.FAB(j.p).name:g.SITEPART(j.p).name }}</span>
             <div class="sb">{{ j.left.toFixed(1) }} h remaining of {{ j.total }}</div>
             <div class="track" style="margin:6px 0 0"><i class="b"
               :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></div></span>
@@ -364,7 +402,8 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="t" id="site-picker-title">{{ g.s.sitePicker==='shell'?'New site':
           g.s.sitePicker==='expand'?'Expand '+f.name:
           g.s.sitePicker==='source'?'Power sources':
-          g.s.sitePicker==='storage'?'Batteries':'Cooling' }}</span></div>
+          g.s.sitePicker==='storage'?'Batteries':
+          g.s.sitePicker==='fab'?(f.fab?'Upgrade the fab':'Install a fab'):'Cooling' }}</span></div>
       <div class="sheet-bd">
         <Compare v-if="g.s.sitePicker==='shell'" title="Cheapest first" metric="cost"
                  :rows="shellRows" :pick="chooseShell" />
@@ -376,10 +415,15 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
                  :rows="sourceRows" :pick="chooseSrc" />
         <Compare v-else-if="g.s.sitePicker==='storage'" title="Cheapest first" metric="cost"
                  :rows="storageRows" :pick="chooseStorage" />
+        <Compare v-else-if="g.s.sitePicker==='fab'" title="Cheapest first" metric="cost"
+                 :rows="fabRows" :pick="chooseFabPick" />
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
         <p v-if="g.s.sitePicker==='expand'" class="hint" style="padding:0 2px">Only shells bigger than
           {{ f.name }}'s current one are listed. Half the old shell's price is credited toward the new
           one, and everything at the site — rigs, power, cooling — keeps running through the build.</p>
+        <p v-else-if="g.s.sitePicker==='fab'" class="hint" style="padding:0 2px">Only tiers bigger than
+          the current one are listed. Half the old fab's price is credited toward the new one.
+          Construction takes real hours, same as everything else here — you can pay again to rush it.</p>
         <p v-else class="hint" style="padding:0 2px">Construction starts as soon as you pay, and takes
           real hours. You can pay again to rush it.</p>
       </div>

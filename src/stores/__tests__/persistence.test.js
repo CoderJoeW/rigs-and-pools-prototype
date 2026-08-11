@@ -72,6 +72,23 @@ describe('saveNow / loadSave round trip', () => {
     expect(g2.s.today.blocks).toBeGreaterThan(0);
   });
 
+  it('a save from before the fab feature existed gets fab:null, not left undefined', async () => {
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    delete raw.state.sites[0].fab; // the pre-fab shape
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    // null specifically, not merely falsy — chooseFab and the SitesView
+    // template both branch on `f.fab ? ... : ...`, which undefined also
+    // satisfies, but g.FAB(undefined) elsewhere would silently return
+    // undefined too rather than the loud failure a real bug deserves
+    expect(g2.s.sites[0].fab).toBe(null);
+  });
+
   it('a save with a malformed recentBlockUsd field is repaired, not left broken', async () => {
     // NOT the today.blocks trap: recentBlockUsd is a plain top-level key, so
     // a save that's simply MISSING it (any save from before this field

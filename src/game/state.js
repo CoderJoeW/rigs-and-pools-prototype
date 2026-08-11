@@ -58,7 +58,7 @@ export function installState(G){
        holds one PPLNS window — so maintenance on a rig never forfeits it. */
     groups:[{ id:1, name:'Main', chain:'tessera', pool:'solo', pending:0 }],
     nextGroup:2,
-    sites:[{ id:1, name:'Spare bedroom', shell:'bedroom',
+    sites:[{ id:1, name:'Spare bedroom', shell:'bedroom', fab:null,
       sources:[{p:'s-dom',n:1}], plants:[{p:'p-open',n:1}], storage:[], batt:0,
       gridCharge:false, disAny:false, queue:[], wind:0.5 }],
     nextSite:2, activeSite:1,

@@ -87,4 +87,74 @@ describe('SitesView', () => {
     expect(store.s.focusRig).toBe(store.s.rigs[0].id);
     expect(store.s.tab).toBe('rigs');
   });
+
+  describe('Fabrication', () => {
+    const openFabSection = async wrapper => {
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      await toggle.trigger('click');
+    };
+
+    it('shows not-installed by default, before expanding', () => {
+      const { wrapper } = mountWithStore(SitesView);
+      expect(wrapper.text()).toContain('Fabrication');
+      expect(wrapper.text()).toContain('not installed');
+    });
+
+    it('expanding shows the pitch and an Install button, and opens the tier picker', async () => {
+      const { wrapper } = mountWithStore(SitesView);
+      await openFabSection(wrapper);
+      expect(wrapper.text()).toContain('single biggest bet in the game');
+      const installBtn = wrapper.findAll('button').find(b => b.text() === 'Install a fab');
+      expect(installBtn.exists()).toBe(true);
+
+      await installBtn.trigger('click');
+      expect(wrapper.find('.sheet').exists()).toBe(true);
+      expect(wrapper.text()).toContain('Bench fab');
+      expect(wrapper.text()).toContain('Cleanroom fab');
+      expect(wrapper.text()).toContain('Silicon foundry');
+    });
+
+    it('picking a tier queues it, and finishing construction shows the installed tier\'s details', async () => {
+      const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
+      const f = store.s.sites[0];
+      await openFabSection(wrapper);
+      await wrapper.findAll('button').find(b => b.text() === 'Install a fab').trigger('click');
+      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'));
+      await benchRow.trigger('click');
+
+      expect(f.queue).toHaveLength(1);
+      expect(f.fab).toBe(null);
+
+      // same rush-style shortcut the store tests use — a fab's real build
+      // time is hours too long to loop stepTick to in a test
+      f.queue[0].left = 0.0001;
+      store.stepTick(1);
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.text()).toContain('Bench fab');
+      expect(wrapper.text()).not.toContain('not installed');
+      expect(wrapper.text()).toContain('1 of 3'); // tier
+      expect(wrapper.text()).toContain('30'); // design budget
+    });
+
+    it('once installed, the action becomes Upgrade and the picker only offers strictly higher tiers', async () => {
+      const { wrapper, store } = mountWithStore(SitesView, {
+        seed: g => { g.s.cash = 1000000; g.s.sites[0].fab = 'fab-bench'; },
+      });
+      await openFabSection(wrapper);
+      const upgradeBtn = wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab');
+      expect(upgradeBtn.exists()).toBe(true);
+      expect(wrapper.findAll('button').some(b => b.text() === 'Install a fab')).toBe(false);
+
+      await upgradeBtn.trigger('click');
+      // the fab section header legitimately still shows the current tier's
+      // name behind the sheet — only the picker's own offered rows matter here
+      const sheetText = wrapper.find('.sheet').text();
+      expect(sheetText).not.toContain('Bench fab'); // the current tier isn't offered again
+      expect(sheetText).toContain('Cleanroom fab');
+      expect(sheetText).toContain('Silicon foundry');
+      // half the bench fab's $150,000 credited toward the $500,000 clean tier
+      expect(sheetText).toContain('$75,000 credited');
+    });
+  });
 });

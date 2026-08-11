@@ -1,5 +1,6 @@
 import { C, TX_FEES, SIM_GROWTH, CONN_Q, BLOCK_K, RETARGET } from '../data/constants.js';
 import { SITEPART } from '../data/site-parts.js';
+import { FAB } from '../data/fab.js';
 import { PART } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
@@ -26,12 +27,14 @@ export function installTick(G){
         const j=f.queue[i]; j.left-=hrs;
         if(j.left<=0){
           f.queue.splice(i,1);
-          if(j.kind==='shell'){ f.shell=j.p; G.say('site',f.name+' expanded to '+SITEPART(j.p).name); }
-          else if(j.kind==='source'){ addTo(f.sources,j.p); G.say('site',SITEPART(j.p).name+' online at '+f.name); }
+          let name;
+          if(j.kind==='shell'){ f.shell=j.p; name=SITEPART(j.p).name; G.say('site',f.name+' expanded to '+name); }
+          else if(j.kind==='source'){ addTo(f.sources,j.p); name=SITEPART(j.p).name; G.say('site',name+' online at '+f.name); }
           else if(j.kind==='storage'){ addTo(f.storage=f.storage||[],j.p);
-            G.say('site',SITEPART(j.p).name+' online at '+f.name); }
-          else { addTo(f.plants,j.p); G.say('site',SITEPART(j.p).name+' online at '+f.name); }
-          G.pop('Construction finished',SITEPART(j.p).name,'blu',{kind:'construction'});
+            name=SITEPART(j.p).name; G.say('site',name+' online at '+f.name); }
+          else if(j.kind==='fab'){ f.fab=j.p; name=FAB(j.p).name; G.say('site',f.name+"'s fab is now "+name); }
+          else { addTo(f.plants,j.p); name=SITEPART(j.p).name; G.say('site',name+' online at '+f.name); }
+          G.pop('Construction finished',name,'blu',{kind:'construction'});
         }
       }
       // wind wanders around today's weather level
