@@ -305,6 +305,43 @@ describe('BuildView', () => {
       await nextTick();
       expect(wrapper.text()).toContain(fmt.usd(costAfter));
     });
+
+    it('in Quick pick, hides the itemized pass/fail checks — generatePreset already guarantees they all pass', () => {
+      // showing six green checkmarks confirming what tapping Quick pick
+      // already promised is exactly the clutter this split exists to cut;
+      // the itemized list earns its place once a player is actually
+      // troubleshooting a combination in Customise
+      const { wrapper, store } = mountWithStore(BuildView);
+      expect(store.canBuild).toBe(true); // the mounted preset always clears the gate
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+      expect(wrapper.text()).not.toContain('MH/W');
+      expect(wrapper.text()).not.toContain('Site impact');
+    });
+
+    it('in Customise, shows every check — the itemized view a player troubleshooting a bad combo actually needs', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(store.checks.length);
+      expect(wrapper.text()).toContain('MH/W');
+      expect(wrapper.text()).toContain('Site impact');
+    });
+
+    it('a note (e.g. the new-miner premium) still shows in Quick pick — it\'s context, not a gate diagnostic', () => {
+      // a brand-new game's chain has no rigs on it yet, so it's below its
+      // floor and the subsidy note is live on the default mounted preset
+      // with no setup needed — see buildDraft.js's own comment on issue #6
+      const { wrapper } = mountWithStore(BuildView);
+      expect(wrapper.text()).toContain('paying a new-miner premium');
+    });
+
+    it('switching modes swaps the verdict shape live, without a remount', async () => {
+      const { wrapper } = mountWithStore(BuildView);
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no').length).toBeGreaterThan(0);
+      await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+    });
   });
 
   describe('the Order-parts button', () => {

@@ -199,15 +199,37 @@ watch(()=> draftKey.value+'|'+gateKey.value, ()=>{
     ? 'Ready to order for '+fmt.usd(g.dp.cost)+'.'
     : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
 }, { immediate:true });
+/* Quick pick only ever lands on a combination generatePreset() already ran
+   the FULL canBuild gate against — every check here is guaranteed to pass
+   the moment a preset exists at all (the "nothing fits" case above is its
+   own message, not a failing checklist). Showing all six pass/fail rows,
+   MH/W, and site draw on top of that would be a wall of green checkmarks
+   confirming what the player already asked for by tapping Quick pick — the
+   itemized troubleshooting view earns its place in Customise, where a
+   player IS actively working out what to fix. Notes (ceiling/subsidy) stay
+   in both: those are context about the chain, not gate diagnostics. */
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
+  const notes=[ceilingNote.value,subsidyNote.value].filter(Boolean);
+  if(mode.value==='preset'){
+    return [
+      { t:'Cost & payback',
+        rows:[ {k:'Parts', v:fmt.usd(costShown.value)},
+               {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
+               {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ],
+        checks:[], notes },
+      { t:'Hashrate',
+        rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)} ],
+        checks:[] },
+    ];
+  }
   return [
     { t:'Cost & payback',
       rows:[ {k:'Parts', v:fmt.usd(costShown.value)},
              {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
              {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ],
-      checks:[c[5]], notes:[ceilingNote.value,subsidyNote.value].filter(Boolean) },
+      checks:[c[5]], notes },
     { t:'Hashrate & MH/W',
       rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)},
              {k:'MH/W', v:effShown.value.toFixed(3)} ],
