@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountWithStore } from '../test/mountWithStore.js';
 import { freshStore } from '../test/testStore.js';
+import { cssRule } from '../test/cssRule.js';
 import App from '../App.vue';
 
 /* App.vue's onMounted is async (it awaits loadSave() before starting the
@@ -90,6 +91,24 @@ describe('App', () => {
     while (store.s.catchUp) await new Promise(r => setTimeout(r, 50));
     await flushPromises();
     expect(wrapper.find('.boot').exists()).toBe(false);
+  });
+
+  it('pins the overlay covering the whole screen during any catch-up, not just the loading one', () => {
+    // jsdom doesn't do real hit-testing by z-index/position, so a click
+    // dispatched at the "Restore from backup" button would fire its
+    // handler regardless of what's visually on top of it — the CSS is
+    // what actually blocks it in a real browser. This is also the
+    // practical half of the fix for a real bug: two overlapping catch-ups
+    // corrupt each other (see persistence.js's `hydrating` guard), and the
+    // button that starts one is unreachable while this overlay covers it.
+    const rule = cssRule('.boot');
+    expect(rule).toMatch(/position:\s*fixed/);
+    expect(rule).toMatch(/inset:\s*0/);
+    // higher than every other layered element in the app (.sheet 80,
+    // .tour-spot 70, .toast 60, .rankflash 55) — the highest, not merely
+    // "high enough for today's other layers"
+    const z = Number(rule.match(/z-index:\s*(\d+)/)?.[1]);
+    expect(z).toBeGreaterThanOrEqual(100);
   });
 
   it('a brand-new player sees the walkthrough tour over the empty farm', async () => {

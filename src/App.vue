@@ -120,14 +120,26 @@ const onLeave=()=>g.saveNow();
    state on the very first frame regardless, since loadSave hasn't resolved
    yet. Without this flag that shows as a flash of a fresh $500 start
    before the real save (and its catch-up) lands on top of it a moment
-   later. `booting` covers that gap with a loading screen instead, and
-   doubles as the catch-up progress display once g.s.catchUp is set. */
+   later. `booting` covers that gap with a loading screen instead.
+
+   The catch-up progress display itself (bound to g.s.catchUp in the
+   template) is deliberately NOT nested inside this flag's branch, only
+   guarded by g.s.catchUp being set on its own — a catch-up also runs on
+   MarketView's "Restore from backup" import, well after boot, with the
+   rest of the app fully mounted and interactive around it. Rendered as a
+   full-screen overlay there, it doubles as the fix for a real bug: two
+   overlapping catch-ups collide and corrupt each other (see the
+   `hydrating` guard in persistence.js) — the button that starts one is
+   behind this overlay the instant one is running, so a second click
+   during the first import's catch-up can no longer reach it. */
 const booting=ref(true);
+const catchUpPct=computed(()=> g.s.catchUp
+  ? Math.round(g.s.catchUp.done/g.s.catchUp.credited*100) : 0);
 onMounted(async ()=>{
-  await g.loadSave();                       // resume first, then start the clock
-  booting.value=false;
-  timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);
-  saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);
+  try{ await g.loadSave(); }                // resume first, then start the clock
+  finally{ booting.value=false; }           // unconditional — a loadSave() that somehow
+  timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);   // rejected must not strand the app on
+  saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000); // this loading screen forever
   g.saveNow();
   window.addEventListener('pagehide',onLeave);
   document.addEventListener('visibilitychange',onHide);
@@ -151,19 +163,19 @@ const allTabs=[
 </script>
 
 <template>
-  <div v-if="booting" class="boot" role="status" aria-live="polite">
+  <div v-if="booting || g.s.catchUp" class="boot" role="status" aria-live="polite">
     <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24">
       <rect x="4" y="4" width="16" height="16" rx="2"/>
       <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
       <circle cx="12" cy="12" r="2.5"/></svg></span>
     <template v-if="g.s.catchUp">
       <p>Catching up on {{ fmt.dur(g.s.catchUp.credited) }} away&hellip;</p>
-      <span class="cd-bar">
-        <i :style="{width:(g.s.catchUp.done/g.s.catchUp.credited*100).toFixed(0)+'%'}"></i></span>
+      <span class="cd-bar" role="progressbar" :aria-valuenow="catchUpPct" aria-valuemin="0" aria-valuemax="100">
+        <i :style="{width:catchUpPct+'%'}"></i></span>
     </template>
     <p v-else>Loading&hellip;</p>
   </div>
-  <template v-else>
+  <template v-if="!booting">
   <div class="ambient" aria-hidden="true"></div>
   <TopBar />
   <OnboardingBanner />

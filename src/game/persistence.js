@@ -21,6 +21,22 @@ export function installPersistence(G){
   // functions are siblings, not nested closures, so a bare (undeclared)
   // `restoring` there never actually reached pop()'s check either.
   let restoring=false;
+  /* A second hydrate() starting while one is already mid-catch-up used to
+     be physically impossible — the whole loop ran synchronously in one
+     task, so nothing else could run until it finished. Yielding (below)
+     removed that accidental mutex: importSave's "Restore from backup"
+     button re-arms itself the instant a file is picked (MarketView.vue),
+     so a fast second click during the first import's catch-up reaches
+     hydrate() again while G.s.catchUp still belongs to the first one. Both
+     loops would then write the SAME G.s.catchUp object, and whichever
+     finishes first nulls it out from under the other — whose next write
+     throws on a null, which hydrate()'s catch treats as a corrupted save
+     and WIPES THE GAME to a fresh start. Refusing outright while one is
+     already running is the fix; the overlay this drives (App.vue) also
+     covers the screen while catchUp is set, so in practice the button is
+     behind it and can't be clicked again anyway — this is the backstop for
+     any path that isn't mediated by that UI. */
+  let hydrating=false;
   async function saveNow(){
     if(wiped) return;
     const mode=await storage.set({ ver:C.SAVE_VER, savedAt:Date.now(), state:G.s });
@@ -51,20 +67,34 @@ export function installPersistence(G){
        but an IMPORTED save runs this same path long after the player has
        clicked, and that is where it would be heard. */
     sfx.busy=true;
-    G.s.catchUp={ credited, done:0 };
-    let left=credited, sliceStart=nowMs();
-    while(left>0){
-      const step=Math.min(30,left);
-      G.stepTick(step); left-=step;
-      G.s.catchUp.done=credited-left;
-      if(nowMs()-sliceStart>50){
-        await new Promise(r=>setTimeout(r,0));
-        sliceStart=nowMs();
+    // a local reference, written into rather than read back out of
+    // G.s.catchUp on every iteration — Vue wraps an object assigned into
+    // reactive state in its own Proxy, so G.s.catchUp read back is NOT
+    // `===` the plain object assigned to it; this writes the one the loop
+    // actually holds, sidestepping that rather than fighting it
+    const cu={ credited, done:0 };
+    G.s.catchUp=cu;
+    try{
+      let left=credited, sliceStart=nowMs();
+      while(left>0){
+        const step=Math.min(30,left);
+        G.stepTick(step); left-=step;
+        cu.done=credited-left;
+        if(nowMs()-sliceStart>50){
+          await new Promise(r=>setTimeout(r,0));
+          sliceStart=nowMs();
+        }
       }
+    } finally {
+      // unconditional: a corrupted save that throws mid-loop must not
+      // leave audio muted or the progress overlay stuck up for the rest
+      // of the session. Safe to null outright (not conditioned on identity
+      // — see above) because the `hydrating` guard means this loop can
+      // never be running concurrently with another one.
+      sfx.busy=false;
+      restoring=false;
+      G.s.catchUp=null;
     }
-    sfx.busy=false;
-    restoring=false;
-    G.s.catchUp=null;
     return credited;
   }
   async function loadSave(){
@@ -81,6 +111,10 @@ export function installPersistence(G){
      game beats a blank screen — the same choice loadSave already makes for
      a bare version mismatch, just widened to cover mid-migration crashes. */
   async function hydrate(data){
+    // refuse rather than let two catch-ups collide — see the comment on
+    // `hydrating`'s declaration above for the failure this closes
+    if(hydrating) return false;
+    hydrating=true;
     try{ return await hydrateUnsafe(data); }
     catch(e){
       restoring=false;
@@ -90,12 +124,18 @@ export function installPersistence(G){
       G.pop('Save could not be read','starting a fresh game','dark',{always:true});
       return false;
     }
+    finally{ hydrating=false; }
   }
   async function hydrateUnsafe(data){
     restoring=true;
     Object.assign(G.s, data.state);
     G.s.toast={n:0,text:'',amount:'',cls:''};
-    G.s.catchUp=null;   // a save mid-catch-up (shouldn't happen, but not persisted state anyway)
+    // the autosave interval keeps running during an IMPORTED save's
+    // catch-up (that one happens mid-session, not at boot), so a save
+    // genuinely CAN be written with a live catchUp object in it — reset it
+    // regardless, since it describes a run that's either finished or (the
+    // hydrating guard above) can't have overlapped with this one anyway
+    G.s.catchUp=null;
     G.s.picker=null; G.s.sitePicker=null; G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
     G.s.unlocked=new Proxy({},{get:()=>true});   // a Proxy cannot survive JSON
     // v30 and earlier: assignment lived on the rig. Synthesize groups from the

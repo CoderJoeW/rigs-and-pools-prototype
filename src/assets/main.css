@@ -125,12 +125,17 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
    like. Every number below sits so that a clear afternoon lands within a point
    or two of the flat 24/22/20 this layer used before. */
 .ambient{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-/* Covers the gap between Vue's first paint (the fresh-state default) and
-   loadSave() resolving — without it that gap briefly shows a $500 start
-   before the real save lands on top of it. Doubles as the catch-up
-   progress display once a long offline return is actually mid-flight,
-   rather than leaving a multi-second stretch with nothing on screen to
-   show the freeze it replaces was ever "fast-forwarding" at all. */
+/* Two jobs, one element (App.vue shows it for either):
+   - Covers the gap between Vue's first paint (the fresh-state default) and
+     loadSave() resolving — without it that gap briefly shows a $500 start
+     before the real save lands on top of it.
+   - The catch-up progress display whenever one is actually mid-flight —
+     at boot OR, full-screen over an otherwise-interactive app, during a
+     mid-session "Restore from backup" import. That second case is why it
+     blocks the whole screen rather than just narrating in a corner: it's
+     also what stops a second click on Restore from starting an over-
+     lapping catch-up while one is already running (see persistence.js's
+     `hydrating` guard for what that would otherwise corrupt). */
 .boot{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:10px;background:var(--bg);color:var(--ink-2)}
 .boot .brandmark{width:34px;height:34px}

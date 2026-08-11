@@ -160,6 +160,71 @@ describe('a corrupted save', () => {
     expect(g.s.cash).toBe(500); // reset, not left at 777 and not left holding the garbage either
     expect(g.s.rigs).toEqual([]);
   });
+
+  it('still falls back cleanly when the throw happens AFTER the catch-up has already started', async () => {
+    // The corrupted-save cases above only exercise a throw that happens
+    // before advance() is ever reached (the legacy-rig migration throws
+    // synchronously, before hydrateUnsafe's first await). hydrateUnsafe is
+    // async now — a throw arriving from INSIDE the awaited advance() call
+    // needs the same guarantee, and it's a different code path: hydrate()'s
+    // try/catch has to catch a rejection that surfaces through its own
+    // `await`, not just a synchronous throw in a non-async function.
+    //
+    // Faulting the real engine (rather than mocking): the store's exported
+    // g2.stepTick is a COPY of the reference G.__exports holds at creation
+    // time, not the closure-internal G.stepTick advance() actually calls —
+    // spying on the export never reaches the real call site. A rig with a
+    // non-iterable `units` survives the rig-shape migration (which never
+    // touches that field) but throws the instant tick.js's wear loop
+    // (`for(const u of r.units)`) reaches it — a genuine engine fault
+    // arriving from inside the awaited advance(), not a synthetic one.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 3600 * 1000; // >60s away, so advance() actually runs
+    raw.state.rigs[0].units = null;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const loaded = await g2.loadSave(); // must resolve false, never reject
+    expect(loaded).toBe(false);
+    expect(g2.s.cash).toBe(500); // fresh state, not left mid-hydration
+    expect(g2.s.catchUp).toBe(null); // cleaned up, not stuck non-null forever
+  });
+
+  it('a second import arriving mid-catch-up is refused, not left to corrupt or wipe the first one', async () => {
+    // Real bug this closes: yielding removed catch-up's accidental mutex
+    // (the whole thing used to run in one synchronous task, so a second
+    // click physically couldn't interleave). Two overlapping catch-ups
+    // would both write the SAME progress object and the one that finishes
+    // first would null it out from under the other — whose next write then
+    // throws, which hydrate()'s catch treats as a corrupted save and WIPES
+    // the game back to a fresh start. This is exactly the "Restore from
+    // backup" double-click a fast player could produce for real.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    const payload = JSON.parse(g1.exportSave());
+    payload.savedAt = Date.now() - 24 * 3600 * 1000; // a big catch-up, so there's a real window to collide in
+    const backdated = JSON.stringify(payload);
+
+    const cashBefore = g1.s.cash, rigsBefore = g1.s.rigs.length;
+    const p1 = g1.importSave(backdated);
+    await new Promise(r => setTimeout(r, 10)); // let the first one actually start its catch-up
+    expect(g1.s.catchUp).not.toBe(null); // sanity: it really is mid-flight, not already done
+    const p2 = g1.importSave(backdated);   // the second click
+
+    const [ok1, ok2] = await Promise.all([p1, p2]);
+    expect(ok1).toBe(true);   // the first import still succeeds
+    expect(ok2).toBe(false);  // the second is refused outright, not a silent corruption
+    expect(g1.s.cash).not.toBe(500);          // NOT reset to a fresh start
+    expect(g1.s.rigs.length).toBeGreaterThan(0); // the rig survived
+    expect(g1.s.catchUp).toBe(null); // cleaned up once the surviving run finished
+  });
 });
 
 describe('offline catch-up', () => {
