@@ -162,12 +162,15 @@ const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null;
    whichever site happens to be active right now — the tuner sheet traps
    focus and covers the site list, so switching sites mid-design isn't
    reachable today, but reading the wrong site's fab here would be a real
-   bug the moment that ever changes, for the cost of one extra lookup. */
+   bug the moment that ever changes, for the cost of one extra lookup. The
+   `|| f.value` fallback is the same belt-and-braces: a site actually CAN be
+   decommissioned while its design sits open (nothing about an open design
+   blocks decommissionSite's checks), so `.find` returning nothing must not
+   crash the sheet closing itself out from under it — it should just close. */
 const designPreview=computed(()=>{
   const d=g.s.design; if(!d) return null;
-  const site=g.s.sites.find(x=>x.id===d.fid), fab=g.FAB(site.fab);
-  const liveTop = d.kind==='unit' ? g.cards()[g.cards().length-1]
-    : d.kind==='psu' ? g.PSUS[g.PSUS.length-1] : undefined;
+  const site=g.s.sites.find(x=>x.id===d.fid)||f.value, fab=g.FAB(site.fab);
+  const liveTop=g.liveTopOf(d.kind);
   return { axes:g.DESIGN_AXES[d.kind], fab,
     totals:g.designTotals(d.kind,d.picks), stats:g.designStats(d.kind,d.picks,liveTop),
     cost:g.designCost(d.kind,d.picks,liveTop) };

@@ -47,10 +47,10 @@ export function installFab(G){
     if(G.s.cash<buildCash) return;
     G.s.cash-=buildCash; G.s.spent+=buildCash;
     const stats=designStats(d.kind, d.picks, liveTop);
-    // module-scoped, not a saved counter (s.nextSite/s.nextId's own pattern)
-    // — a design can be manufactured from ANY site's fab, and nothing else
-    // needs to count how many exist, so a save-persisted sequence would
-    // only add a migration for no benefit over this
+    // timestamp+random rather than a saved counter (s.nextSite/s.nextId's own
+    // pattern): PART_MAP is a page-load-scoped singleton (see tick.js), so a
+    // counter that reset to 1 every fresh session could collide with an id
+    // already sitting in a loaded save's customParts — this can't
     const id='custom-'+d.kind+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     const part={ ...stats, id, name:PART_NAME[d.kind], kind:d.kind, price:unitPrice, custom:true };
     f.queue.push({ kind:'mfg', part, paidCash:buildCash, left:hours, total:hours });
@@ -59,5 +59,5 @@ export function installFab(G){
     G.s.design=null;
   }
 
-  Object.assign(G, {bumpDesignPick,closeDesign,manufacturePart,openDesign});
+  Object.assign(G, {bumpDesignPick,closeDesign,liveTopOf:kind=>liveTopOf(G,kind),manufacturePart,openDesign});
 }

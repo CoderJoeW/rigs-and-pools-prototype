@@ -532,7 +532,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         <div class="card"><div class="card-bd pt">
           <div class="rigfld"><label for="fleet-card-select">Swap cards, keeping each chassis</label>
             <select id="fleet-card-select" v-model="fleetCard">
-              <option v-for="c in g.cards()" :key="c.id" :value="c.id">
+              <option v-for="c in g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit'))"
+                      :key="c.id" :value="c.id">
                 {{ c.name }} — {{ c.mh }} MH · {{ (c.mh/c.w).toFixed(2) }} MH/W · {{ fmt.usd(c.price) }}</option>
             </select>
             <button class="btn btn-wide" style="margin-top:6px"

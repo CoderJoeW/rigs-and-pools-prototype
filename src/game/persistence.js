@@ -315,7 +315,7 @@ export function installPersistence(G){
 
   G.__exports={ s:G.s,C,SHELLS,SOURCES,PLANTS,STORAGE,FABS,FAB,PSUS:G.livePsus,
     DESIGN_AXES,MAX_AXIS_POINTS,designTotals,designStats,designCost,
-    openDesign:G.openDesign,closeDesign:G.closeDesign,bumpDesignPick:G.bumpDesignPick,manufacturePart:G.manufacturePart,
+    openDesign:G.openDesign,closeDesign:G.closeDesign,bumpDesignPick:G.bumpDesignPick,manufacturePart:G.manufacturePart,liveTopOf:G.liveTopOf,
     RISER,PART,SITEPART,jobPart,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
     solarFactor:G.solarFactor,ambient:G.ambient,band:G.band,cards:G.cards,battKwh:G.battKwh,battKw:G.battKw,sitePlan:G.sitePlan,srcOut:G.srcOut,siteCapacity:G.siteCapacity,siteCooling:G.siteCooling,sitePlantW:G.sitePlantW,siteHeat:G.siteHeat,throttleOf:G.throttleOf,siteSlots:G.siteSlots,siteRigs:G.siteRigs,siteDemand:G.siteDemand,siteTemp:G.siteTemp,
     siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,rigState:G.rigState,rigWear:G.rigWear,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
