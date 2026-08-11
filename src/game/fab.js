@@ -47,10 +47,13 @@ export function installFab(G){
     if(G.s.cash<buildCash) return;
     G.s.cash-=buildCash; G.s.spent+=buildCash;
     const stats=designStats(d.kind, d.picks, liveTop);
-    // timestamp+random rather than a saved counter (s.nextSite/s.nextId's own
-    // pattern): PART_MAP is a page-load-scoped singleton (see tick.js), so a
-    // counter that reset to 1 every fresh session could collide with an id
-    // already sitting in a loaded save's customParts — this can't
+    // timestamp+random rather than a saved counter like s.nextSite/s.nextId:
+    // PART_MAP (data/hardware.js) is a page-load-scoped singleton, not a
+    // per-store one — a persisted counter still starts over at its initial
+    // value for every FRESH STORE INSTANCE sharing that same module graph
+    // (concretely: successive freshStore() calls across tests in one file),
+    // which would mint colliding ids for genuinely different parts. A real
+    // page reload is fine either way; this is what a counter can't cover.
     const id='custom-'+d.kind+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     const part={ ...stats, id, name:PART_NAME[d.kind], kind:d.kind, price:unitPrice, custom:true };
     f.queue.push({ kind:'mfg', part, paidCash:buildCash, left:hours, total:hours });

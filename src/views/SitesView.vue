@@ -162,11 +162,12 @@ const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null;
    whichever site happens to be active right now — the tuner sheet traps
    focus and covers the site list, so switching sites mid-design isn't
    reachable today, but reading the wrong site's fab here would be a real
-   bug the moment that ever changes, for the cost of one extra lookup. The
-   `|| f.value` fallback is the same belt-and-braces: a site actually CAN be
-   decommissioned while its design sits open (nothing about an open design
-   blocks decommissionSite's checks), so `.find` returning nothing must not
-   crash the sheet closing itself out from under it — it should just close. */
+   bug the moment that ever changes, for the cost of one extra lookup.
+   decommissionSite (game/sites.js) is the one that actually clears
+   g.s.design when its site goes away, closing the sheet outright — so
+   `.find` returning nothing shouldn't happen, but `|| f.value` costs one
+   token to keep this computed itself from being the thing that throws if
+   that guard is ever the one that regresses instead. */
 const designPreview=computed(()=>{
   const d=g.s.design; if(!d) return null;
   const site=g.s.sites.find(x=>x.id===d.fid)||f.value, fab=g.FAB(site.fab);

@@ -317,4 +317,25 @@ describe('decommissionSite', () => {
     expect(g.s.cash).toBeGreaterThan(cashBefore);
     expect(g.s.activeSite).toBe(g.s.sites[0].id);
   });
+
+  // an open design (game/fab.js) isn't a queue entry, so it doesn't block
+  // decommissioning the site it belongs to the way a queued job would —
+  // without this, the design sheet would keep pointing at a site that no
+  // longer exists
+  it('closes an open design pointed at the site being decommissioned', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    g.newSite('shed');
+    const second = g.s.sites[1];
+    for (let i = 0; i < 20; i++) g.stepTick(3600); // finish shell construction
+    g.chooseFab(second.id, 'fab-bench');
+    second.queue[0].left = 0.0001; g.stepTick(1); // finish fab construction
+    g.openDesign(second.id, 'cool');
+    expect(g.s.design).not.toBe(null);
+
+    g.decommissionSite(second.id);
+
+    expect(g.s.sites).toHaveLength(1);
+    expect(g.s.design).toBe(null);
+  });
 });
