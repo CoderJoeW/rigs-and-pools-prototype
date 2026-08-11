@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { watchEffect } from 'vue';
 import { freshStore, reopenStore } from '../../test/testStore.js';
+import { sfx } from '../../services/audio.js';
 
 // wipeSave() ends with a cosmetic location.reload(), already wrapped in a
 // try/catch in app code — jsdom has no real navigation, so stub it quiet.
@@ -160,6 +162,77 @@ describe('a corrupted save', () => {
     expect(g.s.cash).toBe(500); // reset, not left at 777 and not left holding the garbage either
     expect(g.s.rigs).toEqual([]);
   });
+
+  it('still falls back cleanly when the throw happens AFTER the catch-up has already started', async () => {
+    // The corrupted-save cases above only exercise a throw that happens
+    // before advance() is ever reached (the legacy-rig migration throws
+    // synchronously, before hydrateUnsafe's first await). hydrateUnsafe is
+    // async now — a throw arriving from INSIDE the awaited advance() call
+    // needs the same guarantee, and it's a different code path: hydrate()'s
+    // try/catch has to catch a rejection that surfaces through its own
+    // `await`, not just a synchronous throw in a non-async function.
+    //
+    // Faulting the real engine (rather than mocking): the store's exported
+    // g2.stepTick is a COPY of the reference G.__exports holds at creation
+    // time, not the closure-internal G.stepTick advance() actually calls —
+    // spying on the export never reaches the real call site. A rig with a
+    // null `units` survives the rig-shape migration (which never touches
+    // that field) but throws the instant something reads its .length —
+    // dispatch.js's rigLive/liveUnits (via rigHash's groupHash reduce),
+    // reached from inside the first stepTick() the catch-up loop runs —
+    // a genuine engine fault arriving from inside the awaited advance(),
+    // not a synthetic one.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 3600 * 1000; // >60s away, so advance() actually runs
+    raw.state.rigs[0].units = null;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const loaded = await g2.loadSave(); // must resolve false, never reject
+    expect(loaded).toBe(false);
+    expect(g2.s.cash).toBe(500); // fresh state, not left mid-hydration
+    expect(g2.s.catchUp).toBe(null); // cleaned up, not stuck non-null forever
+    // advance()'s finally is what clears this — hydrate()'s catch block
+    // never touched sfx.busy at all, so this is the only assertion in the
+    // suite that actually exercises the finally rather than the catch
+    expect(sfx.busy).toBe(false); // not left muted for the rest of the session
+  });
+
+  it('a second import arriving mid-catch-up is refused, not left to corrupt or wipe the first one', async () => {
+    // Real bug this closes: yielding removed catch-up's accidental mutex
+    // (the whole thing used to run in one synchronous task, so a second
+    // click physically couldn't interleave). Two overlapping catch-ups
+    // would both write the SAME progress object and the one that finishes
+    // first would null it out from under the other — whose next write then
+    // throws, which hydrate()'s catch treats as a corrupted save and WIPES
+    // the game back to a fresh start. This is exactly the "Restore from
+    // backup" double-click a fast player could produce for real.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    const payload = JSON.parse(g1.exportSave());
+    payload.savedAt = Date.now() - 24 * 3600 * 1000; // a big catch-up, so there's a real window to collide in
+    const backdated = JSON.stringify(payload);
+
+    const cashBefore = g1.s.cash, rigsBefore = g1.s.rigs.length;
+    const p1 = g1.importSave(backdated);
+    await new Promise(r => setTimeout(r, 10)); // let the first one actually start its catch-up
+    expect(g1.s.catchUp).not.toBe(null); // sanity: it really is mid-flight, not already done
+    const p2 = g1.importSave(backdated);   // the second click
+
+    const [ok1, ok2] = await Promise.all([p1, p2]);
+    expect(ok1).toBe(true);   // the first import still succeeds
+    expect(ok2).toBe(false);  // the second is refused outright, not a silent corruption
+    expect(g1.s.cash).not.toBe(500);          // NOT reset to a fresh start
+    expect(g1.s.rigs.length).toBeGreaterThan(0); // the rig survived
+    expect(g1.s.catchUp).toBe(null); // cleaned up once the surviving run finished
+  });
 });
 
 describe('offline catch-up', () => {
@@ -206,6 +279,112 @@ describe('offline catch-up', () => {
     // capped at C.OFFLINE_CAP (86400s), not the full month
     expect(g2.s.t).toBeLessThanOrEqual(tBefore + 86400 + 1);
     expect(g2.s.feed.some(e => e.text.startsWith('Away '))).toBe(true);
+  });
+
+  it('yields to the event loop during a long catch-up instead of blocking it synchronously', async () => {
+    // A 24h catch-up is ~2,880 chunks — run as one tight synchronous loop
+    // (the shape this used to be) that's several real seconds of a fully
+    // frozen tab: no paint, no input, nothing to show it's "fast-forwarding"
+    // rather than just hung. Draining only MICROtasks (Promise.resolve(),
+    // not a real timer) proves the difference precisely: a synchronous
+    // implementation wrapped in `async function` still settles once its
+    // microtask queue drains, with no real macrotask boundary crossed —
+    // only a genuine `setTimeout`-based yield can make the promise still be
+    // pending after that. This is deterministic, not a timing guess — BUT
+    // the margin matters: loadSave -> storage.get -> hydrate -> hydrateUnsafe
+    // -> advance is several async layers deep, and each layer's `await` on
+    // an already-settled value still costs one microtask tick on its own.
+    // Measured: a fully synchronous 4-layer chain like that one resolves
+    // within 4 flushes flat. 200 is a wide enough margin above any plausible
+    // nesting depth that it can't produce that false pass, while a genuine
+    // setTimeout-based yield is still unreachable no matter how many
+    // microtask flushes run — only a real macrotask boundary crosses it.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    let resolved = false;
+    const done = g2.loadSave().then(() => { resolved = true; });
+    for (let i = 0; i < 200; i++) await Promise.resolve();
+    expect(resolved).toBe(false); // still mid-flight — it actually yielded
+    await done;
+    expect(resolved).toBe(true);
+  });
+
+  it('surfaces live progress on s.catchUp while running, and clears it when done', async () => {
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    expect(g2.s.catchUp).toBe(null);
+    const donePromise = g2.loadSave();
+
+    // the object is assigned before the loop's first possible yield, so it
+    // appears after only a few microtask ticks — poll rather than assume an
+    // exact count, but bounded, so a real regression still fails loudly
+    // instead of hanging
+    let seen = null;
+    for (let i = 0; i < 50 && !seen; i++) {
+      if (g2.s.catchUp) seen = { ...g2.s.catchUp };
+      else await Promise.resolve();
+    }
+    expect(seen).not.toBe(null);
+    expect(seen.credited).toBeCloseTo(86400, 0); // capped, same as the dedicated cap test
+    expect(seen.done).toBeGreaterThanOrEqual(0);
+    expect(seen.done).toBeLessThanOrEqual(seen.credited);
+
+    await donePromise;
+    expect(g2.s.catchUp).toBe(null); // cleared once the real work is done
+  });
+
+  it('the catch-up progress genuinely updates reactively as it runs, not once and then frozen', async () => {
+    // Real regression this closes: an earlier version of advance() held a
+    // LOCAL COPY of the plain object literal assigned to G.s.catchUp,
+    // rather than the value read back out of G.s. Vue wraps an object
+    // assigned into reactive state in its own Proxy, so writing to the
+    // plain literal instead of the proxy bypasses the `set` trap entirely
+    // — nothing watching G.s.catchUp.done is ever told it changed. The
+    // symptom was invisible to a test that only reads g2.s.catchUp.done
+    // directly (a Proxy reads THROUGH to the same live value either way);
+    // it only shows up to something that actually depends on being
+    // notified, the same way the real progress bar's re-render does.
+    // watchEffect is exactly that: Vue's own reactivity, not the
+    // component tree, so this needs no App.vue mount.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const seenDone = new Set();
+    const stop = watchEffect(() => { if (g2.s.catchUp) seenDone.add(g2.s.catchUp.done); });
+
+    await g2.loadSave();
+    stop();
+
+    // broken: the watcher fires once, on the initial assignment, and
+    // never again — seenDone.size stays at 1 for the whole 24h run.
+    // working: dozens of distinct snapshots, one per yield boundary.
+    expect(seenDone.size).toBeGreaterThan(10);
   });
 
   it('does not fast-forward for a short absence', async () => {
