@@ -573,7 +573,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <!-- the rebuild planner, unchanged -->
     <div v-if="g.s.rebuild && rbRig" class="sheet" ref="rebuildSheetEl" role="dialog" aria-modal="true"
          aria-labelledby="rebuild-sheet-title">
       <div class="sheet-hd">

@@ -196,9 +196,10 @@ describe('BuildView', () => {
       await nextTick();
       const minus = wrapper.find('.stepper button[aria-label="Decrease card count"]');
       expect(minus.attributes('disabled')).toBeDefined();
-      // a disabled button never fires its handler in a real browser, but
-      // jsdom's .trigger('click') does not enforce that on its own — assert
-      // the click is genuinely inert, not just that the attribute is present
+      // jsdom does honor `disabled` — this click is already inert without
+      // any extra effort on the test's part. Asserted anyway as cheap
+      // insurance against the underlying Math.max clamp being wrong, which
+      // the disabled check alone wouldn't catch.
       await minus.trigger('click');
       expect(store.s.draft.n).toBe(1);
     });
