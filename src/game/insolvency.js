@@ -1,4 +1,4 @@
-import { SITEPART } from '../data/site-parts.js';
+import { jobPart } from '../data/site-parts.js';
 import { PART, RISER } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 
@@ -42,8 +42,8 @@ export function installInsolvency(G){
     }
     for(const f of G.s.sites){
       if(f.queue.length){ const j=f.queue.pop();
-        G.s.cash+=Math.round(SITEPART(j.p).price*0.5);
-        G.say('bad','Cancelled construction of '+SITEPART(j.p).name+' at '+f.name); return; }
+        G.s.cash+=Math.round(jobPart(j).price*0.5);
+        G.say('bad','Cancelled construction of '+jobPart(j).name+' at '+f.name); return; }
     }
     if(G.s.rigs.length){
       let worst=G.s.rigs[0];

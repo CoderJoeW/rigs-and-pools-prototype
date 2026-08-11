@@ -89,6 +89,26 @@ describe('rush', () => {
     expect(job.left).toBe(leftBefore);
   });
 
+  // a fab job's `p` is a FAB id, not a SITEPART one — rush's feed message
+  // used to look it up in SITEPART regardless of kind, which throws for a fab job
+  it('rushes a queued fab job without throwing, naming it off the fab catalogue', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench');
+    const job = f.queue[0];
+    const cost = g.rushCost(job);
+    const cashBefore = g.s.cash;
+
+    expect(() => g.rush(f.id, 0)).not.toThrow();
+    expect(job.left).toBeLessThan(0.001);
+    expect(g.s.cash).toBeCloseTo(cashBefore - cost, 5);
+
+    g.stepTick(1);
+    expect(f.fab).toBe('fab-bench');
+    expect(g.s.feed.some(e => e.text === 'Paid to rush Bench fab')).toBe(true);
+  });
+
   it('two same-part rushes at different costs collapse into one line with the correct summed total (issue #16)', () => {
     // say() now carries a real signed USD number alongside the display
     // string (issue #16), so a repeat can be collapsed into the feed's
@@ -149,6 +169,99 @@ describe('upgradeShell', () => {
     expect(f.queue).toHaveLength(1);
     g.upgradeShell(f.id, 'unit');
     expect(f.queue).toHaveLength(1); // second request rejected
+  });
+});
+
+describe('chooseFab', () => {
+  it('installs the first tier from nothing, at full price, and sets f.fab once construction finishes', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    expect(f.fab).toBe(null);
+    const cashBefore = g.s.cash;
+
+    g.chooseFab(f.id, 'fab-bench'); // $150,000, 400h, no prior tier to credit
+
+    expect(g.s.cash).toBeCloseTo(cashBefore - 150000, 5);
+    expect(f.queue).toHaveLength(1);
+    expect(f.queue[0].kind).toBe('fab');
+    expect(f.queue[0].p).toBe('fab-bench');
+    expect(f.fab).toBe(null); // not installed yet — still under construction
+
+    // Looping stepTick to reach 400h is what upgradeShell's test does for
+    // its 60h shell, but stepTick does full simulation work every call
+    // regardless of dt — and, counter-intuitively, a BIGGER dt per call
+    // costs MORE, not less (measured: ~140ms/call at 10h steps vs ~25ms/
+    // call at 1h steps), so a fab's order-of-magnitude-longer build time
+    // makes either approach slow. rush()'s own technique — collapse `left`
+    // directly, since it's a plain linear countdown with no other state
+    // tied to how it got there — reaches the same finished state instantly.
+    f.queue[0].left = 0.0001;
+    g.stepTick(1);
+    expect(f.fab).toBe('fab-bench');
+    expect(f.queue).toHaveLength(0);
+  });
+
+  it('refuses when cash is short', () => {
+    const g = freshStore();
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench'); // $150,000, far more than the starting $500
+    expect(f.queue).toHaveLength(0);
+    expect(f.fab).toBe(null);
+  });
+
+  it('upgrading credits half the current tier\'s price toward the next one', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench');
+    f.queue[0].left = 0.0001;
+    g.stepTick(1);
+    expect(f.fab).toBe('fab-bench');
+
+    const cashBefore = g.s.cash;
+    g.chooseFab(f.id, 'fab-clean'); // $500,000, credit = 150,000*0.5 = 75,000
+    expect(g.s.cash).toBeCloseTo(cashBefore - (500000 - 75000), 5);
+
+    f.queue[0].left = 0.0001;
+    g.stepTick(1);
+    expect(f.fab).toBe('fab-clean');
+  });
+
+  it('refuses a tier that is not strictly higher than the one already installed', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench');
+    f.queue[0].left = 0.0001;
+    g.stepTick(1);
+    g.chooseFab(f.id, 'fab-bench'); // same tier again
+    expect(f.queue).toHaveLength(0);
+  });
+
+  it('only allows one fab job in the queue at a time', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    const f = g.active;
+    g.chooseFab(f.id, 'fab-bench');
+    expect(f.queue).toHaveLength(1);
+    g.chooseFab(f.id, 'fab-clean'); // a second request while the first is still building
+    expect(f.queue).toHaveLength(1);
+  });
+
+  it('is included in a decommissioned site\'s refund', () => {
+    const g = freshStore();
+    g.s.cash = 1000000;
+    g.newSite('shed');
+    const second = g.s.sites[1];
+    for (let i = 0; i < 20; i++) g.stepTick(3600); // finish the shell
+    second.fab = 'fab-bench'; // install directly — the refund math doesn't care how it got there
+
+    const withoutFab = Math.round(0.5 * g.SITEPART(second.shell).price);
+    const cashBefore = g.s.cash;
+    g.decommissionSite(second.id);
+    const refund = g.s.cash - cashBefore;
+    expect(refund).toBeGreaterThan(withoutFab); // fab's value was folded in too
   });
 });
 

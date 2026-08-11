@@ -1,5 +1,6 @@
 import { C } from '../data/constants.js';
-import { SHELLS, SITEPART } from '../data/site-parts.js';
+import { SHELLS, SITEPART, jobPart } from '../data/site-parts.js';
+import { FAB } from '../data/fab.js';
 import { fmt } from '../utils/format.js';
 
 /* 10-site-management.js — installed into the shared context G.
@@ -13,7 +14,7 @@ export function installSites(G){
     const sh=SHELLS.find(x=>x.id===shellId);
     if(!sh||G.s.cash<sh.price) return;
     G.s.cash-=sh.price; G.s.spent+=sh.price;
-    const f={ id:G.s.nextSite++, name:sh.name+' '+(G.s.sites.length+1), shell:'bedroom',
+    const f={ id:G.s.nextSite++, name:sh.name+' '+(G.s.sites.length+1), shell:'bedroom', fab:null,
       sources:[], plants:[{p:'p-open',n:1}], queue:[], wind:0.5 };
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
     G.s.sites.push(f); G.s.activeSite=f.id;
@@ -35,7 +36,7 @@ export function installSites(G){
     const f=G.site(fid), j=f.queue[idx]; if(!j) return;
     const c=rushCost(j); if(G.s.cash<c) return;
     G.s.cash-=c; G.s.spent+=c; j.left=0.0001;
-    G.say('site','Paid to rush '+SITEPART(j.p).name,'-'+fmt.usd(c),undefined,undefined,-c);
+    G.say('site','Paid to rush '+jobPart(j).name,'-'+fmt.usd(c),undefined,undefined,-c);
   }
   /* ---- site management: grow, rename, or close a site ----
      Founding (newSite) and growing (upgradeShell) used to be the same
@@ -56,6 +57,24 @@ export function installSites(G){
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
     G.say('site','Expanding '+f.name+' to '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(cost),undefined,undefined,-cost);
   }
+  /* Fab tiers only ever grow, same rule and same half-price credit as
+     upgradeShell — but unlike shells there's no separate "new site" door
+     into it (a fab is never how a site is founded), so one function
+     handles both installing from nothing (cur===null, credit 0) and
+     upgrading an existing one. */
+  function chooseFab(fid,fabId){
+    const f=G.site(fid), fb=FAB(fabId); if(!f||!fb) return;
+    const cur=f.fab?FAB(f.fab):null;
+    if(cur && fb.tier<=cur.tier) return;                 // only ever grows
+    if(f.queue.some(j=>j.kind==='fab')) return;           // one fab job at a time
+    const credit=cur?Math.round(cur.price*0.5):0;
+    const cost=Math.max(0, fb.price-credit);
+    if(G.s.cash<cost) return;
+    G.s.cash-=cost; G.s.spent+=cost;
+    f.queue.push({ p:fabId, kind:'fab', left:fb.hours, total:fb.hours });
+    G.say('site',(cur?'Upgrading':'Building')+' '+f.name+"'s fab to "+fb.name+' — '+fb.hours+' h',
+      '-'+fmt.usd(cost),undefined,undefined,-cost);
+  }
   function renameSite(fid,name){
     const f=G.site(fid); if(!f) return;
     const n=(name||'').trim().slice(0,24);
@@ -67,12 +86,13 @@ export function installSites(G){
     const back=Math.round(0.5*(SITEPART(f.shell).price
       +f.sources.reduce((a,x)=>a+SITEPART(x.p).price*x.n,0)
       +f.plants.reduce((a,x)=>a+SITEPART(x.p).price*x.n,0)
-      +(f.storage||[]).reduce((a,x)=>a+SITEPART(x.p).price*x.n,0)));
+      +(f.storage||[]).reduce((a,x)=>a+SITEPART(x.p).price*x.n,0)
+      +(f.fab?FAB(f.fab).price:0)));
     G.s.cash+=back;
     G.s.sites=G.s.sites.filter(x=>x.id!==fid);
     if(G.s.activeSite===fid) G.s.activeSite=G.s.sites[0].id;
     G.say('site','Decommissioned '+f.name,'+'+fmt.usd(back),undefined,undefined,back);
   }
 
-  Object.assign(G, {addSitePart,decommissionSite,newSite,renameSite,rush,rushCost,upgradeShell});
+  Object.assign(G, {addSitePart,chooseFab,decommissionSite,newSite,renameSite,rush,rushCost,upgradeShell});
 }

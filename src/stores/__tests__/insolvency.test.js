@@ -67,6 +67,21 @@ describe('insolvency escalation', () => {
     expect(g.s.cash).toBeGreaterThan(0); // the refund
   });
 
+  // a fab job's `p` is a FAB id, not a SITEPART one — this cancel path used
+  // to look it up in SITEPART regardless of kind, which throws for a fab job
+  it('cancelling a queued fab job refunds off the fab catalogue, not SITEPART', () => {
+    const g = freshStore();
+    addRig(g, { on: false });
+    const f = g.active;
+    f.queue.push({ p: 'fab-bench', kind: 'fab', left: 200, total: 400 }); // $150,000
+    g.s.cash = -1;
+
+    g.stepTick(0.01);
+
+    expect(f.queue).toHaveLength(0);
+    expect(g.s.cash).toBeCloseTo(150000 * 0.5, 5);
+  });
+
   it('with no live rigs and nothing queued, sells the cheapest-salvage rig', () => {
     const g = freshStore();
     const a = addRig(g, { on: false });

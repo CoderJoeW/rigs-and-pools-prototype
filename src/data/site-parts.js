@@ -1,3 +1,5 @@
+import { FAB } from './fab.js';
+
 /* ---- site parts. Nothing is a preset tier: you buy a shell for floor space,
    then install power and cooling yourself. Capacity is whatever you paid for. */
 export const SHELLS = [
@@ -49,3 +51,10 @@ export const PLANTS = [
 ];
 export const SITEPART_MAP = new Map([...SHELLS,...SOURCES,...PLANTS,...STORAGE].map(p=>[p.id,p]));
 export const SITEPART = id => SITEPART_MAP.get(id);
+
+/* A construction-queue job's `p` is a shell/source/plant/storage id for
+   every kind except 'fab', which looks up FABS instead — the one catalogue
+   this file doesn't own. Every place that turns a job back into its part
+   (rush, insolvency's cancel-a-job branch, ...) needs this discrimination;
+   giving it one shared home means a new job kind only has to teach it here. */
+export const jobPart = j => j.kind==='fab' ? FAB(j.p) : SITEPART(j.p);
