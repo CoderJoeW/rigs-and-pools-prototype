@@ -195,6 +195,9 @@ const REPAIR_AT=C.REPAIR_AT;
 const wornInfo=computed(()=> g.fleetWorn(REPAIR_AT, scopeId.value));
 const moveInfo=computed(()=> g.fleetMoveInfo(fleetGroup.value, scopeId.value));
 const refitInfo=computed(()=> g.fleetRefitInfo(fleetCard.value, scopeId.value));
+// same rule rbPickerRows' unit branch and BuildView's optionsFor both apply
+// to their own card pickers: the catalogue plus whatever's been manufactured
+const fleetCardOpts=computed(()=> g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')));
 
 const wornCost=(r,t)=>r.units.filter(u=>u.w>=t).reduce((a,u)=>a+g.PART(u.p).price,0);
 const wornN=(r,t)=>r.units.filter(u=>u.w>=t).length;
@@ -223,12 +226,15 @@ const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r) return [];
   const slot=g.s.rebuild.picker;
   if(slot==='unit'){
-    return g.cards().map(c=>({ id:c.id, name:c.name,
+    // fab-designed custom cards (data/customParts.js) belong in every picker
+    // for their slot, this one included — a rig that already carries one
+    // otherwise has no way back to the catalogue, or to another custom card
+    return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')).map(c=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }
   const lim=rbInfo.value.lim;
-  return g.SLOT_OPTS[slot].map(p=>{
+  return g.SLOT_OPTS[slot].concat(g.s.customParts.filter(p=>p.kind===slot)).map(p=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }
@@ -529,7 +535,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         <div class="card"><div class="card-bd pt">
           <div class="rigfld"><label for="fleet-card-select">Swap cards, keeping each chassis</label>
             <select id="fleet-card-select" v-model="fleetCard">
-              <option v-for="c in g.cards()" :key="c.id" :value="c.id">
+              <option v-for="c in fleetCardOpts" :key="c.id" :value="c.id">
                 {{ c.name }} — {{ c.mh }} MH · {{ (c.mh/c.w).toFixed(2) }} MH/W · {{ fmt.usd(c.price) }}</option>
             </select>
             <button class="btn btn-wide" style="margin-top:6px"

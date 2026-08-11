@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { watchEffect } from 'vue';
 import { freshStore, reopenStore } from '../../test/testStore.js';
 import { sfx } from '../../services/audio.js';
+import { PART_MAP } from '../../data/hardware.js';
 
 // wipeSave() ends with a cosmetic location.reload(), already wrapped in a
 // try/catch in app code — jsdom has no real navigation, so stub it quiet.
@@ -87,6 +88,31 @@ describe('saveNow / loadSave round trip', () => {
     // satisfies, but g.FAB(undefined) elsewhere would silently return
     // undefined too rather than the loud failure a real bug deserves
     expect(g2.s.sites[0].fab).toBe(null);
+  });
+
+  it('a loaded custom part re-registers into PART_MAP, so a rig wearing one still resolves its stats', async () => {
+    const g1 = freshStore();
+    g1.s.cash = 1000000;
+    const f = g1.active;
+    g1.chooseFab(f.id, 'fab-bench');
+    f.queue[0].left = 0.0001; g1.stepTick(1);
+    g1.openDesign(f.id, 'cool');
+    g1.bumpDesignPick('fac', 1);
+    g1.manufacturePart();
+    f.queue[0].left = 0.0001; g1.stepTick(1);
+    const part = g1.s.customParts[0];
+    await g1.saveNow();
+
+    // PART_MAP is a page-load-scoped singleton (data/hardware.js) — deleting
+    // the entry here simulates the real gap a fresh page load starts with,
+    // which the shared module cache within one test file otherwise papers over
+    PART_MAP.delete(part.id);
+    expect(g1.PART(part.id)).toBeUndefined();
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.PART(part.id)).toEqual(part);
   });
 
   it('a save with a malformed recentBlockUsd field is repaired, not left broken', async () => {

@@ -82,6 +82,26 @@ describe('insolvency escalation', () => {
     expect(g.s.cash).toBeCloseTo(150000 * 0.5, 5);
   });
 
+  // an 'mfg' job's jobPart().price must be paidCash (what was actually spent
+  // to queue it) — NOT part.price, which is a different number entirely (the
+  // per-rig price Build charges each time the finished design gets used).
+  // Deliberately far apart here so a refund computed off the wrong one is
+  // caught by more than a rounding difference.
+  it("cancelling a queued mfg job refunds off what was actually paid, not the finished part's future build price", () => {
+    const g = freshStore();
+    addRig(g, { on: false });
+    const f = g.active;
+    f.queue.push({ kind: 'mfg', paidCash: 10000,
+      part: { id: 'custom-cool-x', name: 'Custom cooler', kind: 'cool', price: 50, fac: 3, w: 10 },
+      left: 20, total: 40 });
+    g.s.cash = -1;
+
+    g.stepTick(0.01);
+
+    expect(f.queue).toHaveLength(0);
+    expect(g.s.cash).toBeCloseTo(10000 * 0.5, 5); // half of paidCash, not half of part.price
+  });
+
   it('with no live rigs and nothing queued, sells the cheapest-salvage rig', () => {
     const g = freshStore();
     const a = addRig(g, { on: false });

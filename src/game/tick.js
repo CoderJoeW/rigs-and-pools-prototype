@@ -1,7 +1,7 @@
 import { C, TX_FEES, SIM_GROWTH, CONN_Q, BLOCK_K, RETARGET } from '../data/constants.js';
 import { SITEPART } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
-import { PART } from '../data/hardware.js';
+import { PART, PART_MAP } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { gauss } from '../utils/random.js';
@@ -33,6 +33,14 @@ export function installTick(G){
           else if(j.kind==='storage'){ addTo(f.storage=f.storage||[],j.p);
             name=SITEPART(j.p).name; G.say('site',name+' online at '+f.name); }
           else if(j.kind==='fab'){ f.fab=j.p; name=FAB(j.p).name; G.say('site',f.name+"'s fab is now "+name); }
+          else if(j.kind==='mfg'){
+            // module-level, exactly like a generation card/PSU (generations.js) —
+            // PART(id) elsewhere resolves through this same singleton Map, so a
+            // custom part becomes usable in Build's pickers the instant it lands,
+            // with no per-caller change needed to recognise it
+            G.s.customParts.push(j.part); PART_MAP.set(j.part.id, j.part);
+            name=j.part.name; G.say('site',name+' finished manufacturing at '+f.name);
+          }
           else { addTo(f.plants,j.p); name=SITEPART(j.p).name; G.say('site',name+' online at '+f.name); }
           G.pop('Construction finished',name,'blu',{kind:'construction'});
         }

@@ -91,6 +91,10 @@ export function installSites(G){
     G.s.cash+=back;
     G.s.sites=G.s.sites.filter(x=>x.id!==fid);
     if(G.s.activeSite===fid) G.s.activeSite=G.s.sites[0].id;
+    // an open design (game/fab.js) points at the site it was opened on —
+    // decommissioning that site out from under it must close the sheet,
+    // not leave it rendering a fab that no longer exists
+    if(G.s.design&&G.s.design.fid===fid) G.s.design=null;
     G.say('site','Decommissioned '+f.name,'+'+fmt.usd(back),undefined,undefined,back);
   }
 

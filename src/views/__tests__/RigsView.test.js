@@ -97,6 +97,56 @@ describe('RigsView', () => {
     expect(store.s.rebuild.draft.n).toBe(nAtLimit);
   });
 
+  it('the rebuild planner\'s picker lists a manufactured custom part in its own slot, not just the catalogue', async () => {
+    // a rig wearing a custom part otherwise has no way back to the
+    // catalogue, or across to another custom part of the same slot — the
+    // picker used to read only g.SLOT_OPTS / g.cards(), neither of which
+    // ever includes a fab-designed part
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => {
+        g.generatePreset(); g.build(); for (let i = 0; i < 5; i++) g.stepTick(60);
+        const f = g.active;
+        g.s.cash = 1000000;
+        g.chooseFab(f.id, 'fab-bench');
+        f.queue[0].left = 0.0001; g.stepTick(1);
+        g.openDesign(f.id, 'cool');
+        g.bumpDesignPick(g.DESIGN_AXES.cool[0].key, 2);
+        g.manufacturePart();
+        f.queue[0].left = 0.0001; g.stepTick(1);
+      },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
+    const coolRow = wrapper.findAll('.sheet button.pickrow').find(r => r.text().includes('Cooling'));
+    await coolRow.trigger('click');
+    expect(wrapper.text()).toContain('Custom cooler');
+  });
+
+  it('the rebuild planner\'s CARD picker also lists a manufactured custom card, not just g.cards()', async () => {
+    // the unit/card branch is a separate code path from every other slot
+    // (rbPickerRows special-cases it before reaching g.SLOT_OPTS), so it
+    // needs its own coverage rather than assuming the cool-branch test above
+    // also proves this one
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => {
+        g.generatePreset(); g.build(); for (let i = 0; i < 5; i++) g.stepTick(60);
+        const f = g.active;
+        g.s.cash = 5000000;
+        g.chooseFab(f.id, 'fab-foundry'); // unlocks 'unit'
+        f.queue[0].left = 0.0001; g.stepTick(1);
+        g.openDesign(f.id, 'unit');
+        g.bumpDesignPick(g.DESIGN_AXES.unit[0].key, 2);
+        g.manufacturePart();
+        f.queue[0].left = 0.0001; g.stepTick(1);
+      },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
+    const cardRow = wrapper.findAll('.sheet button.pickrow').find(r => r.text().includes('MH/W'));
+    await cardRow.trigger('click');
+    expect(wrapper.text()).toContain('Custom card');
+  });
+
   it('the fleet-actions sheet opens and shows scope-aware previews', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },
@@ -106,6 +156,26 @@ describe('RigsView', () => {
     expect(wrapper.text()).toContain('Applies to');
     expect(wrapper.text()).toContain('Repair worn cards');
     expect(wrapper.text()).toContain('Move to a group');
+  });
+
+  it('the fleet-actions card-swap select also lists a manufactured custom card', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        const f = g.active;
+        g.s.cash = 5000000;
+        g.chooseFab(f.id, 'fab-foundry');
+        f.queue[0].left = 0.0001; g.stepTick(1);
+        g.openDesign(f.id, 'unit');
+        g.bumpDesignPick(g.DESIGN_AXES.unit[0].key, 2);
+        g.manufacturePart();
+        f.queue[0].left = 0.0001; g.stepTick(1);
+      },
+    });
+    const fleetBtn = wrapper.findAll('button').find(b => b.text().includes('Fleet actions'));
+    await fleetBtn.trigger('click');
+    const options = wrapper.find('#fleet-card-select').findAll('option').map(o => o.text());
+    expect(options.some(t => t.includes('Custom card'))).toBe(true);
   });
 
   it('renaming a rig from its detail sheet updates the store', async () => {
