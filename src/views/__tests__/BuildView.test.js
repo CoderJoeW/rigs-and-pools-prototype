@@ -327,9 +327,10 @@ describe('BuildView', () => {
     });
 
     it('a note (e.g. the new-miner premium) still shows in Quick pick — it\'s context, not a gate diagnostic', () => {
-      // a brand-new game's chain has no rigs on it yet, so it's below its
-      // floor and the subsidy note is live on the default mounted preset
-      // with no setup needed — see buildDraft.js's own comment on issue #6
+      // a brand-new game's chain has no rigs on it yet, so its observed
+      // hashrate sits below its floor (subsidyNote's own gate, BuildView.vue)
+      // and the note is live on the default mounted preset with no setup —
+      // see BuildView.vue's own comment on issue #6 for why that's real
       const { wrapper } = mountWithStore(BuildView);
       expect(wrapper.text()).toContain('paying a new-miner premium');
     });
@@ -341,6 +342,29 @@ describe('BuildView', () => {
       expect(wrapper.findAll('.chk.ok, .chk.no').length).toBeGreaterThan(0);
       await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
       expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+    });
+
+    it('in Quick pick, falls back to the real failing checks if canBuild goes stale after the preset was generated', async () => {
+      // presetFound/checks are a SNAPSHOT taken when generatePreset() ran
+      // (mount, or switching back into Quick pick) — nothing re-runs it on
+      // a tick, so cash draining out from under an already-open Quick pick
+      // is a real, reachable way for canBuild to go false while the panel
+      // still shows the stale preset. Hiding checks unconditionally here
+      // would leave the Order button reading "Fix the crosses above" with
+      // no crosses anywhere — worse than the wall of green this split
+      // exists to cut
+      const { wrapper, store } = mountWithStore(BuildView);
+      expect(store.canBuild).toBe(true);
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+
+      store.s.cash = 0; // the world moving under the still-open Quick pick
+      await nextTick();
+
+      expect(store.canBuild).toBe(false);
+      const shown = wrapper.findAll('.chk.no');
+      expect(shown.length).toBeGreaterThan(0);
+      expect(shown.some(c => c.text().includes('you hold'))).toBe(true); // the cash check specifically
+      expect(wrapper.text()).toContain('Fix the crosses above');
     });
   });
 
