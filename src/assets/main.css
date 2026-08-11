@@ -21,6 +21,16 @@
   --bg:#F7F6F1; --backdrop:#ECEAE1; --card:#FFF; --ink:#14180F; --ink-2:#535E4F; --ink-3:#8C9587;
   --line:#DEDBCC; --line-2:#EEECE2;
   --green:#0E9C57; --green-t:#E4F6EC;
+  /* A fixed dark ink for text sitting directly on --green, deliberately the
+     SAME value in both themes rather than following --card/--ink's usual
+     light↔dark swap. --green itself is a mid-dark tone in the light theme
+     and a bright one in the dark theme — dark text clears WCAG AA (4.5:1)
+     against BOTH (measured ~5.9:1 light, ~13:1 dark), where white text
+     clears neither (~3.5:1 light, ~1.6:1 dark: worse than failing, actively
+     hard to read). Not applied everywhere --green is a background — several
+     existing spots (.btn-pri, .rigtile.run) share this failure and are a
+     separate, app-wide pass — but new green-fill text should use this. */
+  --ink-on-accent:#0F1510;
   --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A; --amber-t:#FCEBDA;
   --red:#D33A2C;   --red-t:#FBEAE7;
   --blue:#3457C7;  --blue-t:#E9ECFA;
@@ -563,7 +573,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    escalate them into #app's own stacking context for no benefit. */
 .seg2 button{position:relative;flex:1;text-align:center;padding:8px 4px;font-size:12.5px;
   font-weight:500;color:var(--ink-2);transition:var(--press),color .22s cubic-bezier(.2,.8,.2,1)}
-.seg2 button.on{color:#fff}
+.seg2 button.on{color:var(--ink-on-accent)}
 .seg2 button+button{border-left:1px solid var(--line)}
 /* The blanket reduced-motion rule below only reaches real elements (`*`
    never matches a pseudo-element), so the thumb's slide needs its own

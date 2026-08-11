@@ -62,6 +62,16 @@ describe('BuildView', () => {
       expect(seg.classes()).not.toContain('custom');
     });
 
+    it('uses a fixed dark ink for the active label, not white — white only clears WCAG AA in neither theme', () => {
+      // white-on-green is ~3.5:1 in the light theme and ~1.6:1 in the dark
+      // one (--green flips from a mid-dark tone to a bright one) — both
+      // fail the 4.5:1 normal-text minimum. A dark ink held constant
+      // across both themes clears it in both (~5.9:1 / ~13:1), since
+      // --green never gets dark enough in dark mode to need light text.
+      expect(cssRule('.seg2 button.on')).toMatch(/color:\s*var\(--ink-on-accent\)/);
+      expect(cssRule(':root')).toMatch(/--ink-on-accent:\s*#[0-9a-fA-F]{6}/);
+    });
+
     it('exposes which segment is active to assistive tech, not just sighted users', async () => {
       // The thumb is a purely visual cue (a pseudo-element background) —
       // without aria-pressed a screen reader has no way to tell the two
