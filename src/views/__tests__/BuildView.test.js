@@ -328,9 +328,10 @@ describe('BuildView', () => {
 
     it('a note (e.g. the new-miner premium) still shows in Quick pick — it\'s context, not a gate diagnostic', () => {
       // a brand-new game's chain has no rigs on it yet, so its observed
-      // hashrate sits below its floor (subsidyNote's own gate, BuildView.vue)
-      // and the note is live on the default mounted preset with no setup —
-      // see BuildView.vue's own comment on issue #6 for why that's real
+      // hashrate sits AT (not above) its floor — subsidyNote's own gate is
+      // obs > floor, so this is still below it — and the note is live on
+      // the default mounted preset with no setup; see BuildView.vue's own
+      // comment on issue #6 for why that's real
       const { wrapper } = mountWithStore(BuildView);
       expect(wrapper.text()).toContain('paying a new-miner premium');
     });
