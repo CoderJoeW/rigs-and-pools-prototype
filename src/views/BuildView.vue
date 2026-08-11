@@ -199,15 +199,40 @@ watch(()=> draftKey.value+'|'+gateKey.value, ()=>{
     ? 'Ready to order for '+fmt.usd(g.dp.cost)+'.'
     : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
 }, { immediate:true });
+/* Quick pick only ever lands on a combination generatePreset() already ran
+   the FULL canBuild gate against — every check is guaranteed to pass the
+   MOMENT a preset exists at all (the "nothing fits" case above is its own
+   message, not a failing checklist). But that guarantee is a snapshot, not
+   an invariant: presetFound only re-runs on mount or switching back into
+   Quick pick (setMode), never on a tick, so cash draining or the site's
+   own power/capacity shifting underneath an already-open Quick pick CAN
+   make canBuild go false while nothing here re-generates. Showing zero
+   checks unconditionally would leave the Order button reading "Fix the
+   crosses above" with no crosses anywhere on screen — worse than the wall
+   of green checkmarks this split exists to cut, since the aria-live status
+   below (buildStatus, which reads g.checks directly and doesn't go through
+   this computed) would still correctly announce a real failure to assistive
+   tech while the visible panel had nothing to show a sighted player. So:
+   checks stay empty in the common case (canBuild true) and fall back to
+   the real failing ones the instant it isn't — Quick pick is condensed,
+   never silent. Notes (ceiling/subsidy) stay in both modes regardless:
+   those are context about the chain, not gate diagnostics — ceilingNote
+   in particular never blocks canBuild at all (see its own comment above). */
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
+  const notes=[ceilingNote.value,subsidyNote.value].filter(Boolean);
+  const costRows=[ {k:'Parts', v:fmt.usd(costShown.value)},
+    {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
+    {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ];
+  if(mode.value==='preset'){
+    return [
+      { t:'Cost & payback', rows:costRows, checks:c.filter(x=>!x.ok), notes },
+      { t:'Hashrate', rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)} ], checks:[] },
+    ];
+  }
   return [
-    { t:'Cost & payback',
-      rows:[ {k:'Parts', v:fmt.usd(costShown.value)},
-             {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
-             {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ],
-      checks:[c[5]], notes:[ceilingNote.value,subsidyNote.value].filter(Boolean) },
+    { t:'Cost & payback', rows:costRows, checks:[c[5]], notes },
     { t:'Hashrate & MH/W',
       rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)},
              {k:'MH/W', v:effShown.value.toFixed(3)} ],

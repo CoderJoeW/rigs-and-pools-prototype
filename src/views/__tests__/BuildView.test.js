@@ -305,6 +305,68 @@ describe('BuildView', () => {
       await nextTick();
       expect(wrapper.text()).toContain(fmt.usd(costAfter));
     });
+
+    it('in Quick pick, hides the itemized pass/fail checks — generatePreset already guarantees they all pass', () => {
+      // showing six green checkmarks confirming what tapping Quick pick
+      // already promised is exactly the clutter this split exists to cut;
+      // the itemized list earns its place once a player is actually
+      // troubleshooting a combination in Customise
+      const { wrapper, store } = mountWithStore(BuildView);
+      expect(store.canBuild).toBe(true); // the mounted preset always clears the gate
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+      expect(wrapper.text()).not.toContain('MH/W');
+      expect(wrapper.text()).not.toContain('Site impact');
+    });
+
+    it('in Customise, shows every check — the itemized view a player troubleshooting a bad combo actually needs', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(store.checks.length);
+      expect(wrapper.text()).toContain('MH/W');
+      expect(wrapper.text()).toContain('Site impact');
+    });
+
+    it('a note (e.g. the new-miner premium) still shows in Quick pick — it\'s context, not a gate diagnostic', () => {
+      // a brand-new game's chain has no rigs on it yet, so its observed
+      // hashrate sits AT (not above) its floor — subsidyNote's own gate is
+      // obs > floor, so this is still below it — and the note is live on
+      // the default mounted preset with no setup; see BuildView.vue's own
+      // comment on issue #6 for why that's real
+      const { wrapper } = mountWithStore(BuildView);
+      expect(wrapper.text()).toContain('paying a new-miner premium');
+    });
+
+    it('switching modes swaps the verdict shape live, without a remount', async () => {
+      const { wrapper } = mountWithStore(BuildView);
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no').length).toBeGreaterThan(0);
+      await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+    });
+
+    it('in Quick pick, falls back to the real failing checks if canBuild goes stale after the preset was generated', async () => {
+      // presetFound/checks are a SNAPSHOT taken when generatePreset() ran
+      // (mount, or switching back into Quick pick) — nothing re-runs it on
+      // a tick, so cash draining out from under an already-open Quick pick
+      // is a real, reachable way for canBuild to go false while the panel
+      // still shows the stale preset. Hiding checks unconditionally here
+      // would leave the Order button reading "Fix the crosses above" with
+      // no crosses anywhere — worse than the wall of green this split
+      // exists to cut
+      const { wrapper, store } = mountWithStore(BuildView);
+      expect(store.canBuild).toBe(true);
+      expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
+
+      store.s.cash = 0; // the world moving under the still-open Quick pick
+      await nextTick();
+
+      expect(store.canBuild).toBe(false);
+      const shown = wrapper.findAll('.chk.no');
+      expect(shown.length).toBeGreaterThan(0);
+      expect(shown.some(c => c.text().includes('you hold'))).toBe(true); // the cash check specifically
+      expect(wrapper.text()).toContain('Fix the crosses above');
+    });
   });
 
   describe('the Order-parts button', () => {
