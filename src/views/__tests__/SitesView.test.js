@@ -25,6 +25,10 @@ describe('SitesView', () => {
     await newSiteBtn.trigger('click');
     expect(wrapper.find('.sheet').exists()).toBe(true);
     expect(wrapper.text()).toContain('New site');
+    // the picker's v-if/else-if chain used to be split in two by a stray
+    // element sitting between two branches, so an unrelated final v-else
+    // (cooling plants) rendered alongside whichever sheet was actually open
+    expect(wrapper.findAll('.sheet .cmp')).toHaveLength(1);
   });
 
   it('renaming the active site updates its displayed name', async () => {
