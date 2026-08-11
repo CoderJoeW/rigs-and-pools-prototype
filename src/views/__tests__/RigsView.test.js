@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import RigsView from '../RigsView.vue';
 
@@ -44,6 +45,41 @@ describe('RigsView', () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.sheet').exists()).toBe(false);
     wrapper.unmount();
+  });
+
+  it('the rebuild planner\'s card-count stepper disables at its bounds instead of silently clamping', async () => {
+    // this stepper used to be a separate, inline-styled copy of Build's own
+    // — 32px, no disabled state, so a tap past the limit silently did
+    // nothing with no visual sign it hit a wall. Sharing .stepper fixes the
+    // size AND the missing disabled state in one move.
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); for (let i = 0; i < 5; i++) g.stepTick(60); },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
+    expect(store.s.rebuild).toBeTruthy();
+
+    const minus = () => wrapper.find('.stepper button[aria-label="Decrease card count"]');
+    const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+    expect(minus().exists()).toBe(true);
+
+    store.s.rebuild.draft.n = 1;
+    await nextTick();
+    expect(minus().attributes('disabled')).toBeDefined();
+    await minus().trigger('click'); // inert past the floor
+    expect(store.s.rebuild.draft.n).toBe(1);
+
+    const { FRAMES, MOBOS } = await import('../../data/hardware.js');
+    const smallestFrame = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
+    const smallestMobo = MOBOS.reduce((a, b) => b.pcie < a.pcie ? b : a);
+    store.s.rebuild.draft.frame = smallestFrame.id;
+    store.s.rebuild.draft.mobo = smallestMobo.id;
+    store.s.rebuild.draft.n = Math.min(smallestFrame.slots, smallestMobo.pcie);
+    await nextTick();
+    expect(plus().attributes('disabled')).toBeDefined();
+    const nAtLimit = store.s.rebuild.draft.n;
+    await plus().trigger('click'); // inert past the ceiling
+    expect(store.s.rebuild.draft.n).toBe(nAtLimit);
   });
 
   it('the fleet-actions sheet opens and shows scope-aware previews', async () => {

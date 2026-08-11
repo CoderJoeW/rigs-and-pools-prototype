@@ -178,10 +178,15 @@ describe('BuildView', () => {
       // jsdom doesn't run layout, so pin the CSS mechanism directly, same
       // pattern as the segmented control's thumb tests.
       const rule = cssRule('.stepper button');
-      const width = Number(rule.match(/width:\s*(\d+)px/)?.[1]);
-      const height = Number(rule.match(/height:\s*(\d+)px/)?.[1]);
+      // (?:^|;) anchors past any future "min-width"/"max-width" prefix so
+      // this can't accidentally match the wrong declaration
+      const width = Number(rule.match(/(?:^|;)\s*width:\s*(\d+)px/)?.[1]);
+      const height = Number(rule.match(/(?:^|;)\s*height:\s*(\d+)px/)?.[1]);
       expect(width).toBeGreaterThanOrEqual(44);
       expect(height).toBeGreaterThanOrEqual(44);
+      // and pinned against flex-shrink, or the 44px declaration above is a
+      // promise the layout doesn't actually keep at a narrow viewport
+      expect(rule).toMatch(/flex:\s*none/);
     });
 
     it('disables "-" at 1 card rather than silently clamping', async () => {
