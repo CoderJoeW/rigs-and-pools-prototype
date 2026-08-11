@@ -22,11 +22,23 @@ describe('BuildView', () => {
     expect(wrapper.text()).toContain('Supply');
   });
 
+  it('labels the card-model picker and the card-count stepper differently, since they used to both say "Cards"', async () => {
+    // one row picks WHICH card, the other picks HOW MANY — identical
+    // headers on two adjacent rows made it look like one was a redundant
+    // duplicate of the other rather than two different controls.
+    const { wrapper } = mountWithStore(BuildView);
+    await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+    const labels = wrapper.findAll('.pickrow .lab').map(l => l.text());
+    expect(labels).toContain('Cards');
+    expect(labels).toContain('Quantity');
+    expect(new Set(labels).size).toBe(labels.length); // no two rows share a label
+  });
+
   it('marks each part-picker row as opening a dialog, for assistive tech that announces it before activation', async () => {
     const { wrapper } = mountWithStore(BuildView);
     await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-    // .pickrow also matches the Cards row, a plain (non-button) div that
-    // doesn't open anything — scope to the actual picker-opening buttons
+    // .pickrow also matches the Quantity stepper row, a plain (non-button)
+    // div that doesn't open anything — scope to the actual picker buttons
     const pickrows = wrapper.findAll('button.pickrow');
     expect(pickrows.length).toBe(5); // frame, mobo, cool, psu, unit
     for (const row of pickrows) expect(row.attributes('aria-haspopup')).toBe('dialog');
