@@ -291,18 +291,29 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .pickrow .val .s{font-size:10.5px;color:var(--ink-3);margin-top:1px}
 .pickrow .ch{color:var(--ink-3);font-size:15px;flex:none}
 
-/* The card-count stepper on Build's "Cards" row (formerly three bare
-   inline-styled elements with no press feedback of their own — every
-   other button in the app answers a tap, this one didn't). Disabled at
-   its own bounds rather than silently clamping, same as every other gated
-   action here (canBuild, locked .cmp-r rows): a flat tap at the limit
-   should look like it did nothing, not feel like it might have. */
+/* The card-count stepper — Build's "Cards" row and the rebuild planner's
+   own copy on RigsView (formerly three bare inline-styled elements with no
+   press feedback of their own — every other button in the app answers a
+   tap, this one didn't). Disabled at its own bounds rather than silently
+   clamping, same as every other gated action here (canBuild, locked
+   .cmp-r rows): a flat tap at the limit should look like it did nothing,
+   not feel like it might have.
+
+   44x44 is WCAG 2.5.5's AAA target-size minimum. This app doesn't clear
+   that everywhere — several controls (TopBar's speed pills, the help/sound
+   toggles) sit well under even the 24x24 AA minimum — but this is the one
+   control a player is likely to tap repeatedly in quick succession (racing
+   the card count up or down), where a mis-tap actually costs a redo, so it
+   earns the larger target on its own rather than waiting on an app-wide
+   pass. flex:none holds the size even inside a tight .pickrow — its
+   siblings .lab/.ch already do the same, and without it a narrow enough
+   viewport would flex-shrink the very target this exists to guarantee. */
 .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.stepper button{width:32px;height:32px;text-align:center;font-size:15px;font-weight:500;
+.stepper button{flex:none;width:44px;height:44px;text-align:center;font-size:17px;font-weight:500;
   color:var(--ink-2);transition:var(--press),background-color .15s,color .15s}
 .stepper button:active:not(:disabled){transform:scale(var(--press-scale));background:var(--line-2)}
 .stepper button:disabled{color:var(--ink-3);opacity:.4;cursor:not-allowed}
-.stepper .num{min-width:24px;text-align:center;font-family:var(--mono);font-weight:500;font-size:13px}
+.stepper .num{min-width:28px;text-align:center;font-family:var(--mono);font-weight:500;font-size:14px}
 
 .tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:4px;
   background:var(--line-2);color:var(--ink-2)}

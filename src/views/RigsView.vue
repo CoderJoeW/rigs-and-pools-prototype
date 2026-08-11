@@ -601,11 +601,11 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                 <span v-if="rbD.n!==rbRig.units.length" class="tag b" style="margin-left:5px">
                   {{ rbD.n>rbRig.units.length?'+':'' }}{{ rbD.n-rbRig.units.length }}</span></div>
                 <div class="s">Limit {{ rbInfo.lim }} — worn cards are traded first when reducing</div></span>
-              <span style="display:flex;align-items:center;border:1px solid var(--line);border-radius:8px">
-                <button style="width:32px;height:32px;text-align:center" aria-label="Decrease card count"
+              <span class="stepper">
+                <button aria-label="Decrease card count" :disabled="rbD.n<=1"
                         @click="rbD.n=Math.max(1,rbD.n-1)">&minus;</button>
-                <span class="num" style="min-width:24px;text-align:center">{{ rbD.n }}</span>
-                <button style="width:32px;height:32px;text-align:center" aria-label="Increase card count"
+                <span class="num">{{ rbD.n }}</span>
+                <button aria-label="Increase card count" :disabled="rbD.n>=rbInfo.lim"
                         @click="rbD.n=Math.min(rbInfo.lim,rbD.n+1)">+</button></span></div>
           </div></div>
 
