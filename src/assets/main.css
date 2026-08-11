@@ -29,7 +29,9 @@
      clears neither (~3.55:1 light, ~1.62:1 dark: worse than failing,
      actively hard to read). Not applied everywhere --green is a background —
      .btn-pri (literal color:#fff) shares this failure in both themes and is
-     a separate, app-wide pass; new green-fill text should use this instead. */
+     a separate, app-wide pass; new green-fill text should use this instead.
+     (One exception already carved out of that app-wide .btn-pri: Build's
+     Order-parts CTA, via .btn-order — see that rule for why.) */
   --ink-on-accent:#0F1510;
   --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A; --amber-t:#FCEBDA;
   --red:#D33A2C;   --red-t:#FBEAE7;
@@ -355,6 +357,27 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .btn-pri{background:var(--green);color:#fff;
   box-shadow:0 2px 12px color-mix(in srgb, var(--green) 35%, transparent)}
 .btn-pri:active{background:#0F6446}
+/* Build's own Order-parts CTA (one-off patch, not a reusable button
+   variant — despite sitting in this block next to .btn-pri/.btn-ghost) —
+   .btn-pri's #fff fails WCAG AA in both themes (~3.55:1 light, ~1.62:1
+   dark; see --ink-on-accent's definition), same failure already fixed on
+   .seg2/.slotcell elsewhere on this tab. Scoped to .btn-order rather than
+   changing .btn-pri itself: that class is the primary-action style used
+   across every view in the app, and fixing its contrast everywhere is a
+   real design-system decision, not something a Build-tab pass should
+   decide unilaterally — this is the one instance of it that's squarely
+   this tab's own call to make.
+
+   :active is pinned to --green rather than inheriting .btn-pri:active's
+   darkened #0F6446 — that background is dark enough that --ink-on-accent
+   on it drops to 2.58:1, worse than the #fff this rule replaces (7.16:1
+   there, ironically). Keeping the resting green during the press means
+   press feedback comes from button.btn:active's scale transform alone
+   instead of also darkening — one cue instead of two, but never a
+   contrast regression on the one CTA a player is looking at when they
+   spend money. */
+.btn-order.btn-pri{color:var(--ink-on-accent)}
+.btn-order.btn-pri:active{background:var(--green)}
 .btn-ghost{background:transparent;border:1px solid var(--line)}
 @media (hover:hover){
   .btn-pri:hover{box-shadow:0 2px 18px color-mix(in srgb, var(--green) 55%, transparent)}
