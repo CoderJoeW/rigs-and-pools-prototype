@@ -136,13 +136,22 @@ const booting=ref(true);
 const catchUpPct=computed(()=> g.s.catchUp
   ? Math.round(g.s.catchUp.done/g.s.catchUp.credited*100) : 0);
 onMounted(async ()=>{
-  try{ await g.loadSave(); }                // resume first, then start the clock
-  finally{ booting.value=false; }           // unconditional — a loadSave() that somehow
-  timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);   // rejected must not strand the app on
-  saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000); // this loading screen forever
-  g.saveNow();
-  window.addEventListener('pagehide',onLeave);
-  document.addEventListener('visibilitychange',onHide);
+  try{ await g.loadSave(); }                 // resume first, then start the clock
+  finally{
+    // everything below is unconditional, not just booting=false — a
+    // loadSave() that somehow rejected must not strand the app on this
+    // loading screen forever WITH the tick loop, autosave and pagehide
+    // listener all silently never having started either. A finally block
+    // always runs to completion before the original rejection (if any)
+    // continues propagating, so putting the real startup here rather than
+    // after the try/finally is what makes it unconditional too.
+    booting.value=false;
+    timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);
+    saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);
+    g.saveNow();
+    window.addEventListener('pagehide',onLeave);
+    document.addEventListener('visibilitychange',onHide);
+  }
 });
 onUnmounted(()=>{ clearInterval(timer); clearInterval(saver); clearTimeout(flashTimer);
   window.removeEventListener('pagehide',onLeave);

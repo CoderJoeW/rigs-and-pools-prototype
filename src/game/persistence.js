@@ -67,13 +67,19 @@ export function installPersistence(G){
        but an IMPORTED save runs this same path long after the player has
        clicked, and that is where it would be heard. */
     sfx.busy=true;
-    // a local reference, written into rather than read back out of
-    // G.s.catchUp on every iteration — Vue wraps an object assigned into
-    // reactive state in its own Proxy, so G.s.catchUp read back is NOT
-    // `===` the plain object assigned to it; this writes the one the loop
-    // actually holds, sidestepping that rather than fighting it
-    const cu={ credited, done:0 };
-    G.s.catchUp=cu;
+    // Assign first, THEN take the local reference back out of G.s — never
+    // hold onto the plain object literal itself. Vue wraps an object
+    // assigned into reactive state in its own Proxy, so G.s.catchUp read
+    // back is never `===` the literal assigned to it; a local var holding
+    // the literal would write to it directly, bypassing the Proxy's `set`
+    // trap entirely, so nothing watching G.s.catchUp.done (the progress
+    // bar) would ever be told it changed — one rendered frame for the
+    // whole catch-up, not a moving bar. `cu` here IS the proxy, so writes
+    // through it trigger exactly like the direct G.s.catchUp.done= this
+    // replaces; it's just a shorter name for the same reactive object,
+    // not a different, unreactive one.
+    G.s.catchUp={ credited, done:0 };
+    const cu=G.s.catchUp;
     try{
       let left=credited, sliceStart=nowMs();
       while(left>0){

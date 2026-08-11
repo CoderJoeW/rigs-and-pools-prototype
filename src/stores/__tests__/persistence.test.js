@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { watchEffect } from 'vue';
 import { freshStore, reopenStore } from '../../test/testStore.js';
+import { sfx } from '../../services/audio.js';
 
 // wipeSave() ends with a cosmetic location.reload(), already wrapped in a
 // try/catch in app code — jsdom has no real navigation, so stub it quiet.
@@ -174,10 +176,11 @@ describe('a corrupted save', () => {
     // g2.stepTick is a COPY of the reference G.__exports holds at creation
     // time, not the closure-internal G.stepTick advance() actually calls —
     // spying on the export never reaches the real call site. A rig with a
-    // non-iterable `units` survives the rig-shape migration (which never
-    // touches that field) but throws the instant tick.js's wear loop
-    // (`for(const u of r.units)`) reaches it — a genuine engine fault
-    // arriving from inside the awaited advance(), not a synthetic one.
+    // null `units` survives the rig-shape migration (which never touches
+    // that field) but throws the instant something reads its .length —
+    // dispatch.js's rigWear, reached from inside the first stepTick() the
+    // catch-up loop runs — a genuine engine fault arriving from inside the
+    // awaited advance(), not a synthetic one.
     const g1 = freshStore();
     g1.generatePreset();
     g1.build();
@@ -193,6 +196,10 @@ describe('a corrupted save', () => {
     expect(loaded).toBe(false);
     expect(g2.s.cash).toBe(500); // fresh state, not left mid-hydration
     expect(g2.s.catchUp).toBe(null); // cleaned up, not stuck non-null forever
+    // advance()'s finally is what clears this — hydrate()'s catch block
+    // never touched sfx.busy at all, so this is the only assertion in the
+    // suite that actually exercises the finally rather than the catch
+    expect(sfx.busy).toBe(false); // not left muted for the rest of the session
   });
 
   it('a second import arriving mid-catch-up is refused, not left to corrupt or wipe the first one', async () => {
@@ -341,6 +348,42 @@ describe('offline catch-up', () => {
 
     await donePromise;
     expect(g2.s.catchUp).toBe(null); // cleared once the real work is done
+  });
+
+  it('the catch-up progress genuinely updates reactively as it runs, not once and then frozen', async () => {
+    // Real regression this closes: an earlier version of advance() held a
+    // LOCAL COPY of the plain object literal assigned to G.s.catchUp,
+    // rather than the value read back out of G.s. Vue wraps an object
+    // assigned into reactive state in its own Proxy, so writing to the
+    // plain literal instead of the proxy bypasses the `set` trap entirely
+    // — nothing watching G.s.catchUp.done is ever told it changed. The
+    // symptom was invisible to a test that only reads g2.s.catchUp.done
+    // directly (a Proxy reads THROUGH to the same live value either way);
+    // it only shows up to something that actually depends on being
+    // notified, the same way the real progress bar's re-render does.
+    // watchEffect is exactly that: Vue's own reactivity, not the
+    // component tree, so this needs no App.vue mount.
+    const g1 = freshStore();
+    g1.generatePreset();
+    g1.build();
+    for (let i = 0; i < 60; i++) g1.stepTick(60);
+    await g1.saveNow();
+
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    raw.savedAt = Date.now() - 24 * 3600 * 1000;
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    const seenDone = new Set();
+    const stop = watchEffect(() => { if (g2.s.catchUp) seenDone.add(g2.s.catchUp.done); });
+
+    await g2.loadSave();
+    stop();
+
+    // broken: the watcher fires once, on the initial assignment, and
+    // never again — seenDone.size stays at 1 for the whole 24h run.
+    // working: dozens of distinct snapshots, one per yield boundary.
+    expect(seenDone.size).toBeGreaterThan(10);
   });
 
   it('does not fast-forward for a short absence', async () => {
