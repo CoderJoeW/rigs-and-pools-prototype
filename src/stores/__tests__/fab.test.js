@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { freshStore } from '../../test/testStore.js';
+import { CARDS } from '../../data/hardware.js';
 
 // installs 'fab-bench' (slots: cool, psu; budget 30) at the active site and
 // finishes construction instantly, the same rush-style shortcut sites.test.js
@@ -126,5 +127,69 @@ describe('manufacturePart', () => {
     g.manufacturePart();
     expect(g.s.cash).toBe(cashBefore);
     expect(f.queue).toHaveLength(0);
+  });
+
+  it('refuses a design with nothing pushed — it would be strictly worse than the catalogue part it copies', () => {
+    const g=freshStore();
+    const f=withBench(g);
+    g.openDesign(f.id,'cool'); // no bumpDesignPick calls — 0 points spent
+    const cashBefore=g.s.cash;
+    g.manufacturePart();
+    expect(g.s.design).not.toBe(null); // refused, not silently consumed — stays open to retry
+    expect(g.s.cash).toBe(cashBefore);
+    expect(f.queue).toHaveLength(0);
+  });
+
+  it('tracks the manufacturing spend in s.spent, same as every other purchase', () => {
+    const g=freshStore();
+    const f=withBench(g);
+    const spentBefore=g.s.spent;
+    g.openDesign(f.id,'cool');
+    g.bumpDesignPick('fac',1);
+    g.manufacturePart();
+    expect(g.s.spent).toBeGreaterThan(spentBefore);
+  });
+
+  it('pins the manufacturing-cash and per-rig unit-price formulas exactly, so a formula regression is caught, not just a nonzero-cost sanity check', () => {
+    const g=freshStore();
+    const f=withBench(g);
+    g.openDesign(f.id,'cool');
+    g.bumpDesignPick('fac',2); // cost = budgetCost(2)*2*3/2 = 6 budget, cash = cashPerPt(95)*2 = 190
+    const cashBefore=g.s.cash;
+    g.manufacturePart();
+
+    const topCoolerPrice=420; // Immersion tank kit, data/hardware.js COOLERS' top tier
+    const expectedBuildCash=Math.round(topCoolerPrice*0.6 + 190);
+    const expectedUnitPrice=Math.round(topCoolerPrice*(1.1 + 0.12*2)); // 2 points spent total
+
+    expect(cashBefore-g.s.cash).toBe(expectedBuildCash);
+    expect(f.queue[0].part.price).toBe(expectedUnitPrice);
+  });
+
+  it('a unit design starts from the CURRENT top card once generations have grown, not the frozen catalogue', () => {
+    const g=freshStore();
+    g.s.cash=5000000;
+    const f=g.active;
+    g.chooseFab(f.id,'fab-foundry'); // unlocks 'unit', budget 150
+    f.queue[0].left=0.0001; g.stepTick(1);
+
+    // advance two full card generations — ensureGens() (called every stepTick)
+    // regrows the catalogue from G.s.t, not from how many ticks got there
+    g.s.t=g.C.GEN_DAYS*86400*2+10;
+    g.stepTick(1);
+    const staticTopMh=CARDS[CARDS.length-1].mh;
+    const liveTopMh=g.cards()[g.cards().length-1].mh;
+    expect(liveTopMh).toBeGreaterThan(staticTopMh); // sanity: the catalogue genuinely grew
+
+    g.openDesign(f.id,'unit');
+    const mhAxis=g.DESIGN_AXES.unit.find(a=>a.key==='mh');
+    g.bumpDesignPick('mh',1);
+    g.manufacturePart();
+    const job=f.queue.find(j=>j.kind==='mfg');
+    job.left=0.0001; g.stepTick(1);
+
+    const part=g.s.customParts[0];
+    expect(part.mh).toBe(liveTopMh+mhAxis.step); // based on the LIVE top, not the static one
+    expect(part.mh).not.toBe(staticTopMh+mhAxis.step);
   });
 });

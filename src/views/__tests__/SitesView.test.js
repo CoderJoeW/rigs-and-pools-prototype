@@ -219,15 +219,14 @@ describe('SitesView', () => {
       await wrapper.findAll('button').find(b => b.text().includes('Cooler')).trigger('click');
 
       expect(wrapper.text()).toContain('Design a Cooler');
-      expect(wrapper.text()).toContain('0 / 30'); // nothing spent yet
+      expect(store.designTotals('cool', store.s.design.picks).budget).toBe(0); // nothing spent yet
 
-      const plusBtns = wrapper.findAll('button[aria-label="Increase"]');
-      await plusBtns[0].trigger('click'); // first axis: Cooling factor
+      const coolingFactorAxis = store.DESIGN_AXES.cool[0];
+      await wrapper.find(`button[aria-label="Increase ${coolingFactorAxis.label}"]`).trigger('click');
       await wrapper.vm.$nextTick();
 
-      expect(store.s.design.picks[store.DESIGN_AXES.cool[0].key]).toBe(1);
-      expect(wrapper.text()).toContain('/ 30');
-      expect(wrapper.text()).not.toContain('0 / 30'); // some budget is now spent
+      expect(store.s.design.picks[coolingFactorAxis.key]).toBe(1);
+      expect(store.designTotals('cool', store.s.design.picks).budget).toBe(coolingFactorAxis.budgetCost);
     });
 
     it('manufacturing spends cash, queues a real job, and closes the sheet — completing it makes the part usable', async () => {
@@ -237,7 +236,8 @@ describe('SitesView', () => {
       await toggle.trigger('click');
       await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
       await wrapper.findAll('button').find(b => b.text().includes('Supply')).trigger('click');
-      await wrapper.find('button[aria-label="Increase"]').trigger('click');
+      const wattageAxis = store.DESIGN_AXES.psu[0];
+      await wrapper.find(`button[aria-label="Increase ${wattageAxis.label}"]`).trigger('click');
 
       const cashBefore = store.s.cash;
       await wrapper.find('.btn-pri').trigger('click'); // Manufacture

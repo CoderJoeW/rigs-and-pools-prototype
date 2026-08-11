@@ -223,12 +223,15 @@ const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r) return [];
   const slot=g.s.rebuild.picker;
   if(slot==='unit'){
-    return g.cards().map(c=>({ id:c.id, name:c.name,
+    // fab-designed custom cards (data/customParts.js) belong in every picker
+    // for their slot, this one included — a rig that already carries one
+    // otherwise has no way back to the catalogue, or to another custom card
+    return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')).map(c=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }
   const lim=rbInfo.value.lim;
-  return g.SLOT_OPTS[slot].map(p=>{
+  return g.SLOT_OPTS[slot].concat(g.s.customParts.filter(p=>p.kind===slot)).map(p=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }

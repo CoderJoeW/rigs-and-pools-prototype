@@ -36,8 +36,19 @@ export const DESIGN_AXES = {
 // first, but this keeps a maxed-out foundry design finite either way.
 export const MAX_AXIS_POINTS = 14;
 
-const CATALOGUE_OF = { frame:FRAMES, mobo:MOBOS, cool:COOLERS, psu:PSUS, unit:CARDS };
-export const designBaseStats = kind => ({ ...CATALOGUE_OF[kind][CATALOGUE_OF[kind].length-1] });
+const STATIC_TOP = { frame:FRAMES[FRAMES.length-1], mobo:MOBOS[MOBOS.length-1],
+  cool:COOLERS[COOLERS.length-1], psu:PSUS[PSUS.length-1], unit:CARDS[CARDS.length-1] };
+
+/* unit and psu are the two ladders generations.js keeps growing for as long
+   as the game runs; frame/mobo/cool never do. A design's starting point for
+   those two MUST be the CURRENT top of the live catalogue, not this file's
+   static import — this module has no store access to ask for that, so
+   every caller that designs a unit or psu has to pass `liveTop` in (the
+   last element of g.cards() / g.livePsus). Skip that and a part designed
+   early quietly falls behind the catalogue itself a few in-game weeks
+   later: the opposite of "numbers nothing in any catalogue can match," the
+   entire reason to pay for a fab. Frame/mobo/cool callers can omit it. */
+export const designBaseStats = (kind, liveTop) => ({ ...(liveTop || STATIC_TOP[kind]) });
 
 /* Triangular: the Nth point on an axis costs budgetCost*N, so reaching N
    points costs budgetCost*N*(N+1)/2 — climbing any one axis alone gets
@@ -55,8 +66,8 @@ export function designTotals(kind, picks){
   return { budget, cash, points };
 }
 
-export function designStats(kind, picks){
-  const axes=DESIGN_AXES[kind], base=designBaseStats(kind), out={ ...base };
+export function designStats(kind, picks, liveTop){
+  const axes=DESIGN_AXES[kind], base=designBaseStats(kind,liveTop), out={ ...base };
   for(const ax of axes){
     const n=Math.max(0, picks[ax.key]||0);
     let v=base[ax.key]+ax.step*n;
@@ -73,8 +84,8 @@ export function designStats(kind, picks){
    a modest, points-scaled premium over the catalogue's own top tier, so a
    custom part stays true to "more expensive is always better" rather than
    becoming free hashrate once the R&D is paid off. */
-export function designCost(kind, picks){
-  const { cash, points }=designTotals(kind, picks), base=designBaseStats(kind);
+export function designCost(kind, picks, liveTop){
+  const { cash, points }=designTotals(kind, picks), base=designBaseStats(kind,liveTop);
   return {
     buildCash: Math.round(base.price*0.6 + cash),
     hours: Math.round(30 + points*7),

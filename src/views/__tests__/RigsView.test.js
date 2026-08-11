@@ -97,6 +97,31 @@ describe('RigsView', () => {
     expect(store.s.rebuild.draft.n).toBe(nAtLimit);
   });
 
+  it('the rebuild planner\'s picker lists a manufactured custom part in its own slot, not just the catalogue', async () => {
+    // a rig wearing a custom part otherwise has no way back to the
+    // catalogue, or across to another custom part of the same slot — the
+    // picker used to read only g.SLOT_OPTS / g.cards(), neither of which
+    // ever includes a fab-designed part
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => {
+        g.generatePreset(); g.build(); for (let i = 0; i < 5; i++) g.stepTick(60);
+        const f = g.active;
+        g.s.cash = 1000000;
+        g.chooseFab(f.id, 'fab-bench');
+        f.queue[0].left = 0.0001; g.stepTick(1);
+        g.openDesign(f.id, 'cool');
+        g.bumpDesignPick(g.DESIGN_AXES.cool[0].key, 2);
+        g.manufacturePart();
+        f.queue[0].left = 0.0001; g.stepTick(1);
+      },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
+    const coolRow = wrapper.findAll('.sheet button.pickrow').find(r => r.text().includes('Cooling'));
+    await coolRow.trigger('click');
+    expect(wrapper.text()).toContain('Custom cooler');
+  });
+
   it('the fleet-actions sheet opens and shows scope-aware previews', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },

@@ -492,5 +492,30 @@ describe('BuildView', () => {
       expect(store.s.draft.cool).toBe(part.id);
       expect(store.dp.air).toBeCloseTo(store.PART(store.s.draft.frame).air * part.fac, 5);
     });
+
+    it('a custom part only ever appears in its OWN slot\'s picker, never a different one', async () => {
+      // two different kinds manufactured in the same run — optionsFor must
+      // filter by kind, not just concatenate every custom part everywhere
+      const { wrapper } = mountWithStore(BuildView, {
+        seed: g => {
+          withCustomCooler(g);
+          const f = g.active;
+          g.openDesign(f.id, 'psu');
+          g.bumpDesignPick(g.DESIGN_AXES.psu[0].key, 2);
+          g.manufacturePart();
+          f.queue[0].left = 0.0001; g.stepTick(1);
+        },
+      });
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling')).trigger('click');
+      expect(wrapper.text()).toContain('Custom cooler');
+      expect(wrapper.text()).not.toContain('Custom supply');
+      await wrapper.find('.sheet-hd button').trigger('click'); // back
+
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Supply')).trigger('click');
+      expect(wrapper.text()).toContain('Custom supply');
+      expect(wrapper.text()).not.toContain('Custom cooler');
+    });
   });
 });

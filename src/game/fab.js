@@ -5,6 +5,12 @@ import { fmt } from '../utils/format.js';
 const PART_NAME = { frame:'Custom frame', mobo:'Custom board', cool:'Custom cooler',
   psu:'Custom supply', unit:'Custom card' };
 
+// unit and psu are the two ladders that keep growing (generations.js); a
+// design has to start from whatever's CURRENTLY on top of those, not the
+// frozen catalogue customParts.js imports — see its own comment on why
+const liveTopOf = (G,kind) => kind==='unit' ? G.cards()[G.cards().length-1]
+  : kind==='psu' ? G.livePsus[G.livePsus.length-1] : undefined;
+
 /* 11-fab.js — installed into the shared context G. The design-and-build
    mechanic data/fab.js's own header comment points at: a fab bay (the site
    upgrade itself, game/sites.js's chooseFab) unlocks which slot types can
@@ -33,11 +39,18 @@ export function installFab(G){
     const d=G.s.design; if(!d) return;
     const f=G.site(d.fid), fb=f&&f.fab&&FAB(f.fab);
     if(!f||!fb||!fb.slots.includes(d.kind)) return;
-    if(designTotals(d.kind, d.picks).budget>fb.budget) return;
-    const { buildCash, hours, unitPrice }=designCost(d.kind, d.picks);
+    const totals=designTotals(d.kind, d.picks);
+    if(totals.budget>fb.budget) return;
+    if(totals.points<=0) return;   // nothing tuned: strictly worse than the catalogue part it's based on
+    const liveTop=liveTopOf(G,d.kind);
+    const { buildCash, hours, unitPrice }=designCost(d.kind, d.picks, liveTop);
     if(G.s.cash<buildCash) return;
     G.s.cash-=buildCash; G.s.spent+=buildCash;
-    const stats=designStats(d.kind, d.picks);
+    const stats=designStats(d.kind, d.picks, liveTop);
+    // module-scoped, not a saved counter (s.nextSite/s.nextId's own pattern)
+    // — a design can be manufactured from ANY site's fab, and nothing else
+    // needs to count how many exist, so a save-persisted sequence would
+    // only add a migration for no benefit over this
     const id='custom-'+d.kind+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     const part={ ...stats, id, name:PART_NAME[d.kind], kind:d.kind, price:unitPrice, custom:true };
     f.queue.push({ kind:'mfg', part, paidCash:buildCash, left:hours, total:hours });
