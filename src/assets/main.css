@@ -291,7 +291,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
 .pickrow .val .s{font-size:10.5px;color:var(--ink-3);margin-top:1px}
 .pickrow .ch{color:var(--ink-3);font-size:15px;flex:none}
 
-/* The card-count stepper — Build's "Cards" row and the rebuild planner's
+/* The card-count stepper — Build's "Count" row and the rebuild planner's
    own copy on RigsView (formerly three bare inline-styled elements with no
    press feedback of their own — every other button in the app answers a
    tap, this one didn't). Disabled at its own bounds rather than silently

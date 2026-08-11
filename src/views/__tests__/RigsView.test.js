@@ -47,6 +47,21 @@ describe('RigsView', () => {
     wrapper.unmount();
   });
 
+  it('labels the rebuild planner\'s card-model picker and card-count stepper differently, since they used to both say "Cards"', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); for (let i = 0; i < 5; i++) g.stepTick(60); },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Retrofit')).trigger('click');
+    // scoped to the open sheet, and anchored per-row (not just "the set of
+    // labels is distinct") so a swap that left the model picker headed
+    // Count and the stepper headed Cards would still fail this
+    const stepperRow = wrapper.findAll('.sheet .pickrow').find(r => r.find('.stepper').exists());
+    const modelRow = wrapper.findAll('.sheet button.pickrow').find(r => r.text().includes('MH/W'));
+    expect(stepperRow.find('.lab').text()).toBe('Count');
+    expect(modelRow.find('.lab').text()).toBe('Cards');
+  });
+
   it('the rebuild planner\'s card-count stepper disables at its bounds instead of silently clamping', async () => {
     // this stepper used to be a separate, inline-styled copy of Build's own
     // — 32px, no disabled state, so a tap past the limit silently did

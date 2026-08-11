@@ -261,7 +261,7 @@ const verdict=computed(()=>{
             <div class="s">{{ fl.sub(fl.part) }} · {{ fmt.usd(fl.part.price) }}</div></span>
           <span class="ch">&rsaquo;</span></button>
 
-        <div class="pickrow"><span class="lab">Cards</span>
+        <div class="pickrow"><span class="lab">Count</span>
           <span class="val"><div class="n">{{ g.s.draft.n }} × {{ g.PART(g.s.draft.unit).name }}</div>
             <div class="s">Limit {{ cardLimit.n }}, set by {{ cardLimit.by }}
               <span style="color:var(--ink-3)">· frame fits {{ cardLimit.frame }},
