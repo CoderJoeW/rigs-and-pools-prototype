@@ -63,13 +63,19 @@ describe('BuildView', () => {
     });
 
     it('uses a fixed dark ink for the active label, not white — white only clears WCAG AA in neither theme', () => {
-      // white-on-green is ~3.5:1 in the light theme and ~1.6:1 in the dark
+      // white-on-green is ~3.55:1 in the light theme and ~1.62:1 in the dark
       // one (--green flips from a mid-dark tone to a bright one) — both
-      // fail the 4.5:1 normal-text minimum. A dark ink held constant
-      // across both themes clears it in both (~5.9:1 / ~13:1), since
+      // fail the 4.5:1 normal-text minimum. A dark ink held constant across
+      // both themes clears it in both (5.21:1 / 11.46:1, measured), since
       // --green never gets dark enough in dark mode to need light text.
       expect(cssRule('.seg2 button.on')).toMatch(/color:\s*var\(--ink-on-accent\)/);
-      expect(cssRule(':root')).toMatch(/--ink-on-accent:\s*#[0-9a-fA-F]{6}/);
+      // asserts the LITERAL value, and that it's defined only ONCE across
+      // the whole file — a plain cssRule(':root') check would pass even if
+      // a dark-theme block silently redefined it to something else (e.g.
+      // white), which would quietly break the "same ink in both themes"
+      // premise this whole fix depends on
+      const defs = cssSource().match(/--ink-on-accent:\s*#[0-9a-fA-F]{6}/g);
+      expect(defs).toEqual(['--ink-on-accent:#0F1510']);
     });
 
     it('exposes which segment is active to assistive tech, not just sighted users', async () => {

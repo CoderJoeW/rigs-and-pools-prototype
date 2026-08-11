@@ -25,11 +25,11 @@
      SAME value in both themes rather than following --card/--ink's usual
      light↔dark swap. --green itself is a mid-dark tone in the light theme
      and a bright one in the dark theme — dark text clears WCAG AA (4.5:1)
-     against BOTH (measured ~5.9:1 light, ~13:1 dark), where white text
-     clears neither (~3.5:1 light, ~1.6:1 dark: worse than failing, actively
-     hard to read). Not applied everywhere --green is a background — several
-     existing spots (.btn-pri, .rigtile.run) share this failure and are a
-     separate, app-wide pass — but new green-fill text should use this. */
+     against BOTH (measured 5.21:1 light, 11.46:1 dark), where white text
+     clears neither (~3.55:1 light, ~1.62:1 dark: worse than failing,
+     actively hard to read). Not applied everywhere --green is a background —
+     .btn-pri (literal color:#fff) shares this failure in both themes and is
+     a separate, app-wide pass; new green-fill text should use this instead. */
   --ink-on-accent:#0F1510;
   --gold:#D97A0A;  --gold-t:#FCEBDA; --amber:#D97A0A; --amber-t:#FCEBDA;
   --red:#D33A2C;   --red-t:#FBEAE7;
@@ -595,7 +595,7 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    transition (locked->filled, e.g. raising the frame's own slot count,
    plays it too, which is correct: that cell just became usable). */
 @keyframes slotPop{0%{transform:scale(.55)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
-.slotcell.filled{background:var(--green);border-color:var(--green);color:#fff;
+.slotcell.filled{background:var(--green);border-color:var(--green);color:var(--ink-on-accent);
   animation:slotPop .32s cubic-bezier(.2,.8,.2,1)}
 .slotcell.locked{background:var(--line-2);border-style:dashed;color:var(--ink-3);opacity:.6}
 .slotcap,.rigcap{font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4}
