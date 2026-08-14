@@ -17,6 +17,14 @@ function runPreset(){ presetFound.value=g.generatePreset(); }
 // and then immediately animate to the real preset on first paint, a
 // mismatch putting this in onMounted (a tick later) couldn't avoid.
 runPreset();
+/* Bulk order count. Local UI state, not on the draft — the draft is a
+   single-rig specification and stays that way so generatePreset /
+   openBuildCost / fleet-to-spec keep working unchanged. Clamped live to
+   maxBuildQty so the stepper never offers more than the site can take. */
+const qty=ref(1);
+const maxQty=computed(()=> g.maxBuildQty());
+watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
+const orderCost=computed(()=> g.dp.cost*Math.min(qty.value, Math.max(1,maxQty.value||1)));
 function setMode(m){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
@@ -194,9 +202,12 @@ const subsidyNote=computed(()=>{
 const draftKey=computed(()=> JSON.stringify(g.s.draft));
 const gateKey=computed(()=> g.checks.map(c=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
 const buildStatus=ref('');
-watch(()=> draftKey.value+'|'+gateKey.value, ()=>{
+watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
+  const n=Math.min(qty.value, Math.max(1,maxQty.value||1));
   buildStatus.value = g.canBuild
-    ? 'Ready to order for '+fmt.usd(g.dp.cost)+'.'
+    ? (n>1
+        ? 'Ready to order '+n+' rigs for '+fmt.usd(g.dp.cost*n)+'.'
+        : 'Ready to order for '+fmt.usd(g.dp.cost)+'.')
     : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
 }, { immediate:true });
 /* Quick pick only ever lands on a combination generatePreset() already ran
@@ -321,11 +332,37 @@ const verdict=computed(()=>{
               <span>{{ n.label }}<div class="fix">{{ n.fix }}</div></span></div>
           </div>
         </div>
-        <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}</dd></div>
+        <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}{{ qty>1?' each · parallel':'' }}</dd></div>
+        <div class="pickrow" style="border-top:1px solid var(--line-2);margin-top:6px">
+          <span class="lab">Quantity</span>
+          <span class="val">
+            <div class="n">{{ qty }} rig{{ qty===1?'':'s' }}</div>
+            <div class="s">Up to {{ maxQty||0 }} fit here
+              <span v-if="maxQty>1" style="color:var(--ink-3)">· floor, power and cash</span></div>
+          </span>
+          <span class="stepper">
+            <button aria-label="Decrease quantity" :disabled="qty<=1"
+                    @click="qty=Math.max(1,qty-1)">&minus;</button>
+            <span class="num">{{ qty }}</span>
+            <button aria-label="Increase quantity" :disabled="!g.canBuild||qty>=maxQty"
+                    @click="qty=Math.min(maxQty,qty+1)">+</button>
+          </span>
+        </div>
+        <div v-if="maxQty>1" class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:8px;gap:6px">
+          <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild||qty===maxQty"
+                  @click="qty=maxQty">Fill site · {{ maxQty }}</button>
+          <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild"
+                  @click="qty=Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost)))">
+            Max cash · {{ Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost))) }}</button>
+        </div>
         <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ buildStatus }}</p>
         <button class="btn btn-wide btn-order" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
-                data-tour="build" :disabled="!g.canBuild" @click="g.build()">
-          {{ g.canBuild?'Order parts · '+fmt.usd(g.dp.cost):'Fix the crosses above' }}</button>
+                data-tour="build" :disabled="!g.canBuild" @click="g.build(qty)">
+          {{ g.canBuild
+               ? (qty>1
+                    ? 'Order '+qty+' · '+fmt.usd(g.dp.cost*qty)
+                    : 'Order parts · '+fmt.usd(g.dp.cost))
+               : 'Fix the crosses above' }}</button>
       </div>
     </div>
 
