@@ -4,6 +4,7 @@ import { installGenerations } from '../game/generations.js';
 import { installWeather } from '../game/weather.js';
 import { installTimeOfDay } from '../game/timeOfDay.js';
 import { installDispatch } from '../game/dispatch.js';
+import { installSims } from '../game/sims.js';
 import { installPoolMarket } from '../game/poolMarket.js';
 import { installBuildDraft } from '../game/buildDraft.js';
 import { installTick } from '../game/tick.js';
@@ -38,6 +39,7 @@ export const useGameStore = defineStore('game', () => {
   installWeather(G);
   installTimeOfDay(G);
   installDispatch(G);
+  installSims(G);
   installPoolMarket(G);
   installBuildDraft(G);
   installTick(G);
@@ -49,5 +51,13 @@ export const useGameStore = defineStore('game', () => {
   installFleetActions(G);
   installOnboarding(G);
   installPersistence(G);
+  if(!G.s.sims.length){
+    G.seedSims(0);
+    for(const c of G.s.chains){
+      const start = G.simHashOf(c);
+      c.obs = Math.max(c.floor, start);
+      c.anchor = Math.max(1, start / Math.max(1, c.floor));
+    }
+  }
   return G.__exports;
 });
