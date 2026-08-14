@@ -78,6 +78,21 @@ export function installPersistence(G){
     if(!Array.isArray(G.s.customParts)) G.s.customParts=[];
     for(const p of G.s.customParts) PART_MAP.set(p.id, p);
     G.s.unlocked=new Proxy({},{get:()=>true});
+    const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
+      || G.s.sims.some(m => m.cash === undefined || m.style === undefined);
+    if(needsSimReseed && G.seedSims){
+      G.s.pools = (G.s.pools || []).filter(p => p.owner === 'you');
+      G.seedSims(G.s.t || 0);
+      for(const c of G.s.chains){
+        const start = G.simHashOf(c);
+        c.obs = Math.max(c.floor, start);
+        c.anchor = Math.max(1, (c.anchor || start / Math.max(1, c.floor)));
+      }
+      G.say('sys','The network re-formed — independent miners now earn, spend and compete');
+    } else if(G.reindexSims){
+      G.reindexSims();
+    }
+
     const legacy=G.s.rigs.some(r=>!r.group || ('chain' in r) || ('pool' in r));
     if(legacy || !G.s.groups || !G.s.groups.length){
       G.s.groups=[]; G.s.nextGroup=1;
@@ -163,6 +178,14 @@ export function installPersistence(G){
     G.builtGen=0;
     G.lastToast=-1e9;
     for(const k of Object.keys(G.toastSeen)) delete G.toastSeen[k];
+    if(G.seedSims){
+      G.seedSims(0);
+      for(const c of G.s.chains){
+        const start = G.simHashOf(c);
+        c.obs = Math.max(c.floor, start);
+        c.anchor = Math.max(1, start / Math.max(1, c.floor));
+      }
+    }
     G.say('sys','A spare bedroom, a 1.5 kW outlet and $500');
   }
   function exportSave(){

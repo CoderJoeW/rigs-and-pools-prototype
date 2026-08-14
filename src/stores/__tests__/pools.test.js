@@ -80,9 +80,9 @@ describe('renamePool', () => {
     expect(pool.name).toHaveLength(24);
   });
 
-  it('refuses to rename a rival pool', () => {
+  it('refuses to rename a non-player pool', () => {
     const g = freshStore();
-    const rival = g.s.pools.find(p => p.owner === 'rival');
+    const rival = g.s.pools.find(p => p.owner !== 'you');
     const before = rival.name;
 
     g.renamePool(rival, 'Hijacked');

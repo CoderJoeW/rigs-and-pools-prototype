@@ -107,7 +107,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
                       @change="g.setGroupPool(gr,$event.target.value)">
                 <option value="solo">Solo — whole reward</option>
                 <optgroup label="Rival pools">
-                  <option v-for="p in g.s.pools.filter(x=>x.live&&x.chain===gr.chain&&x.owner==='rival')"
+                  <option v-for="p in g.s.pools.filter(x=>x.live&&x.chain===gr.chain&&x.owner!=='you')"
                           :key="p.id" :value="p.id">{{ p.name }} — {{ p.scheme }}
                     {{ fmt.pct(p.fee) }}</option></optgroup>
                 <optgroup v-if="g.s.pools.some(x=>x.live&&x.chain===gr.chain&&x.owner==='you')"

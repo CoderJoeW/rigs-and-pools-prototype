@@ -99,12 +99,31 @@ export function installPoolMarket(G){
     G.poolHash(p)+m.hash<=poolCapLimit(p));
   function pickPool(m){
     const opts=poolOptsFor(m);
-    if(!opts.length){ m.pool='solo'; return; }
+    if(!opts.length){
+      if(G.setSimPool) G.setSimPool(m, 'solo'); else m.pool='solo';
+      return;
+    }
     let bp=opts[0], bs=-1;
     for(const p of opts){ const sc=poolScore(p); if(sc>bs){ bs=sc; bp=p; } }
-    m.pool=bp.id;
+    if(G.setSimPool) G.setSimPool(m, bp.id); else m.pool=bp.id;
   }
   function poolShake(chainId){
+    if(G.ensureMembers) G.ensureMembers();
+    if(G._soloMembers && G._poolMembers){
+      const seen = new Set();
+      const touch = (idx) => {
+        if(seen.has(idx)) return;
+        seen.add(idx);
+        const m = G.s.sims[idx];
+        if(m) pickPool(m);
+      };
+      for(const i of (G._soloMembers[chainId] || [])) touch(i);
+      for(const p of G.s.pools){
+        if(p.chain!==chainId || !p.live) continue;
+        for(const i of (G._poolMembers.get(p.id) || [])) touch(i);
+      }
+      return;
+    }
     for(const m of G.s.sims) if(m.chain===chainId) pickPool(m);
   }
   const simsOn = cid => G.s.sims.filter(m=>m.chain===cid).length;
@@ -129,46 +148,17 @@ export function installPoolMarket(G){
       if(p.lapse>72 && Math.random()<0.25){
         p.live=false;
         G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ G.forfeitGroup(gr,'when '+p.name+' folded'); gr.pool='solo'; });
-        for(const m of G.s.sims) if(m.pool===p.id) m.pool='solo';
+        for(const m of G.s.sims) if(m.pool===p.id){ if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo'; }
         say('pool',p.name+' has closed — it never found enough members');
       }
     }
-    // somebody is always willing to try their luck
-    for(const cid of SIM_CHAINS){
-      const liveN=G.s.pools.filter(x=>x.live&&x.owner==='rival'&&x.chain===cid).length;
-      if(liveN<RIVAL_PER_CHAIN && Math.random()<0.05){
-        const np=mkRival(cid,G.s.t); G.s.pools.push(np);
-        say('pool',np.name+' has opened on '+G.chain(cid).name+' at '+(np.fee*100).toFixed(1)+'%');
-      }
-    }
+    // New pools are founded by economic sims in simPulse.
   }
   /* Miners move slowly and imperfectly: a few reconsider each hour. */
   function reshuffle(){
+    if(!G.s.sims.length) return;
     for(let k=0;k<3;k++){
       const m=G.s.sims[Math.floor(Math.random()*G.s.sims.length)];
-      // chain: follow the rate, with noise so they do not all stampede
-      // Switching costs something real, so a miner needs a clear margin — not a
-      // rounding error — before moving. Without this, every below-floor chain
-      // pays PAY x mult flat, so the highest-mult chain drained all the others
-      // and the field collapsed to one.
-      const SWITCH_EDGE=1.85;   // above the widest mult ratio (1.55/0.90), or the
-      // best-paying chain simply drains the rest before dilution can bite
-      let best=m.chain, bestR=G.revPerMh(G.chain(m.chain))*SWITCH_EDGE;
-      for(const cid of SIM_CHAINS){
-        const c=G.chain(cid);
-        // a miner will not move somewhere they would dominate — crashing your
-        // own return is irrational, and it is what let one whale from the top
-        // rung flatten the bottom one
-        // below its floor a chain's difficulty is pinned, so there is nobody to
-        // dominate and no return to crash — without this exemption an emptied
-        // chain could never be repopulated and stayed dead forever
-        if(cid!==m.chain && G.simHash(c)+m.hash > c.floor
-           && m.hash > 0.25*G.simHash(c)) continue;
-        const r=G.revPerMh(c)*(0.88+Math.random()*0.24);
-        if(r>bestR){ bestR=r; best=cid; }
-      }
-      if(best!==m.chain){ m.chain=best; m.pool=null; }
-      // pool: best net of fee, weighted by trust, respecting a PPS bond cap
       pickPool(m);
     }
   }
@@ -228,7 +218,7 @@ export function installPoolMarket(G){
       payback: income>0 ? capital/income : Infinity };
   }
   const myPools = computed(()=> G.s.pools.filter(p=>p.owner==='you'&&p.live));
-  const rivalPools = computed(()=> G.s.pools.filter(p=>p.owner==='rival'&&p.live));
+  const rivalPools = computed(()=> G.s.pools.filter(p=>p.live&&p.owner!=='you'));
 
   // A repeat's numeric total lives in ONE of two places, never both: `num`
   // (a coin quantity, paired with `unit`) or `usd` (a signed dollar amount

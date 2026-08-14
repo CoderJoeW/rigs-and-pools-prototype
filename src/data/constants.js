@@ -48,11 +48,12 @@ export const C = {
   // rival-pool nudge, chainsNudgeDismissed) — bumped deliberately so every
   // existing save starts the new coach from scratch rather than hydrating
   // into steps it never saw introduced.
+  // v4: economic simulated players — old thin sim arrays wiped on load.
   // v3: the guided first-session tour (default tab moved to Farm, the
   // spotlighted tab-by-tab walkthrough, tourDismissed) — bumped again for
   // the same reason: every existing save should meet the new tour fresh,
   // not resume mid-farm on Build with no memory of it ever existing.
-  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:3,
+  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:4,
   SAVE_EVERY:30,            // autosave cadence, real seconds
   OFFLINE_CAP:86400,        // offline progress credited, capped at one real day
   TOAST_GAP:4,              // real seconds between toasts, whatever the speed multiplier
