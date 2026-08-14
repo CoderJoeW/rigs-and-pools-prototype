@@ -5,13 +5,10 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 import ChainMark from '../components/ChainMark.vue';
+import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
-/* The hero figure counts toward each new value instead of snapping to it
-   (issue #43). Its pos/neg colour still keys off the real g.netDay, so the
-   colour flips the instant the day actually goes into the red rather than
-   waiting for the animation to cross zero. */
 const netDayShown = useTweenedNumber(() => g.netDay);
 const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
 const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
@@ -20,9 +17,32 @@ const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
-/* groupAdvice/chainCeiling each walk every group and rig internally
-   (chainHash -> myHash -> groupHash), and the template used to call them
-   up to 5x and 4x per group per render. Computed once per group here. */
+const BAY_MAX=16, BAY_EMPTY=4;
+const siteRows=computed(()=>g.s.sites.map(f=>{
+  const rigs=g.siteRigs(f);
+  const slots=g.siteSlots(f);
+  const temp=g.siteTemp(f);
+  const ambient=temp>=70?'hot':temp>=58?'warm':'cool';
+  const cells=[];
+  for(const r of rigs){
+    if(cells.length>=BAY_MAX) break;
+    const st=g.rigState(r);
+    const gr=g.groupOf(r);
+    const chain=gr?gr.chain:null;
+    const hue=chain!=null?CHAIN_HUE[chain]:undefined;
+    cells.push({ key:'r'+r.id, empty:false, dot:st.dot,
+      style:hue!==undefined?{'--chain-h':hue}:undefined });
+  }
+  const empties=Math.min(BAY_EMPTY, Math.max(0, slots-rigs.length));
+  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, empty:true });
+  return {
+    f, cells, more:Math.max(0, rigs.length-BAY_MAX), ambient, temp,
+    hash:rigs.reduce((a,r)=>a+g.rigHash(r),0),
+    demand:g.siteDemand(f),
+    capacity:g.siteCapacity(f)+g.battFirm(f),
+    costDay:g.siteCostPerHour(f)*24,
+  };
+}));
 const groupRows=computed(()=>g.s.groups.map(gr=>({
   gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
 })));
@@ -57,14 +77,24 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
       <div class="card"><div class="card-hd"><span class="eyebrow">Sites</span>
         <span class="eyebrow">{{ g.s.sites.length }}</span></div>
         <div class="list">
-          <div v-for="f in g.s.sites" :key="'s'+f.id" class="rowline">
-            <span style="flex:1;min-width:0"><span class="nm">{{ f.name }}</span>
-              <span v-if="(f.temp||0)>=70" class="tag"
+          <button v-for="row in siteRows" :key="'s'+row.f.id" class="rowline"
+                  @click="g.s.activeSite=row.f.id; g.s.tab='sites'">
+            <span style="flex:1;min-width:0"><span class="nm">{{ row.f.name }}</span>
+              <span v-if="row.ambient==='hot'" class="tag"
                     style="background:var(--red-t);color:var(--red);margin-left:5px">HOT</span>
-              <div class="sb">{{ g.siteRigs(f).length }} rigs ·
-                {{ fmt.hash(g.siteRigs(f).reduce((a,r)=>a+g.rigHash(r),0)) }} ·
-                {{ fmt.w(g.siteDemand(f)) }} of {{ fmt.w(g.siteCapacity(f)+g.battFirm(f)) }}</div></span>
-            <span class="rt">{{ fmt.usd2(g.siteCostPerHour(f)*24) }}<div class="sb">/day</div></span></div>
+              <span v-else-if="row.ambient==='warm'" class="tag"
+                    style="background:var(--amber-t);color:var(--amber);margin-left:5px">WARM</span>
+              <div class="sb">{{ g.siteRigs(row.f).length }} rigs ·
+                {{ fmt.hash(row.hash) }} ·
+                {{ fmt.w(row.demand) }} of {{ fmt.w(row.capacity) }}</div>
+              <div class="sitebay" :class="'ambient-'+row.ambient" aria-hidden="true">
+                <span v-for="c in row.cells" :key="c.key" class="baytile"
+                      :class="c.empty?'empty':c.dot" :style="c.style">
+                  <i v-if="!c.empty" class="ch-led"></i>
+                </span>
+                <span v-if="row.more" class="baymore">+{{ row.more }}</span>
+              </div></span>
+            <span class="rt">{{ fmt.usd2(row.costDay) }}<div class="sb">/day</div></span></button>
         </div>
       </div>
 
@@ -223,3 +253,19 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
     </template>
   </div>
 </template>
+
+<style scoped>
+.sitebay{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px;padding:6px 7px;border-radius:8px;background:var(--line-2);transition:background-color .5s ease,box-shadow .5s ease}
+.sitebay.ambient-warm{background:linear-gradient(90deg,color-mix(in srgb,var(--amber-t) 55%,var(--line-2)),var(--line-2))}
+.sitebay.ambient-hot{background:linear-gradient(90deg,color-mix(in srgb,var(--red-t) 65%,var(--line-2)),var(--line-2));box-shadow:inset 0 0 12px color-mix(in srgb,var(--red) 12%,transparent)}
+.baytile{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);position:relative;overflow:hidden;flex:none;background:var(--card)}
+.baytile.empty{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--ink-3) 35%,transparent)}
+.baytile.run{background:var(--green);border-color:var(--green)}
+.baytile.off{background:var(--ink-3);border-color:var(--ink-3)}
+.baytile.bad{background:var(--red);border-color:var(--red)}
+.baytile.warn{background:var(--amber);border-color:var(--amber)}
+.baytile.build{background:var(--blue);border-color:var(--blue)}
+.baytile .ch-led{position:absolute;top:0;left:15%;right:15%;height:2px;border-radius:0 0 1px 1px;background:color-mix(in srgb,var(--ink-3) 30%,transparent)}
+.baytile[style*="--chain-h"] .ch-led{background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));box-shadow:0 0 4px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.5)}
+.baymore{font-family:var(--mono);font-size:9px;color:var(--ink-3);align-self:center;margin-left:2px}
+</style>

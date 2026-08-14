@@ -6,6 +6,8 @@ import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 import ChainMark from '../components/ChainMark.vue';
+import Chassis from '../components/Chassis.vue';
+import { CHAIN_HUE } from '../data/chains.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
@@ -18,6 +20,18 @@ const f=computed(()=>g.active);
 const avgWear=r=>g.rigWear(r);
 const stateOf=r=>g.rigState(r);
 const needsEye=r=>['off','worn','losing','wearing'].includes(stateOf(r).k);
+const chassisOf=r=>{
+  const n=r.units?r.units.length:0;
+  const gr=g.groupOf(r);
+  const chain=gr?gr.chain:null;
+  const hue=chain!=null?CHAIN_HUE[chain]:undefined;
+  return {
+    state:stateOf(r).dot,
+    size:n>=9?'lg':n>=5?'md':'sm',
+    chainHue:hue,
+    label:stateOf(r).label,
+  };
+};
 
 const siteRigs=computed(()=>g.siteRigs(f.value));
 const FILTERS=[
@@ -344,7 +358,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                   @pointerdown="onSwipeDown($event,r)" @pointermove="onSwipeMove($event,r)"
                   @pointerup="onSwipeUp($event,r)" @pointercancel="onSwipeCancel($event,r)">
             <span v-if="picking" class="box" :class="{on:chosen[r.id]}">&#10003;</span>
-            <span v-else class="dot" :class="stateOf(r).dot"></span>
+            <Chassis v-else v-bind="chassisOf(r)" />
             <span class="mid">
               <span class="nm">{{ r.name }}
                 <span v-if="stateOf(r).k!=='run'" class="sb" style="margin:0">{{ stateOf(r).label }}</span></span>
@@ -413,10 +427,9 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
               <span class="rig-nm">{{ rig.name }}
                 <button class="btn btn-sm btn-ghost" style="padding:2px 6px;margin-left:4px"
                         @click="startRenameRig">Rename</button></span>
-              <div class="sb" style="margin-top:3px">
-                <span class="dot" :class="stateOf(rig).dot"
-                      style="display:inline-block;margin-right:5px"></span>
-                {{ stateOf(rig).label }}{{ stateOf(rig).sub?' — '+stateOf(rig).sub:'' }}</div></span>
+              <div class="sb" style="margin-top:3px;display:flex;align-items:center;gap:8px">
+                <Chassis v-bind="chassisOf(rig)" large />
+                <span>{{ stateOf(rig).label }}{{ stateOf(rig).sub?' — '+stateOf(rig).sub:'' }}</span></div></span>
             <span style="flex:none;text-align:right">
               <div class="rig-net" :class="g.rigNet(rig)>=0?'pos':'neg'">{{ fmt.usd2(g.rigNet(rig)) }}</div>
               <div class="rig-net-l">per day</div></span>

@@ -308,4 +308,29 @@ describe('RigsView', () => {
     expect(select.exists()).toBe(true);
     expect(wrapper.find('label[for="rig-group-select"]').exists()).toBe(true);
   });
+
+  it('list row shows a living chassis with status class and chain LED when grouped', () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const ch = wrapper.find('.chassis');
+    expect(ch.exists()).toBe(true);
+    expect(ch.find('.ch-led').exists()).toBe(true);
+    expect(ch.find('.ch-vent').exists()).toBe(true);
+    expect(ch.classes().some(c => ['run','off','build','warn','bad'].includes(c) || c.startsWith('sz-'))).toBe(true);
+    const style = ch.attributes('style') || '';
+    expect(style).toMatch(/--chain-h/);
+  });
+
+  it('rig detail header shows a larger chassis instead of a bare status dot', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    await wrapper.find('button.rigrow').trigger('click');
+    const ch = wrapper.find('.sheet .chassis.lg');
+    expect(ch.exists()).toBe(true);
+    expect(ch.find('.ch-led').exists()).toBe(true);
+    expect(wrapper.find('.sheet').text()).toMatch(/Running|Building|Off|Worn|attention/i);
+  });
+
 });
