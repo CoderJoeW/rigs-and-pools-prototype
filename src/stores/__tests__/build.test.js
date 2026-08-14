@@ -238,3 +238,57 @@ describe('toggleRig / setRigGroup', () => {
     expect(rig.group).toBe(newGroup.id);
   });
 });
+
+describe('bulk build', () => {
+  it('maxBuildQty is at least 1 when canBuild is true', () => {
+    const g = freshStore();
+    g.generatePreset();
+    expect(g.canBuild).toBe(true);
+    expect(g.maxBuildQty()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('build(n) spends n× cost and adds n rigs under construction', () => {
+    const g = freshStore();
+    g.s.cash = 1e9;
+    // Extra power so more than one position can clear the power check
+    g.active.sources.push({ p: 's-400', n: 1 });
+    expect(g.generatePreset()).toBe(true);
+    const max = g.maxBuildQty();
+    expect(max).toBeGreaterThanOrEqual(2);
+    const n = Math.min(3, max);
+    const cost = g.dp.cost;
+    const cashBefore = g.s.cash;
+    g.build(n);
+    expect(g.s.rigs).toHaveLength(n);
+    expect(g.s.cash).toBeCloseTo(cashBefore - cost * n, 5);
+    expect(g.s.rigs.every(r => r.building > 0)).toBe(true);
+    expect(g.s.tab).toBe('rigs');
+  });
+
+  it('build(qty) clamps to maxBuildQty rather than overspending', () => {
+    const g = freshStore();
+    g.generatePreset();
+    const max = g.maxBuildQty();
+    const cashBefore = g.s.cash;
+    g.build(9999);
+    expect(g.s.rigs.length).toBe(max);
+    expect(g.s.cash).toBeCloseTo(cashBefore - g.dp.cost * max, 5);
+  });
+
+  it('build(1) remains the default and matches the single-rig path', () => {
+    const g = freshStore();
+    g.generatePreset();
+    const cost = g.dp.cost;
+    const cashBefore = g.s.cash;
+    g.build(); // no arg
+    expect(g.s.rigs).toHaveLength(1);
+    expect(g.s.cash).toBeCloseTo(cashBefore - cost, 5);
+  });
+
+  it('maxBuildQty is 0 when canBuild is false', () => {
+    const g = freshStore();
+    g.s.draft.n = 999;
+    expect(g.canBuild).toBe(false);
+    expect(g.maxBuildQty()).toBe(0);
+  });
+});

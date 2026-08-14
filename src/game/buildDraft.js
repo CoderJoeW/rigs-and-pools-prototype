@@ -152,5 +152,33 @@ export function installBuildDraft(G){
     return null;
   };
 
-  Object.assign(G, {buildTime,canBuild,checks,dp,draftEff,draftExpected,generatePreset,openBuildCost,unitEcon});
+  /* How many copies of the current draft fit right now — floor space,
+     cash, and power (with cooling delta scaled by count). Used by bulk
+     order on Build and by build(qty) itself so the clamp is one function. */
+  function maxBuildQty(){
+    if(!G.canBuild.value) return 0;
+    const f=G.active.value, p=G.dp.value;
+    const bySlots=G.siteSlots(f)-G.siteRigs(f).length;
+    if(bySlots<=0) return 0;
+    const byCash=Math.floor(G.s.cash/p.cost);
+    if(byCash<=0) return 0;
+    const heatEach=p.coreW/Math.max(0.01,p.air);
+    const wallEach=p.coreW/p.psu.eff;
+    const cap=G.siteCapacity(f)+G.battFirm(f);
+    const baseDemand=G.siteDemand(f);
+    const basePlant=G.sitePlantW(f);
+    let maxPow=0;
+    // Walk up rather than binary-search: site shells top out well under a
+    // hundred positions, and sitePlantW is cheap enough that the loop is
+    // invisible next to a click.
+    for(let n=1;n<=Math.min(bySlots,byCash);n++){
+      const coolDelta=G.sitePlantW(f, heatEach*n)-basePlant;
+      const after=baseDemand+wallEach*n+coolDelta;
+      if(after>cap) break;
+      maxPow=n;
+    }
+    return maxPow;
+  }
+
+  Object.assign(G, {buildTime,canBuild,checks,dp,draftEff,draftExpected,generatePreset,maxBuildQty,openBuildCost,unitEcon});
 }
