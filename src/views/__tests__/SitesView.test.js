@@ -92,6 +92,27 @@ describe('SitesView', () => {
     expect(store.s.tab).toBe('rigs');
   });
 
+  it('ambient class tracks site temperature bands', () => {
+    const { wrapper } = mountWithStore(SitesView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const wrap = wrapper.find('.rigwrap');
+    expect(wrap.classes().some(c => c.startsWith('ambient-'))).toBe(true);
+    expect(wrapper.find('.floor-temp').exists()).toBe(true);
+    expect(wrapper.find('.floor-temp').text()).toMatch(/\d/);
+  });
+
+  it('occupied tile carries chain hue for the LED strip when the group has a chain', () => {
+    const { wrapper } = mountWithStore(SitesView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const tile = wrapper.find('button.rigtile');
+    const style = tile.attributes('style') || '';
+    expect(style).toMatch(/--chain-h/);
+    expect(tile.find('.rt-led').exists()).toBe(true);
+    expect(tile.classes().some(c => c.startsWith('sz-'))).toBe(true);
+  });
+
   describe('Fabrication', () => {
     const openFabSection = async wrapper => {
       const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
