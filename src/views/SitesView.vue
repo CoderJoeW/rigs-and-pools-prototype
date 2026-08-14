@@ -44,11 +44,14 @@ const legend = computed(() => {
   return ['run', 'build', 'warn', 'bad', 'off'].filter(k => n[k]).map(k => ({ k, n: n[k], label: DOT_LABEL[k] }));
 });
 const openTile = id => { g.s.focusRig = id; g.s.tab = 'rigs'; };
+const KIND_LABEL = { frame: 'Frame', mobo: 'Board', cool: 'Cooler', psu: 'Supply', unit: 'Card' };
+const designKinds = computed(() => f.value.fab ? g.FAB(f.value.fab).slots : []);
+const openDesignKind = kind => { g.openDesign(f.value.id, kind); g.s.sitePicker = null; };
 
 const renameOpen = ref(false);
 const renameDraft = ref('');
 const startRename = () => { renameDraft.value = f.value.name; renameOpen.value = true; };
-const saveRename = () => { g.renameSite(f.value, renameDraft.value); renameOpen.value = false; };
+const saveRename = () => { g.renameSite(f.value.id, renameDraft.value); renameOpen.value = false; };
 const powerOpen = ref(false);
 const fabOpen = ref(false);
 const fabQueued = computed(() => f.value.queue.find(j => j.kind === 'fab'));
@@ -74,19 +77,39 @@ const sourceRows = computed(() => g.SOURCES.filter(p => p.price > 0).map(p => ({
 })));
 const storageRows = computed(() => g.STORAGE.map(p => ({
   id: p.id, name: p.name,
-  sub: fmt.kwh(p.kwh) + ' · ' + fmt.w(p.kw * 1000) + ' charge/discharge · ' + p.hours + ' h',
-  value: fmt.usd(p.price), valueSub: fmt.usd2(p.price / p.kwh) + '/kWh'
+  sub: p.kwh + ' kWh · ' + p.kw + ' kW · ' + p.hours + ' h to build',
+  value: fmt.usd(p.price), valueSub: ''
 })));
 const plantRows = computed(() => g.PLANTS.map(p => ({
   id: p.id, name: p.name,
-  sub: fmt.w(p.cool) + ' cooling · ' + fmt.w(p.w) + ' draw · ' + p.hours + ' h',
-  value: fmt.usd(p.price), valueSub: fmt.usd2(p.price / p.cool) + '/W cool'
+  sub: fmt.w(p.cap) + ' of heat · ' + fmt.pct(p.pue, 0) + ' of it burned as power · ' + p.hours + ' h',
+  value: fmt.usd(p.price), valueSub: ''
 })));
 const shellRows = computed(() => g.SHELLS.map(p => ({
   id: p.id, name: p.name,
   sub: p.slots + ' positions · ' + fmt.w(p.cap) + ' service · ' + p.hours + ' h',
   value: fmt.usd(p.price), valueSub: fmt.usd(p.price / p.slots) + '/slot'
 })));
+const expandRows = computed(() => {
+  const cur = g.SITEPART(f.value.shell);
+  return g.SHELLS.filter(p => p.slots > cur.slots).map(p => {
+    const credit = Math.round(cur.price * 0.5), cost = Math.max(0, p.price - credit);
+    return { id: p.id, name: p.name,
+      sub: cur.slots + ' → ' + p.slots + ' rig positions · ' + p.hours + ' h to build',
+      value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '',
+      locked: g.s.cash < cost };
+  });
+});
+const fabRows = computed(() => {
+  const cur = f.value.fab ? g.FAB(f.value.fab) : null;
+  return g.FABS.filter(p => !cur || p.tier > cur.tier).map(p => {
+    const credit = cur ? Math.round(cur.price * 0.5) : 0, cost = Math.max(0, p.price - credit);
+    return { id: p.id, name: p.name,
+      sub: p.slots.join(', ') + ' · ' + p.budget + ' design budget · ' + p.hours + ' h to build',
+      value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '',
+      locked: g.s.cash < cost };
+  });
+});
 
 const chooseSource = id => { g.addSitePart(f.value.id, id, 'source'); g.s.sitePicker = null; };
 const chooseStorage = id => { g.addSitePart(f.value.id, id, 'storage'); g.s.sitePicker = null; };
@@ -201,7 +224,7 @@ useSheetA11y(() => !!g.s.sitePicker || !!g.s.design, () => { g.s.sitePicker = nu
           <p class="hint">{{ g.FAB(f.fab).name }} · tier {{ g.FAB(f.fab).tier }} of 3 · design budget {{ g.FAB(f.fab).budget }}</p>
           <div class="btn-row">
             <button class="btn btn-sm" @click="g.s.sitePicker = 'fab'">Upgrade the fab</button>
-            <button class="btn btn-sm btn-pri" @click="g.openDesignKind()">Design a part</button>
+            <button class="btn btn-sm btn-pri" @click="g.s.sitePicker = 'design'">Design a part</button>
           </div>
         </template>
         <button v-else-if="!fabQueued" class="btn btn-pri" @click="g.s.sitePicker = 'fab'">Install a fab</button>
@@ -210,20 +233,28 @@ useSheetA11y(() => !!g.s.sitePicker || !!g.s.design, () => { g.s.sitePicker = nu
 
     <div v-if="g.s.sitePicker" class="sheet" role="dialog">
       <div class="sheet-hd">
-        <b>{{ g.s.sitePicker === 'shell' ? 'New site' : g.s.sitePicker === 'expand' ? 'Expand shell' : g.s.sitePicker === 'source' ? 'Add source' : g.s.sitePicker === 'storage' ? 'Add storage' : g.s.sitePicker === 'plant' ? 'Add cooling' : 'Fab' }}</b>
+        <b>{{ g.s.sitePicker === 'shell' ? 'New site' : g.s.sitePicker === 'expand' ? 'Expand shell' : g.s.sitePicker === 'source' ? 'Add source' : g.s.sitePicker === 'storage' ? 'Add storage' : g.s.sitePicker === 'plant' ? 'Add cooling' : g.s.sitePicker === 'design' ? 'Design a part' : 'Fab' }}</b>
         <button class="btn btn-sm btn-ghost" @click="g.s.sitePicker = null">Close</button>
       </div>
       <Compare v-if="g.s.sitePicker === 'shell'" :rows="shellRows" @pick="chooseShell" />
-      <Compare v-else-if="g.s.sitePicker === 'expand'" :rows="shellRows" @pick="chooseExpand" />
+      <Compare v-else-if="g.s.sitePicker === 'expand'" :rows="expandRows" @pick="chooseExpand" />
       <Compare v-else-if="g.s.sitePicker === 'source'" :rows="sourceRows" @pick="chooseSource" />
       <Compare v-else-if="g.s.sitePicker === 'storage'" :rows="storageRows" @pick="chooseStorage" />
       <Compare v-else-if="g.s.sitePicker === 'plant'" :rows="plantRows" @pick="choosePlant" />
-      <Compare v-else-if="g.s.sitePicker === 'fab'" :rows="g.fabRows(f)" @pick="chooseFab" />
+      <template v-else-if="g.s.sitePicker === 'fab'">
+        <p v-if="!fabRows.length" class="hint" style="padding:12px">already at the top tier</p>
+        <Compare v-else :rows="fabRows" @pick="chooseFab" />
+      </template>
+      <template v-else-if="g.s.sitePicker === 'design'">
+        <button v-for="k in designKinds" :key="k" class="rowline" @click="openDesignKind(k)">
+          <span class="nm">{{ KIND_LABEL[k] }}</span>
+        </button>
+      </template>
     </div>
 
     <div v-if="g.s.design" class="sheet" role="dialog">
       <div class="sheet-hd">
-        <b>Design a {{ g.s.design.kind === 'cool' ? 'Cooler' : g.s.design.kind === 'psu' ? 'Supply' : g.s.design.kind === 'unit' ? 'Card' : 'Frame' }}</b>
+        <b>Design a {{ KIND_LABEL[g.s.design.kind] || g.s.design.kind }}</b>
         <button class="btn btn-sm btn-ghost" @click="g.s.design = null">Close</button>
       </div>
       <div class="card-bd">
