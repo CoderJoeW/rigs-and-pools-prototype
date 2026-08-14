@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
+import { CHAIN_HUE } from '../data/chains.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
@@ -39,10 +40,6 @@ const plantRows=computed(()=>g.PLANTS.filter(p=>p.price>0).map(p=>({
 const shellRows=computed(()=>g.SHELLS.filter(p=>p.price>0).map(p=>({
   id:p.id, name:p.name, sub:p.slots+' rig positions · '+p.hours+' h to build',
   value:fmt.usd(p.price), valueSub:'', locked:g.s.cash<p.price })));
-/* Expanding grows the site you're standing on; the site list's "+ New
-   site" still founds a separate one from zero. Same SHELLS ladder, two
-   different actions, so picking "bigger floor" never means starting the
-   power and cooling bill over from nothing. */
 const expandRows=computed(()=>{
   const cur=g.SITEPART(f.value.shell);
   return g.SHELLS.filter(p=>p.slots>cur.slots).map(p=>{
@@ -53,10 +50,6 @@ const expandRows=computed(()=>{
       locked:g.s.cash<cost };
   });
 });
-/* Same shape as expandRows: fab tiers only ever grow, and half the current
-   tier's price is credited toward the next one. Unlike shells there's no
-   from-nothing floor row missing here — FABS has no free tier, since the
-   whole point is that this is the single biggest bet in the game. */
 const fabRows=computed(()=>{
   const cur=f.value.fab?g.FAB(f.value.fab):null;
   return g.FABS.filter(p=>!cur||p.tier>cur.tier).map(p=>{
@@ -84,16 +77,11 @@ const decommission=()=>{
   if(!decomArm.value){ decomArm.value=true; return; }
   g.decommissionSite(f.value.id); decomArm.value=false;
 };
-// the site page had grown to one very long scroll; each section now folds
-// behind a summary line, with the dashboard at the top always visible
 const sec=reactive({power:false,batt:false,cool:false,fab:false});
 const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
   rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
 const segs=(parts,total)=>parts.map(([k,w])=>({k,w,
   pct: total>0?Math.max(0,w)/total*100:0, c:FLOW_C[k]}));
-/* sitePlan/flowOf each re-walk and re-sort the site's sources; the power and
-   battery panels below used to call them (via these) up to 8 times combined
-   per render. Computed once per site here. */
 const plan=computed(()=> g.sitePlan(f.value));
 const flow=computed(()=> g.flowOf(f.value));
 const flowIn=computed(()=>{ const x=flow.value;
@@ -104,21 +92,13 @@ const flowOut=computed(()=>{ const x=flow.value;
   const tot=x.rigs+x.cool+x.charge;
   return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
 
-/* ---- floor plan ----
-   The first view in the game that draws a site as a PLACE rather than a
-   count: one square per rig position, tinted by the same live status
-   vocabulary (.dot.run/.bad/.warn/.build/.off) the Rigs list already uses,
-   with unoccupied positions dashed. Purely a read of existing state — the
-   store has no notion of WHICH position a rig sits in (a rig only carries
-   `site`), so order in `siteRigs` is the position, and a position is simply
-   occupied or free; there is no "built but unwired" tier to show. */
-/* A warehouse bay is 140 positions. Drawing all of them stops being a glance
-   and becomes a scroll, and drawing 125 empty squares is wallpaper, not
-   information — the count in the header already says how much room is left.
-   So: every rig up to a ceiling, then only enough empties to show that there
-   IS room, and a plain sentence for the rest. */
 const MAX_TILES=60, MAX_EMPTY=12;
 const rigsHere=computed(()=>g.siteRigs(f.value));
+const floorTemp=computed(()=>g.siteTemp(f.value));
+const floorAmbient=computed(()=>{
+  const t=floorTemp.value;
+  return t>=70?'hot':t>=58?'warm':'cool';
+});
 const floor=computed(()=>{
   const rigs=rigsHere.value, slots=Math.max(g.siteSlots(f.value), rigs.length), cells=[];
   let running=0;
@@ -126,18 +106,23 @@ const floor=computed(()=>{
     if(cells.length>=MAX_TILES) break;
     const st=g.rigState(r);
     if(st.dot==='run') running++;
+    const gr=g.groupOf(r);
+    const chain=gr?gr.chain:null;
+    const cards=r.units?r.units.length:0;
+    const size=cards>=9?'lg':cards>=5?'md':'sm';
     cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, n:cells.length+1,
+      chain, hue:chain!=null?CHAIN_HUE[chain]:undefined, size, cards,
       label:'Position '+(cells.length+1)+' — '+r.name+', '+st.label
             +(st.sub?' ('+st.sub+')':'') });
   }
   const empties=Math.min(MAX_EMPTY, MAX_TILES-cells.length, slots-rigs.length);
   for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null });
   return { cells, rigs:rigs.length, slots, running,
-           hidden:Math.max(0, slots-cells.length) };
+           hidden:Math.max(0, slots-cells.length),
+           temp:floorTemp.value, ambient:floorAmbient.value };
 });
 const DOT_LABEL={ run:'Running', build:'Building', warn:'Wearing',
                   bad:'Needs attention', off:'Off' };
-// colour alone should not carry the reading; the legend names what is on screen
 const legend=computed(()=>{
   const n={};
   for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
@@ -145,29 +130,11 @@ const legend=computed(()=>{
     .map(k=>({ k, n:n[k], label:DOT_LABEL[k] }));
 });
 const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
-// while a fab job is queued, f.fab hasn't moved yet — without this the
-// section would keep reading "not installed" through the entire build
 const fabQueued=computed(()=>f.value.queue.find(j=>j.kind==='fab'));
 
-/* ---- designing a custom part ----
-   Two small sheets, not one: `sitePicker==='design'` picks WHICH slot type
-   (a plain list, not a Compare — there's no price to compare yet), then
-   `g.s.design` (opened by openDesignKind) is the actual tuner. They're
-   mutually exclusive by construction — opening the tuner always closes the
-   picker sheet first — so only one is ever on screen. */
 const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
 const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
-/* A design belongs to the SITE it was opened on (g.s.design.fid), not
-   whichever site happens to be active right now — the tuner sheet traps
-   focus and covers the site list, so switching sites mid-design isn't
-   reachable today, but reading the wrong site's fab here would be a real
-   bug the moment that ever changes, for the cost of one extra lookup.
-   decommissionSite (game/sites.js) is the one that actually clears
-   g.s.design when its site goes away, closing the sheet outright — so
-   `.find` returning nothing shouldn't happen, but `|| f.value` costs one
-   token to keep this computed itself from being the thing that throws if
-   that guard is ever the one that regresses instead. */
 const designPreview=computed(()=>{
   const d=g.s.design; if(!d) return null;
   const site=g.s.sites.find(x=>x.id===d.fid)||f.value, fab=g.FAB(site.fab);
@@ -176,9 +143,6 @@ const designPreview=computed(()=>{
     totals:g.designTotals(d.kind,d.picks), stats:g.designStats(d.kind,d.picks,liveTop),
     cost:g.designCost(d.kind,d.picks,liveTop) };
 });
-// mirrors bumpDesignPick's own refusal condition, read-only — so the +
-// stepper can go disabled right when a click would silently do nothing,
-// the same way Build's own card-count stepper disables at its limit
 const axisAtCap=ax=>{
   const d=g.s.design; if(!d) return true;
   const cur=d.picks[ax.key]||0;
@@ -211,19 +175,24 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="ch">&rsaquo;</span></button>
     </div></div>
 
-    <!-- the site as a place: one square per rig position, lit by live status -->
-    <div class="card" data-tour="sites">
+    <div class="card floor-card" data-tour="sites">
       <div class="card-hd"><span class="eyebrow">Floor</span>
-        <span class="eyebrow">{{ floor.rigs }}/{{ floor.slots }} positions</span></div>
-      <div class="rigwrap">
-        <!-- a handful of tiles breathing reads as a farm running; twenty in
-             lockstep reads as a strobing wall, so past that they hold still -->
+        <span class="eyebrow">{{ floor.rigs }}/{{ floor.slots }} positions
+          <span class="floor-temp" :class="'t-'+floor.ambient"
+                :title="'Site temperature '+floor.temp.toFixed(0)+'°C'">
+            {{ floor.temp.toFixed(0) }}&deg;</span></span></div>
+      <div class="rigwrap" :class="'ambient-'+floor.ambient">
         <div class="riggrid" :class="{calm:floor.running>20}">
           <template v-for="c in floor.cells" :key="c.key">
-            <button v-if="c.id!==null" class="rigtile" :class="c.dot"
+            <button v-if="c.id!==null" class="rigtile" :class="[c.dot, 'sz-'+c.size]"
+                    :style="c.hue!==undefined?{ '--chain-h': c.hue }:undefined"
                     :title="c.label" :aria-label="c.label"
-                    @click="openTile(c.id)">{{ c.n }}</button>
-            <div v-else class="rigtile empty" aria-hidden="true"></div>
+                    @click="openTile(c.id)">
+              <span class="rt-led" aria-hidden="true"></span>
+              <span class="rt-body" aria-hidden="true"></span>
+              <span class="rt-n">{{ c.n }}</span>
+            </button>
+            <div v-else class="rigtile empty" aria-hidden="true"><span class="rt-rail"></span></div>
           </template>
         </div>
         <div v-if="legend.length" class="riglegend">
@@ -469,12 +438,6 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           </div>
         </template>
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
-        <!-- kept outside the v-if/else-if chain above on purpose: a plain
-             element with its own v-if between two v-else-if links would
-             split that chain in two, and the second half's final v-else
-             (plants) would then fire for every picker that isn't its own
-             branch — the same bug that briefly existed here when the expand
-             note lived inline between two Compare elements. -->
         <p v-if="g.s.sitePicker==='expand'&&!expandRows.length" class="note">
           {{ f.name }} is already at the largest shell there is.</p>
         <p v-if="g.s.sitePicker==='fab'&&!fabRows.length" class="note">
@@ -532,3 +495,25 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
     </div>
   </div>
 </template>
+
+<style scoped>
+.floor-card .card-hd{align-items:center}
+.floor-temp{display:inline-block;margin-left:8px;padding:1px 6px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:600;background:var(--line-2);color:var(--ink-3);vertical-align:1px}
+.floor-temp.t-warm{background:var(--amber-t);color:var(--amber)}
+.floor-temp.t-hot{background:var(--red-t);color:var(--red);box-shadow:0 0 8px color-mix(in srgb,var(--red) 35%,transparent)}
+.rigwrap{padding:12px;border-radius:0 0 12px 12px;transition:background-color .6s ease,box-shadow .6s ease}
+.rigwrap.ambient-warm{background:linear-gradient(180deg,color-mix(in srgb,var(--amber-t) 55%,transparent),color-mix(in srgb,var(--amber-t) 15%,transparent))}
+.rigwrap.ambient-hot{background:linear-gradient(180deg,color-mix(in srgb,var(--red-t) 70%,transparent),color-mix(in srgb,var(--red-t) 20%,transparent));box-shadow:inset 0 0 24px color-mix(in srgb,var(--red) 18%,transparent)}
+.rigtile{position:relative;border-radius:7px;overflow:hidden;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 12%,transparent),0 1px 2px color-mix(in srgb,var(--ink) 8%,transparent)}
+.rigtile .rt-n{position:relative;z-index:2;font-weight:600;line-height:1}
+.rigtile .rt-led{position:absolute;top:0;left:10%;right:10%;height:3px;border-radius:0 0 2px 2px;background:color-mix(in srgb,var(--ink-3) 35%,transparent);z-index:1}
+.rigtile[style*="--chain-h"] .rt-led{background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));box-shadow:0 0 6px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.55)}
+.rigtile .rt-body{position:absolute;inset:8px 6px 6px;border-radius:3px;z-index:0;background:repeating-linear-gradient(90deg,transparent 0 2px,color-mix(in srgb,var(--ink) 8%,transparent) 2px 3px);opacity:.55;pointer-events:none}
+.rigtile.sz-lg .rt-body{opacity:.85}
+.rigtile.empty{box-shadow:none}
+.rigtile.empty .rt-rail{position:absolute;inset:30% 18%;border-radius:2px;border:1px dashed color-mix(in srgb,var(--ink-3) 28%,transparent);pointer-events:none}
+.rigtile.run .rt-body{opacity:.4;background:repeating-linear-gradient(90deg,transparent 0 2px,color-mix(in srgb,#000 18%,transparent) 2px 3px)}
+.rigtile.off .rt-led{background:color-mix(in srgb,var(--card) 25%,transparent);box-shadow:none}
+.rigtile.build .rt-led{animation:buildLed 1.2s ease-in-out infinite}
+@keyframes buildLed{0%,100%{opacity:.35}50%{opacity:1}}
+</style>
