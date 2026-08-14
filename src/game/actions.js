@@ -10,18 +10,34 @@ import { wearRate } from '../utils/random.js';
    intra-module references are the same code they always were. */
 export function installActions(G){
   /* ---- actions ---- */
-  function build(){
+  /* Bulk order: qty copies of the current draft, clamped to floor space,
+     cash, and power headroom (including cooling). Assembly is parallel —
+     every ordered rig starts building at once for buildTime, matching the
+     design rule that assembly is small friction, not a throughput queue. */
+  function build(qty=1){
     if(!G.canBuild.value) return;
+    const want=Math.max(1, Math.floor(Number(qty)||1));
+    const n=Math.min(want, G.maxBuildQty());
+    if(n<1) return;
     const d=G.s.draft, p=G.dp.value;
-    G.s.cash-=p.cost; G.s.spent+=p.cost;
-    const units=[]; for(let i=0;i<d.n;i++) units.push({p:d.unit,w:0,wr:wearRate()});
-    G.s.rigs.push({ id:G.s.nextId, kind:d.kind, frame:d.frame, mobo:d.mobo, psu:d.psu, cool:d.cool,
-      ctrl:d.ctrl, units, risers:d.kind==='gpu'?d.n:0, refurb:0,
-      site:G.s.activeSite, group:G.s.groups[0].id, tune:0, on:true, building:G.buildTime.value,
-      open:false, name:'Rig '+G.s.nextId });
+    const total=p.cost*n;
+    G.s.cash-=total; G.s.spent+=total;
+    const firstId=G.s.nextId;
+    for(let k=0;k<n;k++){
+      const units=[]; for(let i=0;i<d.n;i++) units.push({p:d.unit,w:0,wr:wearRate()});
+      G.s.rigs.push({ id:G.s.nextId, kind:d.kind, frame:d.frame, mobo:d.mobo, psu:d.psu, cool:d.cool,
+        ctrl:d.ctrl, units, risers:d.kind==='gpu'?d.n:0, refurb:0,
+        site:G.s.activeSite, group:G.s.groups[0].id, tune:0, on:true, building:G.buildTime.value,
+        open:false, name:'Rig '+G.s.nextId });
+      G.s.nextId++;
+    }
     G.s.tab='rigs';                                  // and takes you to where it lives
-    G.s.nextId++;
-    G.say('sys','Ordered parts for Rig '+(G.s.nextId-1),'-'+fmt.usd(p.cost),undefined,undefined,-p.cost);
+    if(n===1){
+      G.say('sys','Ordered parts for Rig '+firstId,'-'+fmt.usd(total),undefined,undefined,-total);
+    } else {
+      G.say('sys','Ordered parts for '+n+' rigs (#'+firstId+'–#'+(G.s.nextId-1)+')',
+        '-'+fmt.usd(total),undefined,undefined,-total);
+    }
   }
   function renameRig(id,name){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
