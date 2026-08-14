@@ -18,10 +18,10 @@ describe('game store boot', () => {
     expect(g.s.tab).toBe('farm');
   });
 
-  it('seeds a rival pool field on every simulated chain', () => {
+  it('seeds a sim-operated pool field on every simulated chain', () => {
     const g = freshStore();
     for (const cid of ['ferro', 'halcyon', 'nova', 'obelisk']) {
-      const onChain = g.s.pools.filter(p => p.chain === cid && p.owner === 'rival');
+      const onChain = g.s.pools.filter(p => p.chain === cid && p.owner !== 'you');
       expect(onChain.length).toBeGreaterThan(0);
     }
     // Tessera stays a newcomer refuge with no simulated competition
