@@ -9,10 +9,6 @@ import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
-/* The hero figure counts toward each new value instead of snapping to it
-   (issue #43). Its pos/neg colour still keys off the real g.netDay, so the
-   colour flips the instant the day actually goes into the red rather than
-   waiting for the animation to cross zero. */
 const netDayShown = useTweenedNumber(() => g.netDay);
 const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
 const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
@@ -21,8 +17,6 @@ const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
-/* Mini bay strip per site — same status/LED language as Sites floor + Rigs chassis.
-   Cap occupied tiles so a warehouse does not become a second full floor plan. */
 const BAY_MAX=16, BAY_EMPTY=4;
 const siteRows=computed(()=>g.s.sites.map(f=>{
   const rigs=g.siteRigs(f);
@@ -49,9 +43,6 @@ const siteRows=computed(()=>g.s.sites.map(f=>{
     costDay:g.siteCostPerHour(f)*24,
   };
 }));
-/* groupAdvice/chainCeiling each walk every group and rig internally
-   (chainHash -> myHash -> groupHash), and the template used to call them
-   up to 5x and 4x per group per render. Computed once per group here. */
 const groupRows=computed(()=>g.s.groups.map(gr=>({
   gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
 })));
@@ -262,3 +253,19 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
     </template>
   </div>
 </template>
+
+<style scoped>
+.sitebay{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px;padding:6px 7px;border-radius:8px;background:var(--line-2);transition:background-color .5s ease,box-shadow .5s ease}
+.sitebay.ambient-warm{background:linear-gradient(90deg,color-mix(in srgb,var(--amber-t) 55%,var(--line-2)),var(--line-2))}
+.sitebay.ambient-hot{background:linear-gradient(90deg,color-mix(in srgb,var(--red-t) 65%,var(--line-2)),var(--line-2));box-shadow:inset 0 0 12px color-mix(in srgb,var(--red) 12%,transparent)}
+.baytile{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);position:relative;overflow:hidden;flex:none;background:var(--card)}
+.baytile.empty{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--ink-3) 35%,transparent)}
+.baytile.run{background:var(--green);border-color:var(--green)}
+.baytile.off{background:var(--ink-3);border-color:var(--ink-3)}
+.baytile.bad{background:var(--red);border-color:var(--red)}
+.baytile.warn{background:var(--amber);border-color:var(--amber)}
+.baytile.build{background:var(--blue);border-color:var(--blue)}
+.baytile .ch-led{position:absolute;top:0;left:15%;right:15%;height:2px;border-radius:0 0 1px 1px;background:color-mix(in srgb,var(--ink-3) 30%,transparent)}
+.baytile[style*="--chain-h"] .ch-led{background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));box-shadow:0 0 4px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.5)}
+.baymore{font-family:var(--mono);font-size:9px;color:var(--ink-3);align-self:center;margin-left:2px}
+</style>
