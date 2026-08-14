@@ -108,4 +108,26 @@ describe('FarmView', () => {
     expect(wrapper.text()).toContain('Blocks today—');
     expect(wrapper.text()).toContain('Best block ever—');
   });
+
+  it('each site row shows a living bay strip with status tiles', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const bay = wrapper.find('.sitebay');
+    expect(bay.exists()).toBe(true);
+    expect(bay.classes().some(c => c.startsWith('ambient-'))).toBe(true);
+    expect(wrapper.find('.baytile').exists()).toBe(true);
+  });
+
+  it('tapping a site bay row opens that site on the Sites tab', async () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const row = wrapper.find('button.rowline');
+    expect(row.exists()).toBe(true);
+    await row.trigger('click');
+    expect(store.s.tab).toBe('sites');
+    expect(store.s.activeSite).toBe(store.s.sites[0].id);
+  });
+
 });

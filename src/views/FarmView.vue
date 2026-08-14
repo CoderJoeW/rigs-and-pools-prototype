@@ -5,6 +5,7 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 import ChainMark from '../components/ChainMark.vue';
+import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
@@ -20,6 +21,34 @@ const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
+/* Mini bay strip per site — same status/LED language as Sites floor + Rigs chassis.
+   Cap occupied tiles so a warehouse does not become a second full floor plan. */
+const BAY_MAX=16, BAY_EMPTY=4;
+const siteRows=computed(()=>g.s.sites.map(f=>{
+  const rigs=g.siteRigs(f);
+  const slots=g.siteSlots(f);
+  const temp=g.siteTemp(f);
+  const ambient=temp>=70?'hot':temp>=58?'warm':'cool';
+  const cells=[];
+  for(const r of rigs){
+    if(cells.length>=BAY_MAX) break;
+    const st=g.rigState(r);
+    const gr=g.groupOf(r);
+    const chain=gr?gr.chain:null;
+    const hue=chain!=null?CHAIN_HUE[chain]:undefined;
+    cells.push({ key:'r'+r.id, empty:false, dot:st.dot,
+      style:hue!==undefined?{'--chain-h':hue}:undefined });
+  }
+  const empties=Math.min(BAY_EMPTY, Math.max(0, slots-rigs.length));
+  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, empty:true });
+  return {
+    f, cells, more:Math.max(0, rigs.length-BAY_MAX), ambient, temp,
+    hash:rigs.reduce((a,r)=>a+g.rigHash(r),0),
+    demand:g.siteDemand(f),
+    capacity:g.siteCapacity(f)+g.battFirm(f),
+    costDay:g.siteCostPerHour(f)*24,
+  };
+}));
 /* groupAdvice/chainCeiling each walk every group and rig internally
    (chainHash -> myHash -> groupHash), and the template used to call them
    up to 5x and 4x per group per render. Computed once per group here. */
@@ -57,14 +86,24 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
       <div class="card"><div class="card-hd"><span class="eyebrow">Sites</span>
         <span class="eyebrow">{{ g.s.sites.length }}</span></div>
         <div class="list">
-          <div v-for="f in g.s.sites" :key="'s'+f.id" class="rowline">
-            <span style="flex:1;min-width:0"><span class="nm">{{ f.name }}</span>
-              <span v-if="(f.temp||0)>=70" class="tag"
+          <button v-for="row in siteRows" :key="'s'+row.f.id" class="rowline"
+                  @click="g.s.activeSite=row.f.id; g.s.tab='sites'">
+            <span style="flex:1;min-width:0"><span class="nm">{{ row.f.name }}</span>
+              <span v-if="row.ambient==='hot'" class="tag"
                     style="background:var(--red-t);color:var(--red);margin-left:5px">HOT</span>
-              <div class="sb">{{ g.siteRigs(f).length }} rigs ·
-                {{ fmt.hash(g.siteRigs(f).reduce((a,r)=>a+g.rigHash(r),0)) }} ·
-                {{ fmt.w(g.siteDemand(f)) }} of {{ fmt.w(g.siteCapacity(f)+g.battFirm(f)) }}</div></span>
-            <span class="rt">{{ fmt.usd2(g.siteCostPerHour(f)*24) }}<div class="sb">/day</div></span></div>
+              <span v-else-if="row.ambient==='warm'" class="tag"
+                    style="background:var(--amber-t);color:var(--amber);margin-left:5px">WARM</span>
+              <div class="sb">{{ g.siteRigs(row.f).length }} rigs ·
+                {{ fmt.hash(row.hash) }} ·
+                {{ fmt.w(row.demand) }} of {{ fmt.w(row.capacity) }}</div>
+              <div class="sitebay" :class="'ambient-'+row.ambient" aria-hidden="true">
+                <span v-for="c in row.cells" :key="c.key" class="baytile"
+                      :class="c.empty?'empty':c.dot" :style="c.style">
+                  <i v-if="!c.empty" class="ch-led"></i>
+                </span>
+                <span v-if="row.more" class="baymore">+{{ row.more }}</span>
+              </div></span>
+            <span class="rt">{{ fmt.usd2(row.costDay) }}<div class="sb">/day</div></span></button>
         </div>
       </div>
 
