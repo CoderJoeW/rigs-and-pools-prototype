@@ -1,1 +1,1 @@
-RELOAD_FROM_ARTIFACTS
+@/tmp/hybrid/ChainsView.vue
