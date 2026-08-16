@@ -150,3 +150,10 @@ async function onBackupFile(e){
     </div></div>
   </div>
 </template>
+
+<style scoped>
+/* Hybrid: calm market surface */
+.card-hd{padding:10px 12px 8px}
+.rowline{padding:10px 12px}
+.rowline .nm{font-weight:600;letter-spacing:-.01em}
+</style>

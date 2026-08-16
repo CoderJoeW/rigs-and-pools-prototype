@@ -41,10 +41,10 @@ const tracks=computed(()=>{
 <template>
   <div>
     <div class="card" data-tour="stats">
-      <div class="hero">
-        <span class="hero-lbl">Career</span>
+      <div class="hero stats-hero">
+        <span class="hero-lbl">Career rank</span>
         <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px">
-          <span class="hero-val" style="font-size:26px">{{ rank }}</span>
+          <span class="hero-val" style="font-size:28px;letter-spacing:-.03em">{{ rank }}</span>
           <span class="sb">{{ doneN }} / {{ g.MILESTONES.length }} milestones</span></div>
         <p v-if="nextRank" class="hint" style="margin:4px 0 0">
           {{ nextRank[1] }} at {{ nextRank[0] }} milestones.</p>
@@ -85,3 +85,8 @@ const tracks=computed(()=>{
     </div></div>
   </div>
 </template>
+
+<style scoped>
+.stats-hero{padding:14px 14px 12px}
+.track-cap span{letter-spacing:.02em}
+</style>
