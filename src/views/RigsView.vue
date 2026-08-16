@@ -12,11 +12,6 @@ import { CHAIN_HUE } from '../data/chains.js';
 const g = useGameStore();
 const f=computed(()=>g.active);
 
-/* One function decides a rig's state, and everything downstream — dot
-   colour, pill counts, filters, the sheet's header — reads it. The old
-   page derived "is this rig fine" three separate ways. It now lives on the
-   store (dispatch.js) because the Sites floor plan needs the same verdict;
-   these are local names for the same thing, so the template is unchanged. */
 const avgWear=r=>g.rigWear(r);
 const stateOf=r=>g.rigState(r);
 const needsEye=r=>['off','worn','losing','wearing'].includes(stateOf(r).k);
@@ -60,7 +55,6 @@ const shown=computed(()=>{
   return siteRigs.value.filter(test).sort(SORTS.find(x=>x.k===sortBy.value).cmp);
 });
 
-/* selection ------------------------------------------------------- */
 const picking=ref(false);
 const chosen=reactive({});
 const chosenIds=computed(()=>shown.value.filter(r=>chosen[r.id]).map(r=>r.id));
@@ -68,62 +62,27 @@ const toggleChoose=r=>{ chosen[r.id]=!chosen[r.id]; };
 const chooseAll=()=>{ const all=chosenIds.value.length===shown.value.length;
   for(const r of shown.value) chosen[r.id]=!all; };
 const stopPicking=()=>{ picking.value=false; for(const k in chosen) delete chosen[k]; };
-/* Fleet actions act on the selection when there is one, and on the whole
-   site otherwise — one rule, stated on screen, rather than two modes. */
 const scopeId=computed(()=> picking.value && chosenIds.value.length
   ? chosenIds.value : (f.value?f.value.id:null));
 const scopeLabel=computed(()=> picking.value && chosenIds.value.length
   ? chosenIds.value.length+' selected'
   : (f.value?'all '+siteRigs.value.length+' at '+f.value.name:''));
 
-/* swipe a row to flip its power (issue #49) ------------------------
-   Every rig-level action used to cost a sheet round trip. Power is the one
-   action cheap enough to earn a shortcut: it is a single reversible call,
-   spends nothing, and is the thing you reach for most. So the row itself
-   takes the standard mobile list gesture — drag left, a trailing action is
-   revealed, keep going and let go to fire it.
-
-   Two release thresholds rather than one, because a single one forces a
-   choice between "easy to fire" and "hard to fire by accident":
-     past SW_FIRE  — commit on release, the impatient path.
-     past SW_OPEN  — rest open at SW_REST showing a real <button>, which is
-                     the forgiving path: a half-hearted swipe shows you what
-                     it WOULD do and waits to be tapped (or dismissed) rather
-                     than acting on a movement you may not have meant.
-     under         — snap shut, nothing happened.
-   Nothing is ever hidden behind the gesture: tapping the row still opens the
-   sheet, whose power switch is unchanged, so keyboard and non-touch users
-   lose nothing. This is an accelerator, not a relocation.
-
-   Pointer events, not touch events: the app already assumes them (audio.js
-   arms on `pointerdown`), and they cover mouse and pen for free, so the same
-   drag works on a desktop pointer. Vertical scrolling stays the browser's:
-   `touch-action:pan-y` on .rigrow (see main.css) hands a mostly-vertical
-   drag straight to the scroller and cancels ours, and the axis check in
-   onSwipeMove applies the same rule to mouse and pen, where touch-action
-   does not. */
-const SW_ARM=10;    // slop before a drag counts as a swipe at all
-const SW_OPEN=34;   // release past this and the action stays open
-const SW_REST=108;  // where it rests when open — wide enough for the whole label
-const SW_FIRE=134;  // release past this and it fires straight away (~a third of the row)
-const SW_MAX=176;   // clamp, so the row cannot be dragged off the card
+const SW_ARM=10;
+const SW_OPEN=34;
+const SW_REST=108;
+const SW_FIRE=134;
+const SW_MAX=176;
 
 const sw=reactive({id:null,x:0,drag:false});
-let pt=null;             // live pointer bookkeeping; nothing renders off it
-let swallowClick=false;  // a drag must not ALSO open the sheet on release
+let pt=null;
+let swallowClick=false;
 let closeT=null;
 
-/* Mid-build rigs are out: toggleRig itself no-ops while `building>0`
-   (actions.js), so a swipe there would be a gesture that visibly does
-   nothing — better that the row simply does not move. Selection mode is out
-   too: there the row's tap means "choose me", and a second meaning for a
-   drag on the same row is how you make both feel unreliable. */
 const canSwipe=r=>!picking.value && stateOf(r).k!=='build';
 const swipeVerb=r=>r.on?'Power off':'Power on';
 
 const clearCloseT=()=>{ if(closeT!=null){ clearTimeout(closeT); closeT=null; } };
-/* Slide shut, then drop the panel once the transition has played — a rested
-   action button must not linger in the tab order after it is out of sight. */
 const closeSwipe=()=>{
   clearCloseT();
   if(sw.id==null) return;
@@ -134,55 +93,46 @@ const resetSwipe=()=>{ clearCloseT(); sw.id=null; sw.x=0; sw.drag=false; };
 
 const onSwipeDown=(e,r)=>{
   swallowClick=false;
-  if(sw.id!=null&&sw.id!==r.id) resetSwipe();   // only ever one row open
+  if(sw.id!=null&&sw.id!==r.id) resetSwipe();
   pt=null;
   if(!canSwipe(r)) return;
-  if(e.pointerType==='mouse'&&e.button) return;  // secondary buttons are not drags
+  if(e.pointerType==='mouse'&&e.button) return;
   pt={id:r.id, pid:e.pointerId, x0:e.clientX, y0:e.clientY,
       base:(sw.id===r.id?sw.x:0), claimed:false};
 };
 const onSwipeMove=(e,r)=>{
   if(!pt||pt.id!==r.id||pt.pid!==e.pointerId) return;
-  const dx=pt.x0-e.clientX, dy=e.clientY-pt.y0;   // dx>0 is leftward
+  const dx=pt.x0-e.clientX, dy=e.clientY-pt.y0;
   if(!pt.claimed){
-    if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>SW_ARM){ pt=null; return; }  // theirs
+    if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>SW_ARM){ pt=null; return; }
     if(Math.abs(dx)<=SW_ARM) return;
     pt.claimed=true; clearCloseT(); sw.id=r.id; sw.drag=true;
-    /* Capture so the drag survives the finger leaving the row's box; absent
-       in jsdom, and not worth failing the gesture over. */
     const el=e.currentTarget;
     if(el&&el.setPointerCapture){ try{ el.setPointerCapture(e.pointerId); }catch(_){} }
   }
-  // subtracting the slop keeps the row under the finger instead of jumping
   sw.x=Math.max(0,Math.min(SW_MAX,pt.base+dx-(dx>0?SW_ARM:-SW_ARM)));
 };
 const onSwipeUp=(e,r)=>{
   if(!pt||pt.id!==r.id) return;
   const claimed=pt.claimed; pt=null;
-  if(!claimed) return;                 // an ordinary tap — @click still owns it
+  if(!claimed) return;
   swallowClick=true; sw.drag=false;
   if(sw.x>=SW_FIRE){ closeSwipe(); g.toggleRig(r.id); }
   else if(sw.x>=SW_OPEN) sw.x=SW_REST;
   else closeSwipe();
 };
-/* The browser claimed the touch for scrolling after we had started drawing. */
 const onSwipeCancel=(e,r)=>{
   if(pt&&pt.id===r.id) pt=null;
   if(sw.drag&&sw.id===r.id) closeSwipe();
 };
 const fireSwipe=r=>{ swallowClick=false; closeSwipe(); if(canSwipe(r)) g.toggleRig(r.id); };
 
-/* The row's tap keeps all of its old meanings and gains one: while its own
-   action is showing, the tap puts it away — the way out of the gesture is
-   the same gesture-free tap that got you everywhere else. */
 const rowClick=r=>{
   if(swallowClick){ swallowClick=false; return; }
   if(sw.id===r.id&&sw.x>0){ closeSwipe(); return; }
   if(picking.value) toggleChoose(r); else openRig.value=r.id;
 };
 
-/* Anything that touches the app outside the list puts an open row away, so a
-   revealed action can never be left behind for a later, unrelated tap. */
 const onDocDown=e=>{
   if(sw.id==null) return;
   const t=e.target;
@@ -193,7 +143,6 @@ onMounted(()=>document.addEventListener('pointerdown',onDocDown,{passive:true}))
 onBeforeUnmount(()=>{ document.removeEventListener('pointerdown',onDocDown); clearCloseT(); });
 watch([picking,filt,sortBy],()=>resetSwipe());
 
-/* sheets ---------------------------------------------------------- */
 const openRig=ref(null);
 const rig=computed(()=> openRig.value==null ? null
   : g.s.rigs.find(r=>r.id===openRig.value) || null);
@@ -209,14 +158,11 @@ const REPAIR_AT=C.REPAIR_AT;
 const wornInfo=computed(()=> g.fleetWorn(REPAIR_AT, scopeId.value));
 const moveInfo=computed(()=> g.fleetMoveInfo(fleetGroup.value, scopeId.value));
 const refitInfo=computed(()=> g.fleetRefitInfo(fleetCard.value, scopeId.value));
-// same rule rbPickerRows' unit branch and BuildView's optionsFor both apply
-// to their own card pickers: the catalogue plus whatever's been manufactured
 const fleetCardOpts=computed(()=> g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')));
 
 const wornCost=(r,t)=>r.units.filter(u=>u.w>=t).reduce((a,u)=>a+g.PART(u.p).price,0);
 const wornN=(r,t)=>r.units.filter(u=>u.w>=t).length;
 
-/* rebuild sheet (unchanged behaviour, kept as-is) ------------------ */
 const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find(x=>x.id===g.s.rebuild.rig) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
 const rbInfo=computed(()=> rbRig.value ? g.rebuildInfo(rbRig.value, rbD.value) : {checks:[],lim:1});
@@ -240,9 +186,6 @@ const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r) return [];
   const slot=g.s.rebuild.picker;
   if(slot==='unit'){
-    // fab-designed custom cards (data/customParts.js) belong in every picker
-    // for their slot, this one included — a rig that already carries one
-    // otherwise has no way back to the catalogue, or to another custom card
     return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')).map(c=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
@@ -270,18 +213,8 @@ const rbChoose=id=>{
 const siteHash=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigHash(r),0));
 const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
 
-// switching sites should not leave a stale selection or an open rig behind
 watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.value='all'; resetSwipe(); });
 
-/* Handoff from the Sites floor plan. Tapping a position tile there parks the
-   rig's id on the store and switches tab rather than reimplementing this
-   sheet a second time; App.vue keys the view by tab, so this view mounts
-   fresh with the id already waiting. Read once and cleared immediately, so a
-   later visit to the tab is never ambushed by a stale sheet.
-   Taken in onMounted, not during setup — useSheetA11y's watcher is
-   immediate now, so either placement reaches it, but the template ref it
-   focuses into isn't bound until mount regardless, and onMounted is the
-   natural place for a "reset a store field, react to it" side effect. */
 const takeFocusRig=()=>{
   const id=g.s.focusRig; if(id==null) return;
   g.s.focusRig=null;
@@ -291,8 +224,6 @@ const takeFocusRig=()=>{
 onMounted(takeFocusRig);
 watch(()=>g.s.focusRig, takeFocusRig);
 
-/* Escape/focus-trap/return-focus for each sheet, mirroring the on-screen
-   back/cancel button each one already has. */
 const rigSheetEl=ref(null);
 useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; });
 const fleetSheetEl=ref(null);
@@ -304,7 +235,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 
 <template>
   <div>
-    <!-- ORIENT: is the farm healthy, and where am I -->
     <div class="card" data-tour="rigs">
       <div class="card-hd"><span class="eyebrow">{{ f.name }}</span>
         <span class="eyebrow">{{ g.siteRigs(f).length }}/{{ g.siteSlots(f) }} positions used</span></div>
@@ -322,7 +252,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <!-- FIND: filter pills carry their counts, so a problem shows before you look for it -->
     <div class="card" v-if="siteRigs.length">
       <div class="pills">
         <button v-for="x in FILTERS" :key="x.k" class="pill"
@@ -345,9 +274,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <!-- the list: one compact row per rig. Each row sits in a .rigswipe so a
-         drag can slide it off its own power action (issue #49); the row's
-         tap, and everything it already meant, is untouched. -->
     <div class="card" v-if="shown.length">
       <div v-for="r in shown" :key="r.id" class="rigswipe"
            :class="{dragging:sw.drag&&sw.id===r.id}">
@@ -375,8 +301,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <span v-if="!picking" class="ch" style="color:var(--ink-3);font-size:15px">&rsaquo;</span>
           </button>
         </div>
-        <!-- rendered only while this row is drawn back, so it is neither a
-             stray tab stop nor a thing the screen reader meets face-down -->
         <button v-if="sw.id===r.id" class="rigswact"
                 :class="{go:!r.on, arm:sw.x>=SW_FIRE}"
                 :aria-label="swipeVerb(r)+' '+r.name" @click="fireSwipe(r)">
@@ -402,7 +326,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       <button v-else class="btn btn-ghost" @click="filt='all'">Show all {{ siteRigs.length }}</button>
     </div></div>
 
-    <!-- ACT: one rig, full screen, nothing else competing -->
     <div v-if="rig" class="sheet" ref="rigSheetEl" role="dialog" aria-modal="true"
          aria-labelledby="rig-sheet-title">
       <div class="sheet-hd">
@@ -430,30 +353,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
               <div class="sb" style="margin-top:3px;display:flex;align-items:center;gap:8px">
                 <Chassis v-bind="chassisOf(rig)" large />
                 <span>{{ stateOf(rig).label }}{{ stateOf(rig).sub?' — '+stateOf(rig).sub:'' }}</span></div></span>
-            <span style="flex:none;text-align:right">
-              <div class="rig-net" :class="g.rigNet(rig)>=0?'pos':'neg'">{{ fmt.usd2(g.rigNet(rig)) }}</div>
-              <div class="rig-net-l">per day</div></span>
-          </div>
-          <div class="rig-stats">
-            <div class="s"><div class="k">Hashrate</div><div class="v">{{ fmt.hash(g.rigHash(rig)) }}</div></div>
-            <div class="s"><div class="k">Draw</div><div class="v">{{ fmt.w(g.rigWallW(rig)) }}</div></div>
-            <div class="s"><div class="k">Wear</div>
-              <div class="v" :class="avgWear(rig)>0.6?'neg':avgWear(rig)>REPAIR_AT?'amb':''">
-                {{ fmt.pct(avgWear(rig),0) }}</div></div>
-          </div>
-          <div class="card-bd pt">
-            <div class="dl"><dt>Built from</dt>
-              <dd>{{ rig.units.length }} × {{ g.PART(rig.units[0].p).name }}</dd></div>
-            <div class="dl"><dt>Chassis</dt>
-              <dd>{{ g.PART(rig.frame).name }} · {{ g.PART(rig.mobo).name }}<br>
-                <span class="sb">{{ g.PART(rig.cool).name }} · {{ g.PART(rig.psu).name }}</span></dd></div>
-          </div>
-        </div>
-
-        <div class="card"><div class="card-bd pt">
-          <div style="display:flex;gap:9px;align-items:center;margin-bottom:11px">
-            <button class="switch" :class="{on:rig.on&&rig.building<=0}" @click="g.toggleRig(rig.id)"
-                    aria-label="power" :aria-pressed="rig.on&&rig.building<=0"><i></i></button>
             <span style="flex:none;text-align:right">
               <div class="rig-net" :class="g.rigNet(rig)>=0?'pos':'neg'">{{ fmt.usd2(g.rigNet(rig)) }}</div>
               <div class="rig-net-l">per day</div></span>
@@ -526,7 +425,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
       </div>
     </div>
 
-    <!-- ACT: many rigs at once -->
     <div v-if="fleetOpen" class="sheet" ref="fleetSheetEl" role="dialog" aria-modal="true"
          aria-labelledby="fleet-sheet-title">
       <div class="sheet-hd">
