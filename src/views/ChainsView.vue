@@ -14,21 +14,16 @@ const poolRenameDraft=reactive({});
 const startRenamePool=p=>{ poolRenameDraft[p.id]=p.name; poolRenameOpen[p.id]=true; };
 const saveRenamePool=p=>{ g.renamePool(p,poolRenameDraft[p.id]); poolRenameOpen[p.id]=false; };
 const fieldMine=ref(true);
-// one table, everyone on the same axes, ranked by the thing that matters
 const field=computed(()=>{
   const mine=new Set(g.s.groups.map(x=>x.chain));
   return g.s.pools.filter(p=>p.live&&(!fieldMine.value||mine.has(p.chain)||p.owner==='you'))
     .slice().sort((a,b)=>g.poolHash(b)-g.poolHash(a));
 });
 const found=ref(false), fScheme=ref('PPLNS'), fFee=ref(0.02);
-// steps scaled to the pool's own size, so the buttons stay useful at $50 or $50,000
 const bondSteps=p=>{
   const mag=Math.max(100, Math.pow(10, Math.floor(Math.log10(Math.max(100,p.bond)))));
   return [mag/10, mag, mag*5].map(x=>Math.round(x)).filter(x=>x>=10);
 };
-// default to the chain your rigs are on — 'tessera' was the old default and
-// it is the one chain with no other miners, so every first pool was founded
-// somewhere nobody could ever join
 const fChain=ref((g.s.groups[0]&&g.s.groups[0].chain)||'ferro');
 const bond=computed(()=>g.bondReq(g.chain(fChain.value),fScheme.value));
 const projShare=computed(()=>{
@@ -373,3 +368,8 @@ const projMargin=computed(()=>{
     </div>
   </div>
 </template>
+<style scoped>
+/* Hybrid: clearer chain hierarchy */
+.rowline .nm{font-size:14.5px;font-weight:600;letter-spacing:-.02em}
+.card .list .rowline{padding:11px 12px}
+</style>
