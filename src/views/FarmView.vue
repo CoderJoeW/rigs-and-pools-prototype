@@ -91,6 +91,7 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
                 <span v-for="c in row.cells" :key="c.key" class="baytile"
                       :class="c.empty?'empty':c.dot" :style="c.style">
                   <i v-if="!c.empty" class="ch-led"></i>
+                  <i v-if="!c.empty" class="ch-vent"></i>
                 </span>
                 <span v-if="row.more" class="baymore">+{{ row.more }}</span>
               </div></span>
@@ -102,14 +103,12 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
         <div class="card-hd"><span class="eyebrow">Mining groups</span>
           <button class="btn btn-sm btn-ghost" @click="g.addGroup()">+ New group</button></div>
         <div class="card-bd pt">
-          <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id"
-               style="border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px">
+          <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id" class="group-card">
             <template v-if="groupRenameOpen[gr.id]">
               <label class="sr-only" :for="'group-rename-'+gr.id">Group name</label>
               <input :id="'group-rename-'+gr.id" v-model="groupRenameDraft[gr.id]" maxlength="24"
-                     placeholder="Group name"
-                     style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
-                            font:inherit;font-size:13px;margin-bottom:6px" @keyup.enter="saveRenameGroup(gr)">
+                     placeholder="Group name" class="group-rename-input"
+                     @keyup.enter="saveRenameGroup(gr)">
               <div class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:0">
                 <button class="btn btn-ghost btn-sm" @click="groupRenameOpen[gr.id]=false">Cancel</button>
                 <button class="btn btn-pri btn-sm" @click="saveRenameGroup(gr)">Save name</button>
@@ -255,17 +254,103 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
 </template>
 
 <style scoped>
-.sitebay{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px;padding:6px 7px;border-radius:8px;background:var(--line-2);transition:background-color .5s ease,box-shadow .5s ease}
-.sitebay.ambient-warm{background:linear-gradient(90deg,color-mix(in srgb,var(--amber-t) 55%,var(--line-2)),var(--line-2))}
-.sitebay.ambient-hot{background:linear-gradient(90deg,color-mix(in srgb,var(--red-t) 65%,var(--line-2)),var(--line-2));box-shadow:inset 0 0 12px color-mix(in srgb,var(--red) 12%,transparent)}
-.baytile{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);position:relative;overflow:hidden;flex:none;background:var(--card)}
-.baytile.empty{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--ink-3) 35%,transparent)}
-.baytile.run{background:var(--green);border-color:var(--green)}
-.baytile.off{background:var(--ink-3);border-color:var(--ink-3)}
-.baytile.bad{background:var(--red);border-color:var(--red)}
-.baytile.warn{background:var(--amber);border-color:var(--amber)}
-.baytile.build{background:var(--blue);border-color:var(--blue)}
-.baytile .ch-led{position:absolute;top:0;left:15%;right:15%;height:2px;border-radius:0 0 1px 1px;background:color-mix(in srgb,var(--ink-3) 30%,transparent)}
-.baytile[style*="--chain-h"] .ch-led{background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));box-shadow:0 0 4px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.5)}
-.baymore{font-family:var(--mono);font-size:9px;color:var(--ink-3);align-self:center;margin-left:2px}
+/* Hybrid: industrial bay hardware inside a calmer control surface */
+.sitebay{
+  display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;
+  padding:8px 9px;border-radius:10px;
+  background:color-mix(in srgb, var(--line-2) 85%, #0c0d11);
+  border:1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  transition:background-color .5s ease,box-shadow .5s ease,border-color .5s ease;
+}
+.sitebay.ambient-warm{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--amber-t) 45%,var(--line-2)),var(--line-2));
+  border-color:color-mix(in srgb,var(--amber) 25%,var(--line));
+}
+.sitebay.ambient-hot{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--red-t) 55%,var(--line-2)),var(--line-2));
+  border-color:color-mix(in srgb,var(--red) 30%,var(--line));
+  box-shadow:inset 0 0 14px color-mix(in srgb,var(--red) 14%,transparent);
+}
+.baytile{
+  width:18px;height:18px;border-radius:4px;
+  border:1.2px solid #3a3e48;
+  position:relative;overflow:hidden;flex:none;
+  background:linear-gradient(165deg,#2a2d35 0%,#14161c 50%,#0c0d11 100%);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);
+}
+.baytile.empty{
+  background:transparent;
+  border-style:dashed;
+  border-color:color-mix(in srgb,var(--ink-3) 35%,transparent);
+  box-shadow:none;
+}
+.baytile .ch-vent{
+  position:absolute;left:2px;right:2px;top:6px;bottom:3px;
+  background:repeating-linear-gradient(
+    180deg,#1a1c22 0px,#1a1c22 1.2px,#0e0f13 1.2px,#0e0f13 2.8px
+  );
+  border-radius:1px;opacity:.9;pointer-events:none;
+}
+.baytile .ch-led{
+  position:absolute;top:1.5px;left:12%;right:12%;height:2px;
+  border-radius:1px;
+  background:color-mix(in srgb,var(--ink-3) 30%,transparent);
+  z-index:2;pointer-events:none;
+}
+.baytile.run{
+  border-color:color-mix(in srgb,var(--green) 55%,#3a3e48);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 6%,transparent),
+    0 0 8px color-mix(in srgb,var(--green) 30%,transparent);
+}
+.baytile.run .ch-led{
+  background:var(--green);
+  box-shadow:0 0 4px color-mix(in srgb,var(--green) 70%,transparent);
+}
+.baytile.off{opacity:.78;filter:grayscale(.35) brightness(.88)}
+.baytile.off .ch-led{background:color-mix(in srgb,var(--card) 25%,transparent)}
+.baytile.bad{
+  border-color:color-mix(in srgb,var(--red) 55%,#3a3e48);
+  box-shadow:0 0 8px color-mix(in srgb,var(--red) 35%,transparent);
+}
+.baytile.bad .ch-led{
+  background:var(--red);
+  box-shadow:0 0 4px color-mix(in srgb,var(--red) 70%,transparent);
+}
+.baytile.warn{
+  border-color:color-mix(in srgb,var(--amber) 55%,#3a3e48);
+  box-shadow:0 0 8px color-mix(in srgb,var(--amber) 32%,transparent);
+}
+.baytile.warn .ch-led{
+  background:var(--amber);
+  box-shadow:0 0 4px color-mix(in srgb,var(--amber) 70%,transparent);
+}
+.baytile.build{
+  border-color:color-mix(in srgb,var(--blue) 55%,#3a3e48);
+  box-shadow:0 0 8px color-mix(in srgb,var(--blue) 32%,transparent);
+}
+.baytile.build .ch-led{
+  background:var(--blue);
+  box-shadow:0 0 4px color-mix(in srgb,var(--blue) 70%,transparent);
+}
+.baytile[style*="--chain-h"] .ch-led{
+  background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));
+  box-shadow:0 0 4px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.55);
+}
+.baymore{
+  font-family:var(--mono);font-size:9px;color:var(--ink-3);
+  align-self:center;margin-left:2px;
+}
+.group-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:11px 12px;
+  margin-bottom:10px;
+  background:color-mix(in srgb,var(--card) 92%,var(--line-2));
+}
+.group-rename-input{
+  width:100%;padding:8px 10px;
+  border:1px solid var(--line);border-radius:8px;
+  font:inherit;font-size:13px;margin-bottom:6px;
+  background:var(--card);color:var(--ink);
+}
 </style>
