@@ -5,6 +5,7 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 import ChainMark from '../components/ChainMark.vue';
+import Chassis from '../components/Chassis.vue';
 import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
@@ -17,32 +18,56 @@ const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
-const BAY_MAX=16, BAY_EMPTY=4;
+const totalDemand=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteDemand(f),0));
+
+/* Dominant chassis state for a site row hero — prefer attention states, then
+   running, then build, else off. Same vocabulary the Rigs list and Sites floor
+   already use. */
+const siteChassisState=f=>{
+  const rigs=g.siteRigs(f);
+  if(!rigs.length) return 'off';
+  let hasBad=false, hasWarn=false, hasBuild=false, hasRun=false;
+  for(const r of rigs){
+    const d=g.rigState(r).dot;
+    if(d==='bad') hasBad=true;
+    else if(d==='warn') hasWarn=true;
+    else if(d==='build') hasBuild=true;
+    else if(d==='run') hasRun=true;
+  }
+  if(hasBad) return 'bad';
+  if(hasWarn) return 'warn';
+  if(hasBuild) return 'build';
+  if(hasRun) return 'run';
+  return 'off';
+};
+
 const siteRows=computed(()=>g.s.sites.map(f=>{
   const rigs=g.siteRigs(f);
   const slots=g.siteSlots(f);
   const temp=g.siteTemp(f);
   const ambient=temp>=70?'hot':temp>=58?'warm':'cool';
-  const cells=[];
+  const demand=g.siteDemand(f);
+  const capacity=g.siteCapacity(f)+g.battFirm(f);
+  const util=capacity>0?Math.min(1,demand/capacity):0;
+  const hash=rigs.reduce((a,r)=>a+g.rigHash(r),0);
+  const online=rigs.some(r=>g.rigLive(r));
+  const status=ambient==='hot'?'HOT':online?'ONLINE':'IDLE';
+  const statusTone=ambient==='hot'?'hot':online?'online':'idle';
+  let chainHue;
   for(const r of rigs){
-    if(cells.length>=BAY_MAX) break;
-    const st=g.rigState(r);
     const gr=g.groupOf(r);
-    const chain=gr?gr.chain:null;
-    const hue=chain!=null?CHAIN_HUE[chain]:undefined;
-    cells.push({ key:'r'+r.id, empty:false, dot:st.dot,
-      style:hue!==undefined?{'--chain-h':hue}:undefined });
+    if(gr&&gr.chain!=null){ chainHue=CHAIN_HUE[gr.chain]; break; }
   }
-  const empties=Math.min(BAY_EMPTY, Math.max(0, slots-rigs.length));
-  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, empty:true });
   return {
-    f, cells, more:Math.max(0, rigs.length-BAY_MAX), ambient, temp,
-    hash:rigs.reduce((a,r)=>a+g.rigHash(r),0),
-    demand:g.siteDemand(f),
-    capacity:g.siteCapacity(f)+g.battFirm(f),
+    f, ambient, temp, hash, demand, capacity, util, status, statusTone,
     costDay:g.siteCostPerHour(f)*24,
+    chassisState:siteChassisState(f),
+    chainHue,
+    rigCount:rigs.length,
+    slots,
   };
 }));
+
 const groupRows=computed(()=>g.s.groups.map(gr=>({
   gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
 })));
@@ -50,6 +75,12 @@ const groupRenameOpen=reactive({});
 const groupRenameDraft=reactive({});
 const startRenameGroup=gr=>{ groupRenameDraft[gr.id]=gr.name; groupRenameOpen[gr.id]=true; };
 const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRenameOpen[gr.id]=false; };
+
+const blocksToday=computed(()=>{
+  const n=g.s.today&&g.s.today.blocks;
+  return Number.isFinite(n)?fmt.n(n):'—';
+});
+const bestBlock=computed(()=>Number.isFinite(g.s.bestBlock)?fmt.usd2(g.s.bestBlock):'—');
 </script>
 
 <template>
@@ -61,41 +92,75 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
       <button class="btn btn-pri" @click="g.s.tab='build'">Go shopping</button></div></div>
 
     <template v-else>
-      <div class="card" data-tour="farm"><div class="card-bd pt">
-        <div class="totals">
-          <div><div class="k">Earned today</div>
-            <div class="v pos">{{ fmt.usd2(g.revenueDay) }}</div></div>
-          <div><div class="k">Power today</div>
-            <div class="v neg">{{ fmt.usd2(g.powerDay) }}</div></div>
-          <div><div class="k">Blocks today</div>
-            <div class="v">{{ fmt.n(g.s.today&&g.s.today.blocks) }}</div></div>
-          <div><div class="k">Best block ever</div>
-            <div class="v">{{ Number.isFinite(g.s.bestBlock) ? fmt.usd2(g.s.bestBlock) : '—' }}</div></div>
+      <!-- Approved hybrid top: 2×2 quiet stat cards -->
+      <div class="card farm-top" data-tour="farm">
+        <div class="farm-stats">
+          <div class="farm-stat">
+            <div class="farm-stat-k">Net hashrate</div>
+            <div class="farm-stat-v">{{ fmt.hash(g.totalHash) }}</div>
+            <svg v-if="g.s.hashHist&&g.s.hashHist.length>2" class="farm-spark" viewBox="0 0 100 24"
+                 preserveAspectRatio="none" aria-hidden="true">
+              <path :d="sparkPath(g.s.hashHist, 22, 20)" fill="none"
+                    style="stroke:var(--blue)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+            </svg>
+          </div>
+          <div class="farm-stat">
+            <div class="farm-stat-k">Power draw</div>
+            <div class="farm-stat-v">{{ fmt.w(totalDemand) }}</div>
+            <div class="farm-stat-sub">{{ fmt.pct(g.headroom,0) }} of capacity</div>
+          </div>
+          <div class="farm-stat">
+            <div class="farm-stat-k">Profit / loss today</div>
+            <div class="farm-stat-v" :class="g.netDay>=0?'pos':'neg'">{{ fmt.usd2(netDayShown) }}</div>
+            <svg v-if="g.s.netHist.length>2" class="farm-spark" viewBox="0 0 100 24"
+                 preserveAspectRatio="none" aria-hidden="true">
+              <path :d="netPath" fill="none"
+                    :style="{stroke:g.netDay>=0?'var(--green)':'var(--red)'}"
+                    stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+            </svg>
+          </div>
+          <div class="farm-stat">
+            <div class="farm-stat-k">Cost today</div>
+            <div class="farm-stat-v neg">{{ fmt.usd2(g.powerDay) }}</div>
+            <div class="farm-stat-sub">power</div>
+          </div>
         </div>
-      </div></div>
+      </div>
 
-      <div class="card"><div class="card-hd"><span class="eyebrow">Sites</span>
-        <span class="eyebrow">{{ g.s.sites.length }}</span></div>
+      <!-- Mining sites — large chassis hero rows (approved layout) -->
+      <div class="card">
+        <div class="card-hd"><span class="eyebrow">Mining sites</span>
+          <span class="eyebrow">{{ g.s.sites.length }}</span></div>
         <div class="list">
-          <button v-for="row in siteRows" :key="'s'+row.f.id" class="rowline"
+          <button v-for="row in siteRows" :key="'s'+row.f.id" class="siterow"
                   @click="g.s.activeSite=row.f.id; g.s.tab='sites'">
-            <span style="flex:1;min-width:0"><span class="nm">{{ row.f.name }}</span>
-              <span v-if="row.ambient==='hot'" class="tag"
-                    style="background:var(--red-t);color:var(--red);margin-left:5px">HOT</span>
-              <span v-else-if="row.ambient==='warm'" class="tag"
-                    style="background:var(--amber-t);color:var(--amber);margin-left:5px">WARM</span>
-              <div class="sb">{{ g.siteRigs(row.f).length }} rigs ·
-                {{ fmt.hash(row.hash) }} ·
-                {{ fmt.w(row.demand) }} of {{ fmt.w(row.capacity) }}</div>
-              <div class="sitebay" :class="'ambient-'+row.ambient" aria-hidden="true">
-                <span v-for="c in row.cells" :key="c.key" class="baytile"
-                      :class="c.empty?'empty':c.dot" :style="c.style">
-                  <i v-if="!c.empty" class="ch-led"></i>
-                  <i v-if="!c.empty" class="ch-vent"></i>
-                </span>
-                <span v-if="row.more" class="baymore">+{{ row.more }}</span>
-              </div></span>
-            <span class="rt">{{ fmt.usd2(row.costDay) }}<div class="sb">/day</div></span></button>
+            <div class="siterow-main">
+              <div class="siterow-hd">
+                <span class="siterow-status" :class="row.statusTone">
+                  <i class="siterow-dot"></i>{{ row.status }}</span>
+                <span class="siterow-name">{{ row.f.name }}</span>
+              </div>
+              <div class="siterow-sub">{{ row.rigCount }}/{{ row.slots }} positions
+                · {{ fmt.w(row.demand) }} of {{ fmt.w(row.capacity) }}</div>
+              <div class="siterow-metrics">
+                <span><span class="mk">Hash rate</span>
+                  <span class="mv">{{ fmt.hash(row.hash) }}</span></span>
+                <span><span class="mk">Power</span>
+                  <span class="mv">{{ fmt.w(row.demand) }}</span></span>
+                <span><span class="mk">Temp</span>
+                  <span class="mv" :class="row.ambient==='hot'?'neg':row.ambient==='warm'?'amb':''">
+                    {{ row.temp.toFixed(0) }}°C</span></span>
+              </div>
+              <div class="siterow-bar" role="img"
+                   :aria-label="'Utilization '+(row.util*100).toFixed(0)+'%'">
+                <i :style="{width:(row.util*100).toFixed(0)+'%'}"
+                   :class="row.util>0.9?'o':row.util>0.7?'w':'g'"></i>
+              </div>
+            </div>
+            <Chassis class="siterow-chassis" :state="row.chassisState" size="lg" large
+                     :chain-hue="row.chainHue"
+                     :label="row.f.name+' — '+row.status" />
+          </button>
         </div>
       </div>
 
@@ -219,10 +284,10 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
           <div class="s"><div class="k">Net to date</div>
             <div class="v" :class="g.lifetimeNet>=0?'pos':'neg'">{{ fmt.usd(g.lifetimeNet) }}</div></div>
           <div class="s"><div class="k">Rigs</div><div class="v">{{ live }}/{{ g.s.rigs.length }}</div></div>
-          <div class="s"><div class="k">Blocks</div><div class="v">{{ g.s.blocksSolved }}</div></div>
+          <div class="s"><div class="k">Blocks today</div><div class="v">{{ blocksToday }}</div></div>
+          <div class="s"><div class="k">Best block ever</div><div class="v">{{ bestBlock }}</div></div>
           <div class="s"><div class="k">Hottest site</div>
             <div class="v" :class="hottest>70?'neg':hottest>58?'amb':''">{{ hottest.toFixed(0) }}&deg;</div></div>
-          <div class="s"><div class="k">Shed</div><div class="v" :class="g.s.shed?'amb':''">{{ g.s.shed }}</div></div>
         </div>
       </div>
 
@@ -254,92 +319,143 @@ const saveRenameGroup=gr=>{ g.renameGroup(gr,groupRenameDraft[gr.id]); groupRena
 </template>
 
 <style scoped>
-/* Hybrid: industrial bay hardware inside a calmer control surface */
-.sitebay{
-  display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;
-  padding:8px 9px;border-radius:10px;
-  background:color-mix(in srgb, var(--line-2) 85%, #0c0d11);
-  border:1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  transition:background-color .5s ease,box-shadow .5s ease,border-color .5s ease;
+/* Hybrid Farm redesign — large chassis heroes, calm 2×2 top stats */
+.farm-top{padding:0}
+.farm-stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1px;
+  background:var(--line);
 }
-.sitebay.ambient-warm{
-  background:linear-gradient(90deg,color-mix(in srgb,var(--amber-t) 45%,var(--line-2)),var(--line-2));
-  border-color:color-mix(in srgb,var(--amber) 25%,var(--line));
+.farm-stat{
+  background:var(--card);
+  padding:12px 14px 11px;
+  min-height:78px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
 }
-.sitebay.ambient-hot{
-  background:linear-gradient(90deg,color-mix(in srgb,var(--red-t) 55%,var(--line-2)),var(--line-2));
-  border-color:color-mix(in srgb,var(--red) 30%,var(--line));
-  box-shadow:inset 0 0 14px color-mix(in srgb,var(--red) 14%,transparent);
+.farm-stat-k{
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  margin-bottom:4px;
 }
-.baytile{
-  width:18px;height:18px;border-radius:4px;
-  border:1.2px solid #3a3e48;
-  position:relative;overflow:hidden;flex:none;
-  background:linear-gradient(165deg,#2a2d35 0%,#14161c 50%,#0c0d11 100%);
-  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);
+.farm-stat-v{
+  font-family:var(--mono);
+  font-size:18px;
+  font-weight:500;
+  letter-spacing:-.02em;
+  line-height:1.15;
 }
-.baytile.empty{
-  background:transparent;
-  border-style:dashed;
-  border-color:color-mix(in srgb,var(--ink-3) 35%,transparent);
-  box-shadow:none;
+.farm-stat-sub{
+  font-size:10.5px;
+  color:var(--ink-3);
+  margin-top:3px;
 }
-.baytile .ch-vent{
-  position:absolute;left:2px;right:2px;top:6px;bottom:3px;
-  background:repeating-linear-gradient(
-    180deg,#1a1c22 0px,#1a1c22 1.2px,#0e0f13 1.2px,#0e0f13 2.8px
-  );
-  border-radius:1px;opacity:.9;pointer-events:none;
+.farm-spark{
+  width:100%;
+  height:22px;
+  margin-top:6px;
+  display:block;
 }
-.baytile .ch-led{
-  position:absolute;top:1.5px;left:12%;right:12%;height:2px;
-  border-radius:1px;
-  background:color-mix(in srgb,var(--ink-3) 30%,transparent);
-  z-index:2;pointer-events:none;
+
+.siterow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  width:100%;
+  border-top:1px solid var(--line-2);
+  text-align:left;
 }
-.baytile.run{
-  border-color:color-mix(in srgb,var(--green) 55%,#3a3e48);
-  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 6%,transparent),
-    0 0 8px color-mix(in srgb,var(--green) 30%,transparent);
+.siterow:first-child{border-top:none}
+.siterow-main{flex:1;min-width:0}
+.siterow-hd{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
 }
-.baytile.run .ch-led{
-  background:var(--green);
-  box-shadow:0 0 4px color-mix(in srgb,var(--green) 70%,transparent);
+.siterow-status{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--ink-3);
 }
-.baytile.off{opacity:.78;filter:grayscale(.35) brightness(.88)}
-.baytile.off .ch-led{background:color-mix(in srgb,var(--card) 25%,transparent)}
-.baytile.bad{
-  border-color:color-mix(in srgb,var(--red) 55%,#3a3e48);
-  box-shadow:0 0 8px color-mix(in srgb,var(--red) 35%,transparent);
+.siterow-status.online{color:var(--green)}
+.siterow-status.hot{color:var(--red)}
+.siterow-status.idle{color:var(--ink-3)}
+.siterow-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:currentColor;flex:none;
 }
-.baytile.bad .ch-led{
-  background:var(--red);
-  box-shadow:0 0 4px color-mix(in srgb,var(--red) 70%,transparent);
+.siterow-status.online .siterow-dot{
+  box-shadow:0 0 6px color-mix(in srgb,var(--green) 70%,transparent);
 }
-.baytile.warn{
-  border-color:color-mix(in srgb,var(--amber) 55%,#3a3e48);
-  box-shadow:0 0 8px color-mix(in srgb,var(--amber) 32%,transparent);
+.siterow-status.hot .siterow-dot{
+  box-shadow:0 0 6px color-mix(in srgb,var(--red) 70%,transparent);
 }
-.baytile.warn .ch-led{
-  background:var(--amber);
-  box-shadow:0 0 4px color-mix(in srgb,var(--amber) 70%,transparent);
+.siterow-name{
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:-.02em;
 }
-.baytile.build{
-  border-color:color-mix(in srgb,var(--blue) 55%,#3a3e48);
-  box-shadow:0 0 8px color-mix(in srgb,var(--blue) 32%,transparent);
+.siterow-sub{
+  font-size:11px;
+  color:var(--ink-3);
+  margin-top:2px;
 }
-.baytile.build .ch-led{
-  background:var(--blue);
-  box-shadow:0 0 4px color-mix(in srgb,var(--blue) 70%,transparent);
+.siterow-metrics{
+  display:flex;
+  gap:14px;
+  margin-top:8px;
+  flex-wrap:wrap;
 }
-.baytile[style*="--chain-h"] .ch-led{
-  background:oklch(var(--chain-l) var(--chain-c) var(--chain-h));
-  box-shadow:0 0 4px oklch(var(--chain-l) var(--chain-c) var(--chain-h)/.55);
+.siterow-metrics .mk{
+  display:block;
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--ink-3);
 }
-.baymore{
-  font-family:var(--mono);font-size:9px;color:var(--ink-3);
-  align-self:center;margin-left:2px;
+.siterow-metrics .mv{
+  font-family:var(--mono);
+  font-size:12.5px;
+  font-weight:500;
+  margin-top:1px;
+  display:block;
 }
+.siterow-bar{
+  height:4px;
+  border-radius:99px;
+  background:var(--line-2);
+  margin-top:8px;
+  overflow:hidden;
+}
+.siterow-bar i{
+  display:block;
+  height:100%;
+  border-radius:99px;
+  transition:width .4s cubic-bezier(.2,.8,.2,1);
+}
+.siterow-bar i.g{background:var(--green)}
+.siterow-bar i.w{background:var(--amber)}
+.siterow-bar i.o{background:var(--red)}
+.siterow-chassis{
+  flex:none;
+  width:56px !important;
+  height:56px !important;
+  border-radius:10px !important;
+}
+
 .group-card{
   border:1px solid var(--line);
   border-radius:12px;
