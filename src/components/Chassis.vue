@@ -35,26 +35,27 @@ const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !
 </template>
 
 <style scoped>
-/* Real-image industrial chassis — generated PNG sprites + live chain/status LED */
+/* High-fidelity photoreal chassis — sized to match mockup visual weight */
 .chassis {
   flex: none;
   position: relative;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #0c0d11;
-  border: 1.5px solid #3a3e48;
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
-    0 1px 3px color-mix(in srgb, var(--ink) 20%, transparent);
-}
-.chassis.sz-md { width: 30px; height: 30px; }
-.chassis.sz-lg { width: 32px; height: 32px; }
-.chassis.lg {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
+  overflow: hidden;
+  background: #0a0b0e;
+  border: 1px solid #2a2d35;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent),
+    0 2px 8px color-mix(in srgb, var(--ink) 25%, transparent);
+}
+.chassis.sz-md { width: 40px; height: 40px; }
+.chassis.sz-lg { width: 44px; height: 44px; }
+.chassis.lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  border-width: 1px;
 }
 
 .ch-img {
@@ -69,89 +70,63 @@ const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !
   display: block;
 }
 
+/* Soft status glow — image already carries its own LED */
+.chassis.run {
+  border-color: color-mix(in srgb, #3b82f6 50%, #2a2d35);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent),
+    0 0 18px color-mix(in srgb, #3b82f6 35%, transparent),
+    0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.chassis.warn {
+  border-color: color-mix(in srgb, #f59e0b 55%, #2a2d35);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent),
+    0 0 18px color-mix(in srgb, #f59e0b 40%, transparent),
+    0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.chassis.bad {
+  border-color: color-mix(in srgb, #ef4444 55%, #2a2d35);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent),
+    0 0 18px color-mix(in srgb, #ef4444 42%, transparent),
+    0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.chassis.build {
+  border-color: color-mix(in srgb, #60a5fa 55%, #2a2d35);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent),
+    0 0 18px color-mix(in srgb, #60a5fa 38%, transparent),
+    0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.chassis.off {
+  border-color: #1f2229;
+  opacity: 0.88;
+  filter: grayscale(0.25) brightness(0.92);
+}
+
+/* Optional chain LED overlay */
 .ch-led {
   position: absolute;
-  top: 3px;
-  left: 14%;
-  right: 14%;
-  height: 3px;
+  top: 6%;
+  left: 18%;
+  right: 18%;
+  height: 4%;
   border-radius: 1px;
   background: transparent;
   z-index: 3;
   pointer-events: none;
-  box-shadow: none;
   opacity: 0;
-  transition: opacity 0.15s ease;
 }
 .chassis.lg .ch-led {
-  top: 4px;
-  height: 4px;
-  left: 12%;
-  right: 12%;
+  top: 5%;
+  height: 3.5%;
 }
-
 .ch-led.chain {
-  opacity: 1;
+  opacity: 0.9;
   background: oklch(var(--chain-l, 0.72) var(--chain-c, 0.14) var(--chain-h));
   box-shadow:
-    0 0 6px oklch(var(--chain-l, 0.72) var(--chain-c, 0.14) var(--chain-h) / 0.65),
-    0 0 2px oklch(var(--chain-l, 0.72) var(--chain-c, 0.14) var(--chain-h) / 0.9);
-}
-
-.chassis.run {
-  border-color: color-mix(in srgb, var(--green) 65%, #3a3e48);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent),
-    0 0 10px color-mix(in srgb, var(--green) 38%, transparent),
-    0 1px 3px color-mix(in srgb, var(--ink) 15%, transparent);
-  animation: chassisPulse 2.4s ease-out infinite;
-}
-.chassis.warn {
-  border-color: color-mix(in srgb, var(--amber) 65%, #3a3e48);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent),
-    0 0 10px color-mix(in srgb, var(--amber) 42%, transparent);
-}
-.chassis.bad {
-  border-color: color-mix(in srgb, var(--red) 65%, #3a3e48);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent),
-    0 0 10px color-mix(in srgb, var(--red) 48%, transparent);
-}
-.chassis.build {
-  border-color: color-mix(in srgb, var(--blue) 65%, #3a3e48);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent),
-    0 0 10px color-mix(in srgb, var(--blue) 42%, transparent);
-}
-.chassis.build .ch-led:not(.chain) {
-  opacity: 0.85;
-  background: var(--blue);
-  box-shadow: 0 0 5px color-mix(in srgb, var(--blue) 75%, transparent);
-  animation: chBuildLed 1.2s ease-in-out infinite;
-}
-.chassis.off {
-  border-color: #2a2d35;
-  opacity: 0.82;
-  filter: grayscale(0.35) brightness(0.88);
-}
-
-@keyframes chassisPulse {
-  0%, 100% {
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent),
-      0 0 10px color-mix(in srgb, var(--green) 38%, transparent),
-      0 1px 3px color-mix(in srgb, var(--ink) 15%, transparent);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent),
-      0 0 14px color-mix(in srgb, var(--green) 55%, transparent),
-      0 1px 3px color-mix(in srgb, var(--ink) 15%, transparent);
-  }
-}
-@keyframes chBuildLed {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+    0 0 8px oklch(var(--chain-l, 0.72) var(--chain-c, 0.14) var(--chain-h) / 0.7),
+    0 0 2px oklch(var(--chain-l, 0.72) var(--chain-c, 0.14) var(--chain-h) / 0.95);
 }
 </style>
