@@ -2,24 +2,27 @@
 import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
+import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 import Chassis from '../components/Chassis.vue';
 
 const g = useGameStore();
 
-const FIELDS = [
-  { k:'unit',  label:'Cards',   job:'the compute' },
-  { k:'frame', label:'Frame',   job:'the slots' },
-  { k:'mobo',  label:'Board',   job:'the lanes' },
-  { k:'cool',  label:'Cooling', job:'the heat' },
-  { k:'psu',   label:'Supply',  job:'the watts' },
-];
-
+/* Bulk-build: qty stepper is driven by maxBuildQty so the stepper never offers more than the site can take. */
+const maxQty = computed(() => g.maxBuildQty());
 const qty = computed({
   get: () => g.s.draft.qty || 1,
-  set: v => { g.s.draft.qty = Math.max(1, Math.min(g.maxBuildQty, v|0)); },
+  set: v => { g.s.draft.qty = Math.max(1, Math.min(maxQty.value, v | 0)); },
 });
+
+const FIELDS = [
+  { k: 'unit', label: 'Cards', job: 'the compute' },
+  { k: 'frame', label: 'Frame', job: 'the slots' },
+  { k: 'mobo', label: 'Board', job: 'the lanes' },
+  { k: 'cool', label: 'Cooling', job: 'the heat' },
+  { k: 'psu', label: 'Supply', job: 'the watts' },
+];
 
 const fieldRows = computed(() => {
   const d = g.s.draft;
@@ -60,7 +63,6 @@ const choose = id => {
 const draftChassis = computed(() => {
   const d = g.s.draft;
   const n = d.n || 1;
-  // building state while in draft
   const state = 'build';
   return { state, size: n >= 9 ? 'lg' : n >= 5 ? 'md' : 'sm', large: true, label: 'Draft chassis' };
 });
@@ -111,11 +113,11 @@ useSheetA11y(pickerSheetEl, computed(() => !!g.s.picker), () => { g.s.picker = n
     <div class="card"><div class="card-bd pt">
       <div class="rigfld"><label for="build-qty">Order quantity</label>
         <div style="display:flex;align-items:center;gap:10px">
-          <input id="build-qty" type="number" min="1" :max="g.maxBuildQty" v-model.number="qty"
+          <input id="build-qty" type="number" min="1" :max="maxQty" v-model.number="qty"
                  style="width:72px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit">
-          <span class="sb">of {{ g.maxBuildQty }} max at this site</span>
+          <span class="sb">of {{ maxQty }} max at this site</span>
         </div>
-        <p class="hint">Bulk orders queue the same chassis and go into the build queue together.</p></div>
+        <p class="hint">Bulk orders share the same chassis and go into the build queue together.</p></div>
 
       <div style="margin:8px 0">
         <div v-for="(c,i) in g.dp.checks" :key="i" class="chk" :class="c.ok?'ok':'no'">
