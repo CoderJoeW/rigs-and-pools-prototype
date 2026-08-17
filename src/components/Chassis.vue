@@ -1,10 +1,10 @@
 <script setup>
 import { computed } from 'vue';
-import run from '../assets/chassis/run.png';
-import warn from '../assets/chassis/warn.png';
-import build from '../assets/chassis/build.png';
-import bad from '../assets/chassis/bad.png';
-import off from '../assets/chassis/off.png';
+import run from '../assets/chassis/run.js';
+import warn from '../assets/chassis/warn.js';
+import build from '../assets/chassis/build.js';
+import bad from '../assets/chassis/bad.js';
+import off from '../assets/chassis/off.js';
 
 const props = defineProps({
   state: { type: String, default: 'off' },
