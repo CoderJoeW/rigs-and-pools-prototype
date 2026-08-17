@@ -2,80 +2,72 @@
 import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
-import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 import Chassis from '../components/Chassis.vue';
 
 const g = useGameStore();
 
-/* Bulk-build: qty stepper is driven by maxBuildQty so the stepper never offers more than the site can take. */
-const maxQty = computed(() => g.maxBuildQty());
-const qty = computed({
-  get: () => g.s.draft.qty || 1,
-  set: v => { g.s.draft.qty = Math.max(1, Math.min(maxQty.value, v | 0)); },
-});
+const maxQty=computed(()=> g.maxBuildQty());
+const qty=ref(1);
+watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
 
-const FIELDS = [
-  { k: 'unit', label: 'Cards', job: 'the compute' },
-  { k: 'frame', label: 'Frame', job: 'the slots' },
-  { k: 'mobo', label: 'Board', job: 'the lanes' },
-  { k: 'cool', label: 'Cooling', job: 'the heat' },
-  { k: 'psu', label: 'Supply', job: 'the watts' },
+const FIELDS=[
+  {k:'unit',  label:'Cards',   job:'the compute'},
+  {k:'frame', label:'Frame',   job:'the slots'},
+  {k:'mobo',  label:'Board',   job:'the lanes'},
+  {k:'cool',  label:'Cooling', job:'the heat'},
+  {k:'psu',   label:'Supply',  job:'the watts'},
 ];
 
-const fieldRows = computed(() => {
-  const d = g.s.draft;
-  const P = g.PART;
-  return FIELDS.map(f => {
-    const p = P(d[f.k]);
-    let sub = '';
-    if (f.k === 'unit') sub = p.mh + ' MH · ' + (p.mh / p.w).toFixed(2) + ' MH/W';
-    else sub = partSub(f.k, p);
-    return { ...f, name: p.name, sub, price: p.price || 0 };
+const fieldRows=computed(()=>{
+  const d=g.s.draft, P=g.PART;
+  return FIELDS.map(f=>{
+    const p=P(d[f.k]);
+    let sub='';
+    if(f.k==='unit') sub=p.mh+' MH · '+(p.mh/p.w).toFixed(2)+' MH/W';
+    else sub=partSub(f.k,p);
+    return {...f, name:p.name, sub, price:p.price||0};
   });
 });
 
-const pickerRows = computed(() => {
-  const slot = g.s.picker;
-  if (!slot) return [];
-  if (slot === 'unit') {
-    return g.cards().concat(g.s.customParts.filter(p => p.kind === 'unit')).map(c => ({
-      id: c.id, name: c.name,
-      sub: c.mh + ' MH · ' + (c.mh / c.w).toFixed(2) + ' MH/W',
-      value: fmt.usd(c.price), valueSub: 'each', current: c.id === g.s.draft.unit,
+const pickerRows=computed(()=>{
+  const slot=g.s.picker; if(!slot) return [];
+  if(slot==='unit'){
+    return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')).map(c=>({
+      id:c.id, name:c.name,
+      sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W',
+      value:fmt.usd(c.price), valueSub:'each', current:c.id===g.s.draft.unit,
     }));
   }
-  return g.SLOT_OPTS[slot].concat(g.s.customParts.filter(p => p.kind === slot)).map(p => ({
-    id: p.id, name: p.name, sub: partSub(slot, p),
-    value: p.price ? fmt.usd(p.price) : 'free', valueSub: '',
-    current: p.id === g.s.draft[slot],
+  return g.SLOT_OPTS[slot].concat(g.s.customParts.filter(p=>p.kind===slot)).map(p=>({
+    id:p.id, name:p.name, sub:partSub(slot,p),
+    value:p.price?fmt.usd(p.price):'free', valueSub:'',
+    current:p.id===g.s.draft[slot],
   }));
 });
 
-const choose = id => {
-  g.s.draft[g.s.picker] = id;
-  const lim = Math.min(g.PART(g.s.draft.frame).slots, g.PART(g.s.draft.mobo).pcie);
-  if (g.s.draft.n > lim) g.s.draft.n = lim;
-  g.s.picker = null;
+const choose=id=>{
+  g.s.draft[g.s.picker]=id;
+  const lim=Math.min(g.PART(g.s.draft.frame).slots, g.PART(g.s.draft.mobo).pcie);
+  if(g.s.draft.n>lim) g.s.draft.n=lim;
+  g.s.picker=null;
 };
 
-const draftChassis = computed(() => {
-  const d = g.s.draft;
-  const n = d.n || 1;
-  const state = 'build';
-  return { state, size: n >= 9 ? 'lg' : n >= 5 ? 'md' : 'sm', large: true, label: 'Draft chassis' };
+const draftChassis=computed(()=>{
+  const n=g.s.draft.n||1;
+  return { state:'build', size:n>=9?'lg':n>=5?'md':'sm', large:true, label:'Draft chassis' };
 });
 
-const pickerSheetEl = ref(null);
-useSheetA11y(pickerSheetEl, computed(() => !!g.s.picker), () => { g.s.picker = null; });
+const pickerSheetEl=ref(null);
+useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
 </script>
 
 <template>
   <div>
     <div class="card" data-tour="build">
       <div class="card-hd"><span class="eyebrow">Design</span>
-        <span class="eyebrow">{{ g.siteSlots(g.active) - g.siteRigs(g.active).length }} free positions</span></div>
+        <span class="eyebrow">{{ g.siteSlots(g.active)-g.siteRigs(g.active).length }} free positions</span></div>
 
       <div class="build-hero">
         <Chassis class="build-chassis" v-bind="draftChassis" />
@@ -119,14 +111,16 @@ useSheetA11y(pickerSheetEl, computed(() => !!g.s.picker), () => { g.s.picker = n
         </div>
         <p class="hint">Bulk orders share the same chassis and go into the build queue together.</p></div>
 
+      <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}{{ qty>1?' each · parallel':'' }}</dd></div>
+
       <div style="margin:8px 0">
         <div v-for="(c,i) in g.dp.checks" :key="i" class="chk" :class="c.ok?'ok':'no'">
           <span class="ic">{{ c.ok?'✓':'✗' }}</span>
           <span>{{ c.label }}<div v-if="!c.ok" class="fix">{{ c.fix }}</div></span></div>
       </div>
 
-      <button class="btn btn-wide" :class="g.canBuild?'btn-pri':''" :disabled="!g.canBuild"
-              @click="g.orderBuild(qty)">
+      <button class="btn btn-wide btn-order" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
+              data-testid="build" :disabled="!g.canBuild" @click="g.build(qty)">
         {{ g.canBuild
              ? (qty>1
                   ? 'Order '+qty+' · '+fmt.usd(g.dp.cost*qty)
