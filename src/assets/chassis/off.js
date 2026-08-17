@@ -13,4 +13,7 @@ import p11 from "./off_p11.js";
 import p12 from "./off_p12.js";
 import p13 from "./off_p13.js";
 import p14 from "./off_p14.js";
-export default "data:image/png;base64," + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11 + p12 + p13 + p14;
+import p15 from "./off_p15.js";
+import p16 from "./off_p16.js";
+import p17 from "./off_p17.js";
+export default "data:image/png;base64," + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11 + p12 + p13 + p14 + p15 + p16 + p17;
