@@ -40,7 +40,8 @@ const src = computed(() => SHOTS[props.state] || SHOTS.off);
 </script>
 
 <template>
-  <span class="rigshot" :class="state" role="img" :aria-label="label || state">
+  <span class="rigshot" :class="state" :role="label ? 'img' : undefined"
+        :aria-label="label || undefined" :aria-hidden="label ? undefined : 'true'">
     <img class="rgs-img" :src="src" alt="" aria-hidden="true" />
     <i class="rgs-sheen" aria-hidden="true"></i>
   </span>

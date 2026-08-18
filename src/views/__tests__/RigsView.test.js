@@ -40,8 +40,11 @@ describe('RigsView', () => {
     expect(shot.exists()).toBe(true);
     expect(shot.find('img.rgs-img').exists()).toBe(true);
     expect(shot.classes()).toContain('run');
-    expect(shot.attributes('aria-label')).toBe('Running');
-    // The chain is named in the row's text, so it is not painted on the shot too.
+    // Decorative: the row already says "Running" in text beside it, and the
+    // chain is named there too rather than painted on the picture.
+    expect(shot.attributes('aria-hidden')).toBe('true');
+    expect(shot.attributes('role')).toBeUndefined();
+    expect(wrapper.find('.rigrow .st').text()).toContain('Running');
     expect(wrapper.find('.rigrow .sb .cmk').exists()).toBe(true);
   });
 
@@ -78,6 +81,28 @@ describe('RigsView', () => {
     await wrapper.find('.rigsort-flip').trigger('click');
     expect(wrapper.find('.rigsort').text()).toContain('Name (Z–A)');
     expect(names()).toEqual([...asc].reverse());
+  });
+
+  it('sorting by name follows the names, not the build order', async () => {
+    const { wrapper, store } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.build(); g.build(); },
+    });
+    // Rename the first-built rig so id order and name order disagree.
+    store.renameRig(store.s.rigs[0].id, 'Zeta');
+    await nextTick();
+    const names = wrapper.findAll('.rigrow .nm').map(n => n.text());
+    expect(names[names.length - 1]).toBe('Zeta');
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
+  });
+
+  it('the select bar sits outside the list so it can stay stuck to the bottom', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    await wrapper.find('.rigsel').trigger('click');
+    const bar = wrapper.find('.selbar');
+    expect(bar.exists()).toBe(true);
+    expect(wrapper.find('.riglist .selbar').exists()).toBe(false);
   });
 
   it('rig detail header shows a larger chassis instead of a bare status dot', async () => {

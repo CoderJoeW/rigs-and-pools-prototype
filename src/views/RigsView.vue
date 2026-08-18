@@ -31,13 +31,6 @@ const chassisOf=r=>{
     label:stateOf(r).label,
   };
 };
-/* The row's own hardware shot. Two props, against Chassis's five: the render
-   is one machine at one size here, so neither the size class nor the card
-   count it was derived from has anything left to say, and the chain is named
-   in words on the row itself (see RigShot for why it is not also painted on
-   the picture). */
-const shotOf=r=>({ state:stateOf(r).dot, label:stateOf(r).label });
-
 const siteRigs=computed(()=>g.siteRigs(f.value));
 /* Each filter carries its own mark rather than a count: a coloured .dot is the
    same vocabulary the rows underneath use for the state it selects, so the
@@ -69,7 +62,12 @@ const counts=computed(()=>{
    particular column, since A–Z and low→high are the same order under two
    different names. */
 const SORTS=[
-  {k:'name', label:'Name',    cmp:(a,b)=>a.id-b.id,             ends:['A–Z','Z–A']},
+  {k:'name', label:'Name',
+   /* By name, not by id: rigs are renameable from this very view, so an
+      id order under an A–Z label starts lying the moment one is renamed.
+      Numeric collation so "Rig 2" precedes "Rig 10"; id breaks a tie. */
+   cmp:(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
+   ends:['A–Z','Z–A']},
   {k:'net',  label:'Net/day', cmp:(a,b)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
   {k:'hash', label:'Hashrate',cmp:(a,b)=>g.rigHash(a)-g.rigHash(b), ends:['low → high','high → low'], desc:true},
   {k:'wear', label:'Wear',    cmp:(a,b)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
@@ -106,11 +104,6 @@ const scopeId=computed(()=> picking.value && chosenIds.value.length
 const scopeLabel=computed(()=> picking.value && chosenIds.value.length
   ? chosenIds.value.length+' selected'
   : (f.value?'all '+siteRigs.value.length+' at '+f.value.name:''));
-
-/* The half of the old hint the tip's one line has no room for. Carried by the
-   mark at the end of that line, which is a real label rather than decoration:
-   it is announced, and it is the tooltip on a pointer. */
-const MORE_TIP='Tapping a rig still opens it. A swipe flips its power without leaving the list.';
 
 const SW_ARM=10;
 const SW_OPEN=34;
@@ -374,7 +367,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                   @pointerdown="onSwipeDown($event,r)" @pointermove="onSwipeMove($event,r)"
                   @pointerup="onSwipeUp($event,r)" @pointercancel="onSwipeCancel($event,r)">
             <span v-if="picking" class="box" :class="{on:chosen[r.id]}">&#10003;</span>
-            <RigShot v-else v-bind="shotOf(r)" />
+            <RigShot v-else :state="stateOf(r).dot" />
             <span class="mid">
               <span class="nm">{{ r.name }}</span>
               <span class="st"><i class="dot" :class="stateOf(r).dot" aria-hidden="true"></i>
@@ -388,7 +381,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                 />{{ g.chain(g.groupOf(r).chain).name }}</div>
               <div class="wearline">
                 <span class="wl">Wear</span>
-                <div class="wearbar" role="img" :aria-label="'Wear '+(avgWear(r)*100).toFixed(0)+'%'">
+                <div class="wearbar" aria-hidden="true">
                   <i :class="avgWear(r)>0.6?'b':avgWear(r)>REPAIR_AT?'w':''"
                      :style="{width:(avgWear(r)*100).toFixed(0)+'%'}"></i></div>
                 <span class="wp" :class="avgWear(r)>0.6?'neg':avgWear(r)>REPAIR_AT?'amb':''"
@@ -410,13 +403,17 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <path d="M12 3v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></span>
         </button>
       </div>
-      <div v-if="picking" class="selbar">
-        <span class="c">{{ chosenIds.length }} selected</span>
-        <button class="btn btn-sm btn-ghost" @click="chooseAll">
-          {{ chosenIds.length===shown.length?'None':'All' }}</button>
-        <button class="btn btn-sm btn-pri" :disabled="!chosenIds.length"
-                @click="fleetOpen=true">Act on these</button>
-      </div>
+    </div>
+    <!-- Outside .riglist, not inside it: a sticky box that is its own grid
+         item has an auto-sized row for a containing block and so no offset
+         range to travel through — it would scroll away with the rows it is
+         meant to outlast. -->
+    <div v-if="picking&&shown.length" class="selbar">
+      <span class="c">{{ chosenIds.length }} selected</span>
+      <button class="btn btn-sm btn-ghost" @click="chooseAll">
+        {{ chosenIds.length===shown.length?'None':'All' }}</button>
+      <button class="btn btn-sm btn-pri" :disabled="!chosenIds.length"
+              @click="fleetOpen=true">Act on these</button>
     </div>
     <!-- Gated on the app-wide help preference like every other hint, even
          though the mockup draws it as permanent furniture: a player who has
@@ -427,8 +424,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         <path d="M12 11V4.5a1.5 1.5 0 0 1 3 0V11"/>
         <path d="M15 11V6.5a1.5 1.5 0 0 1 3 0V13c0 4-2.5 7-6 7s-6-2.6-6-6v-3.5a1.5 1.5 0 0 1 3 0V13"/>
         </svg></span>
-      <span class="tx">Swipe a rig left to reveal quick actions</span>
-      <span class="ci" role="img" :title="MORE_TIP" :aria-label="MORE_TIP">i</span>
+      <span class="tx">Swipe a rig left for quick actions &mdash; tapping still opens it</span>
+      <span class="ci" aria-hidden="true">i</span>
     </div>
 
     <div class="card" v-if="!shown.length"><div class="empty">
@@ -761,19 +758,24 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 .rigfilters .pill.alert.on .pill-ic{color:var(--red)}
 
 /* ---- sort and select bar -------------------------------------------- */
-.rigbar{display:flex;align-items:center;gap:4px;padding:0 2px 10px}
-.rigsort{font-size:12px;color:var(--ink-3);white-space:nowrap}
+/* Every control here is padded to a real target rather than left at the
+   global *{padding:0} reset — as bare text these were ~17px tall on a layout
+   that is driven by thumbs, where the .btn-sm they replaced was ~28px. The
+   negative margins keep the padding from moving the text off the page's
+   own margin. */
+.rigbar{display:flex;align-items:center;gap:4px;padding:0 2px 10px;min-height:34px}
+.rigsort{font-size:12px;color:var(--ink-3);white-space:nowrap;padding:9px 6px;margin-left:-6px}
 .rigsort b{color:var(--ink);font-weight:600}
-.rigsort-flip{flex:none;width:28px;height:28px;display:flex;align-items:center;
+.rigsort-flip{flex:none;width:34px;height:34px;display:flex;align-items:center;
   justify-content:center;border-radius:7px;color:var(--ink-2);
   transition:var(--press),background-color .15s}
 .rigsort-flip svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;
   stroke-linecap:round;stroke-linejoin:round}
-.rigbar-act{margin-left:auto;display:flex;align-items:center;gap:8px;
-  border:1px solid var(--line);border-radius:9px;padding:6px 11px}
+.rigbar-act{margin-left:auto;display:flex;align-items:center;gap:2px;
+  border:1px solid var(--line);border-radius:9px;padding:0 5px}
 .rigbar-sep{color:var(--line);font-size:12px}
 .rigsel{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
-  color:var(--ink-2);white-space:nowrap}
+  color:var(--ink-2);white-space:nowrap;padding:9px 6px}
 .rigsel.on{color:var(--blue)}
 .rigsel .box{flex:none;width:15px;height:15px;border-radius:4px;
   border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;
@@ -820,15 +822,32 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 /* The panel under the row. Filled from the start rather than tinted-then-
    filled: it now sits inside the rig's own card with nothing else in it, so
    there is no neighbouring row for a pale wash to get confused with, and the
-   mockup shows it solid. .arm still deepens it at the fire threshold. */
-.rigswact{gap:9px;padding:0 16px;background:var(--red);color:#fff}
-.rigswact.go{background:var(--green);color:var(--ink-on-accent)}
-.rigswact.arm{background:color-mix(in srgb, var(--red) 78%, #000);color:#fff}
-.rigswact.go.arm{background:color-mix(in srgb, var(--green) 80%, #000);
-  color:var(--ink-on-accent)}
-.rigswact .ic{display:flex}
-.rigswact .ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;
+   mockup shows it solid.
+   The label is var(--card) rather than white for the reason main.css states
+   at .rigswact.arm: the dark theme's --red and --green are light enough that
+   white on them lands under 3.5:1, where the card colour clears AA against
+   both. Which is also why .arm can no longer signal by filling in — that is
+   the resting state now — and signals with a ring in the label's own colour
+   instead. Darkening the fill would have been the obvious alternative and is
+   the one thing that cannot work: it drags the dark theme's near-black label
+   back under AA. */
+.rigswact{gap:9px;padding:0 16px;background:var(--red);color:var(--card)}
+.rigswact.go{background:var(--green);color:var(--card)}
+/* "Let go now" happens on the glyph rather than on the panel: the panel's
+   edges ARE the card's edges, so anything drawn there (a ring, a heavier
+   border) lands on top of the card frame and reads as trim rather than as a
+   change of state. The disc is well inboard, and flipping its fill costs no
+   contrast — the glyph and its ground simply swap the pair they already had. */
+.rigswact .ic{flex:none;width:26px;height:26px;display:flex;align-items:center;
+  justify-content:center;border-radius:50%;
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb, currentColor 42%, transparent);
+  transition:background-color .15s,box-shadow .15s}
+.rigswact .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round}
+.rigswact.arm .lb{font-weight:700}
+.rigswact.arm .ic{background:currentColor;box-shadow:none}
+.rigswact.arm .ic svg{stroke:var(--red)}
+.rigswact.go.arm .ic svg{stroke:var(--green)}
 
 /* ---- the swipe tip -------------------------------------------------- */
 .swipetip{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-top:8px}
@@ -840,9 +859,9 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
   border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
   font-size:10px;font-style:italic;color:var(--ink-3);line-height:1}
 
-/* The select bar is sticky inside the list now, not inside a card, so the
-   card's own negative margins no longer apply. */
-.riglist .selbar{margin:0;border-radius:10px;border:1px solid var(--line)}
+/* Sticky against the page rather than inside a card, so the card's own
+   negative margins no longer apply. */
+.selbar{margin:8px 0 0;border-radius:10px;border:1px solid var(--line)}
 
 @media (max-width:359px){
   .rig-hero-shot{width:88px;height:76px}
