@@ -66,7 +66,8 @@ src/
                              rivals, ...)
   stores/game.js            the Pinia store — assembles game/ into one store
   components/               shared UI (TopBar, Feed, Compare, StatChart,
-                             Chassis/RackShot/RackTile/RigShot hardware art)
+                             Chassis/RackShot/RackTile/RigShot hardware art,
+                             ChainGem chain emblems)
   views/                    the 7 tabs (Farm, Sites, Rigs, Build, Chains,
                              Market, Stats)
   test/                     shared test helpers (not tests themselves)
