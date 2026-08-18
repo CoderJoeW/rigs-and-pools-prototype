@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { sparkPath } from '../../utils/spark.js';
 import FarmView from '../FarmView.vue';
 
 describe('FarmView', () => {
@@ -166,13 +167,79 @@ describe('FarmView', () => {
     expect(wrapper.find('.delta').exists()).toBe(false);
   });
 
+  it('compares profit against yesterday\'s NET, not its gross revenue', () => {
+    // a day that earned more but spent much more is a WORSE day; comparing
+    // gross under a net headline would paint that green
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 };  // net 60
+        g.s.t = 86400 * 1.5;                                        // half of day 1
+        g.revenueDay;                                               // rolls the day over
+        g.s.today.earned = 55; g.s.today.power = 50;                // net 5, pace 10 vs 60
+      },
+    });
+    const chip = wrapper.find('.delta');
+    expect(chip.exists()).toBe(true);
+    expect(chip.classes()).toContain('down');   // profit fell, however gross moved
+  });
+
+  it('projects today to a full day before comparing it with yesterday\'s close', () => {
+    // an identical day, a quarter of the way in, is on pace to MATCH yesterday
+    // — the raw running total would read as a 75% collapse
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 };
+        g.s.t = 86400 * 1.25;
+        g.revenueDay;
+        g.s.today.earned = 25; g.s.today.power = 10;   // exactly a quarter of yesterday
+      },
+    });
+    expect(store.dayPaceDelta('net', store.netDay)).toBeCloseTo(0, 5);
+    expect(store.dayPaceDelta('power', store.powerDay)).toBeCloseTo(0, 5);
+    expect(wrapper.find('.delta').exists()).toBe(true);
+  });
+
+  it('holds the pace chips back while too little of the day has run to project', () => {
+    // minutes in, one block landing or not swings the projection by multiples
+    const { store } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        for (let i = 0; i < 5; i++) g.stepTick(60);   // finish assembly, so the
+        g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 }; // closing
+        g.s.t = 86400 + 60;   // one minute into the new day        // hash is real
+        g.revenueDay;
+        g.s.today.earned = 1; g.s.today.power = 1;
+      },
+    });
+    expect(store.dayPaceDelta('net', store.netDay)).toBe(null);
+    // an instantaneous reading has no such problem and still compares
+    expect(store.dayDelta('hash', store.totalHash)).not.toBe(null);
+  });
+
+  it('draws the Cost card from power spend, not from the net-profit series', () => {
+    // netHist under a cost heading renders rising profit as rising spend
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        g.s.powerHist = [1, 5, 9, 14];
+        g.s.netHist = [90, 60, 30, 5];   // moving the opposite way
+      },
+    });
+    const costCard = wrapper.findAll('.ovcard').find(c => c.text().includes('Cost today'));
+    const d = costCard.find('.ov-spark path').attributes('d');
+    expect(d).toBe(sparkPath(store.s.powerHist, 22, 20, 0));
+    expect(d).not.toBe(sparkPath(store.s.netHist, 22, 20, 0));
+  });
+
   it('shows the "vs yesterday" chips once the previous day has closed', () => {
     const { wrapper } = mountWithStore(FarmView, {
       seed: g => {
         g.generatePreset(); g.build();
         // close a day with real figures on it, then step into the next one
         g.s.today = { day: 0, earned: 100, power: 40, blocks: 2 };
-        g.s.t = 86400 + 3600;
+        g.s.t = 86400 * 1.5;   // past the floor the pace projection needs
         g.revenueDay; // reading the day rolls it over and stashes yesterday
         g.s.today.earned = 150; g.s.today.power = 30;
       },

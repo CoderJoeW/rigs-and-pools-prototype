@@ -112,7 +112,15 @@ const pickerRows=computed(()=>{
       current:p.id===cur };
   });
 });
-const choose=id=>{ g.s.draft[g.s.picker]=id; g.s.picker=null; };
+/* A narrower frame or board can leave the card count past what the new pair
+   can actually wire — the slot map would read "8 of 4 usable slots filled",
+   canBuild would go false, and the "+" stepper would be disabled, so the only
+   way out is tapping "−" until it is legal again. Clamp instead. */
+const choose=id=>{
+  g.s.draft[g.s.picker]=id;
+  if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
+  g.s.picker=null;
+};
 
 const pickerSheetEl=ref(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
