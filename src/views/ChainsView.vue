@@ -622,22 +622,6 @@ const projMargin=computed(()=>{
    control that splits the tab, the chain card, and the solo-against-pool
    panel. */
 
-/* ---- the segmented control ------------------------------------------ */
-/* Blue rather than the mockup's amber: in this app amber is what a worn rig,
-   a hot site and a chain at its ceiling are drawn in — including on the cards
-   directly below this bar — and a third meaning for it at the top of the tab
-   would have made the warning colour mean "you are here" as well. Blue is
-   already what a selected chip is on Rigs. */
-.segbar{display:flex;margin:0 -12px 10px;padding:0 12px;
-  border-bottom:1px solid var(--line);gap:2px}
-.segtab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:10px 4px 9px;font-size:12.5px;font-weight:500;color:var(--ink-3);
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  transition:color .15s,border-color .15s}
-.segtab .ic{flex:none;width:15px;height:15px;fill:none;stroke:currentColor;
-  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.segtab.on{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
-
 /* ---- section heading and its (i) ------------------------------------ */
 .secinfo{flex:none;width:17px;height:17px;border-radius:50%;border:1px solid var(--line);
   display:flex;align-items:center;justify-content:center;font-size:10px;font-style:italic;
