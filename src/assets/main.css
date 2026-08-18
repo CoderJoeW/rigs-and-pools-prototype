@@ -643,47 +643,26 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    A SIBLING of .slotgrid/.slotcell, not a reuse of them. Those visualise the
    card slots on the rig being designed in BuildView, where the states are
    filled/locked; these are rigs standing at physical positions on a site,
-   where the state is the rig's live health. Same grid mechanics and the same
-   rounded square so the two read as one family, but the fill comes from the
-   .dot.* vocabulary above (run/warn/bad/build/off) — the app has exactly one
-   status taxonomy and this is it — and an unoccupied position borrows
-   .slotcell.locked's dashed outline.
+   where the state is the rig's live health.
 
-   Text on a coloured tile is var(--card), not #fff: the dark palette's green
-   and amber are light, so white numerals would wash out on the very tiles
-   that matter. --card flips with the theme and stays legible on both.
+   Only the grid mechanics live here. What a position LOOKS like is
+   RackTile.vue's: since the tiles became real renders of a rack's front face
+   there is nothing left to say in a swatch, and a global fill would paint
+   under the image where nobody could see it. The tile still answers to the
+   .dot.* vocabulary (run/warn/bad/build/off) — the app has exactly one status
+   taxonomy and this is it — RackTile just spends it on borders and a trace
+   rather than on a block of colour.
 
-   A running tile runs .dot.run's OWN dotPulse keyframes rather than a
-   lookalike, so there is one definition of "this is alive" to keep in tune,
-   and the blanket prefers-reduced-motion rule at the bottom of this file
-   reaches it for free. `.calm` switches the pulse off once the grid is
-   larger than a glance: four tiles breathing reads as a farm running, forty
-   in lockstep reads as a strobing wall. */
+   Positions are wide rather than square because the render is: a rack face is
+   a landscape thing.
+
+   THREE fixed columns, not auto-fill: SitesView addresses every position
+   row-column (01-02 is the second position of the first row), and an address
+   that reflows is an address that lies. The shell is capped at 440px, so
+   three is what auto-fill was landing on anyway — this only stops the count
+   from drifting away from FLOOR_COLS. Change one and change the other. */
 .rigwrap{padding:10px 12px 12px}
-.riggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:5px}
-.rigtile{aspect-ratio:1;border-radius:5px;border:1.5px solid var(--line);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:10px;color:var(--ink-3);
-  transition:var(--press),background-color .2s,border-color .2s}
-/* --line is only a couple of percent off --card, so a dashed --line outline on
-   a --line-2 fill is invisible on the light theme; mixing the dashes toward
-   --ink-3 keeps an empty position legible as a POSITION on both themes without
-   letting it shout as loudly as an occupied one */
-.rigtile.empty{background:var(--line-2);border-style:dashed;
-  border-color:color-mix(in srgb, var(--ink-3) 40%, transparent)}
-.rigtile.run{background:var(--green);border-color:var(--green);color:var(--card);
-  animation:dotPulse 2.4s ease-out infinite}
-.riggrid.calm .rigtile.run{animation:none}
-/* filled, not hollow: .dot.off is a solid --ink-3 disc, and a hollow grey tile
-   would be a second way of saying "nothing here" that an empty position has
-   already claimed two rules up */
-.rigtile.off{background:var(--ink-3);border-color:var(--ink-3);color:var(--card)}
-.rigtile.bad{background:var(--red);border-color:var(--red);color:var(--card);
-  box-shadow:0 0 7px color-mix(in srgb, var(--red) 65%, transparent)}
-.rigtile.warn{background:var(--amber);border-color:var(--amber);color:var(--card);
-  box-shadow:0 0 7px color-mix(in srgb, var(--amber) 55%, transparent)}
-.rigtile.build{background:var(--blue);border-color:var(--blue);color:var(--card);
-  box-shadow:0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)}
+.riggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .riglegend{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:9px}
 .riglegend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-3)}
 

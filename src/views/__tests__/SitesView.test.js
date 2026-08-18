@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import SitesView from '../SitesView.vue';
+import { cssRule } from '../../test/cssRule.js';
 
 describe('SitesView', () => {
   it('lists the starting site and its manage panel', () => {
@@ -40,6 +41,30 @@ describe('SitesView', () => {
     const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
     await saveBtn.trigger('click');
     expect(store.s.sites[0].name).toBe('My Farm');
+  });
+
+  /* The switcher is a disclosure. Its rows stay in the document while closed
+     (v-show, not v-if) so the tab's a11y contract does not depend on whether
+     someone has opened the list. */
+  it('names the active site in the switcher trigger, and toggles the list', async () => {
+    const { wrapper, store } = mountWithStore(SitesView);
+    const trigger = wrapper.find('.sitepick-hd');
+    expect(trigger.text()).toContain(store.s.sites[0].name);
+    expect(trigger.attributes('aria-expanded')).toBe('false');
+    await trigger.trigger('click');
+    expect(trigger.attributes('aria-expanded')).toBe('true');
+  });
+
+  it('picking a site from the switcher makes it active and closes the list', async () => {
+    const { wrapper, store } = mountWithStore(SitesView, {
+      seed: g => { g.s.cash = 100000; g.newSite('shed'); },
+    });
+    const second = store.s.sites[1];
+    await wrapper.find('.sitepick-hd').trigger('click');
+    const row = wrapper.findAll('.sitepick-row').find(r => r.text().includes(second.name));
+    await row.trigger('click');
+    expect(store.s.activeSite).toBe(second.id);
+    expect(wrapper.find('.sitepick-hd').attributes('aria-expanded')).toBe('false');
   });
 
   it('marks the active site row with aria-current', () => {
@@ -110,7 +135,75 @@ describe('SitesView', () => {
     const style = tile.attributes('style') || '';
     expect(style).toMatch(/--chain-h/);
     expect(tile.find('.rt-led').exists()).toBe(true);
-    expect(tile.classes().some(c => c.startsWith('sz-'))).toBe(true);
+  });
+
+  /* A position is addressed row-column, so the label on a tile is the label a
+     hand written sticker on the actual rack would carry — which means the row
+     has to break where .riggrid's columns actually break. */
+  it('addresses positions row-column, wrapping at the grid\'s column count', () => {
+    const { wrapper } = mountWithStore(SitesView, {
+      seed: g => { g.s.cash = 200000; g.upgradeShell(g.active.id, 'garage');
+        g.active.queue.forEach(j => { j.left = 0.0001; }); g.stepTick(1);
+        for (let i = 0; i < 5; i++) { g.generatePreset(); g.build(); } },
+    });
+    const codes = wrapper.findAll('button.rigtile .rt-n').map(n => n.text());
+    expect(codes).toEqual(['01-01', '01-02', '01-03', '02-01', '02-02']);
+    // and the CSS the address describes really is that many columns
+    expect(cssRule('.riggrid')).toContain('grid-template-columns:repeat(3,1fr)');
+  });
+
+  it('gives every occupied position a hardware render, and empties none', () => {
+    const { wrapper } = mountWithStore(SitesView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    expect(wrapper.find('button.rigtile .rt-img').exists()).toBe(true);
+    expect(wrapper.find('.rigtile.empty .rt-img').exists()).toBe(false);
+  });
+
+  it('the legend names the empty state too, with its own swatch', () => {
+    const { wrapper } = mountWithStore(SitesView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    expect(wrapper.find('.riglegend .dot.d-empty').exists()).toBe(true);
+    expect(wrapper.find('.riglegend').text()).toContain('Empty');
+  });
+
+  it('the hero carries the site backdrop and the three headline readings', () => {
+    const { wrapper } = mountWithStore(SitesView);
+    expect(wrapper.find('.site-hero-bg').attributes('src')).toBeTruthy();
+    const hero = wrapper.find('.site-hero').text();
+    expect(hero).toContain('Hashrate');
+    expect(hero).toContain('Power');
+    expect(hero).toContain('Temp');
+  });
+
+  it('offers rename, expand and decommission as three manage actions', () => {
+    const { wrapper } = mountWithStore(SitesView);
+    const acts = wrapper.findAll('.mact');
+    expect(acts).toHaveLength(3);
+    expect(acts.map(a => a.text()).join(' ')).toContain('Decommission');
+    // the only site there is: retiring it has to stay refused, not merely styled red
+    expect(acts[2].attributes('disabled')).toBeDefined();
+  });
+
+  it('the construction queue shows progress and a priced rush per job', async () => {
+    const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
+    await wrapper.find('.sitepick-hd').trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('New site')).trigger('click');
+    const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Garden shed'));
+    await row.trigger('click');
+
+    const rows = wrapper.findAll('.qrow');
+    expect(rows.length).toBeGreaterThan(0);
+    // a site queue holds infrastructure, never rigs, so the badge names the
+    // KIND of job — it must not borrow the floor plan's position addresses
+    expect(rows[0].find('.qslot').text()).toBe('Shell');
+    expect(rows[0].text()).not.toMatch(/\d\d-\d\d/);
+    const rush = rows[0].find('.qrush');
+    expect(rush.text()).toContain('Rush');
+    const before = store.s.cash;
+    await rush.trigger('click');
+    expect(store.s.cash).toBeLessThan(before);
   });
 
   describe('Fabrication', () => {
