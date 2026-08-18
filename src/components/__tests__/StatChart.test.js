@@ -33,12 +33,37 @@ describe('StatChart', () => {
     expect(one.find('.sc-empty').exists()).toBe(true);
   });
 
-  it('cumulative plots the running total, not the samples', () => {
+  it('plots the series it is given — there is no sum-these-for-me mode', () => {
+    // A cumulative chart has to be fed a cumulative series: the per-day
+    // series here snapshot counters that reset at midnight, so adding them
+    // up produces a number with no meaning.
     const wrapper = mount(StatChart, {
-      props: { title: 'Net to date', data: [10, 20, 30], money: true, cumulative: true },
+      props: { title: 'Net to date', data: [10, 30, 60], money: true },
     });
-    // 10, 30, 60 — the label reports the total, not the last sample.
     expect(wrapper.find('.sc-chip').text()).toContain('$60.00');
+  });
+
+  it('offers an average only when asked, since it is wrong for a resetting counter', () => {
+    const plain = mount(StatChart, { props: { title: 'Net per day', data: [10, 30] } });
+    expect(plain.text()).not.toContain('Average');
+    const asked = mount(StatChart, { props: { title: 'Hashrate', data: [10, 30], avg: true } });
+    expect(asked.text()).toContain('Average');
+    // An explicit note always wins over the average.
+    const noted = mount(StatChart, {
+      props: { title: 'Net per day', data: [10, 30], avg: true, note: 'So far that day' },
+    });
+    expect(noted.text()).toContain('So far that day');
+    expect(noted.text()).not.toContain('Average');
+  });
+
+  it('the axis counts back from now, because the buffer drops its own start', () => {
+    // 110-entry ring buffers: past ~82 days the leftmost sample is no longer
+    // day 0, so "how long ago" is the only labelling that stays true.
+    const wrapper = mount(StatChart, { props: { title: 'Hashrate', data: Array(41).fill(5) } });
+    const ticks = wrapper.findAll('.sc-axis span').map(t => t.text());
+    expect(ticks[ticks.length - 1]).toBe('now');
+    expect(ticks[0]).toBe('30D');
+    expect(ticks).toEqual(['30D', '23D', '15D', '8D', 'now']);
   });
 
   it('scrubbing moves the label to the point under the finger, and lets go', async () => {
@@ -59,6 +84,8 @@ describe('StatChart', () => {
 
     await plot.trigger('pointermove', { clientX: 50 });
     expect(wrapper.find('.sc-chip').text()).toContain('300');
+    // Two samples back from the live end, at 0.75 days each.
+    expect(wrapper.find('.sc-day').text()).toBe('2D ago');
 
     await plot.trigger('pointerup');
     // Back to the live end, and the crosshair goes with it.

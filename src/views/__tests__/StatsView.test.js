@@ -118,6 +118,44 @@ describe('StatsView', () => {
     expect(wrapper.find('#stpan-awards').text()).toContain('The ladder');
   });
 
+  it('net to date reads the cumulative series, not a sum of daily snapshots', () => {
+    // netHist samples today().earned-today().power, and today() resets at
+    // every midnight — those are partial-day snapshots, so adding them up
+    // gives a number with no meaning and roughly half the real total.
+    const { wrapper } = mountWithStore(StatsView, {
+      seed: g => { g.s.netHist = [10, 10, 10]; g.s.netCumHist = [100, 400, 900]; },
+    });
+    const chart = wrapper.find('#stpan-stats').findAll('.statchart')
+      .find(c => c.text().includes('Net to date'));
+    expect(chart.find('.sc-chip').text()).toContain('$900.00');
+  });
+
+  it('a per-day series states what a point is instead of averaging it', async () => {
+    const { wrapper } = mountWithStore(StatsView, {
+      seed: g => { g.s.netHist = [10, 30]; g.s.hashHist = [10, 30]; },
+    });
+    await seg(wrapper, 'History');
+    const perDay = wrapper.find('#stpan-history').findAll('.statchart')
+      .find(c => c.text().includes('Net per day'));
+    expect(perDay.text()).toContain('So far that day');
+    expect(perDay.text()).not.toContain('Average');
+    // A level sampled at an instant keeps its average.
+    const hash = wrapper.find('#stpan-stats').findAll('.statchart')
+      .find(c => c.text().includes('Hashrate'));
+    expect(hash.text()).toContain('Average');
+  });
+
+  it('the top-rank caption counts every milestone, not just the ones it needed', async () => {
+    const { wrapper, store } = mountWithStore(StatsView);
+    store.s.mile.rank = store.RANKS.length - 1;
+    store.s.mile.done = Object.fromEntries(store.MILESTONES.slice(0, 20).map(m => [m.id, 1]));
+    await nextTick();
+    // The top rank lands at 20 of the catalog's 24 — "all 20" would have been
+    // a lie the Achievements segment contradicts on the same tab.
+    expect(wrapper.find('.rc-cap').text())
+      .toContain('20 of ' + store.MILESTONES.length + ' milestones');
+  });
+
   it('the efficiency chart reads its own series, not hashrate over power spend', () => {
     const { wrapper } = mountWithStore(StatsView, {
       seed: g => { g.s.effHist = [0.4, 0.6, 0.842]; },

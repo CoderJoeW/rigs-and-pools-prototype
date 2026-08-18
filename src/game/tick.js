@@ -218,6 +218,14 @@ export function installTick(G){
          moves around. Stored the way effMhw computes it, once per sample. */
       (G.s.effHist=G.s.effHist||[]).push(G.effMhw.value);
       if(G.s.effHist.length>110) G.s.effHist.shift();
+      /* Net TO DATE, sampled — not a running sum of netHist. netDay is
+         today().earned-today().power and today() resets at every midnight,
+         so netHist holds partial-day snapshots taken at whatever fraction of
+         the day the 0.75-day cadence lands on; adding them up gives a number
+         with no meaning and about half the real total. lifetimeNet is the
+         cumulative figure itself, so the series records that. */
+      (G.s.netCumHist=G.s.netCumHist||[]).push(G.lifetimeNet.value);
+      if(G.s.netCumHist.length>110) G.s.netCumHist.shift();
     }
 
     G.refreshPools();

@@ -120,7 +120,7 @@ const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
                  : rankProg.done+' of '+rankProg.need+' milestones toward '+nextRank[1]">
             <i :style="{width:(rankProg.frac*100).toFixed(1)+'%'}"></i></div>
           <div class="rc-cap">
-            <span v-if="rankProg.top">Top rank — all {{ doneN }} milestones behind you</span>
+            <span v-if="rankProg.top">Top rank &mdash; {{ doneN }} of {{ g.MILESTONES.length }} milestones</span>
             <span v-else>{{ rankProg.done }} / {{ rankProg.need }} toward {{ nextRank[1] }}</span>
             <b>{{ fmt.pct(rankProg.frac,0) }}</b></div>
         </div>
@@ -137,22 +137,27 @@ const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
       </div>
 
       <StatChart title="Efficiency" :data="g.s.effHist||[]" unit="MH/W" :digits="3"
-                 color="var(--blue)"
+                 avg color="var(--blue)"
                  icon="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z" />
-      <StatChart title="Hashrate" :data="g.s.hashHist||[]" color="var(--blue)"
+      <StatChart title="Hashrate" :data="g.s.hashHist||[]" avg color="var(--blue)"
                  icon="M2.5 12h3l2.5-7 4 14 2.5-7h5" />
-      <StatChart title="Net to date" :data="g.s.netHist" money cumulative
+      <StatChart title="Net to date" :data="g.s.netCumHist||[]" money
                  color="var(--green)" note="Cumulative"
                  icon="M4 16.5 10 10l3.5 3L20 6.5M15 6.5h5v5" />
     </div>
 
     <div v-show="seg==='history'" id="stpan-history" role="tabpanel"
          aria-labelledby="stseg-history" tabindex="0" class="stpanel">
+      <!-- No average on the two that sample a counter which resets at
+           midnight: the mean of partial-day snapshots is about half a day's
+           real figure. The note says what a point is instead. -->
       <StatChart title="Net per day" :data="g.s.netHist" money color="var(--green)"
+                 note="So far that day"
                  icon="M4 16.5 10 10l3.5 3L20 6.5M15 6.5h5v5" />
-      <StatChart title="Cash" :data="g.s.cashHist||[]" money color="var(--gold)"
+      <StatChart title="Cash" :data="g.s.cashHist||[]" money avg color="var(--gold)"
                  icon="M12 3.5v17M8 7.5h6a2.5 2.5 0 0 1 0 5H10a2.5 2.5 0 0 0 0 5h6" />
       <StatChart title="Power spend" :data="g.s.powerHist||[]" money color="var(--amber)"
+                 note="So far that day"
                  icon="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z" />
 
       <div class="sec"><span class="eyebrow">Coin prices</span>

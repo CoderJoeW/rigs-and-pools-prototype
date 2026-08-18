@@ -15,8 +15,16 @@ import { sparkPath } from '../utils/spark.js';
    the direct label at the live end — one value, on the last point, rather
    than a number on every point.
 
-   `cumulative` runs a total instead of plotting the samples: net-per-day and
-   net-to-date are different questions, and the mockup asks the second one.
+   There is deliberately no "sum these for me" mode. A cumulative chart has to
+   be fed a cumulative SERIES: the per-day series here are snapshots of
+   counters that reset at midnight, so adding them up produces a number with
+   no meaning. The caller passes the series that already means what the chart
+   claims.
+
+   `avg` is opt-in for the same reason. An average is meaningful for a level
+   sampled at an instant (hashrate, MH/W, cash) and misleading for one of
+   those resetting counters, where it reports roughly half the real daily
+   figure.
 
    Interaction: a scrub rather than a hover crosshair. This is a 440px touch
    layout, so the pointer that reads a chart here is a finger already resting
@@ -28,19 +36,14 @@ const p = defineProps({
   color: { type: String, default: 'var(--green)' },
   money: Boolean,
   unit: { type: String, default: '' },
-  cumulative: Boolean,
+  avg: Boolean,
   icon: String,
   note: String,
   digits: { type: Number, default: 2 },
 });
 
 const H = 40;                          // the viewBox's own height
-const series = computed(() => {
-  const raw = p.data || [];
-  if (!p.cumulative) return raw;
-  let sum = 0;
-  return raw.map(v => (sum += v));
-});
+const series = computed(() => p.data || []);
 const ready = computed(() => series.value.length >= 2);
 const path = computed(() => sparkPath(series.value, H - 2, H - 8));
 /* The area under the line is drawn from the same path, closed to the
@@ -51,19 +54,23 @@ const area = computed(() => ready.value ? path.value + ' L100 ' + H + ' L0 ' + H
 const lo = computed(() => ready.value ? Math.min(...series.value) : 0);
 const hi = computed(() => ready.value ? Math.max(...series.value) : 0);
 const last = computed(() => series.value.length ? series.value[series.value.length - 1] : 0);
-const avg = computed(() => ready.value
+const mean = computed(() => ready.value
   ? series.value.reduce((a, v) => a + v, 0) / series.value.length : 0);
 
 const show = v => p.money ? fmt.usd2(v) : (p.unit ? v.toFixed(p.digits) + ' ' + p.unit : fmt.hash(v));
 
-/* Samples land every 0.75 sim-days, so an index is a day the same way the
-   rest of the app counts them: three samples to four days. */
+/* Samples land every 0.75 sim-days. The axis counts BACK from now rather
+   than forward from a day zero: these are 110-entry ring buffers, so once a
+   run passes ~82 days the leftmost sample is not day 0 and never will be
+   again — labelling it "0D" would disagree with every other date on the tab.
+   How long ago a sample was taken is true whatever the buffer has dropped. */
 const DAYS_PER_SAMPLE = 0.75;
 const spanDays = computed(() => Math.round((series.value.length - 1) * DAYS_PER_SAMPLE));
 const ticks = computed(() => {
   const d = spanDays.value;
   if (d < 4) return [];
-  return [0, 0.25, 0.5, 0.75, 1].map(f => ({ f, label: Math.round(d * f) + 'D' }));
+  return [0, 0.25, 0.5, 0.75, 1].map(f => ({ f,
+    label: f === 1 ? 'now' : Math.round(d * (1 - f)) + 'D' }));
 });
 
 const at = ref(null);                  // the scrubbed index, or null for "live"
@@ -75,7 +82,8 @@ const markY = computed(() => {
   const l = lo.value, r = (hi.value - l) || 1;
   return (H - 2) - ((value.value - l) / r) * (H - 8);
 });
-const markDay = computed(() => Math.round(marked.value * DAYS_PER_SAMPLE));
+const markAgo = computed(() =>
+  Math.round((series.value.length - 1 - marked.value) * DAYS_PER_SAMPLE));
 
 const plot = ref(null);
 const scrub = e => {
@@ -100,7 +108,7 @@ const release = () => { at.value = null; };
 const summary = computed(() => !ready.value
   ? p.title + ': not enough history yet'
   : p.title + ': ' + show(series.value[0]) + ' to ' + show(last.value)
-    + ' over ' + spanDays.value + ' days, low ' + show(lo.value)
+    + ' over the last ' + spanDays.value + ' days, low ' + show(lo.value)
     + ', high ' + show(hi.value));
 </script>
 
@@ -111,7 +119,7 @@ const summary = computed(() => !ready.value
         <svg viewBox="0 0 24 24"><path :d="icon"/></svg></span>
       <span class="sc-t">{{ title }}</span>
       <span v-if="note" class="sc-note">{{ note }}</span>
-      <span v-else-if="ready" class="sc-note">Average <b>{{ show(avg) }}</b></span>
+      <span v-else-if="avg&&ready" class="sc-note">Average <b>{{ show(mean) }}</b></span>
     </div>
 
     <div class="sc-plot" ref="plot"
@@ -134,7 +142,7 @@ const summary = computed(() => !ready.value
       <span v-if="ready" class="sc-dot" :class="{live:at===null}"
             :style="{left:markX+'%', top:(markY/40*100)+'%', '--c':color}" aria-hidden="true"></span>
       <span v-if="ready" class="sc-chip" :style="{'--c':color}">
-        {{ show(value) }}<span v-if="at!==null" class="sc-day">d{{ markDay }}</span></span>
+        {{ show(value) }}<span v-if="at!==null" class="sc-day">{{ markAgo ? markAgo+'D ago' : 'now' }}</span></span>
       <p v-if="!ready" class="sc-empty">Not enough history yet</p>
     </div>
 
