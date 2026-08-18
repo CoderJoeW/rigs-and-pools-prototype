@@ -244,14 +244,34 @@ export function installDispatch(G){
     }
     return G.s.today; };
   /* Yesterday's close for `k`, or null when there is no adjacent closed day to
-     compare against (fresh save, or a resume that skipped days). */
+     compare against (fresh save, or a resume that skipped days). 'net' is
+     derived rather than stored — the snapshot keeps the two counters it is
+     the difference of. */
   const yday = k => { const y=G.s.yday;
-    return y&&y.day===Math.floor(G.s.t/86400)-1&&Number.isFinite(y[k]) ? y[k] : null; };
-  /* Fractional change from yesterday's close, or null when there is nothing to
-     compare against — including when yesterday was flat zero, where a percent
-     change is not defined rather than infinite. */
+    if(!y || y.day!==Math.floor(G.s.t/86400)-1) return null;
+    const v = k==='net' ? y.earned-y.power : y[k];
+    return Number.isFinite(v) ? v : null; };
+  /* Fractional change of an INSTANTANEOUS reading (hashrate, say) against
+     yesterday's close. Null when there is nothing to compare against —
+     including when yesterday was flat zero, where a percent change is not
+     defined rather than infinite. */
   const dayDelta = (k, now) => { const was=yday(k);
     return was===null||was===0 ? null : (now-was)/Math.abs(was); };
+  /* The same, for a CUMULATIVE counter — earnings, power spend. Those are only
+     part-way through today, so comparing the running total against yesterday's
+     finished one reads as a collapse every morning: an hour into a day
+     identical to the last, the raw figures differ by 24x. Projecting today's
+     total to a full day at its current pace is what makes the two comparable.
+
+     Held back until the day is far enough along to mean anything: minutes in,
+     one block landing or not swings the projection by multiples, and a chip
+     that swings between +900% and -90% while nothing is actually happening is
+     worse than no chip. */
+  const DAY_PACE_FLOOR = 0.15;
+  const dayPaceDelta = (k, now) => { const was=yday(k);
+    const frac=(G.s.t%86400)/86400;
+    return was===null||was===0||frac<DAY_PACE_FLOOR
+      ? null : (now/frac-was)/Math.abs(was); };
   const revenueDay = computed(()=> today().earned);
   const powerDay = computed(()=> today().power);
   const netDay = computed(()=> today().earned-today().power);
@@ -262,5 +282,5 @@ export function installDispatch(G){
   const poolEarned = computed(()=> G.s.pools.reduce((a,p)=>a+(p.owner==='you'?p.earned:0),0));
   const lifetimeNet = computed(()=> G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
-  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,dayDelta,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
+  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,dayDelta,dayPaceDelta,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
 }

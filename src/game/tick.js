@@ -206,6 +206,11 @@ export function installTick(G){
       G.s.netHist.push(G.netDay.value); if(G.s.netHist.length>110) G.s.netHist.shift();
       (G.s.hashHist=G.s.hashHist||[]).push(G.totalHash.value); if(G.s.hashHist.length>110) G.s.hashHist.shift();
       (G.s.cashHist=G.s.cashHist||[]).push(G.s.cash); if(G.s.cashHist.length>110) G.s.cashHist.shift();
+      /* Power spend has its own series because Farm's "Cost today" card needs a
+         cost trend, and netHist is profit — under a cost heading a rising
+         profit line reads as rising spend, exactly backwards. */
+      (G.s.powerHist=G.s.powerHist||[]).push(G.powerDay.value);
+      if(G.s.powerHist.length>110) G.s.powerHist.shift();
     }
 
     G.refreshPools();

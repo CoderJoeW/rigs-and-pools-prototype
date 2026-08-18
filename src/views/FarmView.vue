@@ -20,13 +20,20 @@ const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
 const totalDemand=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteDemand(f),0));
 
-/* The overview cards' "vs yesterday" chips. `dayDelta` returns null whenever
-   there is no adjacent closed day to compare against (a fresh save, or one
-   resumed across a multi-day gap), and the chip simply doesn't render — an
-   invented 0.0% would read as "flat" rather than as "no comparison yet". */
+/* The overview cards' "vs yesterday" chips. Both helpers return null whenever
+   there is nothing honest to compare against — no adjacent closed day (a fresh
+   save, or one resumed across a multi-day gap), or too little of today elapsed
+   to project — and the chip simply doesn't render. An invented 0.0% would read
+   as "flat" rather than as "no comparison yet".
+
+   Hashrate is a reading and compares directly. Profit and cost are counters
+   still filling up, so they go through dayPaceDelta, which projects today to a
+   full day before comparing it with yesterday's finished one. And profit
+   compares 'net', matching the figure printed above it — comparing gross
+   revenue under a net headline would call a day green while profit fell. */
 const hashDelta=computed(()=>g.dayDelta('hash', g.totalHash));
-const netDelta=computed(()=>g.dayDelta('earned', g.revenueDay));
-const costDelta=computed(()=>g.dayDelta('power', g.powerDay));
+const netDelta=computed(()=>g.dayPaceDelta('net', g.netDay));
+const costDelta=computed(()=>g.dayPaceDelta('power', g.powerDay));
 const deltaText=d=>(d>=0?'▲ ':'▼ ')+fmt.pct(Math.abs(d),2);
 
 /* Dominant chassis state for a site row hero — prefer attention states, then
@@ -177,9 +184,9 @@ const totalSlots=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteSlots(f),0));
             <span class="ov-k">Cost today</span></div>
           <div class="ov-row">
             <span class="ov-v neg">{{ fmt.usd2(g.powerDay) }}</span>
-            <svg v-if="g.s.netHist.length>2" class="ov-spark" viewBox="0 0 100 24"
+            <svg v-if="g.s.powerHist&&g.s.powerHist.length>2" class="ov-spark" viewBox="0 0 100 24"
                  preserveAspectRatio="none" aria-hidden="true">
-              <path :d="netPath" fill="none" style="stroke:var(--red)"
+              <path :d="sparkPath(g.s.powerHist, 22, 20, 0)" fill="none" style="stroke:var(--red)"
                     stroke-width="1.6" vector-effect="non-scaling-stroke"/>
             </svg>
           </div>

@@ -250,6 +250,31 @@ describe('BuildView', () => {
       expect(store.s.draft.n).toBe(nAtLimit);
     });
 
+    it('clamps the card count down when a narrower frame or board is picked', async () => {
+      // otherwise the draft is stranded: the slot map reads "8 of 4 usable
+      // slots filled", canBuild goes false, and "+" is disabled — so the only
+      // way back to a legal draft is tapping "-" until it is one
+      const { wrapper, store } = mountWithStore(BuildView);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      const { FRAMES } = await import('../../data/hardware.js');
+      const roomiest = FRAMES.reduce((a, b) => b.slots > a.slots ? b : a);
+      const smallest = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
+      store.s.draft.frame = roomiest.id;
+      store.s.draft.n = roomiest.slots;
+      await nextTick();
+
+      // pick the smallest frame through the real picker, as a player would
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Frame')).trigger('click');
+      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes(smallest.name));
+      await row.trigger('click');
+      await nextTick();
+
+      expect(store.s.draft.frame).toBe(smallest.id);
+      expect(store.s.draft.n).toBeLessThanOrEqual(
+        Math.min(smallest.slots, store.PART(store.s.draft.mobo).pcie));
+      expect(store.checks.find(c => c.label.includes('slots')).ok).toBe(true);
+    });
+
     it('re-enables "+" after switching to a frame/board pair with more room', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
       await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
