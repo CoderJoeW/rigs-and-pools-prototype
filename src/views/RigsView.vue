@@ -702,14 +702,6 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
    a list of rigs as separate cards rather than rows of one, and the sort /
    select bar between them. */
 
-/* ---- page header --------------------------------------------------- */
-/* The top bar carries the brand and the cash; it does not say which tab you
-   are on, and on a tab that is one long list the answer stops being obvious
-   the moment you scroll. */
-.pagehd{padding:0 2px 10px}
-.pagehd-t{font-size:26px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
-.pagehd-s{font-size:12.5px;color:var(--ink-3);margin-top:2px}
-
 /* ---- the site hero -------------------------------------------------- */
 .rig-hero{padding:0;overflow:hidden}
 .rig-hero-top{display:flex;gap:12px;padding:12px}
