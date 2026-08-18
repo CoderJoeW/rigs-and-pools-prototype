@@ -103,6 +103,10 @@ const payoutProg=computed(()=>{
   return c?g.blockProg(c):0;
 });
 const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
+/* A group's capacity is read against the whole farm's positions, not one
+   site's: a group spans sites, so "how much of what I own is pointed here"
+   is the question the number answers. */
+const totalSlots=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteSlots(f),0));
 </script>
 
 <template>
@@ -231,7 +235,6 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
       <div class="sect"><span class="sect-k">Mining groups</span>
         <button class="sect-a" @click="g.addGroup()">+ New group</button></div>
       <div class="card">
-        <div class="card-bd pt">
           <div v-for="{gr, advice, ceiling} in groupRows" :key="gr.id" class="grp">
             <template v-if="groupRenameOpen[gr.id]">
               <label class="sr-only" :for="'group-rename-'+gr.id">Group name</label>
@@ -246,10 +249,10 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
             <template v-else>
               <div class="grp-hd">
                 <b class="grp-nm"><ChainMark :chain="gr.chain" />{{ gr.name }}</b>
-                <button class="btn btn-sm btn-ghost grp-rn"
+                <button class="grp-rn"
                         :aria-label="'Rename '+gr.name" @click="startRenameGroup(gr)">Rename</button>
               </div>
-              <div class="grp-grid">
+              <div class="grp-strip">
                 <!-- The real <select> stays in the DOM, stretched invisibly over
                      the pill: the picker keeps its native sheet, its keyboard
                      behaviour and its label, and the pill is only the skin. -->
@@ -292,12 +295,11 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
                   </select>
                 </label>
                 <div class="gstat"><span class="gk">Hashrate</span>
-                  <span class="gv">{{ fmt.hash(g.groupHash(gr)) }}</span></div>
-                <div class="gstat"><span class="gk">Size</span>
-                  <span class="gv">{{ g.groupRigs(gr).length }} rig{{ g.groupRigs(gr).length===1?'':'s' }}</span>
-                  <span class="gsub">{{ gr.found||0 }} block{{ (gr.found||0)===1?'':'s' }} found</span>
-                  <span v-if="advice" class="tag d gtag">OUTGROWN</span>
+                  <span class="gv">{{ fmt.hash(g.groupHash(gr)) }}</span>
+                  <span v-if="advice" class="tag r gtag">OUTGROWN</span>
                   <span v-else-if="ceiling" class="tag d gtag">AT CEILING</span></div>
+                <div class="gstat"><span class="gk">Capacity</span>
+                  <span class="gv">{{ g.groupRigs(gr).length }} / {{ totalSlots }} racks</span></div>
               </div>
             </template>
             <p v-if="advice" class="hint" style="margin:8px 0 0;color:var(--amber)">
@@ -315,7 +317,7 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
               at it, so more rigs here divide the same pot. No other chain currently pays enough
               more to be worth the move, so growth has to come from a second group on another
               chain, or from a pool.</p>
-            <div class="track-cap" style="margin-top:8px">
+            <div class="track-cap grp-foot">
               <span>{{ g.groupHash(gr)>0
                 ? 'Next '+g.chain(gr.chain).name+' block: '
                   +fmt.pct(Math.min(1,g.groupHash(gr)/Math.max(1,g.chainHash(g.chain(gr.chain)))),0)+' yours'
@@ -326,10 +328,9 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
                       class="btn btn-sm btn-ghost" @click="g.dropGroup(gr)">Disband</button>
             </div>
           </div>
-          <p v-if="g.s.help" class="hint">A group's rigs mine as <b>one participant</b> — one
+          <p v-if="g.s.help" class="hint grp-help">A group's rigs mine as <b>one participant</b> — one
             ticket in the draw, one PPLNS window. Rebuilds, brownouts and power cycles never
             forfeit; only the group switching chain or pool does.</p>
-        </div>
       </div>
 
       <!-- Net today — the day's headline over a twelve-cell ledger -->
@@ -626,45 +627,54 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
 .ubar i.o{background:var(--red)}
 
 /* ---- Mining groups ---- */
+/* A group is a row in the card, not a card inside a card — one strip per
+   group, divided from the next by a rule. */
 .grp{
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:11px 12px;
-  margin-bottom:9px;
-  background:color-mix(in srgb,var(--card) 92%,var(--line-2));
+  padding:10px 12px 11px;
+  border-top:1px solid var(--line-2);
 }
-.grp:last-of-type{margin-bottom:0}
-.grp-hd{display:flex;align-items:center;gap:6px;margin-bottom:9px}
-.grp-nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;letter-spacing:-.015em}
-.grp-rn{padding:2px 7px;flex:none}
-.grp-grid{
+.grp:first-child{border-top:none}
+.grp-hd{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.grp-nm{
+  flex:1;min-width:0;
+  font-size:12.5px;font-weight:600;letter-spacing:-.01em;
+  color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.grp-rn{flex:none;font-size:10.5px;font-weight:500;color:var(--blue);padding:2px 3px}
+/* Chain and pool are pickers and carry a border; hashrate and capacity are
+   readouts and carry only a divider. Four across at this width is tight, so
+   the columns are weighted rather than equal — the pool name is the longest
+   string of the four and the two figures are the shortest. */
+.grp-strip{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:7px;
+  grid-template-columns:1fr 1.05fr .62fr .84fr;
+  align-items:center;
 }
 .gsel{
   position:relative;
   display:flex;
   align-items:center;
-  gap:7px;
-  padding:7px 8px;
+  gap:5px;
+  padding:6px 6px;
+  margin-right:6px;
   border:1px solid var(--line);
   border-radius:9px;
   background:var(--card);
   min-width:0;
 }
 .gsel:focus-within{outline:2px solid var(--green);outline-offset:1px}
-.gsel-ico{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+.gsel-ico{flex:none;width:18px;height:18px;border-radius:6px;display:grid;place-items:center;
   background:var(--line-2);color:var(--ink-2)}
-.gsel-ico svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.7;
+.gsel-ico svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
 .gsel-txt{flex:1;min-width:0}
-.gsel-k{display:block;font-size:8.5px;font-weight:600;letter-spacing:.06em;
+.gsel-k{display:block;font-size:8px;font-weight:600;letter-spacing:.04em;
   text-transform:uppercase;color:var(--ink-3)}
-.gsel-v{display:block;font-size:12.5px;font-weight:500;letter-spacing:-.015em;
+.gsel-v{display:block;font-size:11.5px;font-weight:500;letter-spacing:-.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsel-cv{flex:none;color:var(--ink-3)}
-.gsel-cv svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;
+.gsel-cv svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;display:block}
 /* Invisible but real: still the element that opens, that the label points at,
    and that carries the aria-label. */
@@ -682,19 +692,19 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
   appearance:none;
 }
 .gstat{
-  padding:7px 9px;
-  border:1px solid var(--line);
-  border-radius:9px;
-  background:var(--card);
+  padding:2px 0 2px 7px;
+  border-left:1px solid var(--line-2);
   min-width:0;
 }
-.gk{display:block;font-size:8.5px;font-weight:600;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--ink-3)}
+.gk{display:block;font-size:8px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gv{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;
-  font-size:12.5px;font-weight:500;margin-top:2px;letter-spacing:-.02em}
-.gsub{display:block;font-size:9.5px;color:var(--ink-3);margin-top:1px;
+  font-size:10.5px;font-weight:500;margin-top:2px;letter-spacing:-.04em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gtag{margin-top:4px}
+.grp-foot{margin-top:9px}
+.grp-help{padding:0 12px 11px}
 
 .group-rename-input{
   width:100%;padding:8px 10px;
@@ -786,6 +796,27 @@ const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
 .au-cv svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;display:block}
 .au-cv.open{transform:rotate(180deg)}
+
+/* Four across is the mockup's shape and it holds down to ~380px. Below that
+   the picker icons go first: they are decorative (aria-hidden) and cost 23px
+   each, where the text they sit beside is the actual content — a chain named
+   "Tessera" truncated to "Te…" is a worse trade than no icon. */
+@media (max-width:380px){
+  .gsel-ico{display:none}
+  .gsel{gap:0}
+  /* with the icons gone the pickers need less, so the readouts take it back —
+     "Hashrate" is the widest column key and was the last cell still ellipsing */
+  .grp-strip{grid-template-columns:.92fr .98fr .72fr .95fr}
+}
+/* Narrower than that, even the text stops fitting four across, so the strip
+   folds to pickers over readouts rather than ellipsing every cell. */
+@media (max-width:339px){
+  .grp-strip{grid-template-columns:1fr 1fr;row-gap:9px}
+  .gsel{margin-right:0}
+  .grp-strip .gsel:nth-child(1){margin-right:7px}
+  .gstat{padding-left:0;border-left:none}
+  .grp-strip .gstat:nth-child(4){padding-left:9px;border-left:1px solid var(--line-2)}
+}
 
 @media (max-width:359px){
   .ledger{grid-template-columns:repeat(2,1fr)}
