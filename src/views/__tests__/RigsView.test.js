@@ -32,18 +32,52 @@ describe('RigsView', () => {
     expect(wrapper.text()).toContain('Strip');
   });
 
-  it('list row shows a living chassis with status class and chain LED when grouped', () => {
+  it('list row fronts each rig with its hardware shot, carrying the rig state', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const ch = wrapper.find('.chassis');
-    expect(ch.exists()).toBe(true);
-    // Image mode uses .ch-img; CSS fallback uses .ch-led + .ch-vent
-    const hasBody = ch.find('.ch-img').exists() || (ch.find('.ch-led').exists() && ch.find('.ch-vent').exists());
-    expect(hasBody).toBe(true);
-    expect(ch.classes().some(c => ['run','off','build','warn','bad'].includes(c) || c.startsWith('sz-'))).toBe(true);
-    const style = ch.attributes('style') || '';
-    expect(style).toMatch(/--chain-h/);
+    const shot = wrapper.find('.rigshot');
+    expect(shot.exists()).toBe(true);
+    expect(shot.find('img.rgs-img').exists()).toBe(true);
+    expect(shot.classes()).toContain('run');
+    expect(shot.attributes('aria-label')).toBe('Running');
+    // The chain is named in the row's text, so it is not painted on the shot too.
+    expect(wrapper.find('.rigrow .sb .cmk').exists()).toBe(true);
+  });
+
+  it('the hero fronts the site with a photograph, its status and its position count', () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    expect(wrapper.find('.rig-hero .rig-hero-shot').exists()).toBe(true);
+    expect(wrapper.find('.rig-hero-st .dot.run').exists()).toBe(true);
+    expect(wrapper.find('.rig-hero').text()).toContain('Active');
+    expect(wrapper.find('.rig-hero').text()).toMatch(/Positions used: 1 of \d+/);
+  });
+
+  it('a filter that would empty the list is disabled rather than reachable', () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const pills = wrapper.findAll('.rigfilters .pill');
+    expect(pills.length).toBe(5);
+    const byLabel = l => pills.find(p => p.text().includes(l));
+    expect(byLabel('Running').attributes('disabled')).toBeUndefined();
+    expect(byLabel('Off').attributes('disabled')).toBeDefined();
+    // The count the chip no longer prints is still readable to a screen reader.
+    expect(byLabel('Running').attributes('aria-label')).toBe('Running — 1 rig');
+  });
+
+  it('the sort control names its direction and reverses it in place', async () => {
+    const { wrapper } = mountWithStore(RigsView, {
+      seed: g => { g.generatePreset(); g.build(); g.build(); },
+    });
+    expect(wrapper.find('.rigsort').text()).toContain('Name (A–Z)');
+    const names = () => wrapper.findAll('.rigrow .nm').map(n => n.text());
+    const asc = names();
+    await wrapper.find('.rigsort-flip').trigger('click');
+    expect(wrapper.find('.rigsort').text()).toContain('Name (Z–A)');
+    expect(names()).toEqual([...asc].reverse());
   });
 
   it('rig detail header shows a larger chassis instead of a bare status dot', async () => {
