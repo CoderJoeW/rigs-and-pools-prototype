@@ -65,7 +65,8 @@ src/
                              (state, dispatch, tick, pools, sites, actions,
                              rivals, ...)
   stores/game.js            the Pinia store — assembles game/ into one store
-  components/               shared UI (TopBar, Feed, Compare, StatChart)
+  components/               shared UI (TopBar, Feed, Compare, StatChart,
+                             Chassis/RackShot hardware art)
   views/                    the 7 tabs (Farm, Sites, Rigs, Build, Chains,
                              Market, Stats)
   test/                     shared test helpers (not tests themselves)

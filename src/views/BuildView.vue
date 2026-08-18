@@ -79,7 +79,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; }
       </div>
 
       <div class="statline" style="border-top:1px solid var(--line-2)">
-        <div class="s"><div class="k">Hashrate</div><div class="v">{{ fmt.hash(g.dp.hash) }}</div></div>
+        <div class="s"><div class="k">Hashrate</div><div class="v">{{ fmt.hash(g.dp.mh) }}</div></div>
         <div class="s"><div class="k">Draw</div><div class="v">{{ fmt.w(g.dp.wall) }}</div></div>
         <div class="s"><div class="k">Cost</div><div class="v">{{ fmt.usd(g.dp.cost) }}</div></div>
       </div>
