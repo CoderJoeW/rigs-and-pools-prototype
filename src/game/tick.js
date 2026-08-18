@@ -211,6 +211,13 @@ export function installTick(G){
          profit line reads as rising spend, exactly backwards. */
       (G.s.powerHist=G.s.powerHist||[]).push(G.powerDay.value);
       if(G.s.powerHist.length>110) G.s.powerHist.shift();
+      /* Efficiency has to be its own series rather than hashHist over
+         powerHist: powerHist is what the power COST, in dollars, while MH/W
+         is hashrate over watts drawn — the two are only proportional while
+         the tariff and the band hold still, which is exactly what this game
+         moves around. Stored the way effMhw computes it, once per sample. */
+      (G.s.effHist=G.s.effHist||[]).push(G.effMhw.value);
+      if(G.s.effHist.length>110) G.s.effHist.shift();
     }
 
     G.refreshPools();

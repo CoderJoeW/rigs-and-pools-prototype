@@ -477,6 +477,10 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
   .segtab{font-size:11.5px;gap:4px}
   .segbar.four .segtab .ic{display:none}
 }
+/* "Achievements" is longer than any label the three-up bar was sized for. */
+@media (max-width:359px){
+  .segbar .segtab .ic{display:none}
+}
 
 /* ---- Rigs page (v64) ---- */
 /* .pill is the larger, bordered, tappable filter/switcher pill. It used to be
