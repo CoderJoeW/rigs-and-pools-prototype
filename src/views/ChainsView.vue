@@ -25,6 +25,21 @@ const SEGS=[
    icon:'M16 20v-1.6a3.4 3.4 0 0 0-3.4-3.4H6.4A3.4 3.4 0 0 0 3 18.4V20M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1.6a3.4 3.4 0 0 0-2.6-3.3M15.5 4.2a3.4 3.4 0 0 1 0 6.6'},
 ];
 const seg=ref('chains');
+/* A tablist is a single tab stop with the arrows moving between tabs, so the
+   roles the mockup's control implies are actually implemented rather than
+   only announced: one tabindex=0 at a time, and focus follows selection. */
+const segEl=reactive({});
+const segKey=e=>{
+  const d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1
+          : e.key==='Home' ? 'first' : e.key==='End' ? 'last' : 0;
+  if(!d) return;
+  e.preventDefault();
+  const i=SEGS.findIndex(x=>x.k===seg.value);
+  const n = d==='first' ? 0 : d==='last' ? SEGS.length-1
+          : (i+d+SEGS.length)%SEGS.length;
+  seg.value=SEGS[n].k;
+  const el=segEl[seg.value]; if(el&&el.focus) el.focus();
+};
 /* The (i) beside ACTIVE CHAINS. Its own flag rather than s.help: this one
    paragraph is a reference someone comes back to, and hiding it behind the
    app-wide hint preference put it out of reach of a player who had turned
@@ -33,31 +48,57 @@ const chainsInfo=ref(false);
 
 /* ---- the chain card ---------------------------------------------------
    Everything the card states is something the simulation already computes;
-   nothing here is a new number invented for the design. */
+   nothing here is a new number invented for the design.
+
+   Derived once per chain in one computed rather than called from the
+   template, the way FarmView already does it for the same helpers: ticks
+   land ten times a second, five cards read three or four of these each, and
+   groupAdvice alone walks every chain against every group against every rig.
+   Called from the template that is O(chains^2 x groups x rigs) at 10Hz for
+   figures that change on a block. */
 const hueOf=c=>CHAIN_HUE[c.id];
-const chainGroups=c=>g.s.groups.filter(x=>x.chain===c.id);
-const chainShare=c=>{ const n=g.chainHash(c); return n>0?g.myHash(c)/n:0; };
-/* What the chain itself pays out in a day: one block every `target` seconds,
-   `reward` coins each. A property of the chain, not of your share of it. */
-const emissionDay=c=>86400/c.target*c.reward;
-/* The two advisories the Farm tab already raises against a group, restated
-   against the chain they point at — a chain you have outgrown and a chain at
-   its ceiling are facts about the chain, and this is the tab about chains. */
-const outgrown=c=>chainGroups(c).some(gr=>g.groupAdvice(gr));
-const ceilingOf=c=>g.chainCeiling(c);
 /* Difficulty is a raw magnitude, not a hashrate, so it takes its own compact
    formatter rather than fmt.hash's MH/GH/TH ladder. */
 const big=x=>!isFinite(x)?'—'
   :x>=1e12?(x/1e12).toFixed(2)+' T':x>=1e9?(x/1e9).toFixed(2)+' G'
   :x>=1e6?(x/1e6).toFixed(2)+' M':x>=1e3?(x/1e3).toFixed(2)+' K':x.toFixed(2);
 const coins=x=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-/* The card's one-word verdict, in the vocabulary this tab already used as
-   RUNNING EASY / RUNNING HARD tags: difficulty is retargeted from what was
-   last seen, so a chain gaining hashrate runs easy until it catches up. */
-const easeOf=c=>{ const e=g.easeOf(c);
-  return e>1.02?{k:'easy',label:'Running easy'}
-       : e<0.98?{k:'hard',label:'Running hard'}
-       : {k:'steady',label:'Steady'}; };
+/* The verdict word, in the vocabulary this tab already used as RUNNING EASY /
+   RUNNING HARD tags: difficulty is retargeted from what was last seen, so a
+   chain gaining hashrate runs easy until it catches up. */
+const easeWord=e=> e>1.02?{k:'easy',label:'Running easy'}
+                 : e<0.98?{k:'hard',label:'Running hard'}
+                 : {k:'steady',label:'Steady'};
+const cards=computed(()=>g.s.chains.map(c=>{
+  const groups=g.s.groups.filter(x=>x.chain===c.id);
+  const ease=g.easeOf(c);
+  return {
+    c, groups,
+    // winChance IS this share — mine over the chain's total. Reaching for the
+    // store's own version rather than restating the division here.
+    share:g.winChance(c),
+    mine:g.myHash(c),
+    net:g.chainHash(c),
+    diff:g.diffOf(c),
+    /* What the chain itself pays out in a day: one block every `target`
+       seconds, `reward` coins each. A property of the chain, not of your
+       share of it. */
+    emission:86400/c.target*c.reward,
+    // The realized rate, not the `mult` constant: chains.js documents the two
+    // diverging by ~17% once the price clamps.
+    rate:g.revPerMh(c),
+    ease, easeWord:easeWord(ease),
+    /* The two advisories the Farm tab already raises against a group,
+       restated against the chain they point at — a chain you have outgrown
+       and a chain at its ceiling are facts about the chain, and this is the
+       tab about chains. */
+    outgrown:groups.some(gr=>g.groupAdvice(gr)),
+    ceiling:g.chainCeiling(c),
+    eta:g.blockETA(c), prog:g.blockProg(c),
+    miners:g.s.sims.filter(m=>m.chain===c.id).length,
+    pools:g.s.pools.filter(x=>x.live&&x.chain===c.id).length,
+  };
+}));
 
 /* ---- solo against a pool ----------------------------------------------
    Deliberately a comparison of HOW OFTEN you are paid, not of how much. In
@@ -72,9 +113,17 @@ const easeOf=c=>{ const e=g.easeOf(c);
    pool on its chain — the one it would most likely join. Hashrate on a chain
    with no pool at all contributes its solo rate to both columns, because solo
    is the only thing on offer there. */
-const bestPoolOn=c=>g.s.pools
-  .filter(p=>p.live&&p.chain===c.id)
-  .reduce((best,p)=>!best||g.poolHash(p)>g.poolHash(best)?p:best, null);
+const bestPoolOn=c=>{
+  // poolHash is a full scan of the rigs, so each candidate is measured once
+  // rather than the incumbent being re-measured for every comparison.
+  let best=null, bestH=-1;
+  for(const p of g.s.pools){
+    if(!p.live||p.chain!==c.id) continue;
+    const h=g.poolHash(p);
+    if(h>bestH){ best=p; bestH=h; }
+  }
+  return best;
+};
 const payouts=computed(()=>{
   let solo=0, pooled=0;
   /* Gathered per pool rather than added per group: a pool's blocks pay every
@@ -139,14 +188,19 @@ const projMargin=computed(()=>{
       <p class="pagehd-s">Manage and monitor your mining chains.</p>
     </div>
 
-    <div class="segbar" role="tablist" aria-label="Chains sections">
+    <div class="segbar" role="tablist" aria-label="Chains sections" @keydown="segKey">
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
-              role="tab" :aria-selected="seg===x.k?'true':'false'" @click="seg=x.k">
+              role="tab" :id="'chseg-'+x.k" :aria-controls="'chpan-'+x.k"
+              :aria-selected="seg===x.k?'true':'false'"
+              :tabindex="seg===x.k?0:-1" :ref="el=>{ if(el) segEl[x.k]=el }"
+              @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>
     </div>
 
-    <template v-if="seg==='chains'">
+    
+    <div v-show="seg==='chains'" id="chpan-chains" role="tabpanel" aria-labelledby="chseg-chains"
+         tabindex="0" class="chpanel">
     <div class="sec"><span class="eyebrow">Active chains</span>
       <button class="secinfo" :class="{on:chainsInfo}" :aria-expanded="chainsInfo?'true':'false'"
               aria-label="How chains and difficulty work" @click="chainsInfo=!chainsInfo">i</button></div>
@@ -157,40 +211,38 @@ const projMargin=computed(()=>{
       runs <b>easy</b> until it catches up, one losing hashrate runs <b>hard</b>.</p>
 
     <div class="chainlist" data-tour="chains">
-      <div v-for="c in g.s.chains" :key="c.id" class="card chaincard">
-        <button class="cc-tap" :aria-expanded="open[c.id]?'true':'false'"
-                @click="open[c.id]=!open[c.id]">
+      <div v-for="x in cards" :key="x.c.id" class="card chaincard">
+        <button class="cc-tap" :aria-expanded="open[x.c.id]?'true':'false'"
+                @click="open[x.c.id]=!open[x.c.id]">
           <span class="cc-hd">
-            <ChainGem :chain="c.id" :hue="hueOf(c)" />
+            <ChainGem :chain="x.c.id" :hue="hueOf(x.c)" />
             <span class="cc-id">
-              <span class="cc-nm">{{ c.name }}</span>
+              <span class="cc-nm">{{ x.c.name }}</span>
               <span class="cc-meta">
                 <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 1.9"/></svg>
-                Target: {{ c.target<60 ? c.target+'s' : (c.target/60).toFixed(0)+' min' }}
-                <b class="sep" aria-hidden="true">&middot;</b>{{ c.tick }}<template
-                  v-if="c.mult!==1"><b class="sep" aria-hidden="true">&middot;</b>pays
-                  &times;{{ c.mult.toFixed(2) }}</template></span>
+                Target: {{ x.c.target<60 ? x.c.target+'s' : (x.c.target/60).toFixed(0)+' min' }}
+                <b class="sep" aria-hidden="true">&middot;</b>{{ x.c.tick }}
+                <b class="sep" aria-hidden="true">&middot;</b>{{ x.rate.toFixed(4) }}/MH</span>
             </span>
-            <span v-if="outgrown(c)||ceilingOf(c)" class="ccbadge">{{
-              outgrown(c) ? 'OUTGROWN' : 'AT CEILING' }}</span>
+            <span v-if="x.outgrown||x.ceiling" class="ccbadge">{{
+              x.outgrown ? 'OUTGROWN' : 'AT CEILING' }}</span>
           </span>
           <span class="cc-body">
             <span class="cc-l">
               <span class="cc-k">Your hashrate share</span>
               <span class="cc-vrow">
-                <span class="cc-v">{{ fmt.hash(g.myHash(c)) }}</span>
-                <span class="cc-pct">{{ fmt.pct(chainShare(c),1) }}</span></span>
-              <span class="cc-bar" :class="{cap:!!ceilingOf(c)}" role="img"
-                    :aria-label="'Your share of '+c.name+': '+fmt.pct(chainShare(c),1)">
-                <i :style="{width:Math.min(100,chainShare(c)*100).toFixed(1)+'%'}"></i></span>
+                <span class="cc-v">{{ fmt.hash(x.mine) }}</span>
+                <span class="cc-pct">{{ fmt.pct(x.share,1) }}</span></span>
+              <span class="cc-bar" :class="{cap:!!x.ceiling}" aria-hidden="true">
+                <i :style="{width:Math.min(100,x.share*100).toFixed(1)+'%'}"></i></span>
             </span>
             <span class="cc-r">
               <span class="cc-k">Emission / day</span>
-              <span class="cc-v2">{{ coins(emissionDay(c)) }}</span>
-              <span class="cc-u">{{ c.tick }}</span>
+              <span class="cc-v2">{{ coins(x.emission) }}</span>
+              <span class="cc-u">{{ x.c.tick }}</span>
               <span class="cc-k cc-k2">Current difficulty</span>
-              <span class="cc-v2">{{ big(g.diffOf(c)) }}</span>
+              <span class="cc-v2">{{ big(x.diff) }}</span>
             </span>
           </span>
           <span class="cc-ft">
@@ -198,33 +250,52 @@ const projMargin=computed(()=>{
               <path d="M15 19v-1.4a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3V19"/>
               <circle cx="9" cy="8" r="3.1"/>
               <path d="M21 19v-1.4a3 3 0 0 0-2.3-2.9M15.5 5.1a3 3 0 0 1 0 5.8"/></svg>
-            {{ chainGroups(c).length }} group{{ chainGroups(c).length===1?'':'s' }}
+            {{ x.groups.length }} group{{ x.groups.length===1?'':'s' }}
             <b class="sep" aria-hidden="true">&middot;</b>
-            <span class="cc-ease" :class="easeOf(c).k">{{ easeOf(c).label }}</span>
-            <span class="cc-open" aria-hidden="true">{{ open[c.id]?'Less':'More' }}</span>
+            <span class="cc-ease" :class="x.easeWord.k">{{ x.easeWord.label }}</span>
+            <span class="cc-open" aria-hidden="true">{{ open[x.c.id]?'Less':'More' }}</span>
           </span>
         </button>
-        <div v-if="open[c.id]" class="cc-more">
-          <p class="note">{{ c.blurb }}</p>
+        <div v-if="open[x.c.id]" class="cc-more">
+          <p class="note">{{ x.c.blurb }}</p>
+          <!-- The block window, which the card itself has no room for: the one
+               live thing on this tab, and the mechanic the note above the list
+               explains. It fills toward the target and can never run past it. -->
+          <div class="cc-win">
+            <span class="cc-wt" :class="x.ease>1.02?'pos':x.ease<0.98?'neg':''">{{
+              x.net<1 ? 'no hashrate' : x.eta<1 ? 'block due' : x.eta<60
+                ? 'next block in '+x.eta.toFixed(0)+'s'
+                : 'next block in '+(x.eta/60).toFixed(0)+'m' }}</span>
+            <span class="cc-wb"><i :style="{width:(x.prog*100).toFixed(0)+'%'}"></i></span>
+            <span class="cc-ws">{{ x.share>0 ? fmt.pct(x.share,2)+' of it yours' : 'no rigs here' }}</span>
+          </div>
           <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
-            <path :d="spark(c)" fill="none" style="stroke:var(--green)" stroke-width="1.4"
+            <path :d="spark(x.c)" fill="none" style="stroke:var(--green)" stroke-width="1.4"
                   vector-effect="non-scaling-stroke"/></svg>
-          <div class="dl"><dt>Your hashrate</dt><dd>{{ fmt.hash(g.myHash(c)) }}</dd></div>
-          <div class="dl"><dt>Your mean time to a block</dt><dd>{{ fmt.eta(g.mttb(c)) }}</dd></div>
+          <div class="dl"><dt>Pays</dt>
+            <dd>{{ x.rate.toFixed(4) }}/MH a day
+              <span class="sb">&middot; {{ fmt.usd2(g.price(x.c)) }} a coin
+                &middot; base rate &times;{{ x.c.mult.toFixed(2) }}</span></dd></div>
+          <div class="dl"><dt>Network</dt>
+            <dd>{{ fmt.hash(x.net) }}
+              <span class="sb">&middot; {{ x.miners }} miner{{ x.miners===1?'':'s' }}
+                &middot; {{ x.pools }} pool{{ x.pools===1?'':'s' }}</span></dd></div>
+          <div class="dl"><dt>Your hashrate</dt><dd>{{ fmt.hash(x.mine) }}</dd></div>
+          <div class="dl"><dt>Your mean time to a block</dt><dd>{{ fmt.eta(g.mttb(x.c)) }}</dd></div>
           <div class="dl"><dt>Difficulty set from</dt>
-            <dd>{{ fmt.hash(Math.max(c.floor,c.obs)) }}
-              <span :class="g.easeOf(c)>1.02?'pos':g.easeOf(c)<0.98?'neg':''">
-                ({{ g.easeOf(c)>1?'+':'' }}{{ ((g.easeOf(c)-1)*100).toFixed(0) }}% vs live)</span></dd></div>
-          <div class="dl"><dt>Blocks found</dt><dd>{{ c.found }}</dd></div>
+            <dd>{{ fmt.hash(Math.max(x.c.floor,x.c.obs)) }}
+              <span :class="x.ease>1.02?'pos':x.ease<0.98?'neg':''">
+                ({{ x.ease>1?'+':'' }}{{ ((x.ease-1)*100).toFixed(0) }}% vs live)</span></dd></div>
+          <div class="dl"><dt>Blocks found</dt><dd>{{ x.c.found }}</dd></div>
           <div class="dl"><dt>Price impact</dt>
-            <dd :class="c.impact>0.01?'neg':c.impact<-0.01?'pos':''">
-              {{ c.impact<0?'+':'' }}{{ fmt.pct(-c.impact) }}
-              <span v-if="c.impact<-0.01" class="sb">premium from buying</span>
-              <span v-else-if="c.impact>0.01" class="sb">discount from selling</span></dd></div>
+            <dd :class="x.c.impact>0.01?'neg':x.c.impact<-0.01?'pos':''">
+              {{ x.c.impact<0?'+':'' }}{{ fmt.pct(-x.c.impact) }}
+              <span v-if="x.c.impact<-0.01" class="sb">premium from buying</span>
+              <span v-else-if="x.c.impact>0.01" class="sb">discount from selling</span></dd></div>
           <div class="dl"><dt>Market</dt>
             <dd>tracks the miners
-              <span v-if="g.fundOf(c)>g.price(c)*1.1" class="pos"> — rising toward {{ fmt.usd2(g.fundOf(c)) }}</span>
-              <span v-else-if="g.fundOf(c)<g.price(c)*0.9" class="amb"> — cooling toward {{ fmt.usd2(g.fundOf(c)) }}</span>
+              <span v-if="g.fundOf(x.c)>g.price(x.c)*1.1" class="pos"> — rising toward {{ fmt.usd2(g.fundOf(x.c)) }}</span>
+              <span v-else-if="g.fundOf(x.c)<g.price(x.c)*0.9" class="amb"> — cooling toward {{ fmt.usd2(g.fundOf(x.c)) }}</span>
               <span v-else> — near its level</span></dd></div>
         </div>
       </div>
@@ -267,10 +338,10 @@ const projMargin=computed(()=>{
         It is not more money: the share is proportional and the operator keeps a fee, so pooling
         trades a little of the rate for a lot of the wait.</p>
     </div>
-    </template>
+    </div>
 
-    <template v-if="seg==='market'">
-
+    <div v-show="seg==='market'" id="chpan-market" role="tabpanel" aria-labelledby="chseg-market"
+         tabindex="0" class="chpanel">
     <div class="sec"><span class="eyebrow">The field</span>
       <span class="eyebrow">
         <button class="btn btn-sm btn-ghost" @click="fieldMine=!fieldMine">{{
@@ -330,10 +401,10 @@ const projMargin=computed(()=>{
       pool is a business with capital behind it, and that capital caps the hashrate it can carry —
       about {{ fmt.usd(g.C.PAY*4) }} per MH/s on PPS, a ninth of that on PPLNS. Reputation is
       solvency, age, blocks found and a fee that stays put.</p>
+    </div>
 
-    </template>
-
-    <template v-if="seg==='yours'">
+    <div v-show="seg==='yours'" id="chpan-yours" role="tabpanel" aria-labelledby="chseg-yours"
+         tabindex="0" class="chpanel">
     <div class="sec"><span class="eyebrow">Your pools</span>
       <span class="eyebrow">{{ g.myPools.length }} running</span></div>
     <div v-if="!g.myPools.length" class="card"><div class="list">
@@ -542,7 +613,7 @@ const projMargin=computed(()=>{
           Post {{ fmt.usd(bond) }} and open</button>
       </div>
     </div>
-    </template>
+    </div>
   </div>
 </template>
 <style scoped>
@@ -550,11 +621,6 @@ const projMargin=computed(()=>{
    still come from main.css; what lives here is the page header, the segmented
    control that splits the tab, the chain card, and the solo-against-pool
    panel. */
-
-/* ---- page header ---------------------------------------------------- */
-.pagehd{padding:0 2px 10px}
-.pagehd-t{font-size:26px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
-.pagehd-s{font-size:12.5px;color:var(--ink-3);margin-top:2px}
 
 /* ---- the segmented control ------------------------------------------ */
 /* Blue rather than the mockup's amber: in this app amber is what a worn rig,
@@ -580,6 +646,9 @@ const projMargin=computed(()=>{
 .chaininfo{margin:0 2px 10px}
 
 /* ---- the chain card -------------------------------------------------- */
+/* The panels are v-show, not v-if: switching segments is a paint, and the
+   scroll position and any card a player left open survive the round trip. */
+.chpanel:focus{outline:none}
 .chainlist{display:grid;gap:8px;margin-bottom:10px}
 .chaincard{padding:0;overflow:hidden}
 .cc-tap{display:block;width:100%;text-align:left;padding:10px 12px 0}
@@ -608,7 +677,7 @@ const projMargin=computed(()=>{
   line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cc-pct{flex:none;font-size:11.5px;color:var(--ink-2)}
 .cc-v2{display:block;font-family:var(--mono);font-size:15px;font-weight:500;line-height:1.2;
-  margin-top:2px}
+  margin-top:2px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cc-u{display:block;font-size:10px;color:var(--ink-3);margin-top:1px}
 .cc-bar{display:block;height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;
   margin-top:7px}
@@ -628,6 +697,15 @@ const projMargin=computed(()=>{
 .cc-open{margin-left:auto;color:var(--blue);font-weight:600}
 .cc-more{padding:0 12px 11px;border-top:1px solid var(--line-2)}
 .cc-more .note{margin-top:9px}
+
+/* The block window: a countdown, the fill it has reached, and how much of the
+   next block would be yours. */
+.cc-win{margin:9px 0 4px}
+.cc-wt{display:block;font-family:var(--mono);font-size:12px;font-weight:500}
+.cc-wb{display:block;height:4px;border-radius:2px;background:var(--line-2);overflow:hidden;
+  margin:5px 0 3px}
+.cc-wb i{display:block;height:100%;background:var(--blue);transition:width .3s linear}
+.cc-ws{display:block;font-size:10.5px;color:var(--ink-3)}
 
 /* ---- solo against a pool -------------------------------------------- */
 .svp{padding:0;overflow:hidden}
@@ -665,6 +743,8 @@ const projMargin=computed(()=>{
 @media (max-width:359px){
   .cc-nm{font-size:15.5px}
   .cc-v{font-size:17px}
+  /* Obelisk's emission is twelve characters; at 320px it needs the step. */
+  .cc-v2{font-size:13.5px}
   .segtab{gap:5px;font-size:11.5px}
 }
 </style>

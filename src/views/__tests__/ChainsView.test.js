@@ -14,10 +14,16 @@ describe('ChainsView', () => {
     for (const name of ['Tessera', 'Ferro', 'Halcyon', 'Nova', 'Obelisk']) {
       expect(wrapper.text()).toContain(name);
     }
+    // The panels are v-show, so "which one am I on" is the display, not the DOM.
+    const shown = () => wrapper.findAll('.chpanel')
+      .map(p => !(p.attributes('style') || '').includes('display: none'));
+    expect(shown()).toEqual([true, false, false]);
     await seg(wrapper, 'Market');
-    expect(wrapper.text()).toContain('Rival detail');
+    expect(shown()).toEqual([false, true, false]);
+    expect(wrapper.find('#chpan-market').text()).toContain('Rival detail');
     await seg(wrapper, 'Your pools');
-    expect(wrapper.text()).toContain('Your pools');
+    expect(shown()).toEqual([false, false, true]);
+    expect(wrapper.find('#chpan-yours').text()).toContain('Found a pool');
   });
 
   it('a chain card carries its emblem, share, emission and difficulty', () => {
@@ -35,7 +41,12 @@ describe('ChainsView', () => {
     expect(card.text()).toContain('Current difficulty');
     // Tessera emits one 16.30 reward every 20s — 4,320 blocks a day.
     expect(card.text()).toContain('70,416.00');
-    expect(card.find('.cc-bar').attributes('aria-label')).toMatch(/Your share of Tessera/);
+    // The bar is decorative: the share it draws is printed as text beside it,
+    // inside the same button, so labelling it too said the figure twice.
+    expect(card.find('.cc-bar').attributes('aria-hidden')).toBe('true');
+    // The realized rate, restored to the card after the review found it had
+    // been dropped from the app entirely along with the old row.
+    expect(card.text()).toMatch(/\d\.\d{4}\/MH/);
   });
 
   it('expanding a chain card shows its detail', async () => {
@@ -108,6 +119,36 @@ describe('ChainsView', () => {
     const m = wrapper.find('.svp').text().match(/([\d.]+)× as often/);
     expect(m).toBeTruthy();
     expect(parseFloat(m[1])).toBeGreaterThanOrEqual(1);
+  });
+
+  it('the segmented control is a real tablist — panels, and arrow keys', async () => {
+    const { wrapper } = mountWithStore(ChainsView);
+    const tabs = wrapper.findAll('.segtab');
+    expect(tabs.map(t => t.attributes('role'))).toEqual(['tab', 'tab', 'tab']);
+    // One tab stop, on the selected tab.
+    expect(tabs.map(t => t.attributes('tabindex'))).toEqual(['0', '-1', '-1']);
+    for (const t of tabs) {
+      const panel = wrapper.find('#' + t.attributes('aria-controls'));
+      expect(panel.attributes('role')).toBe('tabpanel');
+      expect(panel.attributes('aria-labelledby')).toBe(t.attributes('id'));
+    }
+    await wrapper.find('.segbar').trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.findAll('.segtab')[1].attributes('aria-selected')).toBe('true');
+    await wrapper.find('.segbar').trigger('keydown', { key: 'End' });
+    expect(wrapper.findAll('.segtab')[2].attributes('aria-selected')).toBe('true');
+    await wrapper.find('.segbar').trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.findAll('.segtab')[0].attributes('aria-selected')).toBe('true');
+  });
+
+  it('the expanded detail keeps the figures the card has no room for', async () => {
+    const { wrapper } = mountWithStore(ChainsView);
+    const card = wrapper.findAll('.chaincard').find(c => c.text().includes('Tessera'));
+    await card.find('.cc-tap').trigger('click');
+    expect(card.text()).toContain('Pays');
+    expect(card.text()).toContain('Network');
+    expect(card.text()).toMatch(/\d+ miners?/);
+    expect(card.text()).toMatch(/\d+ pools?/);
+    expect(card.find('.cc-win').exists()).toBe(true);   // the block window
   });
 
   it('the ACTIVE CHAINS info note is its own disclosure', async () => {
