@@ -124,7 +124,7 @@ describe('App', () => {
     await flushPromises();
     const buildTab = wrapper.findAll('nav.tabs .tab').find(t => t.text().includes('Build'));
     await buildTab.trigger('click');
-    expect(wrapper.text()).toContain('Build a rig'); // BuildView, reached from the default Farm tab
+    expect(wrapper.text()).toContain('Design a rig, then order the parts.'); // BuildView, reached from the default Farm tab
   });
 
   it('a toast appears with the class matching its kind, announced as a polite status', async () => {

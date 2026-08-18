@@ -34,24 +34,28 @@ export function installBuildDraft(G){
     const d=G.s.draft, p=dp.value, f=G.active.value, out=[];
     const lim = d.kind==='gpu'
       ? (PART(d.frame).slots<=PART(d.mobo).pcie?'the frame':'the motherboard') : 'the controller';
-    out.push({ ok:d.n<=p.maxSlots, label:d.n+' units into '+p.maxSlots+' slots',
+    out.push({ ok:d.n<=p.maxSlots, title:'Cards fit the slots',
+      label:d.n+' units into '+p.maxSlots+' slots',
       fix:'The smaller of the frame and the board sets this — right now it is '+lim+'.' });
     const cap=G.psuUsableW(p.psu);
-    out.push({ ok:p.coreW<=cap, label:fmt.w(p.coreW)+' draw against '+fmt.w(cap)+' usable',
+    out.push({ ok:p.coreW<=cap, title:'Supply carries the draw',
+      label:fmt.w(p.coreW)+' draw against '+fmt.w(cap)+' usable',
       fix:G.psuCarrying(p.coreW)+' would carry it.' });
-    out.push({ ok:p.conn<=p.psu.conn, label:p.conn+' PCIe connectors, supply has '+p.psu.conn,
+    out.push({ ok:p.conn<=p.psu.conn, title:'Enough PCIe connectors',
+      label:p.conn+' PCIe connectors, supply has '+p.psu.conn,
       fix:G.psuWithConn(p.conn)+' would fit.' });
-    out.push({ ok:G.siteRigs(f).length<G.siteSlots(f),
+    out.push({ ok:G.siteRigs(f).length<G.siteSlots(f), title:'Free position on the floor',
       label:'Floor space at '+f.name+': '+G.siteRigs(f).length+' of '+G.siteSlots(f),
       fix:'A bigger shell has more positions.' });
     const coolDelta=G.sitePlantW(f, p.coreW/Math.max(0.01,p.air))-G.sitePlantW(f);
     const after=G.siteDemand(f)+p.coreW/p.psu.eff+coolDelta;
-    out.push({ ok:after<=G.siteCapacity(f)+G.battFirm(f),
+    out.push({ ok:after<=G.siteCapacity(f)+G.battFirm(f), title:'Power budget within limit',
       label:'Power at '+f.name+': '+fmt.w(after)+' of '
         +fmt.w(G.siteCapacity(f)+G.battFirm(f))+' available'
         +(coolDelta>1?' (incl. '+fmt.w(coolDelta)+' more cooling)':''),
       fix:'Install another source at this site.' });
-    out.push({ ok:G.s.cash>=p.cost, label:'Parts cost '+fmt.usd(p.cost)+', you hold '+fmt.usd(G.s.cash),
+    out.push({ ok:G.s.cash>=p.cost, title:'You can pay for it',
+      label:'Parts cost '+fmt.usd(p.cost)+', you hold '+fmt.usd(G.s.cash),
       fix:'Short '+fmt.usd(p.cost-G.s.cash)+'.' });
     return out;
   });
