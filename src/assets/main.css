@@ -453,6 +453,31 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 .pagehd-t{font-size:26px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
 .pagehd-s{font-size:12.5px;color:var(--ink-3);margin-top:2px}
 
+/* ---- the segmented control ------------------------------------------ */
+/* Blue rather than the mockup's amber: in this app amber is what a worn rig,
+   a hot site and a chain at its ceiling are drawn in — including on the cards
+   directly below this bar — and a third meaning for it at the top of the tab
+   would have made the warning colour mean "you are here" as well. Blue is
+   already what a selected chip is on Rigs. */
+.segbar{display:flex;margin:0 -12px 10px;padding:0 12px;
+  border-bottom:1px solid var(--line);gap:2px}
+.segtab{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 3px 9px;font-size:12.5px;font-weight:500;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:color .15s,border-color .15s}
+.segtab .ic{flex:none;width:15px;height:15px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.segtab.on{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+/* Four segments have to fit the same bar three did, so the icon is the first
+   thing to go rather than the label — a label that says "Auto-sell" is worth
+   more than a glyph beside a truncated one. */
+@media (max-width:399px){
+  .segbar{gap:0}
+  .segtab{font-size:11.5px;gap:4px}
+  .segbar.four .segtab .ic{display:none}
+}
+
 /* ---- Rigs page (v64) ---- */
 /* .pill is the larger, bordered, tappable filter/switcher pill. It used to be
    called .chip too, which meant it and the top bar's compact .chip badge (above)
