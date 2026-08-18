@@ -88,7 +88,10 @@ const flowOut=computed(()=>{ const x=flow.value; const tot=x.rigs+x.cool+x.charg
 const biggest=list=>{ const live=list.filter(x=>x.pct>0);
   if(!live.length) return null;
   return live.reduce((a,b)=>b.w>a.w?b:a); };
-const flowInTop=computed(()=>biggest(flowIn.value));
+/* Unserved stays in the bar as its red segment, but it is demand that went
+   unmet, not somewhere power arrived from — headlining it would name a source
+   that does not exist. */
+const flowInTop=computed(()=>biggest(flowIn.value.filter(x=>x.k!=='unserved')));
 const flowOutTop=computed(()=>biggest(flowOut.value));
 /* Today's metered spend at this site, and how it is pacing. f.bill only
    accumulates while the site draws, so a site that has not drawn yet has no
@@ -97,7 +100,11 @@ const billToday=computed(()=>{ const b=f.value.bill; return b?b.off+b.sh+b.peak:
 const billCoolShare=computed(()=>{ const b=f.value.bill;
   return b&&billToday.value>0 ? b.cool/billToday.value : 0; });
 
-const MAX_TILES=60, MAX_EMPTY=12, FLOOR_COLS=5;
+/* FLOOR_COLS has to be the number of columns .riggrid actually paints, or the
+   row-column address contradicts the layout it claims to describe. The shell
+   is capped at 440px, so the grid is a fixed three rather than auto-fill —
+   one number, stated in both places, instead of a guess about reflow. */
+const MAX_TILES=60, MAX_EMPTY=12, FLOOR_COLS=3;
 const rigsHere=computed(()=>g.siteRigs(f.value));
 const floorTemp=computed(()=>g.siteTemp(f.value));
 const floorAmbient=computed(()=>{ const t=floorTemp.value; return t>=70?'hot':t>=58?'warm':'cool'; });
@@ -115,9 +122,8 @@ const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots
   let running=0;
   for(const r of rigs){ if(cells.length>=MAX_TILES) break; const st=g.rigState(r); if(st.dot==='run') running++;
     const gr=g.groupOf(r); const chain=gr?gr.chain:null; const cards=r.units?r.units.length:0;
-    const size=cards>=9?'lg':cards>=5?'md':'sm';
     const code=posCode(cells.length);
-    cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, code, chain, hue:chain!=null?CHAIN_HUE[chain]:undefined, size, cards,
+    cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, code, chain, hue:chain!=null?CHAIN_HUE[chain]:undefined, cards,
       label:'Position '+code+' — '+r.name+', '+st.label+(st.sub?' ('+st.sub+')':'') }); }
   const empties=Math.min(MAX_EMPTY, MAX_TILES-cells.length, slots-rigs.length);
   for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null, code:posCode(cells.length) });
@@ -125,6 +131,11 @@ const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots
 const DOT_LABEL={ run:'Running', build:'Building', warn:'Warning', bad:'Bad', off:'Off' };
 const legend=computed(()=>{ const n={}; for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
   return ['run','build','warn','bad','off'].filter(k=>n[k]).map(k=>({ k, n:n[k], label:DOT_LABEL[k] })); });
+/* Counted rather than inferred from legend.length: a full site draws no empty
+   tiles and must not claim a key for them, and a site that is nothing BUT
+   empty positions has no rig states yet and would otherwise lose the legend
+   entirely. */
+const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
 const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
 /* Sites are stamped out of the same three plates, chosen off the site's own
    id so a site keeps its face for the whole run and two sites side by side in
@@ -149,7 +160,10 @@ const battMode=computed(()=>{ const p=plan.value;
    screen means a change in the simulation. */
 const heatLoad=computed(()=>{ const cap=g.siteCooling(f.value);
   return cap>0?Math.min(1.6,g.siteHeat(f.value)/cap):(g.siteHeat(f.value)>0?1.6:0); });
-const heatPath=computed(()=>{ const amp=2+heatLoad.value*8.5, pts=[];
+/* The three sine terms sum to 1.06, so an amplitude past ~10.4 would push the
+   trace outside the 24-tall viewBox and CLIP FLAT — reading as calm at exactly
+   the overload this is here to show. 2 + 5.2·load tops out at 10.3. */
+const heatPath=computed(()=>{ const amp=2+heatLoad.value*5.2, pts=[];
   for(let i=0;i<=48;i++){ const x=i/48*100;
     const y=12 - (Math.sin(i*0.62)*0.62 + Math.sin(i*1.37+1.1)*0.28 + Math.sin(i*2.9+0.4)*0.16)*amp;
     pts.push((i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2)); }
@@ -158,6 +172,10 @@ const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.8
 
 const fabQueued=computed(()=>f.value.queue.find(j=>j.kind==='fab'));
 const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
+/* What a queued job IS. A site queue only ever holds infrastructure — see
+   sites.js — so these are the whole vocabulary. */
+const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
+  fab:'Fab', mfg:'Parts' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
 const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
 const designPreview=computed(()=>{ const d=g.s.design; if(!d) return null;
@@ -244,13 +262,13 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
       <div class="rigwrap" :class="'ambient-'+floor.ambient">
         <div class="riggrid">
           <RackTile v-for="c in floor.cells" :key="c.key"
-                    :empty="c.id===null" :state="c.dot" :code="c.code" :size="c.size"
+                    :empty="c.id===null" :state="c.dot" :code="c.code"
                     :chain-hue="c.hue" :label="c.label"
                     @click="c.id!==null && openTile(c.id)" />
         </div>
-        <div v-if="legend.length" class="riglegend">
+        <div v-if="legend.length||emptyDrawn" class="riglegend">
           <span v-for="l in legend" :key="l.k"><i class="dot" :class="l.k"></i>{{ l.label }} {{ l.n }}</span>
-          <span><i class="dot d-empty"></i>Empty</span>
+          <span v-if="emptyDrawn"><i class="dot d-empty"></i>Empty {{ emptyDrawn }}</span>
         </div>
         <div class="rigcap">
           <template v-if="floor.rigs">Tap a position to open that rig.</template>
@@ -321,9 +339,9 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <div class="billrow">
           <div><div class="flow-k">Bill today</div>
             <div class="bill-v">{{ fmt.usd2(billToday) }}</div></div>
-          <div class="bill-r"><div class="flow-k">Since 00:00</div>
-            <div class="bill-s" :class="billCoolShare>0.25?'neg':'amb'">
-              {{ billCoolShare>0 ? fmt.pct(billCoolShare,1)+' cooling' : fmt.usd2(g.siteCostPerHour(f)*24)+'/day pace' }}</div></div>
+          <div class="bill-r"><div class="flow-k">Of that, cooling</div>
+            <div class="bill-s" :class="billCoolShare>0.25?'neg':billCoolShare>0?'amb':''">
+              {{ billToday>0 ? fmt.pct(billCoolShare,1) : 'nothing drawn yet' }}</div></div>
         </div>
         <div v-if="g.battFirm(f)>0" class="track-cap" style="margin-top:8px">
           <span>Battery adds {{ fmt.w(g.battFirm(f)) }} of firm capacity right now</span>
@@ -446,14 +464,12 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="eyebrow">{{ f.queue.length }} job{{ f.queue.length===1?'':'s' }}</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="qrow">
-          <span class="qslot" aria-hidden="true">{{ posCode(floor.rigs+i) }}</span>
+          <span class="qslot" aria-hidden="true">{{ JOB_LABEL[j.kind] || 'Build' }}</span>
           <span class="qmain">
-            <span class="qhd"><span class="nm">{{ g.jobPart(j).name }}</span>
-              <span class="qfloor">Floor 01</span></span>
+            <span class="qhd"><span class="nm">{{ g.jobPart(j).name }}</span></span>
             <span class="qbar">
               <span class="track" style="margin:0;flex:1">
-                <i :class="j.left/j.total>0.66?'o':j.left/j.total>0.33?'w':'b'"
-                   :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></span>
+                <i class="b" :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></span>
               <b class="qpct">{{ ((1-j.left/j.total)*100).toFixed(0) }}%</b></span>
             <span class="sb">{{ j.left.toFixed(1) }} h remaining of {{ j.total }}</span>
           </span>
@@ -658,13 +674,12 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
 /* ---- construction queue ---- */
 .qrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line-2)}
 .qrow:first-child{border-top:none}
-.qslot{flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:30px;
-  border:1px dashed color-mix(in srgb,var(--ink-3) 42%,transparent);border-radius:6px;
-  font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.qslot{flex:none;display:flex;align-items:center;justify-content:center;min-width:52px;height:30px;
+  padding:0 7px;border:1px dashed color-mix(in srgb,var(--ink-3) 42%,transparent);border-radius:6px;
+  font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
 .qmain{flex:1;min-width:0}
 .qhd{display:flex;align-items:baseline;gap:7px}
 .qhd .nm{font-size:13px;font-weight:500;letter-spacing:-.01em}
-.qfloor{font-size:10px;color:var(--ink-3);flex:none}
 .qbar{display:flex;align-items:center;gap:8px;margin:5px 0 3px}
 .qpct{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--ink-3)}
 .qmain .sb{display:block;font-size:10px;color:var(--ink-3)}

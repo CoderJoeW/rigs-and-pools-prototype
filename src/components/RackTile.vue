@@ -22,7 +22,6 @@ const props = defineProps({
   state: { type: String, default: 'off' },
   empty: { type: Boolean, default: false },
   code: { type: String, default: '' },
-  size: { type: String, default: 'sm' },
   chainHue: { type: [Number, String], default: undefined },
   label: { type: String, default: '' },
 });
@@ -34,14 +33,13 @@ const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !
 
 <template>
   <div v-if="empty" class="rigtile empty" aria-hidden="true">
-    <span class="rt-rail"></span>
     <span class="rt-plus">+</span>
     <span class="rt-empty">Empty</span>
   </div>
   <button
     v-else
     class="rigtile"
-    :class="[state, 'sz-' + size]"
+    :class="state"
     :style="hasChain ? { '--chain-h': chainHue } : undefined"
     :title="label"
     :aria-label="label"
@@ -68,6 +66,9 @@ const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !
   background: #07080a;
   border: 1px solid #232830;
   text-align: left;
+  /* main.css still presses button.rigtile on :active; the timing that made it
+     an ease rather than a snap used to live beside it in the old swatch rule. */
+  transition: var(--press), border-color .2s;
 }
 .rt-img {
   position: absolute;
@@ -154,7 +155,6 @@ const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !
   border: 1px dashed color-mix(in srgb, var(--ink-3) 34%, transparent);
   color: var(--ink-3);
 }
-.rigtile.empty .rt-rail { display: none }
 .rt-plus { font-size: 15px; line-height: 1; font-weight: 300 }
 .rt-empty {
   font-size: 8.5px;

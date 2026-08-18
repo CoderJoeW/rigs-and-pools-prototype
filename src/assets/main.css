@@ -654,11 +654,15 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
    rather than on a block of colour.
 
    Positions are wide rather than square because the render is: a rack face is
-   a landscape thing, and the auto-fill minimum is what decides how many
-   columns a phone gets against a tablet. */
+   a landscape thing.
+
+   THREE fixed columns, not auto-fill: SitesView addresses every position
+   row-column (01-02 is the second position of the first row), and an address
+   that reflows is an address that lies. The shell is capped at 440px, so
+   three is what auto-fill was landing on anyway — this only stops the count
+   from drifting away from FLOOR_COLS. Change one and change the other. */
 .rigwrap{padding:10px 12px 12px}
-.riggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
-@media (max-width:359px){.riggrid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}}
+.riggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .riglegend{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:9px}
 .riglegend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-3)}
 

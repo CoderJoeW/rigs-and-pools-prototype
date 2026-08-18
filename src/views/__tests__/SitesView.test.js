@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import SitesView from '../SitesView.vue';
+import { cssRule } from '../../test/cssRule.js';
 
 describe('SitesView', () => {
   it('lists the starting site and its manage panel', () => {
@@ -134,19 +135,21 @@ describe('SitesView', () => {
     const style = tile.attributes('style') || '';
     expect(style).toMatch(/--chain-h/);
     expect(tile.find('.rt-led').exists()).toBe(true);
-    expect(tile.classes().some(c => c.startsWith('sz-'))).toBe(true);
   });
 
   /* A position is addressed row-column, so the label on a tile is the label a
-     hand written sticker on the actual rack would carry. */
-  it('addresses positions row-column, five to a row', () => {
+     hand written sticker on the actual rack would carry — which means the row
+     has to break where .riggrid's columns actually break. */
+  it('addresses positions row-column, wrapping at the grid\'s column count', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.s.cash = 200000; g.upgradeShell(g.active.id, 'garage');
         g.active.queue.forEach(j => { j.left = 0.0001; }); g.stepTick(1);
-        for (let i = 0; i < 6; i++) { g.generatePreset(); g.build(); } },
+        for (let i = 0; i < 5; i++) { g.generatePreset(); g.build(); } },
     });
     const codes = wrapper.findAll('button.rigtile .rt-n').map(n => n.text());
-    expect(codes.slice(0, 6)).toEqual(['01-01', '01-02', '01-03', '01-04', '01-05', '02-01']);
+    expect(codes).toEqual(['01-01', '01-02', '01-03', '02-01', '02-02']);
+    // and the CSS the address describes really is that many columns
+    expect(cssRule('.riggrid')).toContain('grid-template-columns:repeat(3,1fr)');
   });
 
   it('gives every occupied position a hardware render, and empties none', () => {
@@ -192,8 +195,10 @@ describe('SitesView', () => {
 
     const rows = wrapper.findAll('.qrow');
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0].text()).toContain('Floor 01');
-    expect(rows[0].find('.qslot').exists()).toBe(true);
+    // a site queue holds infrastructure, never rigs, so the badge names the
+    // KIND of job — it must not borrow the floor plan's position addresses
+    expect(rows[0].find('.qslot').text()).toBe('Shell');
+    expect(rows[0].text()).not.toMatch(/\d\d-\d\d/);
     const rush = rows[0].find('.qrush');
     expect(rush.text()).toContain('Rush');
     const before = store.s.cash;
