@@ -96,11 +96,21 @@ const freePositions=computed(()=>{
   const f=g.active;
   return Math.max(0, g.siteSlots(f)-g.siteRigs(f).length);
 });
-/* The draw stat's sub-line: what this one rig would take out of the site's
-   own headroom, which is the number the power check is really about. */
-const siteShare=computed(()=>{
-  const f=g.active, cap=g.siteCapacity(f)+g.battFirm(f);
-  return cap>0 ? g.dp.wall/cap : 0;
+/* The draw stat's sub-line. Deliberately NOT this rig's draw over the site's
+   capacity: that reads as a small, calm fraction of a site already close to
+   its limit, which is exactly when it should be shouting. It is the site's
+   demand AFTER this rig against what the site can serve — the same arithmetic
+   the power check gates on, including the extra cooling the rig's own heat
+   pulls in, so the colour turns at the moment the check does. */
+const siteAfter=computed(()=>{
+  const f=g.active, p=g.dp;
+  const cap=g.siteCapacity(f)+g.battFirm(f);
+  const coolDelta=g.sitePlantW(f, p.coreW/Math.max(0.01,p.air))-g.sitePlantW(f);
+  const after=g.siteDemand(f)+p.wall+coolDelta;
+  // A site with no capacity at all is over its limit, not at 0% of it —
+  // returning a calm zero there would colour the stat green in the one case
+  // where nothing can run.
+  return { after, cap, frac: cap>0 ? after/cap : (after>0 ? Infinity : 0) };
 });
 /* Fab-designed parts (data/customParts.js) sit past the top of every
    catalogue ladder rather than inside it — generatePreset's own search
@@ -285,7 +295,7 @@ const verdict=computed(()=>{
       <p class="pagehd-s">Design a rig, then order the parts.</p>
     </div>
 
-    <div class="card bhero" data-tour="build">
+    <div class="card bhero">
       <div class="bh-top">
         <span class="bh-eyebrow">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
@@ -318,8 +328,9 @@ const verdict=computed(()=>{
           <div class="u">{{ g.s.draft.n }} card{{ g.s.draft.n===1?'':'s' }}</div></div>
         <div class="s"><div class="k">Draw</div>
           <div class="v" data-stat="draw">{{ fmt.w(drawShown) }}</div>
-          <div class="u" :class="siteShare>1?'neg':siteShare>0.8?'amb':''">
-            {{ fmt.pct(siteShare,0) }} of the site</div></div>
+          <div class="u" :class="siteAfter.frac>1?'neg':siteAfter.frac>0.85?'amb':''">
+            {{ siteAfter.cap>0 ? 'site at '+fmt.pct(Math.min(9.99,siteAfter.frac),0)+' after'
+                               : 'site has no power' }}</div></div>
         <div class="s"><div class="k">Cost</div>
           <div class="v" data-stat="cost">{{ fmt.usd(costShown) }}</div>
           <div class="u">{{ isFinite(paybackShown) ? Math.round(paybackShown)+'d payback' : 'never pays back' }}</div></div>
@@ -389,7 +400,10 @@ const verdict=computed(()=>{
         </div>
         <div class="bc-row">
           <div><div class="bc-v">{{ g.s.draft.n }}</div>
-            <div class="bc-u">of {{ cardLimit.n }} max</div></div>
+            <div class="bc-u">of {{ cardLimit.n }} max</div>
+            <!-- Risers are priced per card and are part of dp.cost, so without
+                 this the parts list no longer added up to the Cost stat. -->
+            <div class="bc-u">+{{ g.s.draft.n }} risers {{ fmt.usd(g.s.draft.n*g.RISER.price) }}</div></div>
           <span class="stepper">
             <button aria-label="Decrease card count"
                     :disabled="mode!=='custom'||g.s.draft.n<=1"
@@ -456,8 +470,12 @@ const verdict=computed(()=>{
     </div>
 
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ buildStatus }}</p>
+    <!-- The tour's own copy says "tap Order parts below", and the tour scrolls
+         its target to the middle of the screen — so the target has to be that
+         button, not the hero it used to sit on, which now leaves the button a
+         page below the fold. -->
     <button class="btn btn-wide btn-order buildcta" :class="g.canBuild?'btn-pri':''"
-            data-testid="build" :disabled="!g.canBuild" @click="g.build(qty)">
+            data-tour="build" data-testid="build" :disabled="!g.canBuild" @click="g.build(qty)">
       <span class="cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24">
         <circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/>
         <path d="M2.5 3.5h3l2.6 11.2h10.3l2.1-8H6.6"/></svg></span>

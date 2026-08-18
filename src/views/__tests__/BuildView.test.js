@@ -462,6 +462,38 @@ describe('BuildView', () => {
     });
   });
 
+  describe('the review fixes', () => {
+    it('the draw stat reports where the SITE lands, so it colours when the check fails', async () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      const sub = () => wrapper.findAll('.bh-stats .s')[1].find('.u');
+      expect(sub().text()).toMatch(/^site at \d+% after$/);
+      // Starve the site: the power check fails, and the stat has to say so.
+      const powerCheck = () => store.checks.find(c => c.title === 'Power budget within limit');
+      expect(powerCheck().ok).toBe(true);
+      expect(sub().classes()).not.toContain('neg');
+
+      store.s.sites[0].sources = [];
+      await nextTick();
+      expect(powerCheck().ok).toBe(false);
+      expect(sub().classes()).toContain('neg');
+    });
+
+    it('the tour points at the Order button its own copy tells you to tap', () => {
+      const { wrapper } = mountWithStore(BuildView);
+      const target = wrapper.find('[data-tour="build"]');
+      expect(target.exists()).toBe(true);
+      expect(target.attributes('data-testid')).toBe('build');
+      expect(target.text()).toContain('Order parts');
+    });
+
+    it('prices the risers, which scale with the card count and are inside dp.cost', () => {
+      const { wrapper, store } = mountWithStore(BuildView);
+      const n = store.s.draft.n;
+      expect(wrapper.find('.bcount').text())
+        .toContain('+' + n + ' risers ' + fmt.usd(n * store.RISER.price));
+    });
+  });
+
   describe('the Order-parts button', () => {
     it('uses a fixed dark ink when buildable, not white — same WCAG AA failure already fixed on this tab\'s other green fills', () => {
       // .btn-pri's #fff fails 4.5:1 in both themes (~3.55:1 light,
