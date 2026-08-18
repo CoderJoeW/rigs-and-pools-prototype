@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import MarketView from '../MarketView.vue';
 import { fmt } from '../../utils/format.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/* cssRule() reads main.css; these rules are scoped to the SFC, so the
+   stylesheet to search is the component's own <style> block. Same idea —
+   pin a cascade fix in the source rather than hope a runtime that does not
+   apply CSS would have caught it. */
+const sfcCss = fs.readFileSync(path.resolve(import.meta.dirname, '../MarketView.vue'), 'utf8');
+const scopedRule = sel =>
+  sfcCss.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w-])\\{([^}]*)\\}'))?.[1] || '';
 
 /* Four segments now, so anything below prices has to be switched to first. */
 const seg = (wrapper, label) =>
@@ -102,7 +112,7 @@ describe('MarketView', () => {
     // The only holding, so it is the whole wallet.
     expect(row.find('.hr-pct').text()).toBe('100%');
     expect(row.find('.hr-usd').text())
-      .toBe(fmt.usd2(1000 * store.price(store.chain('tessera'))));
+      .toContain(fmt.usd2(1000 * store.price(store.chain('tessera'))));
     // An empty wallet slot has no share to claim.
     const ferro = wrapper.findAll('.holdrow').find(r => r.text().includes('FRO'));
     expect(ferro.find('.hr-pct').text()).toBe('—');
@@ -122,5 +132,47 @@ describe('MarketView', () => {
     expect(wrapper.find('#mkpan-ledger').text()).toContain('Taken in');
     await seg(wrapper, 'Setup');
     expect(wrapper.find('#mkpan-setup').text()).toContain('Erase save');
+  });
+
+  describe('the review fixes', () => {
+    it('the change actually renders green or red, not the scoped base grey', () => {
+      // A scoped rule compiles with its data-v attribute, so a bare
+      // .cc-chg{color} outranks the global .pos/.neg and every change was
+      // painted grey. The state colours have to be restated at that weight.
+      expect(scopedRule('.cc-chg.pos')).toMatch(/color:\s*var\(--green\)/);
+      expect(scopedRule('.cc-chg.neg')).toMatch(/color:\s*var\(--red\)/);
+      expect(scopedRule('.hr-sub.pos')).toMatch(/color:\s*var\(--green\)/);
+
+      const { wrapper } = mountWithStore(MarketView, {
+        seed: g => { for (const c of g.s.chains) c.hist.push(c.price * 1.1); },
+      });
+      const chg = wrapper.findAll('.coincard')[0].find('.cc-chg');
+      expect(chg.classes()).toContain('pos');
+    });
+
+    it('the THIN badge is reachable, and lands on the thinnest book', () => {
+      const { wrapper, store } = mountWithStore(MarketView);
+      const thinnest = store.s.chains
+        .reduce((a, c) => (c.depth < a.depth ? c : a));
+      const tagged = wrapper.findAll('.holdrow')
+        .filter(r => r.find('.tag.d').exists())
+        .map(r => r.find('.hr-t').text().split(/\s/)[0]);
+      expect(tagged.length).toBeGreaterThan(0);
+      expect(tagged).toContain(thinnest.tick);
+      // Not everything is thin, or the badge says nothing.
+      expect(tagged.length).toBeLessThan(store.s.chains.length);
+    });
+
+    it('the share column can hold a seven-figure balance', () => {
+      const { wrapper } = mountWithStore(MarketView, {
+        seed: g => { g.s.wallet.tessera = 1_250_000; },
+      });
+      const row = wrapper.findAll('.holdrow').find(r => r.text().includes('TSR'));
+      // The count is on its own line, and the percentage moved down beside
+      // the dollar value, so neither line has to hold both.
+      expect(row.find('.hr-v').text()).toBe(fmt.c(1_250_000));
+      expect(row.find('.hr-usd').text()).toContain('%');
+      expect(scopedRule('.hd-head,.holdrow')).toMatch(/minmax\(86px,\s*auto\)/);
+    });
   });
 });

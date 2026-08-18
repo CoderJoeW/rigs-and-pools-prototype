@@ -56,13 +56,21 @@ const WINDOW='18h';
    to "$0.02" and a whole day's move disappears into the rounding. Sub-dollar
    coins get the digits their price actually varies in. */
 const coinUsd=p=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);
+/* "Thin" against the field rather than against a fixed number: the old
+   markup tested depth<=400 and no chain in the catalog has ever been that
+   shallow (the shallowest is 2130), so the badge could not render — including
+   on Halcyon, whose own blurb is about its thin book. Measured off the
+   shallowest book actually in play, so it keeps meaning something if the
+   catalog moves. */
+const thinnest=computed(()=>Math.min(...g.s.chains.map(c=>c.depth)));
 const coins=computed(()=>g.s.chains.map(c=>{
   const h=c.hist||[], n=h.length;
   const prev=n>=2?h[n-2]:null;
   const chg = prev>0 ? (h[n-1]-prev)/prev : null;
   const held=g.s.wallet[c.id]||0;
   return { c, price:g.price(c), chg, held, value:held*g.price(c),
-           hue:CHAIN_HUE[c.id], spark:sparkPath(h, 26, 22), thin:c.depth<=400 };
+           hue:CHAIN_HUE[c.id], spark:sparkPath(h, 26, 22),
+           thin:c.depth<=thinnest.value*1.5 };
 }));
 const walletTotal=computed(()=>coins.value.reduce((a,x)=>a+x.value,0));
 /* Each coin's share of what the wallet is worth — the bar the mockup draws
@@ -163,9 +171,9 @@ async function onBackupFile(e){
             <span class="hr-exit" :class="slip(x.c,1)>0.02?'neg':''">{{ fmt.pct(slip(x.c,1)) }}</span>
             <span class="hr-share">
               <span class="hr-v">{{ fmt.c(x.held) }}</span>
-              <span class="hr-pct">{{ x.held>0 ? fmt.pct(shareOf(x),0) : '—' }}</span>
               <span class="hr-bar"><i :style="{width:(shareOf(x)*100).toFixed(1)+'%'}"></i></span>
-              <span class="hr-usd">{{ fmt.usd2(x.value) }}</span></span>
+              <span class="hr-usd">{{ fmt.usd2(x.value) }}
+                <span class="hr-pct">{{ x.held>0 ? fmt.pct(shareOf(x),0) : '—' }}</span></span></span>
           </button>
           <div v-if="g.s.drip.on&&x.held>0" class="track-cap holdrip">
             <span :style="g.s.hold[x.c.id]?'color:var(--amber)':''">
@@ -317,7 +325,14 @@ async function onBackupFile(e){
 .cc-p{font-family:var(--mono);font-size:19px;font-weight:500;letter-spacing:-.02em;
   margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cc-c{display:flex;align-items:baseline;gap:6px;margin-top:2px}
+/* The state colours have to be restated at this specificity: a scoped rule
+   compiles with the data-v attribute on it, so a bare `.cc-chg{color:…}`
+   outranks the global .pos/.neg it is meant to defer to and every change
+   renders grey. The sibling .hr-exit.neg below has the same shape for the
+   same reason. */
 .cc-chg{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-3)}
+.cc-chg.pos{color:var(--green)}
+.cc-chg.neg{color:var(--red)}
 .cc-w{margin-left:auto;font-size:9.5px;color:var(--ink-3);text-transform:uppercase;
   letter-spacing:.05em}
 .cc-spark{display:block;width:100%;height:32px;margin-top:6px}
@@ -329,7 +344,11 @@ async function onBackupFile(e){
 .holdings{padding:0;overflow:hidden}
 /* One column definition, stated once and shared by the header and the rows,
    so the two cannot drift apart. */
-.hd-head,.holdrow{display:grid;grid-template-columns:28px 1fr auto auto 86px;
+/* The share column is minmax, not a fixed track: a seven-figure holding
+   prints wider than 86px and a fixed one would have spilled it left over the
+   neighbouring column. It grows out of the flexible id column, which
+   truncates gracefully; the count truncates too rather than overrunning. */
+.hd-head,.holdrow{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto minmax(86px,auto);
   align-items:center;gap:9px;padding:8px 11px;text-align:left;width:100%}
 .hd-head{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink-3);border-bottom:1px solid var(--line)}
@@ -343,11 +362,14 @@ async function onBackupFile(e){
 .hr-n{display:block;font-size:9.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap}
 .hr-price{font-family:var(--mono);font-size:12.5px;text-align:right;line-height:1.2}
-.hr-sub{display:block;font-size:9.5px;font-weight:500}
+.hr-sub{display:block;font-size:9.5px;font-weight:500;color:var(--ink-3)}
+.hr-sub.pos{color:var(--green)}
+.hr-sub.neg{color:var(--red)}
 .hr-exit{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:right}
 .hr-exit.neg{color:var(--red)}
 .hr-share{text-align:right;min-width:0}
-.hr-v{font-family:var(--mono);font-size:12.5px;font-weight:500}
+.hr-v{display:block;font-family:var(--mono);font-size:12.5px;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hr-pct{font-size:9.5px;color:var(--ink-3);margin-left:5px}
 /* The bar is decorative — the share it draws is printed as the percentage
    directly above it, inside the same button. */
