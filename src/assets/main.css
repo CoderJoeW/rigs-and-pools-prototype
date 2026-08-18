@@ -472,10 +472,15 @@ input[type=range]{width:100%;accent-color:var(--green);margin:6px 0 2px}
 /* Four segments have to fit the same bar three did, so the icon is the first
    thing to go rather than the label — a label that says "Auto-sell" is worth
    more than a glyph beside a truncated one. */
+/* Below 400px the icon is the first thing to go rather than the label — a
+   label that says "Achievements" is worth more than a glyph beside a
+   truncated one. One rule for every bar: a four-up bar runs out of room
+   first, but "Achievements" on a three-up one is just as long, and two
+   overlapping rules meant a change to either silently moved the other. */
 @media (max-width:399px){
   .segbar{gap:0}
   .segtab{font-size:11.5px;gap:4px}
-  .segbar.four .segtab .ic{display:none}
+  .segtab .ic{display:none}
 }
 
 /* ---- Rigs page (v64) ---- */

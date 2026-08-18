@@ -38,7 +38,7 @@ export function installState(G){
     autoOff:false, offThreshold:0, minSell:0, autoFix:false, fixAt:0.45,
     drip:{ on:true, frac:0.5, hours:1 }, dripAt:0, hold:{},
     blocksSolved:0, orphaned:0, powerPaid:0, spent:0, earned:0,
-    peakHash:0, shed:0, netHist:[], hashHist:[], cashHist:[], powerHist:[], bestBlock:0, gen:0, weather:null,
+    peakHash:0, shed:0, netHist:[], hashHist:[], cashHist:[], powerHist:[], effHist:[], netCumHist:[], bestBlock:0, gen:0, weather:null,
     recentBlockUsd:{},
     mile:{done:{},rank:0}, poolTake:0, repairs:0, rebuilds:0, peakNetDay:0,
     today:{day:0,earned:0,power:0,blocks:0}, yday:null,
