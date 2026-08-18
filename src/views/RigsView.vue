@@ -586,12 +586,18 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 </template>
 
 <style scoped>
-/* Hybrid: large chassis as list hero */
+/* Mockup fidelity: large chassis heroes (~96px) matching AYdqV mockup */
 .rig-chassis{
-  width:48px !important;
-  height:48px !important;
-  border-radius:9px !important;
+  width:96px !important;
+  height:96px !important;
+  border-radius:12px !important;
   flex:none;
 }
-.rigrow{gap:12px;padding:11px 12px}
+.rigrow{
+  gap:14px;
+  padding:12px 12px;
+  min-height:108px;
+  align-items:center;
+}
+.rigrow .mid{ min-width:0; }
 </style>

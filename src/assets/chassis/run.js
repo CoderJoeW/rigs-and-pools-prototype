@@ -1,2 +1,24 @@
-// chassis run sprite (64×64 optimised)
-export default "data:image/png;base64,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";
+// chassis run sprite (64×64 high-fidelity, chunked)
+import p1 from "./run_p1.js";
+import p2 from "./run_p2.js";
+import p3 from "./run_p3.js";
+import p4 from "./run_p4.js";
+import p5 from "./run_p5.js";
+import p6 from "./run_p6.js";
+import p7 from "./run_p7.js";
+import p8 from "./run_p8.js";
+import p9 from "./run_p9.js";
+import p10 from "./run_p10.js";
+import p11 from "./run_p11.js";
+import p12 from "./run_p12.js";
+import p13 from "./run_p13.js";
+import p14 from "./run_p14.js";
+import p15 from "./run_p15.js";
+import p16 from "./run_p16.js";
+import p17 from "./run_p17.js";
+import p18 from "./run_p18.js";
+import p19 from "./run_p19.js";
+import p20 from "./run_p20.js";
+import p21 from "./run_p21.js";
+import p22 from "./run_p22.js";
+export default "data:image/png;base64," + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11 + p12 + p13 + p14 + p15 + p16 + p17 + p18 + p19 + p20 + p21 + p22;

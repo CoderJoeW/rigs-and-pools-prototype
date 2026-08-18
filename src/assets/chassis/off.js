@@ -1,2 +1,19 @@
-// chassis off sprite (64×64 optimised)
-export default "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAABLFBMVEUAAAAKCgoKCgoKCgoJCQkNDQ0YGBgaGhoZGRoXFxgXFxcWFhYODg4mJiYnJycoKCkoKCgmJycmJicmJSYlJSYjJCQlJSUeHx8eHh4dHR0TExMVFxUiKSIlLSUkLSUkLCUiKiMSEhIbGxseHh8jIyMQEBAMDAwLCwsNDw0XHBcaIBoZIBoXHRcODw4LCwoPDw8iIiIiIiMREREQERAREhEQEREgICAUFBQMDQ0WFhccHBwaGxscHR0dHh0dHh4cHRwbHBwYGBkfHx8ODw8KCgkYGRkcHB0ZGRkdHR4VFRUTFBQhISERERIREhITExQaGhsbGxwhISIUFBUUFRUSExIfHyASEhMXGBgODg8PDg8SExMPEBAcGxwZGhoVFhYWFxcVFRYQEBEPDxAeHR5CHiAcAAAAA3RSTlMAAIAXzkf+AAADOElEQVRYw+2WbVfbNhSAaZNItuVsfVmL5Y51EhV07ZiZu6JZgRSHzbJC6qRhoes6KGP//z9MspMC5Zzm7uzjeI4lOTnxkyvr6mVlZcGt2y0wt2+tXOdGcCP4RNC2NK2r/q2g/VmWCtrtDsKejz7FRwGxddgoPitA3S++7N65c/fuvW7N/a9qut0H9x4+RK2lgpa/GtE4fvT12to3j9c+8u0jxni0HgAE6AkVG5tPv3vmeP5s3ny/9cNGwrdBgh9Z2klepD8tSNOXL18IkXREugPpAtqWqPNzJwy3tkJXbdVt2OlsZBIoQMrvqd29vb1+TbT36pXa73kE5yBBMPBUcp2DMMQ4AryDXwT5tdBql/ajGhtCSXcLGwLa10YsFbTaw0Op03TE2OvXjI1G6cgWhxBoOKjaywXmCcv9MZ+o/cmEN/T4GGMdIHZoAJko38RaTs2RMdOpnMoFVfwbimcSEIE8jLUhwcc5YIsfWDIDFbwx2D2e5wtDLciswOzAIsgxiysph9VQDof2pqpiy3Gq3wK7ILXmqlAX2LeJsQ2rWoUIqh2ihahHrhm/BSIgA4ggnunJ2KXReoNNprJPKVWep9dBgoFESXiRw78nBwfJOzefsjiqQILUx9HAsV5XTRS00EFaQgR/RCwQ13hvYyGMQgQsYr5X0LJflqX94zlK/ZkHjMYggUGMHR+7oWeXSNPAwAQlyUmu7cCf2OI5tNY2L0+RUSABPQ4MITZ5bfmQZRlxnBozJAwoICg25sycnroHz85MwzQOzoCCQKOxpVkKeu527DoUoICDBEVMRL0kja5k81/CMM4ggokgmLoh7Nu6LCkt7FUonpsEQwQpT02TxOdX1+VQCg8UgRKkVyfxbLBgNYr+pp4RgC60bRcMSc6bBD4XibvmoRgJEbT87cBH6iKFC9osKvztB3II2ZmmXGYpu4ZdUIzERwCB9GJC8CVOTjx8ojUyRiIJEMTY/pJcYp6L01ge4Qoi4JwIt5+Hl3AfEsPHIEGec6xoEc0Gs9l8SYroRE0w1ygGCFJk57JSKPPnZzXfkiHOsUaIAXbnzXnQG1fo2COK/XZzeSb+14PmzXH/RvB/FfwDLpDRVW3tyL0AAAAASUVORK5CYII=";
+// chassis off sprite (64×64 high-fidelity, chunked)
+import p1 from "./off_p1.js";
+import p2 from "./off_p2.js";
+import p3 from "./off_p3.js";
+import p4 from "./off_p4.js";
+import p5 from "./off_p5.js";
+import p6 from "./off_p6.js";
+import p7 from "./off_p7.js";
+import p8 from "./off_p8.js";
+import p9 from "./off_p9.js";
+import p10 from "./off_p10.js";
+import p11 from "./off_p11.js";
+import p12 from "./off_p12.js";
+import p13 from "./off_p13.js";
+import p14 from "./off_p14.js";
+import p15 from "./off_p15.js";
+import p16 from "./off_p16.js";
+import p17 from "./off_p17.js";
+export default "data:image/png;base64," + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11 + p12 + p13 + p14 + p15 + p16 + p17;
