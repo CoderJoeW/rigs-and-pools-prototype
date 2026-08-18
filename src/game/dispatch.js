@@ -231,9 +231,27 @@ export function installDispatch(G){
     return c ? revPerMh(c)*G.evMult(G.poolOf(gr.pool)) : 0;
   };
 
+  /* Rolling the day over stashes the day that just ended, so the Farm tab can
+     say "vs yesterday" about a real closed day rather than about whichever
+     sample the 0.75-day netHist cadence happened to land on. Only a day that
+     actually ran is kept: a save resumed after a multi-day gap rolls straight
+     past the empty days in between, and `yday.day` is what tells the view the
+     stashed figures are the immediately preceding day and not a stale one. */
   const today = () => { const d=Math.floor(G.s.t/86400);
-    if(!G.s.today||G.s.today.day!==d) G.s.today={day:d,earned:0,power:0,blocks:0};
+    if(!G.s.today||G.s.today.day!==d){
+      if(G.s.today&&G.s.today.day===d-1) G.s.yday={...G.s.today,hash:totalHash.value};
+      G.s.today={day:d,earned:0,power:0,blocks:0};
+    }
     return G.s.today; };
+  /* Yesterday's close for `k`, or null when there is no adjacent closed day to
+     compare against (fresh save, or a resume that skipped days). */
+  const yday = k => { const y=G.s.yday;
+    return y&&y.day===Math.floor(G.s.t/86400)-1&&Number.isFinite(y[k]) ? y[k] : null; };
+  /* Fractional change from yesterday's close, or null when there is nothing to
+     compare against — including when yesterday was flat zero, where a percent
+     change is not defined rather than infinite. */
+  const dayDelta = (k, now) => { const was=yday(k);
+    return was===null||was===0 ? null : (now-was)/Math.abs(was); };
   const revenueDay = computed(()=> today().earned);
   const powerDay = computed(()=> today().power);
   const netDay = computed(()=> today().earned-today().power);
@@ -244,5 +262,5 @@ export function installDispatch(G){
   const poolEarned = computed(()=> G.s.pools.reduce((a,p)=>a+(p.owner==='you'?p.earned:0),0));
   const lifetimeNet = computed(()=> G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
-  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
+  Object.assign(G, {touchHeat,BATT_HORIZON,DEFAULT_ELEC,battAdvice,battFirm,battKw,battKwh,binding,blockETA,blockProg,blocksDay,chainCeiling,chainHash,chassisW,diffOf,dayDelta,draftGroup,draftRate,easeOf,effMhw,expectedDay,flowOf,fundOf,groupAdvice,groupHash,groupOf,groupRigs,headroom,idleCashAdvice,lifetimeNet,liveUnits,margRate,mttb,myHash,netDay,poolEarned,poolHash,powerDay,powerRateDay,psuCarrying,psuUsableW,psuWithConn,revPerMh,revenueDay,rigAir,rigCoreW,rigHash,rigLive,rigNet,rigPow,rigRev,rigState,rigWallW,rigWear,runway,simHash,siteCapacity,siteCooling,siteCostPerHour,siteDemand,siteHeat,sitePlan,sitePlantW,siteRigs,siteSlots,siteStorage,siteTemp,srcOut,throttleOf,today,totalCapacity,totalDemand,totalHash,walletUsd,winChance});
 }

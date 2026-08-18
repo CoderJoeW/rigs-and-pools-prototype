@@ -12,15 +12,23 @@ export function installBuildDraft(G){
   /* ---- build draft ---- */
   const dp = computed(()=>{
     const d=G.s.draft, x=PART(d.cool);
+    let base;
     if(d.kind==='gpu'){
       const f=PART(d.frame), m=PART(d.mobo), p=PART(d.psu), u=PART(d.unit);
-      return { maxSlots:Math.min(f.slots,m.pcie), coreW:f.w+m.w+x.w+d.n*RISER.w+d.n*u.w,
+      base = { maxSlots:Math.min(f.slots,m.pcie), coreW:f.w+m.w+x.w+d.n*RISER.w+d.n*u.w,
         psu:p, unit:u, conn:d.n*u.conn, mh:d.n*u.mh, air:f.air*x.fac,
         cost:f.price+m.price+p.price+x.price+d.n*(u.price+RISER.price) };
+    } else {
+      const k=PART(d.ctrl), p=PART(d.psu), u=PART(d.unit);
+      base = { maxSlots:k.boards, coreW:k.w+x.w+d.n*u.w, psu:p, unit:u, air:1.30*x.fac,
+        conn:d.n*u.conn, mh:d.n*u.mh, cost:k.price+p.price+x.price+d.n*u.price };
     }
-    const k=PART(d.ctrl), p=PART(d.psu), u=PART(d.unit);
-    return { maxSlots:k.boards, coreW:k.w+x.w+d.n*u.w, psu:p, unit:u, air:1.30*x.fac,
-      conn:d.n*u.conn, mh:d.n*u.mh, cost:k.price+p.price+x.price+d.n*u.price };
+    /* `wall` is what the site's meter would see: core draw grossed up by the
+       supply's efficiency, the same relationship rigWallW applies to a rig
+       that already exists — so the Build hero and the Rigs list quote the
+       same figure for the same hardware. Derived here rather than in the
+       template because Build's hero, its verdict and draftEff all want it. */
+    return { ...base, wall: base.coreW/base.psu.eff };
   });
   const checks = computed(()=>{
     const d=G.s.draft, p=dp.value, f=G.active.value, out=[];

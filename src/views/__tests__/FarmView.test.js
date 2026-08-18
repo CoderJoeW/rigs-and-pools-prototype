@@ -104,14 +104,91 @@ describe('FarmView', () => {
     expect(wrapper.text()).toMatch(/Best block ever\s*—/);
   });
 
-  it('each site row shows a large industrial chassis hero', () => {
+  it('each site row shows a large industrial hardware shot', () => {
     const { wrapper } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
     const row = wrapper.find('button.siterow');
     expect(row.exists()).toBe(true);
-    expect(row.find('.chassis').exists() || row.find('.ch-img').exists()).toBe(true);
+    const shot = row.find('.rackshot');
+    expect(shot.exists()).toBe(true);
+    expect(row.find('.rs-img').attributes('src')).toBeTruthy();
+    // the shot carries the row's status, so it is not a decorative image
+    expect(shot.attributes('aria-label')).toMatch(/ONLINE|IDLE|HOT/);
     expect(row.text()).toMatch(/ONLINE|IDLE|HOT/);
+  });
+
+  it('a site row shows the three headline metrics and its utilization', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
+    });
+    const row = wrapper.find('button.siterow');
+    expect(row.text()).toContain('Hash rate');
+    expect(row.text()).toContain('Power');
+    expect(row.text()).toContain('Temp');
+    expect(row.text()).toContain('Utilization');
+    expect(row.find('.ubar i').attributes('style')).toMatch(/width:/);
+  });
+
+  it('the day ledger reports the figures the overview cards leave out', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const text = wrapper.text();
+    for (const k of ['Gross revenue', 'Power cost', 'Net / day', 'Net to date',
+                     'Rig uptime', 'Active rigs', 'Net margin', 'Est. payout (24h)',
+                     'Payout progress']) {
+      expect(text).toContain(k);
+    }
+  });
+
+  it('a group\'s chain and pool read as pickers but stay real selects', () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    const gr = store.s.groups[0];
+    const pill = wrapper.find('.gsel');
+    expect(pill.exists()).toBe(true);
+    // the visible pill mirrors the select's current value
+    expect(pill.text()).toContain(store.chain(gr.chain).name);
+    const native = pill.find('select.gsel-native');
+    expect(native.exists()).toBe(true);
+    expect(native.attributes('aria-label')).toBe('Chain for ' + gr.name);
+  });
+
+  it('holds back the "vs yesterday" chips until a full day has actually closed', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); },
+    });
+    // a fresh save has no closed day behind it, so there is nothing to compare
+    // against and the chip must not invent a 0.0%
+    expect(wrapper.text()).not.toContain('vs yesterday');
+    expect(wrapper.find('.delta').exists()).toBe(false);
+  });
+
+  it('shows the "vs yesterday" chips once the previous day has closed', () => {
+    const { wrapper } = mountWithStore(FarmView, {
+      seed: g => {
+        g.generatePreset(); g.build();
+        // close a day with real figures on it, then step into the next one
+        g.s.today = { day: 0, earned: 100, power: 40, blocks: 2 };
+        g.s.t = 86400 + 3600;
+        g.revenueDay; // reading the day rolls it over and stashes yesterday
+        g.s.today.earned = 150; g.s.today.power = 30;
+      },
+    });
+    expect(wrapper.text()).toContain('vs yesterday');
+    expect(wrapper.find('.delta').exists()).toBe(true);
+  });
+
+  it('counts the automation rules that are actually switched on', async () => {
+    const { wrapper, store } = mountWithStore(FarmView, {
+      seed: g => { g.generatePreset(); g.build(); g.s.autoOff = true; g.s.autoFix = false; },
+    });
+    expect(wrapper.text()).toContain('1 rule active');
+    store.s.autoFix = true;
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('2 rules active');
   });
 
   it('tapping a site row opens that site on the Sites tab', async () => {

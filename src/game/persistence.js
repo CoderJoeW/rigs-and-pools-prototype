@@ -6,6 +6,7 @@ import { CARDS, PSUS, PART, PART_MAP, RISER } from '../data/hardware.js';
 import { DESIGN_AXES, MAX_AXIS_POINTS, designTotals, designStats, designCost } from '../data/customParts.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
+import { allUnlocked } from './state.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
 
@@ -77,7 +78,7 @@ export function installPersistence(G){
     G.s.rebuild=null; G.s.focusRig=null; G.s.speed=1; G.s.wipeArm=false;
     if(!Array.isArray(G.s.customParts)) G.s.customParts=[];
     for(const p of G.s.customParts) PART_MAP.set(p.id, p);
-    G.s.unlocked=new Proxy({},{get:()=>true});
+    G.s.unlocked=allUnlocked();
     const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
       || G.s.sims.some(m => m.cash === undefined || m.style === undefined);
     if(needsSimReseed && G.seedSims){
@@ -217,7 +218,7 @@ export function installPersistence(G){
     RISER,PART,SITEPART,jobPart,chain:G.chain,poolOf:G.poolOf,active:G.active,price:G.price,revPerMh:G.revPerMh,
     solarFactor:G.solarFactor,ambient:G.ambient,band:G.band,cards:G.cards,battKwh:G.battKwh,battKw:G.battKw,sitePlan:G.sitePlan,srcOut:G.srcOut,siteCapacity:G.siteCapacity,siteCooling:G.siteCooling,sitePlantW:G.sitePlantW,siteHeat:G.siteHeat,throttleOf:G.throttleOf,siteSlots:G.siteSlots,siteRigs:G.siteRigs,siteDemand:G.siteDemand,siteTemp:G.siteTemp,
     siteCostPerHour:G.siteCostPerHour,rigLive:G.rigLive,rigHash:G.rigHash,rigWallW:G.rigWallW,rigNet:G.rigNet,rigState:G.rigState,rigWear:G.rigWear,totalHash:G.totalHash,totalCapacity:G.totalCapacity,headroom:G.headroom,binding:G.binding,effMhw:G.effMhw,
-    revenueDay:G.revenueDay,powerDay:G.powerDay,netDay:G.netDay,walletUsd:G.walletUsd,runway:G.runway,lifetimeNet:G.lifetimeNet,poolEarned:G.poolEarned,myHash:G.myHash,diffOf:G.diffOf,mttb:G.mttb,
+    revenueDay:G.revenueDay,powerDay:G.powerDay,netDay:G.netDay,dayDelta:G.dayDelta,walletUsd:G.walletUsd,runway:G.runway,lifetimeNet:G.lifetimeNet,poolEarned:G.poolEarned,myHash:G.myHash,diffOf:G.diffOf,mttb:G.mttb,
     dp:G.dp,checks:G.checks,canBuild:G.canBuild,draftEff:G.draftEff,buildTime:G.buildTime,unitEcon:G.unitEcon,draftExpected:G.draftExpected,generatePreset:G.generatePreset,maxBuildQty:G.maxBuildQty,
     blockValue:G.blockValue,bondReq:G.bondReq,poolTrust:G.poolTrust,TRUST_RAMP,poolCapLimit:G.poolCapLimit,poolHash:G.poolHash,poolProfit:G.poolProfit,withdrawProfit:G.withdrawProfit,
     battFirm:G.battFirm,flowOf:G.flowOf,chainHash:G.chainHash,easeOf:G.easeOf,blockETA:G.blockETA,blockProg:G.blockProg,winChance:G.winChance,fundOf:G.fundOf,groupAdvice:G.groupAdvice,chainCeiling:G.chainCeiling,idleCashAdvice:G.idleCashAdvice,draftGroup:G.draftGroup,battAdvice:G.battAdvice,myPools:G.myPools,foundPool:G.foundPool,setPoolFee:G.setPoolFee,renamePool:G.renamePool,simsOn:G.simsOn,poolRep:G.poolRep,repParts:G.repParts,rivalPools:G.rivalPools,poolDemand:G.poolDemand,poolProj:G.poolProj,nextTierBond:G.nextTierBond,poolPnl:G.poolPnl,addBond:G.addBond,releaseBond:G.releaseBond,capBinding:G.capBinding,bondFloor:G.bondFloor,topUpBond:G.topUpBond,closePool:G.closePool,

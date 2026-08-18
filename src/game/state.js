@@ -3,6 +3,19 @@ import { CHAINS } from '../data/chains.js';
 import { C } from '../data/constants.js';
 
 /* 00-state.js — installed into the shared context G. */
+/* Every feature flag reads true — the progression gates this prototype once
+   had are all open, and the Proxy keeps that true for names nobody has
+   thought of yet.
+
+   Answering only STRING keys, and never Vue's own `__v_*` probes, is
+   load-bearing rather than tidiness: reactive() asks an object for
+   `__v_isRef` before handing it out, and a blanket-true Proxy said yes — so
+   Vue unwrapped the whole object to the boolean `true`, `unlocked.auto` came
+   back undefined, and Farm's Automation panel silently never rendered. */
+export const allUnlocked = () => new Proxy({}, {
+  get: (_, k) => typeof k === 'string' && !k.startsWith('__v_'),
+});
+
 export function installState(G){
   function freshState(){
   const chains = CHAINS.map(c=>({ ...c, ref:c.price, impact:0, hist:[c.price],
@@ -28,8 +41,8 @@ export function installState(G){
     peakHash:0, shed:0, netHist:[], hashHist:[], cashHist:[], bestBlock:0, gen:0, weather:null,
     recentBlockUsd:{},
     mile:{done:{},rank:0}, poolTake:0, repairs:0, rebuilds:0, peakNetDay:0,
-    today:{day:0,earned:0,power:0,blocks:0},
-    unlocked:new Proxy({},{get:()=>true}),
+    today:{day:0,earned:0,power:0,blocks:0}, yday:null,
+    unlocked:allUnlocked(),
     picker:null, sitePicker:null, rebuild:null, focusRig:null, saveInfo:'', wipeArm:false,
     customParts:[], design:null,
     catchUp:null,
