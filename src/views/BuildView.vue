@@ -6,7 +6,8 @@ import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 import Compare from '../components/Compare.vue';
-import Chassis from '../components/Chassis.vue';
+import PartTile from '../components/PartTile.vue';
+import heroShot from '../assets/build/hero.webp';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
@@ -66,20 +67,40 @@ const slotCells=computed(()=>{
   return Array.from({length:f.slots},(_,i)=> i<n?'filled':i<lim?'open':'locked');
 });
 
+/* Cards first, as the mockup lists them: the cards are what the rig is for,
+   and every other slot is chosen to carry them.
+
+   `qty` is the count of that part in one rig. Only the cards vary — a rig has
+   one frame, one board, one cooler and one supply, and showing a stepper on
+   each row (as the mockup does) would offer a choice this simulation does not
+   have. The number is stated either way, so the column still reads as a bill
+   of materials. */
 const FIELDS=computed(()=>{
-  const x=g.s.draft;
+  const x=g.s.draft, n=x.n;
   return [
-    {k:'frame',label:'Frame',job:'holds the cards, and decides how well they breathe',
-      part:g.PART(x.frame), sub:p=>partSub('frame',p)},
-    {k:'mobo',label:'Board',job:'drives the cards, and burns power doing nothing',
-      part:g.PART(x.mobo), sub:p=>partSub('mobo',p)},
-    {k:'cool',label:'Cooling',job:'trades watts for card life',
-      part:g.PART(x.cool), sub:p=>partSub('cool',p)},
-    {k:'psu',label:'Supply',job:'watts and connectors',
-      part:g.PART(x.psu), sub:p=>partSub('psu',p)},
-    {k:'unit',label:'Cards',job:'the hashrate',
+    {k:'unit',label:'Cards',job:'the hashrate', qty:n,
       part:g.PART(x.unit), sub:p=>p.mh+' MH · '+p.w+'W · '+(p.mh/p.w).toFixed(2)+' MH/W'},
+    {k:'frame',label:'Frame',job:'holds the cards, and decides how well they breathe', qty:1,
+      part:g.PART(x.frame), sub:p=>partSub('frame',p)},
+    {k:'mobo',label:'Board',job:'drives the cards, and burns power doing nothing', qty:1,
+      part:g.PART(x.mobo), sub:p=>partSub('mobo',p)},
+    {k:'cool',label:'Cooling',job:'trades watts for card life', qty:1,
+      part:g.PART(x.cool), sub:p=>partSub('cool',p)},
+    {k:'psu',label:'Supply',job:'watts and connectors', qty:1,
+      part:g.PART(x.psu), sub:p=>partSub('psu',p)},
   ];
+});
+/* What the hero's status corner reports. Free positions is the same figure
+   the floor-space check gates on, said before it becomes a cross. */
+const freePositions=computed(()=>{
+  const f=g.active;
+  return Math.max(0, g.siteSlots(f)-g.siteRigs(f).length);
+});
+/* The draw stat's sub-line: what this one rig would take out of the site's
+   own headroom, which is the number the power check is really about. */
+const siteShare=computed(()=>{
+  const f=g.active, cap=g.siteCapacity(f)+g.battFirm(f);
+  return cap>0 ? g.dp.wall/cap : 0;
 });
 /* Fab-designed parts (data/customParts.js) sit past the top of every
    catalogue ladder rather than inside it — generatePreset's own search
@@ -124,14 +145,6 @@ const choose=id=>{
 
 const pickerSheetEl=ref(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
-
-/* The draft as a physical object, beside the slot map that says how it is
-   wired. Always 'build' — a draft is by definition not running yet — and it
-   grows with the card count so a big order reads as a bigger machine. */
-const draftChassis=computed(()=>{
-  const n=g.s.draft.n||1;
-  return { state:'build', size:n>=9?'lg':n>=5?'md':'sm', large:true, label:'Draft chassis' };
-});
 
 /* Verdict panel, always ranked the same way: cost and payback first,
    then hashrate and efficiency, then what it costs the site. Guidance
@@ -250,23 +263,16 @@ const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
   const notes=[ceilingNote.value,subsidyNote.value].filter(Boolean);
-  const costRows=[ {k:'Parts', v:fmt.usd(costShown.value)},
-    {k:'Expected on '+g.chain(gr.chain).name, v:fmt.usd2(netShown.value)+'/day'},
-    {k:'Expected payback', v:isFinite(paybackShown.value)?Math.round(paybackShown.value)+' days':'never'} ];
-  if(mode.value==='preset'){
-    return [
-      { t:'Cost & payback', rows:costRows, checks:c.filter(x=>!x.ok), notes },
-      { t:'Hashrate', rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)} ], checks:[] },
-    ];
-  }
+  /* Cost, hashrate and draw moved to the hero, where the mockup puts them,
+     so what is left down here is what the hero has no room for: the notes in
+     both modes, and in Customise the second-order figures a player
+     troubleshooting a combination actually reads. */
+  if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter(x=>!x.ok), notes } ];
   return [
-    { t:'Cost & payback', rows:costRows, checks:[c[5]], notes },
-    { t:'Hashrate & MH/W',
-      rows:[ {k:'Hashrate', v:fmt.hash(hashShown.value)},
-             {k:'MH/W', v:effShown.value.toFixed(3)} ],
+    { t:'Cost & payback', rows:[], checks:[c[5]], notes },
+    { t:'Hashrate & MH/W', rows:[ {k:'MH/W', v:effShown.value.toFixed(3)} ],
       checks:[c[0],c[2],c[1]] },
-    { t:'Site impact',
-      rows:[ {k:'Draw', v:fmt.w(drawShown.value)} ],
+    { t:'Site impact', rows:[ {k:'Draw', v:fmt.w(drawShown.value)} ],
       checks:[c[4],c[3]] },
   ];
 });
@@ -274,19 +280,56 @@ const verdict=computed(()=>{
 
 <template>
   <div>
-    <div class="card" data-tour="build">
-      <div class="card-hd"><span class="eyebrow">Build a rig</span>
-        <span class="eyebrow">{{ g.active.name }} · {{ fmt.usd(g.s.cash) }}</span></div>
+    <div class="pagehd">
+      <h1 class="pagehd-t">Build</h1>
+      <p class="pagehd-s">Design a rig, then order the parts.</p>
+    </div>
 
-      <div class="build-hero">
-        <Chassis class="build-chassis" v-bind="draftChassis" />
-        <div class="build-hero-txt">
-          <div class="build-hero-title">{{ g.s.draft.n }} × {{ g.PART(g.s.draft.unit).name }}</div>
-          <div class="build-hero-sub">{{ g.PART(g.s.draft.frame).name }}
-            · {{ g.PART(g.s.draft.mobo).name }}
-            · {{ g.PART(g.s.draft.cool).name }}
-            · {{ g.PART(g.s.draft.psu).name }}</div>
+    <div class="card bhero" data-tour="build">
+      <div class="bh-top">
+        <span class="bh-eyebrow">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2"/>
+            <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>
+            </svg>
+          Design <b class="sep" aria-hidden="true">&middot;</b>{{ mode==='preset' ? 'Quick pick' : 'Custom' }}</span>
+        <span class="bh-free" :class="{none:!freePositions}">
+          <i class="dot" :class="freePositions?'run':'bad'" aria-hidden="true"></i>
+          {{ freePositions }} free position{{ freePositions===1?'':'s' }}</span>
+      </div>
+
+      <div class="bh-body">
+        <img class="bh-shot" :src="heroShot" alt="" aria-hidden="true" />
+        <div class="bh-id">
+          <div class="bh-title">{{ g.s.draft.n }} &times; {{ g.PART(g.s.draft.unit).name }}</div>
+          <div class="bh-sub">{{ g.PART(g.s.draft.frame).name }}
+            <b class="sep" aria-hidden="true">/</b>{{ g.PART(g.s.draft.mobo).name }}
+            <b class="sep" aria-hidden="true">/</b>{{ g.PART(g.s.draft.cool).name }}
+            <b class="sep" aria-hidden="true">/</b>{{ g.PART(g.s.draft.psu).name }}</div>
         </div>
+      </div>
+
+      <!-- The mockup gives each stat a decorative glyph underneath. Each one
+           carries a second real figure instead: the reading a player would
+           otherwise have to work out from the first. -->
+      <div class="bh-stats">
+        <div class="s"><div class="k">Hashrate</div>
+          <div class="v" data-stat="hash">{{ fmt.hash(hashShown) }}</div>
+          <div class="u">{{ g.s.draft.n }} card{{ g.s.draft.n===1?'':'s' }}</div></div>
+        <div class="s"><div class="k">Draw</div>
+          <div class="v" data-stat="draw">{{ fmt.w(drawShown) }}</div>
+          <div class="u" :class="siteShare>1?'neg':siteShare>0.8?'amb':''">
+            {{ fmt.pct(siteShare,0) }} of the site</div></div>
+        <div class="s"><div class="k">Cost</div>
+          <div class="v" data-stat="cost">{{ fmt.usd(costShown) }}</div>
+          <div class="u">{{ isFinite(paybackShown) ? Math.round(paybackShown)+'d payback' : 'never pays back' }}</div></div>
+      </div>
+
+      <div class="bh-exp">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 16.5 10 10l3.5 3L20 6.5"/><path d="M15 6.5h5v5"/></svg>
+        Expected <b :class="netShown>=0?'pos':'neg'">{{ fmt.usd2(netShown) }}/day</b>
+        on {{ g.chain(g.draftGroup().chain).name }}
       </div>
 
       <!-- aria-pressed, not role="radio": the radio pattern's contract is a
@@ -310,86 +353,119 @@ const verdict=computed(()=>{
             &middot; {{ cardLimit.by }} caps it here; the rest of the frame is greyed out</span></div>
       </div>
 
-      <template v-if="mode==='preset'">
-        <!-- The hero names the draft and the verdict panel prices it, so a
-             preset that worked needs nothing extra here — only the case where
-             the search came back empty has anything left to say. -->
-        <div class="card-bd" v-if="!presetFound">
-          <p class="note">Nothing fits {{ g.active.name }}'s power or floor space within
-            {{ fmt.usd(g.s.cash) }} right now. Open Customise to see exactly why.</p>
-        </div>
-      </template>
-
-      <template v-else>
-        <button v-for="fl in FIELDS" :key="fl.k" class="pickrow" aria-haspopup="dialog"
-                @click="g.s.picker=fl.k">
-          <span class="lab">{{ fl.label }}</span>
-          <span class="val"><div class="n">{{ fl.part.name }}</div>
-            <div class="s" v-if="g.s.help" style="color:var(--blue)">{{ fl.job }}</div>
-            <div class="s">{{ fl.sub(fl.part) }} · {{ fmt.usd(fl.part.price) }}</div></span>
-          <span class="ch">&rsaquo;</span></button>
-
-        <div class="pickrow"><span class="lab">Count</span>
-          <span class="val"><div class="n">{{ g.s.draft.n }} × {{ g.PART(g.s.draft.unit).name }}</div>
-            <div class="s">Limit {{ cardLimit.n }}, set by {{ cardLimit.by }}
-              <span style="color:var(--ink-3)">· frame fits {{ cardLimit.frame }},
-                board drives {{ cardLimit.mobo }}</span></div>
-            <div class="s">{{ g.s.draft.n }} risers · {{ fmt.usd(g.s.draft.n*g.RISER.price) }}</div></span>
-          <span class="stepper">
-            <button aria-label="Decrease card count" :disabled="g.s.draft.n<=1"
-                    @click="g.s.draft.n=Math.max(1,g.s.draft.n-1)">&minus;</button>
-            <span class="num">{{ g.s.draft.n }}</span>
-            <button aria-label="Increase card count" :disabled="g.s.draft.n>=cardLimit.n"
-                    @click="g.s.draft.n=Math.min(cardLimit.n,g.s.draft.n+1)">+</button></span></div>
-      </template>
-
-      <div class="card-bd" style="padding-top:9px">
-        <div class="verdict">
-          <div v-for="vg in verdict" :key="vg.t" class="vgroup">
-            <div class="vgroup-hd"><span class="t">{{ vg.t }}</span></div>
-            <div v-for="r in vg.rows" :key="r.k" class="vrow">
-              <span class="k">{{ r.k }}</span><span class="v">{{ r.v }}</span></div>
-            <div v-for="(c,i) in vg.checks" :key="i" class="chk" :class="c.ok?'ok':'no'">
-              <span class="ic">{{ c.ok?'✓':'✗' }}</span>
-              <span>{{ c.label }}<div v-if="!c.ok" class="fix">{{ c.fix }}</div></span></div>
-            <div v-for="(n,i) in (vg.notes||[])" :key="'n'+i" class="chk note-chk" :class="'note-'+(n.tone||'warn')">
-              <span class="ic">{{ n.tone==='good' ? '★' : '!' }}</span>
-              <span>{{ n.label }}<div class="fix">{{ n.fix }}</div></span></div>
-          </div>
-        </div>
-        <div class="dl"><dt>Assembly</dt><dd>{{ fmt.dur(g.buildTime) }}{{ qty>1?' each · parallel':'' }}</dd></div>
-        <div class="pickrow" style="border-top:1px solid var(--line-2);margin-top:6px">
-          <span class="lab">Quantity</span>
-          <span class="val">
-            <div class="n">{{ qty }} rig{{ qty===1?'':'s' }}</div>
-            <div class="s">Up to {{ maxQty||0 }} fit here
-              <span v-if="maxQty>1" style="color:var(--ink-3)">· floor, power and cash</span></div>
-          </span>
-          <span class="stepper">
-            <button aria-label="Decrease quantity" :disabled="qty<=1"
-                    @click="qty=Math.max(1,qty-1)">&minus;</button>
-            <span class="num">{{ qty }}</span>
-            <button aria-label="Increase quantity" :disabled="!g.canBuild||qty>=maxQty"
-                    @click="qty=Math.min(maxQty,qty+1)">+</button>
-          </span>
-        </div>
-        <div v-if="maxQty>1" class="btn-row" style="grid-template-columns:1fr 1fr;margin-top:8px;gap:6px">
-          <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild||qty===maxQty"
-                  @click="qty=maxQty">Fill site · {{ maxQty }}</button>
-          <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild"
-                  @click="qty=Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost)))">
-            Max cash · {{ Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost))) }}</button>
-        </div>
-        <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ buildStatus }}</p>
-        <button class="btn btn-wide btn-order" :class="g.canBuild?'btn-pri':''" style="margin-top:10px"
-                data-testid="build" :disabled="!g.canBuild" @click="g.build(qty)">
-          {{ g.canBuild
-               ? (qty>1
-                    ? 'Order '+qty+' · '+fmt.usd(g.dp.cost*qty)
-                    : 'Order parts · '+fmt.usd(g.dp.cost))
-               : 'Fix the crosses above' }}</button>
+      <div class="card-bd" v-if="mode==='preset' && !presetFound">
+        <p class="note">Nothing fits {{ g.active.name }}'s power or floor space within
+          {{ fmt.usd(g.s.cash) }} right now. Open Customise to see exactly why.</p>
       </div>
     </div>
+
+    <div class="sec"><span class="eyebrow">Pick components</span>
+      <span class="eyebrow">{{ mode==='preset' ? 'chosen for you' : 'tap a row to swap it' }}</span></div>
+    <div class="card partlist">
+      <!-- A button only where it opens something. In Quick pick the preset
+           chose these, so the rows report rather than invite — the old tab
+           showed nothing at all here, and "what did it pick for me" was a
+           question you had to leave Quick pick to answer. -->
+      <component :is="mode==='custom' ? 'button' : 'div'" v-for="fl in FIELDS" :key="fl.k"
+                 class="pickrow partrow"
+                 :aria-haspopup="mode==='custom' ? 'dialog' : null"
+                 @click="mode==='custom' && (g.s.picker=fl.k)">
+        <PartTile :slot="fl.k" />
+        <span class="lab">{{ fl.label }}</span>
+        <span class="val"><div class="n">{{ fl.part.name }}</div>
+          <div class="s" v-if="g.s.help && mode==='custom'" style="color:var(--blue)">{{ fl.job }}</div>
+          <div class="s">{{ fl.sub(fl.part) }} &middot; {{ fmt.usd(fl.part.price) }}</div></span>
+        <span class="qty">&times;{{ fl.qty }}</span>
+        <span v-if="mode==='custom'" class="ch">&rsaquo;</span>
+      </component>
+    </div>
+
+    <div class="bgrid">
+      <div class="card bcount">
+        <div class="bc-k">Count
+          <span class="bc-i" :title="'How many cards go in this one rig. The frame and the board '
+            +'each cap it; the smaller of the two is your limit.'" role="img"
+            aria-label="How many cards go in this one rig, capped by the frame and the board">i</span>
+        </div>
+        <div class="bc-row">
+          <div><div class="bc-v">{{ g.s.draft.n }}</div>
+            <div class="bc-u">of {{ cardLimit.n }} max</div></div>
+          <span class="stepper">
+            <button aria-label="Decrease card count"
+                    :disabled="mode!=='custom'||g.s.draft.n<=1"
+                    @click="g.s.draft.n=Math.max(1,g.s.draft.n-1)">&minus;</button>
+            <span class="num">{{ g.s.draft.n }}</span>
+            <button aria-label="Increase card count"
+                    :disabled="mode!=='custom'||g.s.draft.n>=cardLimit.n"
+                    @click="g.s.draft.n=Math.min(cardLimit.n,g.s.draft.n+1)">+</button></span>
+        </div>
+        <p v-if="mode!=='custom'" class="bc-lock">Switch to Customise to change it</p>
+      </div>
+
+      <div class="card bcount">
+        <div class="bc-k">Order quantity
+          <span class="bc-i" :title="'How many of this same rig to order at once. Capped by the '
+            +'floor space, the power and the cash you have.'" role="img"
+            aria-label="How many of this rig to order at once, capped by floor space, power and cash">i</span>
+        </div>
+        <div class="bc-row">
+          <label class="sr-only" for="build-qty">Order quantity</label>
+          <select id="build-qty" class="bc-sel" v-model.number="qty">
+            <option v-for="n in Math.max(1,maxQty||1)" :key="n" :value="n">{{ n }}</option>
+          </select>
+        </div>
+        <p class="bc-u">Max {{ maxQty||0 }} · floor, power and cash</p>
+      </div>
+    </div>
+
+    <div v-if="maxQty>1" class="btn-row" style="grid-template-columns:1fr 1fr;margin:0 0 8px;gap:6px">
+      <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild||qty===maxQty"
+              @click="qty=maxQty">Fill site · {{ maxQty }}</button>
+      <button class="btn btn-sm btn-ghost" :disabled="!g.canBuild"
+              @click="qty=Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost)))">
+        Max cash · {{ Math.min(maxQty, Math.max(1, Math.floor(g.s.cash/g.dp.cost))) }}</button>
+    </div>
+
+    <div class="card brow">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 1.9"/></svg>
+      <span class="brow-k">Assembly time</span>
+      <span class="brow-v">{{ fmt.dur(g.buildTime) }}{{ qty>1?' each · parallel':'' }}</span>
+    </div>
+
+    <div class="sec"><span class="eyebrow">Pre-build checks</span>
+      <span class="eyebrow" :class="g.canBuild?'okc':'noc'">{{ g.canBuild
+        ? 'all '+g.checks.length+' pass' : g.checks.filter(c=>!c.ok).length+' to fix' }}</span></div>
+    <div class="card checkcard">
+      <div v-for="vg in verdict" :key="vg.t" class="vgroup">
+        <div v-if="vg.t" class="vgroup-hd"><span class="t">{{ vg.t }}</span></div>
+        <div v-for="r in vg.rows" :key="r.k" class="vrow">
+          <span class="k">{{ r.k }}</span><span class="v">{{ r.v }}</span></div>
+        <div v-for="(c,i) in vg.checks" :key="i" class="chk chkrow" :class="c.ok?'ok':'no'">
+          <span class="ic">{{ c.ok?'✓':'✗' }}</span>
+          <span class="ct">{{ c.title || c.label }}
+            <div v-if="!c.ok" class="fix">{{ c.fix }}</div></span>
+          <span class="cd">{{ c.label }}</span></div>
+        <div v-for="(n,i) in (vg.notes||[])" :key="'n'+i" class="chk note-chk" :class="'note-'+(n.tone||'warn')">
+          <span class="ic">{{ n.tone==='good' ? '★' : '!' }}</span>
+          <span>{{ n.label }}<div class="fix">{{ n.fix }}</div></span></div>
+      </div>
+      <p v-if="mode==='preset' && g.canBuild" class="allpass">
+        <span class="ic" aria-hidden="true">✓</span>
+        All {{ g.checks.length }} checks pass — Quick pick only offers builds that clear them.</p>
+    </div>
+
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ buildStatus }}</p>
+    <button class="btn btn-wide btn-order buildcta" :class="g.canBuild?'btn-pri':''"
+            data-testid="build" :disabled="!g.canBuild" @click="g.build(qty)">
+      <span class="cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24">
+        <circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/>
+        <path d="M2.5 3.5h3l2.6 11.2h10.3l2.1-8H6.6"/></svg></span>
+      <span class="cta-tx">
+        <span class="cta-t">{{ g.canBuild
+          ? (qty>1 ? 'Order '+qty+' rigs' : 'Order parts') : 'Fix the crosses above' }}</span>
+        <span v-if="g.canBuild" class="cta-s">{{ fmt.usd(orderCost) }}</span></span>
+    </button>
 
     <div v-if="g.s.picker" class="sheet" ref="pickerSheetEl" role="dialog" aria-modal="true"
          aria-labelledby="build-picker-title">
@@ -409,9 +485,125 @@ const verdict=computed(()=>{
 </template>
 
 <style scoped>
-.build-hero{display:flex;align-items:center;gap:14px;padding:12px 12px 4px}
-.build-chassis{width:88px !important;height:88px !important;border-radius:12px !important;flex:none}
-.build-hero-txt{min-width:0;flex:1}
-.build-hero-title{font-size:15px;font-weight:600;letter-spacing:-.02em}
-.build-hero-sub{font-size:11.5px;color:var(--ink-3);margin-top:3px;line-height:1.45}
+/* The Build tab's own chrome. The card, the pickrow, the stepper, the slot
+   grid, the .chk list and .seg2 all still come from main.css; what lives here
+   is the hero, the parts list's tile column, the two count cards, and the
+   order CTA. */
+
+/* ---- the hero -------------------------------------------------------- */
+.bhero{padding:0;overflow:hidden}
+.bh-top{display:flex;align-items:center;gap:8px;padding:10px 12px 0}
+.bh-eyebrow{display:flex;align-items:center;gap:6px;flex:1;min-width:0;
+  font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bh-eyebrow .ic{flex:none;width:13px;height:13px;fill:none;stroke:currentColor;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.sep{font-weight:400;opacity:.55;margin:0 1px}
+.bh-free{flex:none;display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--green)}
+.bh-free.none{color:var(--red)}
+.bh-free .dot{width:7px;height:7px}
+
+.bh-body{display:flex;align-items:center;gap:13px;padding:10px 12px 0}
+.bh-shot{flex:none;width:120px;height:96px;border-radius:9px;object-fit:cover;display:block;
+  background:#07080a;border:1px solid #22262d}
+.bh-id{flex:1;min-width:0}
+.bh-title{font-size:21px;font-weight:600;letter-spacing:-.03em;line-height:1.15;
+  overflow-wrap:anywhere}
+.bh-sub{font-size:11px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+/* The slash between part names needs air on both sides or it reads as part
+   of the name before it. */
+.bh-sub .sep{margin:0 4px}
+
+.bh-stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:11px;
+  border-top:1px solid var(--line)}
+.bh-stats .s{padding:9px 12px;border-right:1px solid var(--line-2);min-width:0}
+.bh-stats .s:last-child{border-right:none}
+.bh-stats .k{font-size:9px;color:var(--ink-3);letter-spacing:.05em;text-transform:uppercase}
+.bh-stats .v{font-family:var(--mono);font-size:16px;font-weight:500;line-height:1.15;margin-top:3px;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-stats .u{font-size:9.5px;color:var(--ink-3);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-stats .u.amb{color:var(--amber)} .bh-stats .u.neg{color:var(--red)}
+
+.bh-exp{display:flex;align-items:center;gap:7px;padding:8px 12px;font-size:11.5px;
+  color:var(--ink-2);border-top:1px solid var(--line);background:var(--line-2)}
+.bh-exp .ic{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;color:var(--ink-3)}
+.bh-exp b{font-family:var(--mono);font-weight:600}
+
+/* ---- the parts list --------------------------------------------------- */
+.partlist{margin-bottom:10px}
+.partrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:9px 12px;border-top:1px solid var(--line-2)}
+.partlist .partrow:first-child{border-top:none}
+.partrow .lab{flex:none;width:52px;font-size:9.5px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-3);align-self:flex-start;padding-top:2px}
+.partrow .val{flex:1;min-width:0}
+.partrow .val .n{font-size:13.5px;font-weight:600;letter-spacing:-.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.partrow .val .s{font-size:10.5px;color:var(--ink-3);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The "what this slot is for" line is a sentence, so it wraps rather than
+   being cut mid-word; the spec line under it stays one line. */
+.partrow .val .s:not(:last-child){white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+/* The per-rig count, stated rather than offered: only the cards vary, so a
+   stepper on every row would be a control that does nothing on four of five. */
+.partrow .qty{flex:none;font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+.partrow .ch{flex:none;color:var(--ink-3);font-size:16px;line-height:1}
+
+/* ---- the two count cards --------------------------------------------- */
+.bgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.bcount{padding:9px 11px 10px;display:flex;flex-direction:column;min-width:0}
+.bc-k{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-3)}
+.bc-i{flex:none;width:14px;height:14px;border-radius:50%;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-style:italic;
+  font-weight:400;text-transform:none;letter-spacing:0;line-height:1}
+.bc-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:6px;
+  flex:1}
+.bc-v{font-family:var(--mono);font-size:24px;font-weight:500;letter-spacing:-.03em;line-height:1}
+.bc-u{font-size:9.5px;color:var(--ink-3);margin-top:3px;white-space:nowrap}
+.bc-lock{font-size:9.5px;color:var(--ink-3);margin-top:6px;font-style:italic}
+.bc-sel{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink)}
+
+/* ---- one-line rows ---------------------------------------------------- */
+.brow{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-bottom:10px}
+.brow .ic{flex:none;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;color:var(--ink-3)}
+.brow-k{flex:1;min-width:0;font-size:12px;color:var(--ink-2)}
+.brow-v{flex:none;font-family:var(--mono);font-size:12.5px;font-weight:500}
+
+/* ---- the checklist ---------------------------------------------------- */
+.eyebrow.okc{color:var(--green)} .eyebrow.noc{color:var(--red)}
+.checkcard{padding:2px 12px 10px;margin-bottom:10px}
+/* Claim on the left, evidence on the right — the check's own label carries
+   the figures, which is what the mockup puts in its second column. */
+.chkrow{align-items:flex-start;gap:9px;padding:7px 0}
+.chkrow .ct{flex:1;min-width:0;font-size:12.5px;color:var(--ink)}
+.chkrow.no .ct{color:var(--red)}
+.chkrow .cd{flex:none;max-width:47%;font-size:10.5px;color:var(--ink-3);text-align:right;
+  line-height:1.35;padding-top:1px}
+.allpass{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--ink-2);
+  padding:7px 0}
+.allpass .ic{flex:none;color:var(--green);font-family:var(--mono);font-weight:600}
+
+/* ---- the order button ------------------------------------------------- */
+.buildcta{display:flex;align-items:center;justify-content:center;gap:11px;
+  padding:12px;margin-bottom:4px}
+.cta-ic{flex:none;display:flex}
+.cta-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.cta-tx{display:flex;flex-direction:column;align-items:center;line-height:1.2}
+.cta-t{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.cta-s{font-family:var(--mono);font-size:11.5px;font-weight:500;opacity:.85;margin-top:2px}
+
+@media (max-width:359px){
+  .bh-shot{width:96px;height:78px}
+  .bh-title{font-size:18px}
+  .bh-stats .v{font-size:14px}
+  .bgrid{grid-template-columns:1fr}
+  .chkrow .cd{max-width:42%}
+}
 </style>
