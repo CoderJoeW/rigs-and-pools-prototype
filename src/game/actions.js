@@ -51,13 +51,12 @@ export function installActions(G){
   }
   function swapWorn(id,th){
     const r=G.s.rigs.find(x=>x.id===id); if(!r) return;
-    const worn=r.units.filter(u=>u.w>=th);
-    const cost=worn.reduce((a,u)=>a+PART(u.p).price,0);
-    if(!worn.length||G.s.cash<cost) return;
-    G.s.cash-=cost; G.s.spent+=cost; G.s.repairs=(G.s.repairs||0)+worn.length; r.deadNote=false;
+    const {n,cost}=G.rigWorn(r,th);          // one definition of worn, shared with the fleet sweep
+    if(!n||G.s.cash<cost) return;
+    G.s.cash-=cost; G.s.spent+=cost; G.s.repairs=(G.s.repairs||0)+n; r.deadNote=false;
     for(const u of r.units) if(u.w>=th) u.w=0;
     r.refurb++;
-    G.say('sys','Replaced '+worn.length+' card'+(worn.length>1?'s':'')+' in '+r.name,'-'+fmt.usd(cost),undefined,undefined,-cost);
+    G.say('sys','Replaced '+n+' card'+(n>1?'s':'')+' in '+r.name,'-'+fmt.usd(cost),undefined,undefined,-cost);
   }
   /* ---- rebuild planner ----
      A retrofit is a REBUILD: stage any set of changes to one rig, confirm the

@@ -34,7 +34,7 @@ export function installFleetActions(G){
   function fleetRepair(th,fid){
     const info=fleetWorn(th,fid); if(!info.n||G.s.cash<info.cost) return;
     for(const r of fleetRigs(fid)){ if(r.building>0) continue;
-      if(r.units.some(u=>u.w>=th)) G.swapWorn(r.id,th); }
+      if(rigWorn(r,th).n) G.swapWorn(r.id,th); }
   }
   const fleetDraft=(r,id)=>({ frame:r.frame, mobo:r.mobo, cool:r.cool, psu:r.psu,
     unit:id, n:r.units.length });
