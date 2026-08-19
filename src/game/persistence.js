@@ -212,6 +212,11 @@ export function installPersistence(G){
 
   G.say('sys','A spare bedroom, a 1.5 kW outlet and $500');
 
+  /* The flat surface components read. This list is hand-maintained: anything an
+     install* module puts on G has to be repeated here or it never reaches the
+     Pinia store, and reading it gives undefined rather than an error.
+     src/stores/__tests__/exportSurface.test.js makes that loud — it fails if a
+     key on G is neither published here nor declared private there. */
   G.__exports={ s:G.s,C,SHELLS,SOURCES,PLANTS,STORAGE,FABS,FAB,PSUS:G.livePsus,
     DESIGN_AXES,MAX_AXIS_POINTS,designTotals,designStats,designCost,
     openDesign:G.openDesign,closeDesign:G.closeDesign,bumpDesignPick:G.bumpDesignPick,manufacturePart:G.manufacturePart,liveTopOf:G.liveTopOf,

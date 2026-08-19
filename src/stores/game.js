@@ -32,7 +32,11 @@ import { installPersistence } from '../game/persistence.js';
    inside this closure (the game/*.js installers) is unaffected — it never
    goes through the store's external proxy, so it keeps using `.value`
    exactly as before. */
-export const useGameStore = defineStore('game', () => {
+/* Assembles the game and hands back the raw context G. The store below wants
+   only G.__exports, but the export-surface test wants both halves — what the
+   installers actually put on G, and what of it is published — so the assembly
+   is its own function rather than an anonymous store body. */
+export function createGame(){
   const G = {};
   installState(G);
   installGenerations(G);
@@ -59,5 +63,7 @@ export const useGameStore = defineStore('game', () => {
       c.anchor = Math.max(1, start / Math.max(1, c.floor));
     }
   }
-  return G.__exports;
-});
+  return G;
+}
+
+export const useGameStore = defineStore('game', () => createGame().__exports);
