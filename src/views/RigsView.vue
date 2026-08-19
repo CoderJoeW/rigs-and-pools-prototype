@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { useSwipeAction } from '../composables/useSwipeAction.js';
 import Compare from '../components/Compare.vue';
 import ChainMark from '../components/ChainMark.vue';
 import Chassis from '../components/Chassis.vue';
@@ -105,79 +106,26 @@ const scopeLabel=computed(()=> picking.value && chosenIds.value.length
   ? chosenIds.value.length+' selected'
   : (f.value?'all '+siteRigs.value.length+' at '+f.value.name:''));
 
-const SW_ARM=10;
-const SW_OPEN=34;
-const SW_REST=108;
-const SW_FIRE=134;
-const SW_MAX=176;
-
-const sw=reactive({id:null,x:0,drag:false});
-let pt=null;
-let swallowClick=false;
-let closeT=null;
-
-const canSwipe=r=>!picking.value && stateOf(r).k!=='build';
+/* Swipe-a-row-to-power-it: the pointer mechanics live in the composable, which
+   knows nothing about rigs. What stays here is the domain half — which rows may
+   be swiped, and what the swipe does. */
+const canSwipe=r=>!!r && !picking.value && stateOf(r).k!=='build';
 const swipeVerb=r=>r.on?'Power off':'Power on';
+const rigById=id=>g.s.rigs.find(r=>r.id===id);
 
-const clearCloseT=()=>{ if(closeT!=null){ clearTimeout(closeT); closeT=null; } };
-const closeSwipe=()=>{
-  clearCloseT();
-  if(sw.id==null) return;
-  const id=sw.id; sw.drag=false; sw.x=0;
-  closeT=setTimeout(()=>{ closeT=null; if(sw.id===id&&sw.x===0) sw.id=null; },240);
-};
-const resetSwipe=()=>{ clearCloseT(); sw.id=null; sw.x=0; sw.drag=false; };
-
-const onSwipeDown=(e,r)=>{
-  swallowClick=false;
-  if(sw.id!=null&&sw.id!==r.id) resetSwipe();
-  pt=null;
-  if(!canSwipe(r)) return;
-  if(e.pointerType==='mouse'&&e.button) return;
-  pt={id:r.id, pid:e.pointerId, x0:e.clientX, y0:e.clientY,
-      base:(sw.id===r.id?sw.x:0), claimed:false};
-};
-const onSwipeMove=(e,r)=>{
-  if(!pt||pt.id!==r.id||pt.pid!==e.pointerId) return;
-  const dx=pt.x0-e.clientX, dy=e.clientY-pt.y0;
-  if(!pt.claimed){
-    if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>SW_ARM){ pt=null; return; }
-    if(Math.abs(dx)<=SW_ARM) return;
-    pt.claimed=true; clearCloseT(); sw.id=r.id; sw.drag=true;
-    const el=e.currentTarget;
-    if(el&&el.setPointerCapture){ try{ el.setPointerCapture(e.pointerId); }catch(_){} }
-  }
-  sw.x=Math.max(0,Math.min(SW_MAX,pt.base+dx-(dx>0?SW_ARM:-SW_ARM)));
-};
-const onSwipeUp=(e,r)=>{
-  if(!pt||pt.id!==r.id) return;
-  const claimed=pt.claimed; pt=null;
-  if(!claimed) return;
-  swallowClick=true; sw.drag=false;
-  if(sw.x>=SW_FIRE){ closeSwipe(); g.toggleRig(r.id); }
-  else if(sw.x>=SW_OPEN) sw.x=SW_REST;
-  else closeSwipe();
-};
-const onSwipeCancel=(e,r)=>{
-  if(pt&&pt.id===r.id) pt=null;
-  if(sw.drag&&sw.id===r.id) closeSwipe();
-};
-const fireSwipe=r=>{ swallowClick=false; closeSwipe(); if(canSwipe(r)) g.toggleRig(r.id); };
+const { sw, SW_FIRE, onDown:onSwipeDown, onMove:onSwipeMove, onUp:onSwipeUp,
+  onCancel:onSwipeCancel, fire:fireSwipe, close:closeSwipe, reset:resetSwipe,
+  takeClick, isOpen:swipeOpen } = useSwipeAction({
+    can: id => canSwipe(rigById(id)),
+    fire: id => g.toggleRig(id),
+    within: '.rigswipe',
+  });
 
 const rowClick=r=>{
-  if(swallowClick){ swallowClick=false; return; }
-  if(sw.id===r.id&&sw.x>0){ closeSwipe(); return; }
+  if(takeClick()) return;                      // this click is the tail of a drag
+  if(swipeOpen(r.id)){ closeSwipe(); return; } // an open row closes before it opens
   if(picking.value) toggleChoose(r); else openRig.value=r.id;
 };
-
-const onDocDown=e=>{
-  if(sw.id==null) return;
-  const t=e.target;
-  if(t&&t.closest&&t.closest('.rigswipe')) return;
-  closeSwipe();
-};
-onMounted(()=>document.addEventListener('pointerdown',onDocDown,{passive:true}));
-onBeforeUnmount(()=>{ document.removeEventListener('pointerdown',onDocDown); clearCloseT(); });
 watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 
 const openRig=ref(null);
@@ -369,8 +317,8 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
              :style="sw.id===r.id?{'--sx':sw.x+'px'}:null">
           <button class="rigrow" :class="{sel:picking&&chosen[r.id]}"
                   @click="rowClick(r)"
-                  @pointerdown="onSwipeDown($event,r)" @pointermove="onSwipeMove($event,r)"
-                  @pointerup="onSwipeUp($event,r)" @pointercancel="onSwipeCancel($event,r)">
+                  @pointerdown="onSwipeDown($event,r.id)" @pointermove="onSwipeMove($event,r.id)"
+                  @pointerup="onSwipeUp($event,r.id)" @pointercancel="onSwipeCancel($event,r.id)">
             <span v-if="picking" class="box" :class="{on:chosen[r.id]}">&#10003;</span>
             <RigShot v-else :state="stateOf(r).dot" :frame="r.frame" />
             <span class="mid">
@@ -402,7 +350,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
         </div>
         <button v-if="sw.id===r.id" class="rigswact"
                 :class="{go:!r.on, arm:sw.x>=SW_FIRE}"
-                :aria-label="swipeVerb(r)+' '+r.name" @click="fireSwipe(r)">
+                :aria-label="swipeVerb(r)+' '+r.name" @click="fireSwipe(r.id)">
           <span class="lb">{{ swipeVerb(r) }}</span>
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="M12 3v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></span>
