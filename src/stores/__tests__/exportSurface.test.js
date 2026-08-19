@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { createPinia, setActivePinia } from 'pinia';
 import { createGame } from '../game.js';
 
 /* G.__exports is a hand-written list. Everything the install* modules put on G
@@ -74,13 +73,16 @@ const ALIASES = { livePsus: 'PSUS' };
    only see what the installers assign at install time, and a module that
    memoises onto G from inside a tick-path function (G.chainIndex ||= …)
    would slip past this whole file — the exact silent-undefined failure it
-   exists to catch. Running an hour of game first means anything installed
-   lazily is present to be judged. */
+   exists to catch. Running an hour of game first means anything installed on
+   the TICK PATH is present to be judged. A key first written by a user action
+   nothing here performs is still missed; that is the accepted edge, and
+   driving every action from here would make this a second integration suite. */
 let built = null;
+const ownKeys = o => Reflect.ownKeys(o).filter(k => typeof k === 'string');
+
 function game(){
   if(!built){
-    setActivePinia(createPinia());   // installPersistence reads the Pinia app
-    built = createGame();
+    built = createGame();            // no Pinia needed: createGame is plain Vue
     built.stepTick(3600);
   }
   return built;
@@ -91,7 +93,9 @@ describe('the public surface of the game store', () => {
     const G = game();
     const published = new Set(Object.keys(G.__exports));
 
-    const undeclared = Object.keys(G).filter(k =>
+    // Reflect.ownKeys rather than Object.keys: a non-enumerable property
+    // defined with defineProperty is still part of the surface.
+    const undeclared = ownKeys(G).filter(k =>
       k !== '__exports' &&
       !published.has(k) &&
       !published.has(ALIASES[k]) &&
