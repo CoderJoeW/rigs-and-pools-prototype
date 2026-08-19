@@ -170,7 +170,12 @@ describe('SitesView', () => {
 
   it('the hero carries the site backdrop and the three headline readings', () => {
     const { wrapper } = mountWithStore(SitesView);
-    expect(wrapper.find('.site-hero-bg').attributes('src')).toBeTruthy();
+    // Both plates are mounted so the day/night change can cross-fade, and
+    // both are of the shell this site actually is.
+    const plates = wrapper.findAll('.site-hero-bg .sf-plate');
+    expect(plates).toHaveLength(2);
+    expect(plates[0].attributes('src')).toMatch(/bedroom-day/);
+    expect(plates[1].attributes('src')).toMatch(/bedroom-night/);
     const hero = wrapper.find('.site-hero').text();
     expect(hero).toContain('Hashrate');
     expect(hero).toContain('Power');

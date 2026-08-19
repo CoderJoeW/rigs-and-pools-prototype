@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import { fmt } from './utils/format.js';
+import keyArt from './assets/key/hero.webp';
 import TopBar from './components/TopBar.vue';
 import OnboardingBanner from './components/OnboardingBanner.vue';
 import WelcomeTour from './components/WelcomeTour.vue';
@@ -173,10 +174,17 @@ const allTabs=[
 
 <template>
   <div v-if="booting || g.s.catchUp" class="boot" role="status" aria-live="polite">
+    <!-- The cold start used to be a 34px outline and the word "Loading". The
+         first thing a new player saw never once showed them what the game was
+         about, and a catch-up after a long absence could hold that screen for
+         several seconds. The key art is the same frame the icon set and the
+         share card are cut from, so the app has one face wherever it turns up. -->
+    <img class="boot-art" :src="keyArt" alt="" aria-hidden="true" />
     <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24">
       <rect x="4" y="4" width="16" height="16" rx="2"/>
       <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
       <circle cx="12" cy="12" r="2.5"/></svg></span>
+    <span class="boot-wordmark" aria-hidden="true">Rigs &amp; Pools</span>
     <template v-if="g.s.catchUp">
       <p>Catching up on {{ fmt.dur(g.s.catchUp.credited) }} away&hellip;</p>
       <span class="cd-bar" role="progressbar" :aria-valuenow="catchUpPct" aria-valuemin="0" aria-valuemax="100">

@@ -1,28 +1,21 @@
 <script setup>
 import { computed } from 'vue';
-import run from '../assets/rig/run.webp';
-import warn from '../assets/rig/warn.webp';
-import build from '../assets/rig/build.webp';
-import bad from '../assets/rig/bad.webp';
-import off from '../assets/rig/off.webp';
+import { rigShot, rigClass } from '../utils/rigArt.js';
 
 /* The wide hardware shot that fronts every row of the Rigs list.
 
-   A fourth set of renders, and the reason it is not one of the other three:
-   Chassis is a 36-44px square badge that sits INSIDE a line of text, RackShot
-   is a 104x78 portrait-ish crop of a whole site's rack, and RackTile is a
+   Its own set of renders, and the reason it is not one of the others: Chassis
+   is a 36-44px square badge that sits INSIDE a line of text, and RackTile is a
    macro crop of a rack's mesh with no cabinet outline left in frame. This one
    is a 16:9 studio shot of a SINGLE rig with the whole enclosure in frame,
    because the Rigs row is the one place in the app that shows one machine at a
    size where the machine itself is the subject rather than a marker for it.
 
-   All five states come from one 2112x1188 crop box measured on the OFF render
-   — the only state whose LEDs are dark, so its detail box contains the
-   hardware and not the bloom around it. Sharing that box is what keeps the
-   chassis from drifting or resizing as a rig changes state: only the light
-   moves. `build` is the one that reaches past it (its removed front panel
-   leans out to the left) and it is cropped rather than reframed, for the same
-   reason.
+   TWO AXES, NOT ONE. Until now every rig in the fleet — a two-card milk crate
+   and a sixteen-slot rack shelf alike — shared one photograph, so the single
+   most legible decision the Build tab offers was invisible everywhere it
+   mattered. The frame is now the second axis; utils/rigArt.js owns which of
+   the three art classes a frame id wears, and why there are three.
 
    No chain LED, unlike RackTile's version of this idea: a tile on the floor
    plan is wordless and needs the bar to say which chain it points at, where
@@ -32,15 +25,17 @@ import off from '../assets/rig/off.webp';
    picture rather than as a label. */
 const props = defineProps({
   state: { type: String, default: 'off' },
+  /* A frame id from data/hardware.js (f2 … f16). */
+  frame: { type: String, default: 'f4' },
   label: { type: String, default: '' },
 });
 
-const SHOTS = { run, warn, build, bad, off };
-const src = computed(() => SHOTS[props.state] || SHOTS.off);
+const src = computed(() => rigShot(props.frame, props.state));
+const cls = computed(() => rigClass(props.frame));
 </script>
 
 <template>
-  <span class="rigshot" :class="state" :role="label ? 'img' : undefined"
+  <span class="rigshot" :class="[state, 'cl-' + cls]" :role="label ? 'img' : undefined"
         :aria-label="label || undefined" :aria-hidden="label ? undefined : 'true'">
     <img class="rgs-img" :src="src" alt="" aria-hidden="true" />
     <i class="rgs-sheen" aria-hidden="true"></i>

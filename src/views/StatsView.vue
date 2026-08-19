@@ -33,6 +33,15 @@ const segKey=e=>{
   const el=segEl[seg.value]; if(el&&el.focus) el.focus();
 };
 
+/* One emblem per milestone: six contact sheets, one per track, each cut into
+   four. Every track has its own metal and its own engraved colour, and within
+   a track the four grow more ornate — so the panel reads as a set of awards
+   with an order to them rather than as a checklist with pictures stuck on.
+   An emblem is lit when earned and knocked back to near-monochrome when not,
+   which is the one thing the render itself cannot say. */
+const EMBLEMS = import.meta.glob('../assets/mile/*.webp', { eager: true, import: 'default' });
+const emblemOf = id => EMBLEMS[`../assets/mile/${id}.webp`];
+
 const doneN=computed(()=>Object.keys((g.s.mile&&g.s.mile.done)||{}).length);
 // Clamped with Number.isFinite, not ||0 (issue #14): this indexes g.RANKS,
 // and ||0 only catches falsy corruption (NaN, undefined) — a malformed
@@ -195,9 +204,10 @@ const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
         <div v-for="t in tracks" :key="t.name" style="margin-bottom:10px">
           <div class="track-cap"><span style="font-weight:600;color:var(--ink)">{{ t.name }}</span>
             <b>{{ t.n }}/{{ t.items.length }}</b></div>
-          <div v-for="m in t.items" :key="m.id" class="chk" :class="m.done?'ok':''"
+          <div v-for="m in t.items" :key="m.id" class="chk mile" :class="m.done?'ok':''"
                style="opacity:1">
-            <span class="ic">{{ m.done?'✓':'○' }}</span>
+            <img class="mile-em" :class="{lit:m.done}" :src="emblemOf(m.id)" alt=""
+                 aria-hidden="true" loading="lazy" />
             <span :style="m.done?'':'color:var(--ink-3)'">{{ m.name }}
               <span class="sb"> — {{ m.done ? 'day '+m.day : m.desc }}</span></span></div>
         </div>
@@ -249,6 +259,20 @@ const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
   text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rung.past{color:var(--green)}
 .rung.on{color:var(--blue);font-weight:700}
+
+/* ---- milestone emblems ------------------------------------------------- */
+/* The row keeps .chk's flex layout; the emblem simply takes the tick's slot
+   and is a good deal larger, which is the point — the six rank medallions
+   were the best art in the project and the twenty-four milestones beside
+   them had none at all. */
+.mile{align-items:center;padding:5px 0}
+.mile-em{flex:none;width:30px;height:30px;display:block;border-radius:7px;
+  /* Locked: drained and dimmed rather than hidden, so the shape of what is
+     still to come is legible without competing with what has been won. */
+  filter:grayscale(.85) brightness(.5) contrast(.9);opacity:.55;
+  transition:filter .25s ease,opacity .25s ease}
+.mile-em.lit{filter:none;opacity:1}
+@media (prefers-reduced-motion:reduce){ .mile-em{transition:none} }
 
 .stpanel:focus{outline:none}
 

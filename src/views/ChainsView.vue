@@ -5,6 +5,13 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainMark from '../components/ChainMark.vue';
 import ChainGem from '../components/ChainGem.vue';
+
+/* One banner plate per chain, shot as a single sheet and cut into five so
+   the set shares its lighting. Each is composed with its subject on the left
+   and its right two-thirds falling to black, which is what lets it sit behind
+   the card's own header without competing with the figures printed over it. */
+const PLATES = import.meta.glob('../assets/chain/*-plate.webp', { eager: true, import: 'default' });
+const plateOf = id => PLATES[`../assets/chain/${id}-plate.webp`];
 import { CHAIN_HUE } from '../data/chains.js';
 
 const g = useGameStore();
@@ -212,6 +219,8 @@ const projMargin=computed(()=>{
 
     <div class="chainlist" data-tour="chains">
       <div v-for="x in cards" :key="x.c.id" class="card chaincard">
+        <span class="cc-plate" aria-hidden="true"
+              :style="{backgroundImage:'url('+plateOf(x.c.id)+')'}"></span>
         <button class="cc-tap" :aria-expanded="open[x.c.id]?'true':'false'"
                 @click="open[x.c.id]=!open[x.c.id]">
           <span class="cc-hd">
@@ -634,8 +643,17 @@ const projMargin=computed(()=>{
    scroll position and any card a player left open survive the round trip. */
 .chpanel:focus{outline:none}
 .chainlist{display:grid;gap:8px;margin-bottom:10px}
-.chaincard{padding:0;overflow:hidden}
-.cc-tap{display:block;width:100%;text-align:left;padding:10px 12px 0}
+.chaincard{padding:0;overflow:hidden;position:relative;isolation:isolate}
+/* The chain's own plate, bled in from the left behind the header and masked
+   out before it reaches the numbers on the right. Not a full-bleed banner:
+   the card's text is ink-on-card in both themes, and turning it light to sit
+   on a photograph would have made these the only cards in the app that do.
+   Held at --plate-a so it reads at the same strength on either ground. */
+.cc-plate{position:absolute;inset:0 0 auto 0;height:96px;z-index:0;pointer-events:none;
+  background-size:cover;background-position:left center;opacity:var(--plate-a);
+  -webkit-mask-image:linear-gradient(100deg,#000 0%,rgba(0,0,0,.5) 40%,transparent 74%);
+  mask-image:linear-gradient(100deg,#000 0%,rgba(0,0,0,.5) 40%,transparent 74%)}
+.cc-tap{display:block;width:100%;text-align:left;padding:10px 12px 0;position:relative;z-index:1}
 .cc-hd{display:flex;align-items:flex-start;gap:11px}
 .cc-id{flex:1;min-width:0}
 .cc-nm{display:block;font-size:17px;font-weight:600;letter-spacing:-.02em;line-height:1.2;
