@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
+import keyArt from '../assets/key/hero.webp';
 
 const g = useGameStore();
 const step = ref(0);
@@ -153,6 +154,10 @@ onBeforeUnmount(()=>{
       <span class="eyebrow">Getting started &middot; {{ step+1 }} of {{ g.TOUR_SLIDES.length }}</span>
       <button class="btn btn-sm btn-ghost" @click="g.dismissTour()">Skip</button>
     </div>
+    <!-- Only the opening slide carries the art. It is the one that has to
+         say what the game IS before it starts naming tabs, and repeating a
+         picture behind all seven would turn a caption into a carousel. -->
+    <img v-if="step===0" class="tour-art" :src="keyArt" alt="" aria-hidden="true" />
     <h3 style="font-size:15px;font-weight:600;letter-spacing:-.02em;margin-bottom:5px;color:var(--ink)">
       {{ displaySlide.title }}</h3>
     <p style="font-size:12.5px;line-height:1.5;color:var(--ink)">{{ displaySlide.body }}</p>
@@ -168,3 +173,16 @@ onBeforeUnmount(()=>{
     </div>
   </div>
 </template>
+
+<style scoped>
+.tour-art{
+  display:block;
+  width:100%;
+  aspect-ratio:21/9;
+  object-fit:cover;
+  object-position:center 52%;
+  border-radius:9px;
+  margin-bottom:10px;
+  background:#070a07;
+}
+</style>

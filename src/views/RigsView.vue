@@ -9,7 +9,7 @@ import ChainMark from '../components/ChainMark.vue';
 import Chassis from '../components/Chassis.vue';
 import RigShot from '../components/RigShot.vue';
 import { CHAIN_HUE } from '../data/chains.js';
-import heroShot from '../assets/rig/hero.webp';
+import { sitePlate, sitePhase } from '../utils/siteArt.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
@@ -251,6 +251,11 @@ const siteHash=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigHash(r),0));
 const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
 const siteLive=computed(()=>siteRigs.value.filter(r=>g.rigLive(r)).length);
 const siteSlots=computed(()=>g.siteSlots(f.value));
+/* The card at the top of Rigs names a SITE, so it wears that site's shell in
+   the light the sim says it is — the same plate the Sites tab and the Farm
+   rows use. It used to be a studio photograph of one rig, which said nothing
+   about which site's fleet you were looking at. */
+const heroShot=computed(()=>sitePlate(f.value.shell, sitePhase(g.s.t)));
 /* The hero's one-word verdict on the site. Deliberately the same dot
    vocabulary the rows underneath use — green is a machine that is earning,
    here as there — rather than a fourth colour meaning "site" specifically. */
@@ -367,7 +372,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
                   @pointerdown="onSwipeDown($event,r)" @pointermove="onSwipeMove($event,r)"
                   @pointerup="onSwipeUp($event,r)" @pointercancel="onSwipeCancel($event,r)">
             <span v-if="picking" class="box" :class="{on:chosen[r.id]}">&#10003;</span>
-            <RigShot v-else :state="stateOf(r).dot" />
+            <RigShot v-else :state="stateOf(r).dot" :frame="r.frame" />
             <span class="mid">
               <span class="nm">{{ r.name }}</span>
               <span class="st"><i class="dot" :class="stateOf(r).dot" aria-hidden="true"></i>

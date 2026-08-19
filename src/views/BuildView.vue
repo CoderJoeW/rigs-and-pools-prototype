@@ -7,7 +7,7 @@ import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 import Compare from '../components/Compare.vue';
 import PartTile from '../components/PartTile.vue';
-import heroShot from '../assets/build/hero.webp';
+import { rigShot } from '../utils/rigArt.js';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
@@ -90,6 +90,12 @@ const FIELDS=computed(()=>{
       part:g.PART(x.psu), sub:p=>partSub('psu',p)},
   ];
 });
+/* The hero's photograph. Not a fixed studio shot any more: the frame in the
+   draft decides which of the three rig classes is on screen, so swapping the
+   frame in the picker changes the machine you are looking at rather than only
+   the line of text under it. Always the `run` state — this is a preview of
+   what you are about to own, not of a rig mid-assembly. */
+const heroShot=computed(()=>rigShot(g.s.draft.frame,'run'));
 /* What the hero's status corner reports. Free positions is the same figure
    the floor-space check gates on, said before it becomes a cross. */
 const freePositions=computed(()=>{
@@ -137,6 +143,9 @@ const pickerRows=computed(()=>{
            : would<lim.n ? ' · drops your limit to '+would
            : ' · limit stays '+lim.n+' (the frame caps you)'; }
     return { id:p.id, name:p.name,
+      // A fab-designed custom part has no catalogue id and so no photograph;
+      // PartTile falls back to an empty tile, which keeps the column aligned.
+      tile:p.id,
       sub:(fld?fld.sub(p):'')+note+(e?' · '+fmt.usd2(e.net)+'/day each':''),
       value:p.price?fmt.usd(p.price):'free',
       valueSub: e ? (isFinite(e.payback)?Math.round(e.payback)+'d payback':'never') : '',
@@ -381,7 +390,7 @@ const verdict=computed(()=>{
                  class="pickrow partrow"
                  :aria-haspopup="mode==='custom' ? 'dialog' : null"
                  @click="mode==='custom' && (g.s.picker=fl.k)">
-        <PartTile :slot="fl.k" />
+        <PartTile :part="fl.part.id" />
         <span class="lab">{{ fl.label }}</span>
         <span class="val"><div class="n">{{ fl.part.name }}</div>
           <div class="s" v-if="g.s.help && mode==='custom'" style="color:var(--blue)">{{ fl.job }}</div>

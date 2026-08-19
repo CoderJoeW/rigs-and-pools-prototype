@@ -5,10 +5,9 @@ import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from '../components/Compare.vue';
 import RackTile from '../components/RackTile.vue';
+import SiteFilm from '../components/SiteFilm.vue';
 import { CHAIN_HUE } from '../data/chains.js';
-import hero1 from '../assets/site/hero-1.webp';
-import hero2 from '../assets/site/hero-2.webp';
-import hero3 from '../assets/site/hero-3.webp';
+import { sitePhase } from '../utils/siteArt.js';
 import fabShot from '../assets/site/fab.webp';
 
 const g = useGameStore();
@@ -137,11 +136,10 @@ const legend=computed(()=>{ const n={}; for(const r of rigsHere.value){ const d=
    entirely. */
 const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
 const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
-/* Sites are stamped out of the same three plates, chosen off the site's own
-   id so a site keeps its face for the whole run and two sites side by side in
-   the switcher are unlikely to share one. */
-const HEROES=[hero1,hero2,hero3];
-const heroSrc=computed(()=>HEROES[(f.value.id-1)%HEROES.length]);
+/* The hero shows the shell you actually bought, in the light the simulation
+   says it is — see utils/siteArt.js for both, and for why the previous scheme
+   (three quarry photographs dealt out by site id) had to go. */
+const heroPhase=computed(()=>sitePhase(g.s.t));
 const siteDot=st=>{ if(g.siteTemp(st)>=70) return 'bad';
   if(g.siteRigs(st).some(r=>g.rigLive(r))) return 'run';
   return 'off'; };
@@ -225,7 +223,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
 
     <!-- The site itself: its own face, its status, and the three readings -->
     <div class="card site-hero">
-      <img class="site-hero-bg" :src="heroSrc" alt="" aria-hidden="true" />
+      <SiteFilm class="site-hero-bg" :shell="f.shell" :phase="heroPhase" />
       <div class="site-hero-in">
         <div class="site-hero-hd">
           <span class="site-hero-status" :class="siteStatus.tone">
@@ -550,10 +548,22 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
    that the name and the three readings clear contrast on it whatever the shot
    is doing, and the card keeps its own border so it still reads as a card. */
 .site-hero{position:relative;padding:0;overflow:hidden;isolation:isolate}
-.site-hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  object-position:center 42%;z-index:0;pointer-events:none}
+.site-hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
+/* Lighter overall than it used to be. The old plates were bright skies over a
+   quarry and needed holding down; these are interiors already shot with their
+   mid-tones up and their top third kept calm, so the same scrim buried the
+   room the card exists to show.
+
+   Two layers rather than one, because the two jobs are different. ::after is
+   the overall wash, now gentle at the top. ::before is a short band behind the
+   status pill alone — 9.5px uppercase, no plate of its own, and the one piece
+   of type here that the lighter wash left short of 4.5:1. It decays inside
+   74px, so it buys that row its contrast without touching the room below. */
+.site-hero::before{content:'';position:absolute;inset:0 0 auto 0;height:74px;z-index:1;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(4,6,9,.74) 0%,rgba(4,6,9,.34) 58%,rgba(4,6,9,0) 100%)}
 .site-hero::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(180deg,rgba(4,6,9,.62) 0%,rgba(4,6,9,.74) 46%,rgba(4,6,9,.93) 100%)}
+  background:linear-gradient(180deg,rgba(4,6,9,.22) 0%,rgba(4,6,9,.50) 44%,rgba(4,6,9,.88) 100%)}
 .site-hero-in{position:relative;z-index:2;padding:12px 14px 14px}
 .site-hero-hd{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .site-hero-status{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:600;

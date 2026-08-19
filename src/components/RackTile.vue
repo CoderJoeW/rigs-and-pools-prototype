@@ -8,8 +8,8 @@ import off from '../assets/floor/off.webp';
 
 /* One position on a site's floor plan.
 
-   A third set of renders, alongside Chassis (square 64px badges beside a
-   single rig) and RackShot (the landscape hero of a Farm site row): these are
+   Its own set of renders, alongside Chassis (square 64px badges beside a
+   single rig) and RigShot (the 16:9 shot fronting a Rigs row): these are
    macro crops of a rack's front face, framed so the mesh and its LED rows fill
    a wide tile edge to edge with no cabinet outline to shrink at this size. All
    five states come from one crop box and differ only in what colour the LEDs

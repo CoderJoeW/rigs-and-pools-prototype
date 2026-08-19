@@ -105,15 +105,17 @@ describe('FarmView', () => {
     expect(wrapper.text()).toMatch(/Best block ever\s*—/);
   });
 
-  it('each site row shows a large industrial hardware shot', () => {
+  it('each site row shows a shot of that site\'s own shell', () => {
     const { wrapper } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
     const row = wrapper.find('button.siterow');
     expect(row.exists()).toBe(true);
-    const shot = row.find('.rackshot');
+    const shot = row.find('.siteshot');
     expect(shot.exists()).toBe(true);
-    expect(row.find('.rs-img').attributes('src')).toBeTruthy();
+    // Keyed to the shell, not dealt out by site id: the starting site is a
+    // spare bedroom and has to be showing the bedroom plate.
+    expect(row.find('.ss-img').attributes('src')).toMatch(/bedroom/);
     // the shot carries the row's status, so it is not a decorative image
     expect(shot.attributes('aria-label')).toMatch(/ONLINE|IDLE|HOT/);
     expect(row.text()).toMatch(/ONLINE|IDLE|HOT/);

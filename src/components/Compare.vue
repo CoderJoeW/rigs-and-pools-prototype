@@ -1,4 +1,6 @@
 <script setup>
+import PartTile from './PartTile.vue';
+
 defineProps({ title:String, metric:String, rows:Array, pick:Function });
 // Capped so a long catalogue's later rows don't sit through a growing
 // queue before they animate in — past the cap every remaining row starts
@@ -13,7 +15,11 @@ const rowDelay = i => Math.min(i,8)*22+'ms';
                class="cmp-r" :class="{cur:r.current, locked:r.locked}"
                :style="{ 'animation-delay': rowDelay(i) }"
                @click="pick && !r.locked && pick(r.id)">
-      <span class="cmp-n">{{ i+1 }}</span>
+      <!-- A row that names a catalogue part shows the part; every other
+           picker in the app (shells, sources, cooling plants, storage) has
+           no such art and keeps the rank number it always had. -->
+      <PartTile v-if="r.tile" class="cmp-tile" :part="r.tile" />
+      <span v-else class="cmp-n">{{ i+1 }}</span>
       <span class="cmp-nm"><span class="cmp-t">{{ r.name }}</span>
         <div class="cmp-d">{{ r.sub }}</div></span>
       <span class="cmp-rt"><div class="cmp-v" :class="r.cls">{{ r.value }}</div>
@@ -21,3 +27,9 @@ const rowDelay = i => Math.min(i,8)*22+'ms';
     </component>
   </div>
 </template>
+
+<style scoped>
+/* The tile stands in for .cmp-n, so it takes that slot's width rather than
+   widening the row and pushing every name across. */
+.cmp-tile { margin-right: 2px }
+</style>

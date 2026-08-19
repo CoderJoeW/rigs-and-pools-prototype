@@ -56,18 +56,26 @@ npm run preview    # serve the production build locally
 src/
   main.js, App.vue          app entry, tab shell, tick/save lifecycle
   assets/main.css           the design system (one stylesheet, no scoped styles)
+  assets/                   the art, one directory per family — site/ (five
+                             shells x day/night, plus three silent loops),
+                             rig/ (three frame classes x five states),
+                             part/ (one thumbnail per catalogue part),
+                             chain/, mile/, rank/, floor/, chassis/, key/
   data/                     static catalogs and constants (chains, hardware,
                              site parts, milestones, network-simulation tuning)
   utils/                    format.js (display formatting), random.js (gauss,
-                             wearRate), spark.js (sparkline path math)
+                             wearRate), spark.js (sparkline path math),
+                             rigArt.js + siteArt.js (which render a rig or a
+                             site is wearing, and why)
   services/storage.js       save persistence (localStorage, memory fallback)
   game/                     simulation logic, one module per concern
                              (state, dispatch, tick, pools, sites, actions,
                              rivals, ...)
   stores/game.js            the Pinia store — assembles game/ into one store
   components/               shared UI (TopBar, Feed, Compare, StatChart,
-                             Chassis/RackShot/RackTile/RigShot hardware art,
-                             ChainGem chain emblems, PartTile component thumbnails,
+                             Chassis/RackTile/RigShot hardware art,
+                             SiteFilm/SiteShot site backdrops, ChainGem chain
+                             emblems, PartTile catalogue thumbnails,
                              RankBadge career medallions)
   views/                    the 7 tabs (Farm, Sites, Rigs, Build, Chains,
                              Market, Stats)

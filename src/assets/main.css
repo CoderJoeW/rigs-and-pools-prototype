@@ -43,6 +43,7 @@
      with the others. Light theme: L .55 puts every mark at 3.8:1 or better on
      --card, past the 3:1 a non-text indicator needs. */
   --chain-l:.55; --chain-c:.15;
+  --plate-a:.34;
   --top-bg:rgba(247,246,241,.92);
   --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
   --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
@@ -71,6 +72,9 @@
     /* Lifted, not just re-tinted: .55 on the dark card is a smudge. .78 lands
        every chain at 7:1 or better there. */
     --chain-l:.78; --chain-c:.15;
+    /* Art plates read as a smudge at the light theme's strength on a dark
+       card, and as a poster at the dark theme's on a white one. */
+    --plate-a:.42;
     --top-bg:rgba(10,13,10,.85);
   }
 }
@@ -82,6 +86,7 @@
   --red:#FF6459;   --red-t:#3B1815;
   --blue:#5C9CFF;  --blue-t:#132546;
   --chain-l:.78; --chain-c:.15;
+  --plate-a:.42;
   --top-bg:rgba(10,13,10,.85);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -139,10 +144,31 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;tex
      lapping catch-up while one is already running (see persistence.js's
      `hydrating` guard for what that would otherwise corrupt). */
 .boot{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:10px;background:var(--bg);color:var(--ink-2)}
-.boot .brandmark{width:34px;height:34px}
-.boot p{font-size:13px}
-.boot .cd-bar{width:180px}
+  align-items:center;justify-content:center;gap:10px;color:var(--ink-2);
+  /* Always the dark ground, in both themes: the art behind it is a night
+     exterior, and a cream boot screen with a dusk photograph on it reads as
+     a mistake rather than a choice. This is the one screen in the app that
+     deliberately does not follow the palette. */
+  background:#080B08;isolation:isolate}
+/* The key art, held back far enough that the wordmark and the catch-up bar
+   keep their contrast over it. object-position favours the lit doorway. */
+.boot-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center 42%;z-index:-2;opacity:.82}
+/* A vignette rather than a flat scrim: the wordmark and the catch-up bar sit
+   dead centre, and the art's own subject — the lit rack wall and the doorway
+   — is out at the edges, so darkening the middle buys contrast where the type
+   is without burying the picture. */
+.boot::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(64% 42% at 50% 47%,rgba(6,9,6,.72) 0%,rgba(6,9,6,.30) 62%,rgba(6,9,6,.62) 100%)}
+.boot .brandmark{width:34px;height:34px;color:#DCE8DD}
+.boot-wordmark{font-size:19px;font-weight:600;letter-spacing:-.02em;color:#EAF2EB;
+  text-shadow:0 1px 16px rgba(0,0,0,.7)}
+.boot p{font-size:13px;color:#96A797}
+/* The shared .cd-bar track is var(--line-2), which is a light-theme token on
+   a screen that is deliberately dark in both themes — it vanishes into the
+   art. Given its own track here rather than changing the token, since every
+   other .cd-bar in the app sits on a card and is right as it is. */
+.boot .cd-bar{width:180px;background:rgba(233,241,234,.22)}
 /* Redesign: the old build washed the shell in soft drifting colour blobs — a
    "living room" read. This one leans into the hardware the game is actually
    about: a fine instrument-grid (::after) under a single scanning glow that

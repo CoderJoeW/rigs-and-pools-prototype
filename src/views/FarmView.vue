@@ -5,13 +5,17 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 import ChainMark from '../components/ChainMark.vue';
-import RackShot from '../components/RackShot.vue';
+import SiteShot from '../components/SiteShot.vue';
+import { sitePhase } from '../utils/siteArt.js';
 import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
 
 const g = useGameStore();
 const netDayShown = useTweenedNumber(() => g.netDay);
 const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
+/* Every site row shows the same time of day, because they are all in it —
+   this is one clock, not one per site. */
+const heroPhase=computed(()=>sitePhase(g.s.t));
 const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
 const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   const a=h[h.length-6], b=h[h.length-1];
@@ -233,7 +237,8 @@ const totalSlots=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteSlots(f),0));
                      :class="row.util>0.9?'o':row.util>0.7?'w':'b'"></i></span>
               </span>
             </span>
-            <RackShot :state="row.chassisState" :label="row.f.name+' — '+row.status" />
+            <SiteShot :shell="row.f.shell" :phase="heroPhase" :state="row.chassisState"
+                      :label="row.f.name+' — '+row.status" />
           </button>
         </div>
       </div>
