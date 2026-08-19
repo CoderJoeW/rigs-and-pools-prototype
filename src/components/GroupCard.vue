@@ -211,9 +211,24 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
   font:inherit;font-size:13px;margin-bottom:6px;
   background:var(--card);color:var(--ink);
 }
-.grp-strip{grid-template-columns:1fr 1fr;row-gap:9px}
-.gsel{margin-right:0}
-.grp-strip .gsel:nth-child(1){margin-right:7px}
-.gstat{padding-left:0;border-left:none}
-.grp-strip .gstat:nth-child(4){padding-left:9px;border-left:1px solid var(--line-2)}
+/* Four across is the mockup's shape and it holds down to ~380px. Below that
+   the picker icons go first: they are decorative (aria-hidden) and cost 23px
+   each, where the text they sit beside is the actual content — a chain named
+   "Tessera" truncated to "Te…" is a worse trade than no icon. */
+@media (max-width:380px){
+  .gsel-ico{display:none}
+  .gsel{gap:0}
+  /* with the icons gone the pickers need less, so the readouts take it back —
+     "Hashrate" is the widest column key and was the last cell still ellipsing */
+  .grp-strip{grid-template-columns:.92fr .98fr .72fr .95fr}
+}
+/* Narrower than that, even the text stops fitting four across, so the strip
+   folds to pickers over readouts rather than ellipsing every cell. */
+@media (max-width:339px){
+  .grp-strip{grid-template-columns:1fr 1fr;row-gap:9px}
+  .gsel{margin-right:0}
+  .grp-strip .gsel:nth-child(1){margin-right:7px}
+  .gstat{padding-left:0;border-left:none}
+  .grp-strip .gstat:nth-child(4){padding-left:9px;border-left:1px solid var(--line-2)}
+}
 </style>

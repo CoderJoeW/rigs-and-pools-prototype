@@ -68,7 +68,7 @@ describe('GroupCard', () => {
     let gr;
     const { wrapper } = mountWithStore(GroupCard, {
       seed: g => { gr = g.s.groups[0]; },
-      props: { get gr(){ return gr; }, advice: { alt: 'Halcyon', mult: 2.5 },
+      props: { get gr(){ return gr; }, advice: { share: 0.3, alt: 'Halcyon', mult: 2.5 },
                ceiling: null, totalSlots: 4 },
     });
     expect(wrapper.text()).toContain('Halcyon');

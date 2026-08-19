@@ -5,7 +5,6 @@ import GroupCard from '../components/GroupCard.vue';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
-import ChainMark from '../components/ChainMark.vue';
 import SiteShot from '../components/SiteShot.vue';
 import { sitePhase } from '../utils/siteArt.js';
 import { CHAIN_HUE } from '../data/chains.js';
@@ -628,27 +627,6 @@ const totalSlots=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteSlots(f),0));
 .au-cv svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;display:block}
 .au-cv.open{transform:rotate(180deg)}
-
-/* Four across is the mockup's shape and it holds down to ~380px. Below that
-   the picker icons go first: they are decorative (aria-hidden) and cost 23px
-   each, where the text they sit beside is the actual content — a chain named
-   "Tessera" truncated to "Te…" is a worse trade than no icon. */
-@media (max-width:380px){
-  .gsel-ico{display:none}
-  .gsel{gap:0}
-  /* with the icons gone the pickers need less, so the readouts take it back —
-     "Hashrate" is the widest column key and was the last cell still ellipsing */
-  .grp-strip{grid-template-columns:.92fr .98fr .72fr .95fr}
-}
-/* Narrower than that, even the text stops fitting four across, so the strip
-   folds to pickers over readouts rather than ellipsing every cell. */
-@media (max-width:339px){
-  
-  
-  
-  
-  
-}
 
 @media (max-width:359px){
   .ledger{grid-template-columns:repeat(2,1fr)}
