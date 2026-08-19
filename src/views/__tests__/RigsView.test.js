@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
+import { fmt } from '../../utils/format.js';
 import RigsView from '../RigsView.vue';
 
 describe('RigsView', () => {
@@ -30,6 +31,33 @@ describe('RigsView', () => {
     expect(wrapper.text()).toContain('Retrofit');
     expect(wrapper.text()).toContain('Repair');
     expect(wrapper.text()).toContain('Strip');
+  });
+
+  it('the Repair row tracks the open rig\'s worn cards as they wear', async () => {
+    const { wrapper, store: g } = mountWithStore(RigsView, {
+      seed: h => { h.generatePreset(); h.build(); h.s.rigs[0].building = 0; },
+    });
+    await wrapper.find('.rigrow').trigger('click');
+    const repair = () => wrapper.findAll('.pickrow').find(b => b.text().includes('Repair'));
+
+    // Nothing worn yet: the row explains the threshold and cannot be pressed.
+    expect(repair().text()).toContain('No cards worn past');
+    expect(repair().attributes('disabled')).toBeDefined();
+
+    // Wear a card past the repair line — the row must follow, not freeze at
+    // whatever it read on mount.
+    const rig = g.s.rigs[0];
+    g.s.cash = 100000;
+    rig.units[0].w = 0.9;
+    await nextTick();
+    expect(repair().text()).toContain('Replace 1 worn card');
+    expect(repair().text()).toContain(fmt.usd(g.PART(rig.units[0].p).price));
+    expect(repair().attributes('disabled')).toBeUndefined();
+
+    // Affordability is part of the same guard.
+    g.s.cash = 0;
+    await nextTick();
+    expect(repair().attributes('disabled')).toBeDefined();
   });
 
   it('list row fronts each rig with its hardware shot, carrying the rig state', () => {

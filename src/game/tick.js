@@ -193,9 +193,8 @@ export function installTick(G){
     if(G.s.autoFix){
       for(const r of G.s.rigs){
         if(r.building>0) continue;
-        const worn=r.units.filter(u=>u.w>=G.s.fixAt);
-        if(!worn.length) continue;
-        const cost=worn.reduce((a,u)=>a+PART(u.p).price,0);
+        const {n,cost}=G.rigWorn(r,G.s.fixAt);
+        if(!n) continue;
         if(G.s.cash>=cost*2) G.swapWorn(r.id,G.s.fixAt);
       }
     }

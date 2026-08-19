@@ -197,8 +197,8 @@ const moveInfo=computed(()=> g.fleetMoveInfo(fleetGroup.value, scopeId.value));
 const refitInfo=computed(()=> g.fleetRefitInfo(fleetCard.value, scopeId.value));
 const fleetCardOpts=computed(()=> g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')));
 
-const wornCost=(r,t)=>r.units.filter(u=>u.w>=t).reduce((a,u)=>a+g.PART(u.p).price,0);
-const wornN=(r,t)=>r.units.filter(u=>u.w>=t).length;
+/* Same worn-card definition the fleet sweep uses, asked of the open rig only. */
+const rigWorn=computed(()=> rig.value ? g.rigWorn(rig.value,REPAIR_AT) : {n:0,cost:0});
 
 const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find(x=>x.id===g.s.rebuild.rig) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
@@ -523,12 +523,12 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
               <div class="s">Swap any parts, add or remove cards, one bill — the rig goes down
                 for the assembly time.</div></span>
             <span class="ch">&rsaquo;</span></button>
-          <button class="pickrow" :disabled="!wornN(rig,REPAIR_AT)||g.s.cash<wornCost(rig,REPAIR_AT)"
+          <button class="pickrow" :disabled="!rigWorn.n||g.s.cash<rigWorn.cost"
                   @click="g.swapWorn(rig.id,REPAIR_AT)">
             <span class="lab">Repair</span>
-            <span class="val"><div class="n">{{ wornN(rig,REPAIR_AT)
-              ? 'Replace '+wornN(rig,REPAIR_AT)+' worn card'+(wornN(rig,REPAIR_AT)===1?'':'s')
-                +' · '+fmt.usd(wornCost(rig,REPAIR_AT))
+            <span class="val"><div class="n">{{ rigWorn.n
+              ? 'Replace '+rigWorn.n+' worn card'+(rigWorn.n===1?'':'s')
+                +' · '+fmt.usd(rigWorn.cost)
               : 'No cards worn past '+fmt.pct(REPAIR_AT,0)+' yet' }}</div>
               <div class="s">Cards are swapped in place; the rig keeps running.</div></span></button>
           <button class="pickrow" @click="g.scrapRig(rig.id); openRig=null">

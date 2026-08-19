@@ -67,6 +67,48 @@ describe('renameGroup', () => {
   });
 });
 
+describe('rigWorn', () => {
+  it('counts worn cards and prices them at the card list price', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.5;
+
+    // Pinned to the part price directly, not to fleetWorn: fleetWorn now
+    // delegates here, so comparing the two would only compare a value to
+    // itself and would follow any drift in the definition.
+    expect(g.rigWorn(a, 0.35)).toEqual({ n: 1, cost: g.PART(a.units[0].p).price });
+  });
+
+  it('counts a card sitting exactly on the threshold', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.35;
+
+    expect(g.rigWorn(a, 0.35).n).toBe(1); // >=, not >
+  });
+
+  it('reports nothing worn below the threshold', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.2;
+
+    expect(g.rigWorn(a, 0.35)).toEqual({ n: 0, cost: 0 });
+  });
+
+  it('still reports a rig that is mid-build, unlike the fleet sweep', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.5;
+    a.building = 30;
+
+    // Deliberate divergence, and the pre-refactor behaviour: the fleet sweep
+    // skips rigs that are down for assembly, while the rig detail sheet still
+    // shows the Repair row for the rig you have open. Do not "reconcile" these.
+    expect(g.rigWorn(a, 0.35).n).toBe(1);
+    expect(g.fleetWorn(0.35, [a.id]).n).toBe(0);
+  });
+});
+
 describe('fleetWorn / fleetRepair', () => {
   it('repairs only rigs actually carrying worn cards, across the whole farm', () => {
     const g = freshStore();
