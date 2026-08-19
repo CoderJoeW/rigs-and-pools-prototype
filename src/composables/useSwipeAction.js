@@ -28,6 +28,9 @@ const SW_MAX = 176;
    within     -> selector for the row wrapper; a pointerdown anywhere outside
                  one closes the open row. */
 export function useSwipeAction({ can = () => true, fire, within }){
+  // Fails at wiring time rather than under the first finger.
+  if(typeof fire!=='function') throw new TypeError('useSwipeAction needs a fire callback');
+
   /* The open row and how far it is pulled. Reactive because the template
      positions the slide from it; `drag` is separate from `x > 0` so CSS can
      drop its transition only while a finger is actually down. */

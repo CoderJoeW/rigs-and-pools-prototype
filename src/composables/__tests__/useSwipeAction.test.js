@@ -78,11 +78,34 @@ describe('useSwipeAction thresholds', () => {
     s.stop();
   });
 
-  it('fires on release past the fire distance', () => {
-    const s = build();
-    swipe(s, 7, 200); // past FIRE (134)
-    expect(s.fired).toEqual([7]);
-    s.stop();
+  /* Travel is the drag distance less the arming distance, so a release at
+     `dist` leaves the row at `dist - SW_ARM`. These four pin OPEN and FIRE from
+     both sides — bracketing them loosely lets the numbers drift, which is the
+     one thing this refactor promised not to do. */
+  it('parks at rest from exactly SW_OPEN, and closes one pixel short', () => {
+    const under = build();
+    swipe(under, 7, 43); // travel 33 — one short of OPEN
+    expect(under.sw.x).toBe(0);
+    under.stop();
+
+    const on = build();
+    swipe(on, 7, 44);    // travel 34 — exactly OPEN
+    expect(on.sw.x).toBe(108);
+    expect(on.fired).toEqual([]);
+    on.stop();
+  });
+
+  it('fires from exactly SW_FIRE, and only parks one pixel short', () => {
+    const under = build();
+    swipe(under, 7, 143); // travel 133 — one short of FIRE
+    expect(under.fired).toEqual([]);
+    expect(under.sw.x).toBe(108);
+    under.stop();
+
+    const on = build();
+    swipe(on, 7, 144);    // travel 134 — exactly FIRE
+    expect(on.fired).toEqual([7]);
+    on.stop();
   });
 
   it('clamps travel at the maximum', () => {
@@ -145,7 +168,9 @@ describe('useSwipeAction open-row bookkeeping', () => {
     s.close();
     expect(s.sw.x).toBe(0);
     expect(s.sw.id).toBe(7);   // still mounted so CSS can slide it back
-    vi.advanceTimersByTime(240);
+    vi.advanceTimersByTime(239);
+    expect(s.sw.id).toBe(7);   // must outlast the .22s CSS transition
+    vi.advanceTimersByTime(1);
     expect(s.sw.id).toBe(null);
     s.stop();
   });
@@ -186,11 +211,38 @@ describe('useSwipeAction open-row bookkeeping', () => {
     s.stop();
   });
 
+  /* The document listener has to tell "pressed somewhere else on the page" from
+     "pressed the button this swipe just revealed". Dispatching straight on
+     `document` cannot tell them apart — document has no .closest, so the guard
+     short-circuits before the selector is ever read. Both cases need real
+     elements. */
   it('a pointerdown outside the rows closes the open one', () => {
     const s = build();
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
     swipe(s, 7, 60);
-    document.dispatchEvent(new Event('pointerdown'));
+
+    outside.dispatchEvent(new Event('pointerdown', { bubbles:true }));
     expect(s.sw.x).toBe(0);
+
+    outside.remove();
+    s.stop();
+  });
+
+  it('leaves the row open when the press lands inside it', () => {
+    const s = build();
+    const row = document.createElement('div');
+    row.className = 'row';                 // the `within` selector
+    const button = document.createElement('button');
+    row.appendChild(button);
+    document.body.appendChild(row);
+    swipe(s, 7, 60);
+
+    button.dispatchEvent(new Event('pointerdown', { bubbles:true }));
+    expect(s.sw.x).toBe(108);              // still parked, not snapped shut
+    expect(s.isOpen(7)).toBe(true);
+
+    row.remove();
     s.stop();
   });
 
