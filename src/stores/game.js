@@ -31,11 +31,11 @@ import { installPersistence } from '../game/persistence.js';
    where the pre-Pinia build read `g.totalHash.value`. Code that stays
    inside this closure (the game/*.js installers) is unaffected — it never
    goes through the store's external proxy, so it keeps using `.value`
-   exactly as before. */
-/* Assembles the game and hands back the raw context G. The store below wants
-   only G.__exports, but the export-surface test wants both halves — what the
-   installers actually put on G, and what of it is published — so the assembly
-   is its own function rather than an anonymous store body. */
+   exactly as before.
+
+   The assembly is a named function rather than an anonymous store body only
+   so the export-surface test can see both halves: what the installers put on
+   G, and what of it G.__exports publishes. */
 export function createGame(){
   const G = {};
   installState(G);

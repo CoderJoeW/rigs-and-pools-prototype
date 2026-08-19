@@ -18,7 +18,7 @@ const INTERNAL = new Set([
   // --- state.js ---
   'freshState',
   // --- generations.js ---
-  'builtGen', 'ensureGens', 'liveCards', 'livePsus',
+  'builtGen', 'ensureGens', 'liveCards',
   // --- weather.js ---
   'drawWeather', 'ensureWeather', 'sky',
   // --- timeOfDay.js ---
@@ -26,7 +26,13 @@ const INTERNAL = new Set([
   // --- dispatch.js ---
   'BATT_HORIZON', 'DEFAULT_ELEC', 'blocksDay', 'chassisW', 'draftRate', 'liveUnits',
   'margRate', 'psuCarrying', 'psuUsableW', 'psuWithConn', 'rigAir', 'rigCoreW',
-  'rigPow', 'rigRev', 'simHash', 'siteStorage', 'today', 'totalDemand', 'touchHeat',
+  'rigPow', 'rigRev', 'simHash', 'siteStorage', 'today', 'touchHeat',
+  // totalDemand is withheld only because publishing it would widen the
+  // surface, which this change is not allowed to do. It is not a design
+  // decision: FarmView.vue re-implements it verbatim as a local computed
+  // because it never reached the store, while its own consumers (headroom,
+  // effMhw) are published. Worth publishing and de-duplicating separately.
+  'totalDemand',
   // --- sims.js ---
   'SIM_SOFT_CAP', 'SIM_START', 'addHash', 'creditSim', 'creditSimPoolShare',
   'drawSimWinner', 'ensureMembers', 'mkSim', 'rebuildMembers', 'reindexSims',
@@ -51,20 +57,33 @@ const INTERNAL = new Set([
   'fleetDraft', 'fleetRigs',
   // --- persistence.js ---
   'advance', 'resetState', 'wiped',
+  // sims.js again — the memoised hash and member tables. Listed rather than
+  // waved through by their leading underscore: exempting a whole namespace
+  // would leave an unbounded hole in the check, and an escape hatch that is
+  // easier to reach for than editing this list will get reached for.
+  '_membersDirty', '_poolMembers', '_simChainHash', '_simPoolHash',
+  '_simSoloHash', '_soloMembers',
 ]);
-
-/* A leading underscore is the existing convention on G for a private cache
-   (the sims module's memoised hash and member tables). Honouring the
-   convention beats listing each one, and it keeps the rule discoverable from
-   the name alone. */
-const isPrivateByName = k => k.startsWith('_');
 
 /* Names G.__exports deliberately publishes under a different key. */
 const ALIASES = { livePsus: 'PSUS' };
 
+/* Built once and shared: no test here mutates G.
+
+   The tick matters. Snapshotting G the instant createGame() returns would
+   only see what the installers assign at install time, and a module that
+   memoises onto G from inside a tick-path function (G.chainIndex ||= …)
+   would slip past this whole file — the exact silent-undefined failure it
+   exists to catch. Running an hour of game first means anything installed
+   lazily is present to be judged. */
+let built = null;
 function game(){
-  setActivePinia(createPinia());
-  return createGame();
+  if(!built){
+    setActivePinia(createPinia());   // installPersistence reads the Pinia app
+    built = createGame();
+    built.stepTick(3600);
+  }
+  return built;
 }
 
 describe('the public surface of the game store', () => {
@@ -76,7 +95,6 @@ describe('the public surface of the game store', () => {
       k !== '__exports' &&
       !published.has(k) &&
       !published.has(ALIASES[k]) &&
-      !isPrivateByName(k) &&
       !INTERNAL.has(k));
 
     expect(undeclared, 'These are installed on G but neither published in ' +
@@ -89,7 +107,11 @@ describe('the public surface of the game store', () => {
     const G = game();
     // A renamed or deleted internal should drop out of INTERNAL with it,
     // otherwise the list slowly stops describing the code it guards.
-    const gone = [...INTERNAL].filter(k => !(k in G));
+    // hasOwnProperty, not `in`: `in` walks the prototype chain, so a name
+    // like 'constructor' could never be reported stale. Not `G[k] !==
+    // undefined` either — `wiped` is legitimately false.
+    const own = k => Object.prototype.hasOwnProperty.call(G, k);
+    const gone = [...INTERNAL].filter(k => !own(k));
     expect(gone, 'Listed as INTERNAL but no longer installed on G — delete ' +
       'these entries.').toEqual([]);
   });
