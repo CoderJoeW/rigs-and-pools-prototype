@@ -17,11 +17,18 @@ export function installFleetActions(G){
   const fleetRigs = scope => Array.isArray(scope)
     ? G.s.rigs.filter(r=>scope.includes(r.id))
     : G.s.rigs.filter(r=>scope==null||r.site===scope);
+  /* One rig's worn-card count and replacement bill. The single-rig detail sheet
+     and the fleet-wide sweep below are the same question asked of a different
+     number of rigs, so both ask it here — repair pricing has one definition. */
+  const rigWorn = (r,th) => {
+    const w=r.units.filter(u=>u.w>=th);
+    return { n:w.length, cost:w.reduce((a,u)=>a+PART(u.p).price,0) };
+  };
   const fleetWorn = (th,fid) => {
     let n=0, cost=0, rigs=0;
     for(const r of fleetRigs(fid)){ if(r.building>0) continue;
-      const w=r.units.filter(u=>u.w>=th);
-      if(w.length){ rigs++; n+=w.length; cost+=w.reduce((a,u)=>a+PART(u.p).price,0); } }
+      const w=rigWorn(r,th);
+      if(w.n){ rigs++; n+=w.n; cost+=w.cost; } }
     return {rigs,n,cost};
   };
   function fleetRepair(th,fid){
@@ -87,5 +94,5 @@ export function installFleetActions(G){
   }
 
 
-  Object.assign(G, {draftSpec,fleetDraft,fleetMove,fleetMoveInfo,fleetRefit,fleetRefitInfo,fleetRepair,fleetRigs,fleetSpecInfo,fleetToSpec,fleetWorn});
+  Object.assign(G, {draftSpec,fleetDraft,fleetMove,fleetMoveInfo,fleetRefit,fleetRefitInfo,fleetRepair,fleetRigs,fleetSpecInfo,fleetToSpec,fleetWorn,rigWorn});
 }

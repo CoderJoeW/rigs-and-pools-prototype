@@ -67,6 +67,29 @@ describe('renameGroup', () => {
   });
 });
 
+describe('rigWorn', () => {
+  it('agrees with fleetWorn scoped to that one rig', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.5;
+
+    const one = g.rigWorn(a, 0.35);
+    const fleet = g.fleetWorn(0.35, [a.id]);
+    expect(one.n).toBe(fleet.n);
+    expect(one.cost).toBe(fleet.cost);
+    expect(one.n).toBe(1);
+    expect(one.cost).toBeGreaterThan(0);
+  });
+
+  it('reports nothing worn below the threshold', () => {
+    const g = freshStore();
+    const [a] = twoRigs(g);
+    a.units[0].w = 0.2;
+
+    expect(g.rigWorn(a, 0.35)).toEqual({ n: 0, cost: 0 });
+  });
+});
+
 describe('fleetWorn / fleetRepair', () => {
   it('repairs only rigs actually carrying worn cards, across the whole farm', () => {
     const g = freshStore();
