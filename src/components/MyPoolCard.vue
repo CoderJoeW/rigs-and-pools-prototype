@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import { sparkPath } from '../utils/spark.js';
 import ChainMark from './ChainMark.vue';
 
 /* One pool you own, on the Chains tab: capacity and bond, the members you can
@@ -17,6 +18,12 @@ const props = defineProps({
 const emit = defineEmits(['toggle']);
 
 const g = useGameStore();
+
+/* The hashrate sparkline. tick.js appends a poolHash sample to pool.hist every
+   four in-game hours, so this only draws once a pool has been running a while —
+   which is why the extraction lost it silently: a freshly founded pool has an
+   empty hist and never reaches the branch. */
+const spark = hist => sparkPath(hist, 32, 26);
 
 /* An unset fee draft means "showing the live fee" — the projection and the
    Move/Cancel pair only appear once the player has actually moved the slider. */

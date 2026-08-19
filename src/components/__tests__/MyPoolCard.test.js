@@ -70,6 +70,35 @@ describe('MyPoolCard', () => {
     expect(wrapper.text()).not.toContain('would settle at');
   });
 
+  /* The extraction dropped `spark` and nothing noticed, because every seed
+     above founds a fresh pool whose hist is empty — so the sparkline branch,
+     the one that broke, was never entered. These enter it. */
+  it('draws the hashrate sparkline once the pool has history', () => {
+    const { wrapper } = card((g, pool) => { pool.hist = [10, 20, 15, 30, 25]; });
+    const path = wrapper.find('svg path');
+    expect(path.exists()).toBe(true);
+    expect(path.attributes('d')).toMatch(/^M/);   // a real path, not empty
+  });
+
+  it('holds the sparkline back until there is enough history to mean anything', () => {
+    const { wrapper } = card((g, pool) => { pool.hist = [10, 20]; });
+    expect(wrapper.find('svg path').exists()).toBe(false);
+  });
+
+  it('renders a PPS pool with its capacity and dry-spell risk', () => {
+    let pool;
+    const { wrapper } = mountWithStore(MyPoolCard, {
+      seed: g => {
+        g.foundPool('tessera', 'PPS', 0.02);
+        pool = g.myPools[0];
+        pool.hist = [10, 20, 15, 30];
+      },
+      props: { get pool(){ return pool; }, open: true },
+    });
+    expect(wrapper.text()).toContain('PPS');
+    expect(wrapper.find('svg path').exists()).toBe(true);
+  });
+
   it('scales the bond buttons to the size of the bond', () => {
     const { wrapper } = card((g, pool) => { pool.bond = 4000; });
     // magnitude 1000 → 100 / 1000 / 5000

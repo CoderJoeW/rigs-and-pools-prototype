@@ -116,11 +116,6 @@ const siteAfter=computed(()=>{
   // where nothing can run.
   return { after, cap, frac: cap>0 ? after/cap : (after>0 ? Infinity : 0) };
 });
-/* Fab-designed parts (data/customParts.js) sit past the top of every
-   catalogue ladder rather than inside it — generatePreset's own search
-   never reaches for them (see buildDraft.js's header comment on why that's
-   deliberate), so the only door in is here, appended to whichever ladder
-   the design's slot type matches. */
 /* A narrower frame or board can leave the card count past what the new pair
    can actually wire — the slot map would read "8 of 4 usable slots filled",
    canBuild would go false, and the "+" stepper would be disabled, so the only

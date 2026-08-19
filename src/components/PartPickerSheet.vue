@@ -30,8 +30,11 @@ const g = useGameStore();
 
 const field = computed(() => props.fields.find(f => f.k === g.s.picker) || null);
 
-/* A slot's catalogue, plus anything the player has designed at the fab whose
-   slot type matches. */
+/* Fab-designed parts (data/customParts.js) sit past the top of every
+   catalogue ladder rather than inside it — generatePreset's own search
+   never reaches for them (see buildDraft.js's header comment on why that's
+   deliberate), so the only door in is here, appended to whichever ladder
+   the design's slot type matches. */
 const optionsFor = k => {
   const base = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:props.units;
   return base.concat(g.s.customParts.filter(p => p.kind === k));
