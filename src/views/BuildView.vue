@@ -2,10 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
-import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
-import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
-import Compare from '../components/Compare.vue';
+import PartPickerSheet from '../components/PartPickerSheet.vue';
 import PartTile from '../components/PartTile.vue';
 import { rigShot } from '../utils/rigArt.js';
 
@@ -123,47 +121,17 @@ const siteAfter=computed(()=>{
    never reaches for them (see buildDraft.js's header comment on why that's
    deliberate), so the only door in is here, appended to whichever ladder
    the design's slot type matches. */
-const optionsFor=k=>{
-  const base=k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:units.value;
-  return base.concat(g.s.customParts.filter(p=>p.kind===k));
-};
-const pickerRows=computed(()=>{
-  const k=g.s.picker; if(!k) return [];
-  const cur=g.s.draft[k], fld=FIELDS.value.find(x=>x.k===k);
-  const lim=cardLimit.value;
-  return optionsFor(k).map(p=>{
-    const e = k==='unit' ? g.unitEcon(p) : null;
-    let note='';
-    if(k==='frame'){ const would=Math.min(p.slots,lim.mobo);
-      note = would>lim.n ? ' · raises your limit to '+would
-           : would<lim.n ? ' · drops your limit to '+would
-           : ' · limit stays '+lim.n+' (the board caps you)'; }
-    if(k==='mobo'){ const would=Math.min(lim.frame,p.pcie);
-      note = would>lim.n ? ' · raises your limit to '+would
-           : would<lim.n ? ' · drops your limit to '+would
-           : ' · limit stays '+lim.n+' (the frame caps you)'; }
-    return { id:p.id, name:p.name,
-      // A fab-designed custom part has no catalogue id and so no photograph;
-      // PartTile falls back to an empty tile, which keeps the column aligned.
-      tile:p.id,
-      sub:(fld?fld.sub(p):'')+note+(e?' · '+fmt.usd2(e.net)+'/day each':''),
-      value:p.price?fmt.usd(p.price):'free',
-      valueSub: e ? (isFinite(e.payback)?Math.round(e.payback)+'d payback':'never') : '',
-      current:p.id===cur };
-  });
-});
 /* A narrower frame or board can leave the card count past what the new pair
    can actually wire — the slot map would read "8 of 4 usable slots filled",
    canBuild would go false, and the "+" stepper would be disabled, so the only
-   way out is tapping "−" until it is legal again. Clamp instead. */
+   way out is tapping "−" until it is legal again. Clamp instead.
+   Stays here, not in the picker: it has to read cardLimit AFTER the draft
+   changes, and a prop the child received is a render old by then. */
 const choose=id=>{
   g.s.draft[g.s.picker]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };
-
-const pickerSheetEl=ref(null);
-useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
 
 /* Verdict panel, always ranked the same way: cost and payback first,
    then hashrate and efficiency, then what it costs the site. Guidance
@@ -494,20 +462,7 @@ const verdict=computed(()=>{
         <span v-if="g.canBuild" class="cta-s">{{ fmt.usd(orderCost) }}</span></span>
     </button>
 
-    <div v-if="g.s.picker" class="sheet" ref="pickerSheetEl" role="dialog" aria-modal="true"
-         aria-labelledby="build-picker-title">
-      <div class="sheet-hd">
-        <button class="btn btn-sm btn-ghost" @click="g.s.picker=null">&lsaquo; Back</button>
-        <span class="t" id="build-picker-title">{{ FIELDS.find(f=>f.k===g.s.picker).label }} —
-          {{ FIELDS.find(f=>f.k===g.s.picker).job }}</span></div>
-      <div class="sheet-bd">
-        <Compare title="Cheapest first — more expensive is always better" metric="cost"
-                 :rows="pickerRows" :pick="choose" />
-        <p class="hint" style="padding:0 2px">Every ladder is monotonic: a more expensive part is better on
-          every axis. What changes is value — dollars per MH worsen as you climb, so cheap parts
-          win while cash is short and efficient parts win once watts are.</p>
-      </div>
-    </div>
+    <PartPickerSheet :fields="FIELDS" :card-limit="cardLimit" :units="units" @pick="choose" />
   </div>
 </template>
 
