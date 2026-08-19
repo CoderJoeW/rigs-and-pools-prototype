@@ -38,7 +38,37 @@ const props = defineProps({
    contents of the directory, and a part added to the catalogue needs only its
    tile dropped in beside the others. */
 const TILES = import.meta.glob('../assets/part/*.webp', { eager: true, import: 'default' });
-const src = computed(() => TILES[`../assets/part/${props.part}.webp`]);
+
+/* The catalogue is not fixed. Two kinds of part are minted at runtime and can
+   never have a tile of their own:
+
+     hardware.js grows the ladder every GEN_DAYS with `g<n>a`/`g<n>b` cards and
+     a matching `gp<n>` supply — an endless series, so shipping art for it is
+     not a thing that can be finished; and
+
+     the fab mints `custom-<kind>-<stamp>` parts a player designed themselves.
+
+   Both sit ABOVE the top of the ladder they extend, so the honest picture for
+   either is the top static part of that family — a top-end card really is what
+   a next-generation card looks like. Falling back keeps the column of tiles
+   full instead of putting an empty square against the best hardware in the
+   game from in-game day 14 onward. */
+const TOP_OF_FAMILY = { unit: 'c12', psu: 'p7500', frame: 'f16', mobo: 'm16', cool: 'x6' };
+const KIND_RE = /^custom-([a-z]+)-/;
+
+function tileFor(id) {
+  if (!id) return undefined;
+  const own = TILES[`../assets/part/${id}.webp`];
+  if (own) return own;
+  const custom = KIND_RE.exec(id);
+  const family = custom ? TOP_OF_FAMILY[custom[1]]
+    : /^g\d+[ab]$/.test(id) ? TOP_OF_FAMILY.unit
+    : /^gp\d+$/.test(id) ? TOP_OF_FAMILY.psu
+    : null;
+  return family ? TILES[`../assets/part/${family}.webp`] : undefined;
+}
+
+const src = computed(() => tileFor(props.part));
 </script>
 
 <template>
@@ -63,8 +93,9 @@ const src = computed(() => TILES[`../assets/part/${props.part}.webp`]);
   background: #b3aca2;
   border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
 }
-/* A part with no tile yet still holds its space rather than collapsing the
-   row — a fab-designed custom part has no catalogue id and so no photograph. */
+/* Nothing in the game should reach this now — every catalogue, generated and
+   fab-designed id resolves to a tile — but a row must not collapse if one
+   ever does. */
 .parttile.blank { background: color-mix(in srgb, var(--ink) 8%, transparent) }
 .pt-img {
   position: absolute;

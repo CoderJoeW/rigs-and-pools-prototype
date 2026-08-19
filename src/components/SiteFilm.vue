@@ -64,7 +64,10 @@ const showFilm = computed(() =>
    it is refused the poster stays up, which is the night plate, which is what
    the card would have shown anyway. */
 const filmEl = ref(null);
-watch(showFilm, async on => {
+/* Watches the film as well as the flag: showFilm stays true across a move
+   between two film-bearing sites, so the flag alone would never fire again
+   and the freshly keyed element would sit at its poster. */
+watch([showFilm, film], async ([on]) => {
   if (!on) return;
   await nextTick();
   const v = filmEl.value;
@@ -85,7 +88,12 @@ watch(showFilm, async on => {
          :style="{ opacity: phase === 'day' ? 1 : 0 }" />
     <img class="sf-plate" :src="nightPlate" alt=""
          :style="{ opacity: phase === 'night' ? 1 : 0 }" />
-    <video v-if="showFilm" ref="filmEl" class="sf-film" :poster="nightPlate"
+    <!-- Keyed on the shell so switching sites REPLACES the element. Patching
+         a <source src> in place does nothing on its own: a media element will
+         not re-select its source without a load() call, so without this key a
+         move from one film-bearing site to another at night left the previous
+         site's loop playing over the new site's plate. -->
+    <video v-if="showFilm" :key="shell" ref="filmEl" class="sf-film" :poster="nightPlate"
            muted loop playsinline autoplay preload="auto" tabindex="-1">
       <source v-if="film.webm" :src="film.webm" type="video/webm" />
       <source v-if="film.mp4" :src="film.mp4" type="video/mp4" />

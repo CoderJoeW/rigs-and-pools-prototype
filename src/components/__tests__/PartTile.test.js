@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import PartTile from '../PartTile.vue';
-import { FRAMES, MOBOS, COOLERS, PSUS, CARDS } from '../../data/hardware.js';
+import { FRAMES, MOBOS, COOLERS, PSUS, CARDS, genCardsFor, genPsuFor } from '../../data/hardware.js';
 
 const CATALOGUE = [...FRAMES, ...MOBOS, ...COOLERS, ...PSUS, ...CARDS];
 
@@ -21,9 +21,36 @@ describe('PartTile', () => {
     expect(new Set(srcs).size).toBe(CATALOGUE.length);
   });
 
-  it('holds its space for a part with no art rather than collapsing the row', () => {
-    // A fab-designed part carries its own object and has no catalogue id.
-    const w = mount(PartTile, { props: { part: 'mfg-custom-1' } });
+  it('gives the generated ladder the top card and supply, not a blank', () => {
+    // hardware.js mints g<n>a / g<n>b / gp<n> every GEN_DAYS, forever — art
+    // for that series is not a thing that can be finished, and before the
+    // fallback the best hardware in the game showed an empty square.
+    const top = mount(PartTile, { props: { part: 'c12' } }).find('img').attributes('src');
+    const topPsu = mount(PartTile, { props: { part: 'p7500' } }).find('img').attributes('src');
+    for (const n of [1, 3, 12, 40]) {
+      for (const c of genCardsFor(n)) {
+        expect(mount(PartTile, { props: { part: c.id } }).find('img').attributes('src'), c.id)
+          .toBe(top);
+      }
+      expect(mount(PartTile, { props: { part: genPsuFor(n).id } }).find('img').attributes('src'))
+        .toBe(topPsu);
+    }
+  });
+
+  it('gives a fab-designed part the top of the family it extends', () => {
+    // Minted as custom-<kind>-<stamp> by fab.js, and always above the top of
+    // its ladder — so the top static tile is the honest picture.
+    const cases = { unit: 'c12', psu: 'p7500', frame: 'f16', mobo: 'm16', cool: 'x6' };
+    for (const [kind, expected] of Object.entries(cases)) {
+      const got = mount(PartTile, { props: { part: `custom-${kind}-m1abc-x9y8z` } })
+        .find('img').attributes('src');
+      const want = mount(PartTile, { props: { part: expected } }).find('img').attributes('src');
+      expect(got, kind).toBe(want);
+    }
+  });
+
+  it('holds its space rather than collapsing the row on an id it cannot place', () => {
+    const w = mount(PartTile, { props: { part: 'not-a-part-at-all' } });
     expect(w.find('img').exists()).toBe(false);
     expect(w.classes()).toContain('blank');
   });

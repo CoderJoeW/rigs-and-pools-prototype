@@ -549,13 +549,21 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
    is doing, and the card keeps its own border so it still reads as a card. */
 .site-hero{position:relative;padding:0;overflow:hidden;isolation:isolate}
 .site-hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
-/* Lighter at the top than it used to be. The old plates were bright skies
-   over a quarry and needed holding down; these are interiors already shot with
-   their mid-tones up and their top third kept calm, so the same scrim buried
-   the room the card exists to show. Still heavy behind the stat strip, which
-   is where the small type actually lives. */
+/* Lighter overall than it used to be. The old plates were bright skies over a
+   quarry and needed holding down; these are interiors already shot with their
+   mid-tones up and their top third kept calm, so the same scrim buried the
+   room the card exists to show.
+
+   Two layers rather than one, because the two jobs are different. ::after is
+   the overall wash, now gentle at the top. ::before is a short band behind the
+   status pill alone — 9.5px uppercase, no plate of its own, and the one piece
+   of type here that the lighter wash left short of 4.5:1. It decays inside
+   74px, so it buys that row its contrast without touching the room below. */
+.site-hero::before{content:'';position:absolute;inset:0 0 auto 0;height:74px;z-index:1;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(4,6,9,.74) 0%,rgba(4,6,9,.34) 58%,rgba(4,6,9,0) 100%)}
 .site-hero::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(180deg,rgba(4,6,9,.30) 0%,rgba(4,6,9,.52) 44%,rgba(4,6,9,.88) 100%)}
+  background:linear-gradient(180deg,rgba(4,6,9,.22) 0%,rgba(4,6,9,.50) 44%,rgba(4,6,9,.88) 100%)}
 .site-hero-in{position:relative;z-index:2;padding:12px 14px 14px}
 .site-hero-hd{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .site-hero-status{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:600;

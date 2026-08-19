@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import SiteFilm from '../SiteFilm.vue';
 import { sitePlate, siteFilm, sitePhase } from '../../utils/siteArt.js';
 import { SHELLS } from '../../data/site-parts.js';
 
 const mountFilm = props => mount(SiteFilm, { props, attachTo: document.body });
+/* The film is gated on device preferences read in onMounted, so it is never
+   in the DOM on the first render — a test that asserts the video is PRESENT
+   has to let that flush first. */
+const mountLive = async props => { const w = mountFilm(props); await nextTick(); return w; };
 
 describe('siteArt', () => {
   it('has a day and a night plate for every shell you can buy', () => {
@@ -74,6 +79,27 @@ describe('SiteFilm', () => {
     const w = mountFilm({ shell: 'bedroom', phase: 'night' });
     expect(w.find('video').exists()).toBe(false);
     expect(w.findAll('.sf-plate')).toHaveLength(2);
+  });
+
+  it('replaces the video when the site changes to another film-bearing shell', async () => {
+    // Patching <source src> in place does nothing: a media element will not
+    // re-select its source without load(). Without a key on the element, a
+    // move between two film-bearing sites at night left the previous site's
+    // loop playing over the new site's plate.
+    const w = await mountLive({ shell: 'garage', phase: 'night' });
+    const before = w.find('video').element;
+    expect(w.findAll('video source')[0].attributes('src')).toMatch(/garage-film/);
+    await w.setProps({ shell: 'warehouse' });
+    expect(w.findAll('video source')[0].attributes('src')).toMatch(/warehouse-film/);
+    expect(w.find('video').element).not.toBe(before);
+  });
+
+  it('drops the video when moving to a shell that has no film', async () => {
+    const w = await mountLive({ shell: 'garage', phase: 'night' });
+    expect(w.find('video').exists()).toBe(true);
+    await w.setProps({ shell: 'shed' });
+    expect(w.find('video').exists()).toBe(false);
+    expect(w.findAll('.sf-plate')[1].attributes('src')).toMatch(/shed-night/);
   });
 
   it('stays out of the accessibility tree — it is a backdrop', () => {
