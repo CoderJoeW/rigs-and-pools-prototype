@@ -90,6 +90,11 @@ describe('ChainsView', () => {
     const { wrapper, store } = mountWithStore(ChainsView, {
       seed: g => {
         g.s.cash = 5e6; g.s.sites[0].shell = 'warehouse';
+        // the first rig now draws power the instant it's built, so the
+        // site needs real headroom of its own for the second build to clear
+        // the power check right after — it can no longer piggyback on a
+        // still-building first rig leaving its draw uncounted
+        g.active.sources.push({ p: 's-400', n: 1 });
         g.generatePreset(); g.build(); g.build();
         g.s.rigs.forEach(r => { r.building = 0; });
         g.s.sims.length = 0; g.s.pools.length = 0;

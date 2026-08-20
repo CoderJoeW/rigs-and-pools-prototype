@@ -67,6 +67,10 @@ describe('RigsView', () => {
     const twoRigs = h => {
       h.generatePreset();
       h.s.cash = 100000;          // the second rig has to be affordable
+      // the first rig draws power the instant it's built now, so the site
+      // needs real headroom of its own for the second build to clear the
+      // power check right after it
+      h.active.sources.push({ p: 's-400', n: 1 });
       h.build(); h.build();
       for (const r of h.s.rigs) r.building = 0;
     };

@@ -103,7 +103,9 @@ describe('SitesView', () => {
 
   it('a rig still under assembly reads as building, not as running', () => {
     const { wrapper } = mountWithStore(SitesView, {
-      seed: g => { g.generatePreset(); g.build(); },
+      // the first rig ever assembles instantly now, so force it back into
+      // mid-assembly to exercise the tile's "building" rendering
+      seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 60; },
     });
     expect(wrapper.find('button.rigtile').classes()).toContain('build');
   });
@@ -144,6 +146,9 @@ describe('SitesView', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.s.cash = 200000; g.upgradeShell(g.active.id, 'garage');
         g.active.queue.forEach(j => { j.left = 0.0001; }); g.stepTick(1);
+        // the first rig draws power the instant it's built now, so the
+        // site needs real headroom of its own to keep fitting the rest
+        g.active.sources.push({ p: 's-400', n: 1 });
         for (let i = 0; i < 5; i++) { g.generatePreset(); g.build(); } },
     });
     const codes = wrapper.findAll('button.rigtile .rt-n').map(n => n.text());

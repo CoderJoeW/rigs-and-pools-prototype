@@ -37,7 +37,7 @@ describe('build', () => {
     expect(g.idleCashAdvice.cost).toBeCloseTo(g.dp.cost, 5);
   });
 
-  it('spends cash, adds a rig under construction, and switches to the Rigs tab', () => {
+  it('spends cash, assembles the first rig instantly, and switches to the Rigs tab', () => {
     const g = freshStore();
     g.generatePreset();
     const cashBefore = g.s.cash;
@@ -49,7 +49,7 @@ describe('build', () => {
     expect(g.s.rigs).toHaveLength(1);
     const rig = g.s.rigs[0];
     expect(rig.units.length).toBe(g.s.draft.n);
-    expect(rig.building).toBeGreaterThan(0);
+    expect(rig.building).toBe(0); // the very first rig assembles instantly
     expect(rig.on).toBe(true);
     expect(g.s.tab).toBe('rigs');
   });
@@ -65,13 +65,23 @@ describe('build', () => {
     expect(g.s.rigs).toHaveLength(0);
   });
 
-  it('a rig starts mining only once its build timer reaches zero', () => {
+  it('the first rig mines immediately; later rigs only once their build timer reaches zero', () => {
     const g = freshStore();
     g.generatePreset();
     g.build();
-    expect(g.totalHash).toBe(0); // still assembling
-    for (let i = 0; i < 5; i++) g.stepTick(60);
-    expect(g.totalHash).toBeGreaterThan(0);
+    expect(g.totalHash).toBeGreaterThan(0); // the very first rig assembles instantly
+
+    g.s.cash += 20000;
+    g.active.sources.push({ p: 's-400', n: 1 }); // headroom for a second, non-first rig
+    g.generatePreset();
+    g.build();
+    const second = g.s.rigs[1];
+    expect(second.building).toBeGreaterThan(0);
+    expect(g.rigHash(second)).toBe(0); // not mining yet
+
+    for (let i = 0; i < 60; i++) g.stepTick(60); // the real formula runs tens of minutes
+    expect(second.building).toBe(0);
+    expect(g.rigHash(second)).toBeGreaterThan(0);
   });
 });
 
@@ -216,14 +226,19 @@ describe('toggleRig / setRigGroup', () => {
   it('toggles power only when the rig is not mid-assembly', () => {
     const g = freshStore();
     g.generatePreset();
+    g.build(); // the first rig assembles instantly, so build a second (non-first) to get one mid-assembly
+    g.s.cash += 20000;
+    g.active.sources.push({ p: 's-400', n: 1 });
+    g.generatePreset();
     g.build();
-    const rig = g.s.rigs[0];
+    const rig = g.s.rigs[1];
     expect(rig.building).toBeGreaterThan(0);
 
     g.toggleRig(rig.id); // still building: no-op
     expect(rig.on).toBe(true);
 
-    for (let i = 0; i < 5; i++) g.stepTick(60);
+    for (let i = 0; i < 60; i++) g.stepTick(60); // the real formula runs tens of minutes
+    expect(rig.building).toBe(0);
     g.toggleRig(rig.id);
     expect(rig.on).toBe(false);
   });
@@ -247,7 +262,7 @@ describe('bulk build', () => {
     expect(g.maxBuildQty()).toBeGreaterThanOrEqual(1);
   });
 
-  it('build(n) spends n× cost and adds n rigs under construction', () => {
+  it('build(n) spends n× cost and adds n rigs, the very first assembling instantly', () => {
     const g = freshStore();
     g.s.cash = 1e9;
     // Extra power so more than one position can clear the power check
@@ -261,7 +276,8 @@ describe('bulk build', () => {
     g.build(n);
     expect(g.s.rigs).toHaveLength(n);
     expect(g.s.cash).toBeCloseTo(cashBefore - cost * n, 5);
-    expect(g.s.rigs.every(r => r.building > 0)).toBe(true);
+    expect(g.s.rigs[0].building).toBe(0); // the very first rig ever built
+    expect(g.s.rigs.slice(1).every(r => r.building > 0)).toBe(true);
     expect(g.s.tab).toBe('rigs');
   });
 
