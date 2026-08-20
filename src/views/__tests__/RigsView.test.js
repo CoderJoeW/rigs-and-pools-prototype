@@ -60,6 +60,63 @@ describe('RigsView', () => {
     expect(repair().attributes('disabled')).toBeDefined();
   });
 
+  /* The fleet sheet lives in its own component now and takes the list's scope
+     as props, so these pin the seam: the sheet has to open, read the scope the
+     view computed, and quote a job against exactly that scope. */
+  describe('the fleet actions sheet', () => {
+    const twoRigs = h => {
+      h.generatePreset();
+      h.s.cash = 100000;          // the second rig has to be affordable
+      h.build(); h.build();
+      for (const r of h.s.rigs) r.building = 0;
+    };
+    const openFleet = async wrapper => {
+      const btn = wrapper.findAll('button').find(b => b.text() === 'Fleet');
+      await btn.trigger('click');
+      return wrapper;
+    };
+
+    it('opens with the whole site in scope', async () => {
+      const { wrapper, store: g } = mountWithStore(RigsView, { seed: twoRigs });
+      await openFleet(wrapper);
+
+      expect(wrapper.text()).toContain('Fleet actions');
+      // the scopeLabel the view computed, rendered by the child
+      expect(wrapper.text()).toContain('all 2 at ' + g.s.sites[0].name);
+    });
+
+    it('quotes a repair against the rigs actually in scope', async () => {
+      const { wrapper, store: g } = mountWithStore(RigsView, { seed: twoRigs });
+      g.s.rigs[0].units[0].w = 0.9;   // one worn card on one rig
+      g.s.cash = 100000;
+      await openFleet(wrapper);
+
+      expect(wrapper.text()).toContain('Replace 1 card across 1 rig');
+    });
+
+    it('narrows to the ticked rigs rather than the whole site', async () => {
+      const { wrapper, store: g } = mountWithStore(RigsView, { seed: twoRigs });
+      for (const r of g.s.rigs) r.units[0].w = 0.9;   // both rigs worn
+      g.s.cash = 100000;
+
+      // tick one row, then act on the selection
+      await wrapper.findAll('button').find(b => b.text().includes('Select')).trigger('click');
+      await wrapper.find('.rigrow').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Act on these').trigger('click');
+
+      expect(wrapper.text()).toContain('1 selected');
+      // the scope reached the child: one rig's worth of work, not two
+      expect(wrapper.text()).toContain('Replace 1 card across 1 rig');
+    });
+
+    it('closes back to the list', async () => {
+      const { wrapper } = mountWithStore(RigsView, { seed: twoRigs });
+      await openFleet(wrapper);
+      await wrapper.findAll('button').find(b => b.text().includes('Rigs')).trigger('click');
+      expect(wrapper.text()).not.toContain('Fleet actions');
+    });
+  });
+
   it('list row fronts each rig with its hardware shot, carrying the rig state', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },

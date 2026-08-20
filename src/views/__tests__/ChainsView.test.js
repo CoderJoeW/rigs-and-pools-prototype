@@ -196,6 +196,26 @@ describe('ChainsView', () => {
     expect(wrapper.text()).toContain('Night Shift');
   });
 
+  /* A pool the player has actually run has hashrate history, which draws a
+     sparkline the freshly-founded seeds above never reach. That branch once
+     threw on expand and took the whole tab down with it. */
+  it('expands a pool that has been running, sparkline and all', async () => {
+    const { wrapper, store } = mountWithStore(ChainsView, {
+      seed: g => {
+        g.foundPool('tessera', 'PPLNS', 0.02);
+        g.myPools[0].hist = [10, 20, 15, 30, 25];
+      },
+    });
+    await seg(wrapper, 'Your pools');
+    await wrapper.find('.rig-hd').trigger('click');
+
+    expect(wrapper.text()).toContain('Blocks found');
+    expect(wrapper.find('svg path').exists()).toBe(true);
+    // the panel's controls are reachable, not replaced by the error boundary
+    expect(wrapper.findAll('button').some(b => b.text() === 'Rename')).toBe(true);
+    expect(store.s.pools.find(p => p.owner === 'you')).toBeTruthy();
+  });
+
   it('shows the rival-pool nudge above Rival detail until dismissed', async () => {
     const { wrapper, store } = mountWithStore(ChainsView);
     await seg(wrapper, 'Market');
