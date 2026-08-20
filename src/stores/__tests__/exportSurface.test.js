@@ -47,7 +47,7 @@ const INTERNAL = new Set([
   'addTo', 'armBlock', 'awardBlock', 'drawWinner', 'flatDrip', 'forfeitGroup',
   'netIfOn', 'runBlockWindow',
   // --- insolvency.js ---
-  'insolvency', 'rigSalvage',
+  'FLOOR_COST', 'FLOOR_RIG', 'insolvency', 'rigSalvage',
   // --- actions.js ---
   'applyRebuildTo', 'rebuildTime',
   // --- pools.js ---

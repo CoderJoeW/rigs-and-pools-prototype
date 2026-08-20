@@ -33,9 +33,18 @@ export function installInsolvency(G){
 
      So this is a latent-correctness fix, not a balance change. One spec now,
      priced with the formula the Build tab charges (buildDraft.js:
-     frame + board + supply + cooling + n x (card + riser)). */
-  const FLOOR_RIG = { frame:'f2', mobo:'m2', psu:'p450', cool:'x0', ctrl:'k3',
-    unit:'c1', n:1, risers:1 };
+     frame + board + supply + cooling + n x (card + riser)).
+
+     `n` is the card count and the riser count both — the build formula bills
+     one riser per card, so a separate `risers` field would be a second number
+     free to disagree with the first, which is the whole failure being fixed.
+     There is deliberately no `ctrl`: it is only read for non-gpu kinds, and no
+     controller catalogue exists, so PART('k3') is undefined and adding it to
+     this sum would throw. `kind` lives here because it is what decides WHICH
+     pricing formula applies. Frozen because it is the definition, not state:
+     mutating it at runtime would put the spec and the price back out of step. */
+  const FLOOR_RIG = Object.freeze({ kind:'gpu', frame:'f2', mobo:'m2', psu:'p450',
+    cool:'x0', unit:'c1', n:1 });
   const FLOOR_COST = PART(FLOOR_RIG.frame).price + PART(FLOOR_RIG.mobo).price
     + PART(FLOOR_RIG.psu).price + PART(FLOOR_RIG.cool).price
     + FLOOR_RIG.n * (PART(FLOOR_RIG.unit).price + RISER.price);
@@ -76,9 +85,10 @@ export function installInsolvency(G){
       G.say('bad','Sold '+worst.name+' to cover the bill','+'+fmt.usd(back),undefined,undefined,back); return;
     }
     if(G.s.cash<FLOOR_COST){
-      G.s.rigs.push({ id:G.s.nextId++, kind:'gpu', frame:FLOOR_RIG.frame, mobo:FLOOR_RIG.mobo,
-        psu:FLOOR_RIG.psu, cool:FLOOR_RIG.cool, ctrl:FLOOR_RIG.ctrl,
-        units:[{p:FLOOR_RIG.unit,w:0}], risers:FLOOR_RIG.risers, refurb:0,
+      G.s.rigs.push({ id:G.s.nextId++, kind:FLOOR_RIG.kind, frame:FLOOR_RIG.frame,
+        mobo:FLOOR_RIG.mobo, psu:FLOOR_RIG.psu, cool:FLOOR_RIG.cool, ctrl:'k3',
+        units:Array.from({length:FLOOR_RIG.n},()=>({p:FLOOR_RIG.unit,w:0})),
+        risers:FLOOR_RIG.n, refurb:0,          // one riser per card, as billed
         site:G.s.sites[0].id, group:G.s.groups[0].id, on:true, building:0,
         open:false, name:'Rig '+G.s.nextId });
       G.say('big','The room still has one working rig. Start again.');
