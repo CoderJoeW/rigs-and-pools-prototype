@@ -519,14 +519,18 @@ export function installSims(G){
     const opts = G.s.pools.filter(p => p.live && p.chain === m.chain &&
       (G.poolCapLimit ? (G._simPoolHash[p.id] || 0) + m.hash <= G.poolCapLimit(p) * 1.02 : true));
     if(!opts.length){ setSimPool(m, 'solo'); return; }
-    const FEE_BITE = G.FEE_BITE || 3;
+    /* Through poolMarket's own scoring function, not a third hand-rolled copy
+       of `(1 - fee*FEE_BITE) * trust * jitter`. Which pools a miner will look
+       at differs between the two rules — this one leaves capacity slack and
+       weighs solo against the field — but what a pool is WORTH must not, or
+       the fee lever quietly stops meaning the same thing depending on which
+       rule happened to move a miner. */
     let best = null, bestS = -1;
     for(const p of opts){
-      const trust = G.poolTrust ? G.poolTrust(p) : 0.85;
-      const sc = (1 - Math.min(0.9, p.fee * FEE_BITE)) * trust * (0.97 + Math.random() * 0.06);
+      const sc = G.poolScore(p);
       if(sc > bestS){ bestS = sc; best = p; }
     }
-    const soloS = 0.72 * (0.97 + Math.random() * 0.06);
+    const soloS = 0.72 * G.scoreJitter();
     if(soloS > bestS) setSimPool(m, 'solo');
     else if(best) setSimPool(m, best.id);
   }

@@ -97,9 +97,10 @@ export function installPoolMarket(G){
   /* Split into the half that is a property of the POOL and the half that is a
      property of the MINER looking at it, because the pool's half is identical
      for every miner on the chain and poolTrust is four derived quantities
-     deep. Still one definition of each — poolScore is the two multiplied, and
-     pickPool reads the same base out of chainPoolTable rather than carrying a
-     second copy of the formula. */
+     deep. Still one definition of each: poolScore is the two multiplied, and
+     is what sims.js scores a pool with; pickPool reads the same base out of
+     chainPoolTable and draws its own jitter, rather than either of them
+     carrying a second copy of the formula. */
   const poolScoreBase = p => (1-Math.min(0.9,p.fee*FEE_BITE))*poolTrust(p);
   // Miners carry +-3% jitter, so a near-tie splits rather than going
   // winner-take-all. Drawn per miner per pool: that is what makes it a split.
