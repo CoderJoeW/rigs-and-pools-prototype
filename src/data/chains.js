@@ -10,13 +10,14 @@
    the same formula makes every block take longer — the "before 100% floor
    it should take longer" behaviour is structural, not a special case.
 
-   2026-08-19: block value set to $20 (reward * price = 20).
-     reward  833.333  (20 / 0.024)
-     mult    58.78    so revPerMh = PAY*mult still holds at floor
-                      (4.20 * 58.78 ≈ 246.9 $/MH/day at floor)
+   2026-08-20: block value cut to $3 (reward * price = 3), from $20.
+     reward  125      (3 / 0.024)
+     mult    8.82     so revPerMh = PAY*mult still holds at floor
+                      (4.20 * 8.82 ≈ 37.0 $/MH/day at floor)
    Floor 350 stays above one starter (~192 MH) and is crossed by a second
-   rig's worth. depth 8e7 (scaled with the higher emission) so a solo starter
-   does not pin price at the global $0.02 floor. */
+   rig's worth. depth 1.2e7 (scaled down with the lower emission, same
+   ratio as reward) so a solo starter does not pin price at the global
+   $0.02 floor. */
 /* `hue` is the chain's visual identity: an OKLCH hue angle, and ONLY the hue —
    lightness and chroma come from --chain-l/--chain-c in main.css, which the
    two themes set separately. Storing one number rather than a hex means the
@@ -42,9 +43,9 @@
      nova    285  indigo — the blue chip: calm, deep, crowded
      obelisk 320  purple — monolithic, imperial, ten minutes a block */
 export const CHAINS = [
-  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:833.333, price:0.024,
-    mult:58.78, floor:350, vol:0.030, depth:8.0e7, recover:0.50, orphan:0.050, hue:200,
-    blurb:'Twenty-second blocks and a $20 prize — constant wins for one rig, worthless at scale.' },
+  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:125, price:0.024,
+    mult:8.82, floor:350, vol:0.030, depth:1.2e7, recover:0.50, orphan:0.050, hue:200,
+    blurb:'Twenty-second blocks and a $3 prize — constant wins for one rig, worthless at scale.' },
   { id:'ferro', name:'Ferro', tick:'FRO', target:30, reward:2.124, price:4.12,
     mult:1.00, floor:6.0e3, vol:0.014, depth:15400, recover:0.40, orphan:0.045, hue:128,
     blurb:'Frequent small blocks, a deep enough book. The workhorse.' },
