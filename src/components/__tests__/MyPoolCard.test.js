@@ -89,6 +89,11 @@ describe('MyPoolCard', () => {
     let pool;
     const { wrapper } = mountWithStore(MyPoolCard, {
       seed: g => {
+        // A PPS bond is an order of magnitude past a PPLNS one — $4,000 against
+        // the $500 a fresh save opens with — so this has to be funded or
+        // foundPool silently declines and the fixture is undefined.
+        // headroom past the bond so the top-up buttons render enabled too
+        g.s.cash = g.bondReq(g.chain('tessera'), 'PPS') + 1000;
         g.foundPool('tessera', 'PPS', 0.02);
         pool = g.myPools[0];
         pool.hist = [10, 20, 15, 30];
@@ -97,6 +102,20 @@ describe('MyPoolCard', () => {
     });
     expect(wrapper.text()).toContain('PPS');
     expect(wrapper.find('svg path').exists()).toBe(true);
+    // Assertions that DISCRIMINATE. "Supports" would not: the PPLNS branch
+    // renders its own Supports row ("any amount — members carry their own
+    // variance"), so asserting it would pass against the wrong branch — the
+    // exact fault this test was fixed for.
+    //
+    // One per PPS-gated element, because they are gated separately. The PPLNS
+    // v-else pairs with the Dry-spell v-if, NOT with the Supports one, so
+    // deleting the capacity row leaves every other assertion here true and the
+    // fallback still absent. "limited by" is what covers that row.
+    expect(wrapper.text()).toContain('limited by');      // the capacity row itself
+    expect(wrapper.text()).toContain('Dry-spell risk');
+    expect(wrapper.text()).toContain('underwritten');
+    expect(wrapper.text()).toContain('this is your capacity control');
+    expect(wrapper.text()).not.toContain('members carry their own variance');
   });
 
   it('scales the bond buttons to the size of the bond', () => {
