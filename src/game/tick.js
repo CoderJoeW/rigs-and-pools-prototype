@@ -94,9 +94,8 @@ export function installTick(G){
         p.bond-=owed; p.earned-=owed;
       }
       if(p.bond<=0){
-        p.live=false; p.bond=0;
-        G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ forfeitGroup(gr,'when the pool failed'); gr.pool='solo'; });
-        G.s.sims.filter(m=>m.pool===p.id).forEach(m=>{ if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo'; });
+        p.bond=0;
+        G.closeSimPool(p,'when the pool failed');
         G.say('bad',p.name+' could not pay its miners and closed — the bond is gone');
         G.pop('Your pool failed','it could not cover payouts','dark',{always:true});
       }
@@ -359,7 +358,11 @@ export function installTick(G){
       return;
     }
     if(w.mine) G.s.blocksSolved++;
-    pool.found=(pool.found||0)+1;
+    /* pool.found is counted ONCE, at the top of this function. It used to be
+       counted again here — every pooled block twice — which saturated
+       poolRep's luck term at half the blocks it is written for, inflating the
+       trust of every pool on the network and with it poolScore, which is what
+       both the miners and the fee preview decide on. */
 
     if(pool.owner==='you'){
       const take = pool.scheme==='PPS' ? bvFull : bvFull*pool.fee;

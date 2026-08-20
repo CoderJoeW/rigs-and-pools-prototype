@@ -67,8 +67,15 @@ export function installPools(G){
   }
   function closePool(p){
     const back=Math.round(p.bond);
-    p.live=false; G.s.cash+=back;
-    G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ G.forfeitGroup(gr,'when you closed the pool'); gr.pool='solo'; });
+    G.s.cash+=back;
+    /* Through the shared closing path, which releases the pool's simulated
+       members as well as your own groups. Releasing only the groups left
+       every sim member still marked as being in a dead pool: their hashrate
+       sat in _simPoolHash for a pool drawSimWinner skips, and was in neither
+       bucket it walks — counted in the chain's hashrate, so the blocks kept
+       coming, but unreachable, so the ones that should have been theirs fell
+       through to solo. */
+    G.closeSimPool(p,'when you closed the pool');
     G.say('sys','Closed '+p.name+' — bond returned','+'+fmt.usd(back),undefined,undefined,back);
   }
   function doSell(c,amt,quiet){

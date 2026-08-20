@@ -600,8 +600,14 @@ export function installSims(G){
      left pointing at the corpse kept drawing the PPS flat rate out of a pool
      with a zero bond and nobody running it. Measured at 4.1 coins an hour off
      one starter rig, forever, because flatDrip only asked whether the pool was
-     PPS and not whether it still existed. One function now, so a fourth caller
-     cannot reopen the same hole. */
+     PPS and not whether it still existed.
+
+     All five closures go through here now — those three, a rival operator
+     folding, and you closing your own pool. That last one released your
+     groups but not the pool's simulated members, so their hashrate stayed in
+     _simPoolHash for a pool drawSimWinner skips and was in neither bucket it
+     walks. Callers keep their own bond handling and their own feed line; what
+     they must not each own is who gets released. */
   function closeSimPool(p, why){
     p.live = false;
     for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
@@ -666,8 +672,14 @@ export function installSims(G){
            _simSoloHash to size the solo bucket. */
         setSimHash(m, 0);
         for(const p of G.s.pools){
-          if(p.owner === 'sim' && p.ownerSim === m.id && p.live)
+          if(p.owner === 'sim' && p.ownerSim === m.id && p.live){
             closeSimPool(p, 'when ' + p.name + ' shut down');
+            // Said out loud like every other closure: this can move the
+            // player's own group back to solo, and forfeitGroup is silent
+            // for a PPS pool, so otherwise their payout scheme changed with
+            // nothing anywhere in the log.
+            if(G.say) G.say('pool', p.name + ' has closed — its operator has left mining');
+          }
         }
         sims.splice(i, 1);
         bumpN(m.chain, -1);

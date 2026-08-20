@@ -219,6 +219,32 @@ describe('the network as it grows', () => {
     expect((g.s.wallet[cid] || 0) - before).toBe(0);
   });
 
+  it('leaves nobody stranded in a pool the player closed', () => {
+    const g = freshStore();
+    const cid = 'ferro';
+    g.s.cash = 1e6;
+    g.foundPool(cid, 'PPLNS', 0.01);
+    // createGame() gives the raw G, where myPools is still a ref — Pinia is
+    // what unwraps it for components.
+    const pool = g.myPools.value[0];
+    const m = simsOn(g, cid)[0];
+    g.setSimPool(m, pool.id);
+    expect(g._simPoolHash[pool.id]).toBeCloseTo(m.hash, 6);
+
+    g.closePool(pool);
+
+    /* A closed pool must hold no simulated hashrate. drawSimWinner walks two
+       buckets — the live pools, and solo — so hashrate left marked as being
+       in a dead pool is in neither: it still counts toward the chain's total,
+       so the blocks keep coming at the same rate, but the miners holding it
+       can never be drawn and the blocks fall through to solo. */
+    expect(pool.live).toBe(false);
+    expect(g._simPoolHash[pool.id] || 0).toBe(0);
+    expect(m.pool).toBe('solo');
+    const solo = simsOn(g, cid).filter(x => !x.pool || x.pool === 'solo');
+    expect(g._simSoloHash[cid]).toBeCloseTo(solo.reduce((a, x) => a + x.hash, 0), 6);
+  });
+
   it('holds the running hashrate totals to what the sims actually own', () => {
     const g = freshStore();
     runDays(g, 8);

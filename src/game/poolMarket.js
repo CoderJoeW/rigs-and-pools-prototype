@@ -189,9 +189,7 @@ export function installPoolMarket(G){
       // an empty pool bleeds its operator; long enough and they fold
       p.lapse = G.poolHash(p)<1 ? (p.lapse||0)+1 : 0;
       if(p.lapse>72 && Math.random()<0.25){
-        p.live=false;
-        G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ G.forfeitGroup(gr,'when '+p.name+' folded'); gr.pool='solo'; });
-        for(const m of G.s.sims) if(m.pool===p.id){ if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo'; }
+        G.closeSimPool(p,'when '+p.name+' folded');
         say('pool',p.name+' has closed — it never found enough members');
       }
     }
