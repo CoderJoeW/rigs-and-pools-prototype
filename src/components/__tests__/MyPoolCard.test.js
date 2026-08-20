@@ -89,6 +89,10 @@ describe('MyPoolCard', () => {
     let pool;
     const { wrapper } = mountWithStore(MyPoolCard, {
       seed: g => {
+        // A PPS bond is an order of magnitude past a PPLNS one — $4,000 against
+        // the $500 a fresh save opens with — so this has to be funded or
+        // foundPool silently declines and the fixture is undefined.
+        g.s.cash = g.bondReq(g.chain('tessera'), 'PPS') + 1000;
         g.foundPool('tessera', 'PPS', 0.02);
         pool = g.myPools[0];
         pool.hist = [10, 20, 15, 30];
@@ -97,6 +101,9 @@ describe('MyPoolCard', () => {
     });
     expect(wrapper.text()).toContain('PPS');
     expect(wrapper.find('svg path').exists()).toBe(true);
+    // the PPS-only rows, which nothing else in the suite renders
+    expect(wrapper.text()).toContain('Supports');
+    expect(wrapper.text()).toContain('Dry-spell risk');
   });
 
   it('scales the bond buttons to the size of the bond', () => {
