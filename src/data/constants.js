@@ -113,9 +113,12 @@ export const SIM_PLAYERS = 100;      // the rest of the network
    simTargetOf). Reading this as a starting value is what put 1.3 TH on
    Obelisk at t=0, split between 25 supposedly-new miners. */
 export const SIM_RATIO   = 0.6;
-export const SIM_GROWTH  = 0.0025;   // they build too — 0.25%/day, 2.5x a year. At the old
-                              // 0.6% (8.9x a year) a farm that stood still lost half
-                              // its share every five weeks.
+/* SIM_GROWTH is gone. It named a flat "the network grows 0.25%/day" rule that
+   nothing implements any more: a chain's hashrate is the miners who have
+   arrived and what they have built (sims.js, simTargetOf), so the growth rate
+   is an OUTPUT of the population curve rather than a constant to multiply by.
+   Its last reader was persistence's floor-retune rescale, which asks
+   simTargetOf now. */
 /* The network is not all one kind of miner. Card owners work the memory-hard
    and mixed chains; hashboard owners work SHA-2. Without the split every
    simulated miner correctly flees the SHA-2 chains and they end up empty. */

@@ -141,7 +141,16 @@ export function installPersistence(G){
       const mine=G.s.sims.filter(m=>m.chain===c.id);
       const have=mine.reduce((a,m)=>a+m.hash,0);
       const want=G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO*base.floor;
-      if(have>0 && want>0){ const k=want/have; for(const m of mine) m.hash*=k; }
+      /* Through setSimHash, not `m.hash *= k`: the running totals sims.js
+         keeps (_simChainHash and the solo/pool splits) are maintained
+         incrementally, and reindexSims has already run by here — so a bare
+         assignment would leave every one of them stale for the session. */
+      if(have>0 && want>0){
+        const k=want/have;
+        for(const m of mine){
+          if(G.setSimHash) G.setSimHash(m, m.hash*k); else m.hash*=k;
+        }
+      }
       c.obs=Math.max(c.floor, want);
     }
     if(G.s.pools.some(p=>p.owner==='server')){

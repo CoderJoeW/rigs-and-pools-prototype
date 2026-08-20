@@ -627,7 +627,16 @@ export function installSims(G){
       }
     }
 
-    if(sims.length > SIM_START && Math.random() < 0.08){
+    /* Departures. This sampled ONE miner an hour, a rate written when there
+       were a hundred of them: at the population the network now reaches, a
+       farm that has failed sits derelict for years — still counted in
+       _simChainN, so still inflating both chainDraw's crowding and
+       simTargetOf's per-seat floor with people who left. Scaled with the
+       population so the odds of any given broke miner giving up stay what
+       they always were. */
+    const looks = Math.max(1, Math.round(sims.length / SIM_START));
+    for(let k = 0; k < looks; k++){
+      if(sims.length <= SIM_START || Math.random() >= 0.08) continue;
       const i = Math.floor(Math.random() * sims.length);
       const m = sims[i];
       if(m.cash < 15 && m.hash < 20 && m.coins < 10){

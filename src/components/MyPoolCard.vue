@@ -33,17 +33,26 @@ const renameDraft = ref('');
 const startRename = () => { renameDraft.value = props.pool.name; renameOpen.value = true; };
 const saveRename = () => { g.renamePool(props.pool, renameDraft.value); renameOpen.value = false; };
 
-/* Everything here scans every miner on the pool's chain — tens of thousands of
-   them once the network has filled — and the template asked for them a dozen
-   times per render between the "Turning away" line, the top-up button's four
-   states and the fee projection. Through computed() each is one call, cached
-   until something it actually reads moves; measured, that is the difference
-   between ~90 ms and ~15 ms per render of an open card, and the fee slider
-   re-renders on every input event. */
+/* These scan every miner on the pool's chain — tens of thousands of them once
+   the network has filled — and the template asked for them a dozen times per
+   render between the "Turning away" line, the top-up button's four states and
+   the fee projection. Through computed() each is one call per render, which
+   measured as the difference between ~90 ms and ~15 ms for an open card; the
+   fee slider re-renders on every input event, so that is a live cost.
+
+   They are cacheable because they walk G.s.sims, which IS reactive: a miner's
+   hashrate or chain moving invalidates them.
+
+   poolHash and poolPnl are deliberately NOT memoised here, though they look
+   like the same kind of thing. poolHash reads the sim half of a pool's book
+   out of G._simPoolHash — a plain object sims.js keeps off Vue's reactivity
+   on purpose (see its header) — so a computed over it caches a value nothing
+   will ever invalidate. Memoised, a card whose members were all simulated
+   rendered a frozen "holding 0 MH/s", and with it a frozen FULL badge,
+   capacity bar, blocks-a-day and projection delta. They are cheap anyway:
+   a walk of the player's own groups and rigs, not of the network. */
 const demand = computed(() => g.poolDemand(props.pool));
 const tierBond = computed(() => g.nextTierBond(props.pool));
-const held = computed(() => g.poolHash(props.pool));
-const pnl = computed(() => g.poolPnl(props.pool));
 const feeProj = computed(() => feeDraft.value === undefined
   ? null : g.poolProj(props.pool, feeDraft.value));
 
@@ -62,10 +71,10 @@ const bondSteps = computed(() => {
       <span style="flex:1;min-width:0;text-align:left">
         <span class="nm">{{ pool.name }}</span>
         <span class="tag b" style="margin-left:5px">{{ pool.scheme }}</span>
-        <span v-if="pool.capped||held>=g.poolCapLimit(pool)*0.95"
+        <span v-if="pool.capped||g.poolHash(pool)>=g.poolCapLimit(pool)*0.95"
               class="tag" style="background:var(--amber-t);color:var(--amber);margin-left:3px">FULL</span>
         <div class="sb"><ChainMark :chain="pool.chain" />{{ g.chain(pool.chain).name }} ·
-          {{ fmt.hash(held) }} of
+          {{ fmt.hash(g.poolHash(pool)) }} of
           {{ fmt.hash(g.poolCapLimit(pool)) }} · {{ pool.found||0 }} blocks ·
           {{ fmt.pct(g.poolRep(pool),0) }} rep</div></span>
       <span class="rt" style="text-align:right">{{ fmt.pct(pool.fee) }}
@@ -118,8 +127,8 @@ const bondSteps = computed(() => {
             <span class="sb">· limited by {{ g.capBinding(pool) }}</span></dd></div>
         <div v-if="pool.scheme==='PPS'" class="dl"><dt>Dry-spell risk</dt>
           <dd>{{ fmt.usd(g.blockValue(g.chain(pool.chain))) }} a block, and this pool expects
-            {{ (86400*held/Math.max(1,g.diffOf(g.chain(pool.chain)))).toFixed(
-               86400*held/Math.max(1,g.diffOf(g.chain(pool.chain)))<10?2:0) }} a day —
+            {{ (86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)))).toFixed(
+               86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)))<10?2:0) }} a day —
             {{ g.capBinding(pool)==='dry-spell cover'
                ? 'rare enough that cover is what caps you'
                : 'often enough that luck barely moves you' }}</dd></div>
@@ -127,9 +136,9 @@ const bondSteps = computed(() => {
           <dd>any amount — members carry their own variance</dd></div>
         <div v-if="pool.scheme==='PPS'" class="track">
           <i :class="pool.capped?'o':'g'" :style="{width:Math.min(100,
-            held/Math.max(1,g.poolCapLimit(pool))*100)+'%'}"></i></div>
+            g.poolHash(pool)/Math.max(1,g.poolCapLimit(pool))*100)+'%'}"></i></div>
         <div v-if="pool.scheme==='PPS'" class="track-cap">
-          <span>{{ fmt.hash(held) }} of {{ fmt.hash(g.poolCapLimit(pool)) }} underwritten</span>
+          <span>{{ fmt.hash(g.poolHash(pool)) }} of {{ fmt.hash(g.poolCapLimit(pool)) }} underwritten</span>
           <b v-if="pool.capped" class="amb">full — add bond to grow</b></div>
         <div class="btn-row" style="margin-top:7px">
           <button v-for="a in bondSteps" :key="'a'+a" class="btn btn-sm"
@@ -164,18 +173,18 @@ const bondSteps = computed(() => {
       </div>
       <div class="totals" style="margin-top:8px">
         <div><div class="k">Fee income</div>
-          <div class="v">{{ fmt.usd2(pnl.income) }}/day</div></div>
+          <div class="v">{{ fmt.usd2(g.poolPnl(pool).income) }}/day</div></div>
         <div><div class="k">Capital tied up</div>
-          <div class="v">{{ fmt.usd(pnl.capital) }}</div></div>
+          <div class="v">{{ fmt.usd(g.poolPnl(pool).capital) }}</div></div>
         <div><div class="k">Return on it</div>
-          <div class="v" :class="pnl.roi>0.2?'pos':''">{{
-            (pnl.roi*100).toFixed(0) }}%/yr</div></div>
+          <div class="v" :class="g.poolPnl(pool).roi>0.2?'pos':''">{{
+            (g.poolPnl(pool).roi*100).toFixed(0) }}%/yr</div></div>
         <div><div class="k">Pays for itself in</div>
-          <div class="v">{{ pnl.payback===Infinity?'never'
-            :Math.round(pnl.payback)+' days' }}</div></div>
+          <div class="v">{{ g.poolPnl(pool).payback===Infinity?'never'
+            :Math.round(g.poolPnl(pool).payback)+' days' }}</div></div>
       </div>
       <div v-if="tierBond>0" class="dl"><dt>Turning away</dt>
-        <dd class="amb">{{ fmt.hash(demand-held) }} wants in but your
+        <dd class="amb">{{ fmt.hash(demand-g.poolHash(pool)) }} wants in but your
           capital will not carry it</dd></div>
       <button v-if="tierBond>0" class="btn btn-wide"
               :class="g.s.cash>=tierBond?'btn-pri':''"
@@ -192,15 +201,15 @@ const bondSteps = computed(() => {
         <b>Bond below its opening size.</b> Top it up — if it reaches zero the pool cannot pay
         its miners and closes automatically, and you lose what is left.</div>
       <div class="dl"><dt>Fee</dt><dd>{{ fmt.pct(pool.fee) }}
-        <span class="sb"> · holding {{ fmt.hash(held) }}</span></dd></div>
+        <span class="sb"> · holding {{ fmt.hash(g.poolHash(pool)) }}</span></dd></div>
       <input type="range" min="0" max="0.10" step="0.0025" :value="feeDraft!==undefined?feeDraft:pool.fee"
              :aria-label="'Fee for '+pool.name" @input="feeDraft=parseFloat($event.target.value)">
       <div v-if="feeDraft!==undefined&&Math.abs(feeDraft-pool.fee)>0.0005"
            class="warnbox" style="margin-top:6px">
         <b>{{ (feeDraft*100).toFixed(2) }}% would settle at
           {{ fmt.hash(feeProj) }}</b>
-        <span :class="feeProj>held?'pos':'neg'">
-          ({{ feeProj>held?'+':'' }}{{ fmt.hash(feeProj-held) }})</span>
+        <span :class="feeProj>g.poolHash(pool)?'pos':'neg'">
+          ({{ feeProj>g.poolHash(pool)?'+':'' }}{{ fmt.hash(feeProj-g.poolHash(pool)) }})</span>
         <div class="sb" style="margin-top:3px">Changing the fee resets your fee-stability
           reputation for three days — that cost is in this figure.</div>
         <div style="display:flex;gap:6px;margin-top:6px">
