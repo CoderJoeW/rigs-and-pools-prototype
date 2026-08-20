@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { freshStore } from '../../test/testStore.js';
+import { installInsolvency } from '../../game/insolvency.js';
+import { PART, RISER } from '../../data/hardware.js';
 
 /* insolvency() and rigSalvage() are internal-only — never part of the
    store's public API, in the original prototype or this port. insolvency()
@@ -8,7 +10,14 @@ import { freshStore } from '../../test/testStore.js';
    from the rest of the tick don't perturb the hand-built scenario). It
    takes exactly one step down its escalation ladder per call — whichever
    rung matches the current state. rigSalvage() is exercised indirectly
-   through scrapRig(), which is exported. */
+   through scrapRig(), which is exported.
+
+   One exception, in "the floor rig" below: FLOOR_COST feeds a guard only
+   reachable once cash has already been zeroed, so it is true at any value and
+   nothing observable can pin it. That block installs the module against a bare
+   context to read it directly, rather than publishing it to be testable. The
+   store-level tests here still enforce that the module is wired into
+   createGame, so the bare-context read is not a blind spot. */
 
 function addRig(g, overrides = {}) {
   const rig = { id: g.s.nextId++, kind: 'gpu', frame: 'f2', mobo: 'm2', psu: 'p450', cool: 'x0',
@@ -18,6 +27,95 @@ function addRig(g, overrides = {}) {
   g.s.rigs.push(rig);
   return rig;
 }
+
+describe('the floor rig', () => {
+  /* The rig insolvency grants when everything is gone. FLOOR_RIG/FLOOR_COST
+     stay internal — this module's convention, and publishing them purely for a
+     test would widen the store's surface for no player-facing reason — so these
+     go through the only thing a player can observe: the rig that arrives. */
+  function granted(){
+    const g = freshStore();
+    g.s.rigs.length = 0;
+    for(const f of g.s.sites) f.queue.length = 0;
+    g.s.cash = -1;
+    g.stepTick(0.01);
+    return { g, rig: g.s.rigs[0] };
+  }
+
+  /* FLOOR_COST has no observable effect — the guard it feeds is only reachable
+     once cash has already been zeroed, so it is true at any value. That makes
+     it untestable through the store, and it is exactly why the old literal
+     could drift to $95 unnoticed. Install the module against a bare context to
+     read it directly, rather than publishing it just to be testable. */
+  const spec = () => { const G = {}; installInsolvency(G); return G; };
+
+  it('prices the floor rig with the Build tab’s formula', () => {
+    const { FLOOR_COST, FLOOR_RIG } = spec();
+    expect(FLOOR_COST).toBe(
+      PART(FLOOR_RIG.frame).price + PART(FLOOR_RIG.mobo).price + PART(FLOOR_RIG.psu).price
+      + PART(FLOOR_RIG.cool).price + FLOOR_RIG.n * (PART(FLOOR_RIG.unit).price + RISER.price));
+    expect(FLOOR_COST).toBe(60);
+    expect(FLOOR_COST).not.toBe(95);   // the sum that had drifted
+  });
+
+  it('keeps the spec frozen, so price and rig cannot part company at runtime', () => {
+    const { FLOOR_RIG } = spec();
+    expect(Object.isFrozen(FLOOR_RIG)).toBe(true);
+  });
+
+  it('carries no ctrl in the spec — there is no controller catalogue to price', () => {
+    const { FLOOR_RIG } = spec();
+    // PART('k3') is undefined; folding a ctrl into the sum above would throw.
+    expect(FLOOR_RIG.ctrl).toBeUndefined();
+    expect(PART('k3')).toBeUndefined();
+  });
+
+  it('arrives when the farm is completely gone', () => {
+    const { g, rig } = granted();
+    expect(g.s.rigs).toHaveLength(1);
+    expect(rig.on).toBe(true);          // dark, it could never earn its way back
+    expect(rig.building).toBe(0);
+    expect(g.s.cash).toBe(0);
+  });
+
+  it('bills one riser per card, so the count cannot disagree with itself', () => {
+    const { rig } = granted();
+    // The build formula charges n x (card + riser). A separate riser count
+    // would be a second number free to drift from the first.
+    expect(rig.risers).toBe(rig.units.length);
+  });
+
+  it('costs exactly what the Build tab would charge to build it', () => {
+    const { g, rig } = granted();
+    // Drive the real draft to the granted rig and read the Build tab's quote.
+    // This pins the FORMULA: drop the riser term, or price the cards singly,
+    // and the two sides part company.
+    Object.assign(g.s.draft, { frame: rig.frame, mobo: rig.mobo, psu: rig.psu,
+      cool: rig.cool, unit: rig.units[0].p, n: rig.units.length });
+    expect(g.dp.cost).toBe(60);
+  });
+
+  it('is the cheapest rig that can mine at all', () => {
+    const { g, rig } = granted();
+    // Pins the SPEC, not just the arithmetic. Nothing above stops the granted
+    // rig quietly becoming an RTX A5000 — the price would follow the spec and
+    // stay self-consistent while the bailout turned into a $290 gift.
+    const cards = g.cards();
+    const cheapestCard = cards.reduce((a, c) => c.price < a.price ? c : a);
+    expect(rig.units[0].p).toBe(cheapestCard.id);
+    expect(rig.units).toHaveLength(1);
+    expect(g.PART(rig.cool).price).toBe(0);   // no cooler, the free option
+  });
+
+  it('is a GPU rig, so it is priced and salvaged down the gpu path', () => {
+    const { g, rig } = granted();
+    // kind decides which formula applies to it, both here and in rigSalvage.
+    // An 'asic' here would send rigSalvage at PART(ctrl), and there is no
+    // controller catalogue for it to find.
+    expect(rig.kind).toBe('gpu');
+    expect(() => g.scrapRig(rig.id)).not.toThrow();
+  });
+});
 
 describe('insolvency escalation', () => {
   it('always zeroes cash once it fires, whatever rung it takes', () => {
