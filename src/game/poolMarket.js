@@ -159,7 +159,16 @@ export function installPoolMarket(G){
     }
     for(const m of G.s.sims) if(m.chain===chainId) pickPool(m, table);
   }
-  const simsOn = cid => G.s.sims.filter(m=>m.chain===cid).length;
+  /* O(1) off the head count sims.js keeps incrementally, not a scan. This is
+     read from templates — three times per render on an open pool card, and
+     once per chain inside ChainsView's `cards`, which recomputes every tick
+     because it reads the block clock — so at a five-figure population the
+     scan version was tens of milliseconds of every frame for a number the sim
+     layer already has. No ensureMembers() here on purpose: the count is
+     maintained by bumpN as miners arrive, leave and switch chains, so it is
+     always current, and forcing the member-index rebuild from a render path
+     would trade a scan for a bigger one. */
+  const simsOn = cid => G._simChainN ? (G._simChainN[cid]||0) : 0;
   /* Rival operators are running a business too. Each hour they look at their
      own book: an empty pool cuts its fee to win members back, a full one raises
      it because capacity is the scarce thing, and a pool that sits empty long

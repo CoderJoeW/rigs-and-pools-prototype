@@ -150,6 +150,43 @@ describe('the network as it grows', () => {
     }
   });
 
+  it('leaves nothing stranded in the running totals when a miner gives up', () => {
+    const g = freshStore();
+    const cid = 'obelisk';
+    /* The awkward case: a miner who owns a live pool AND mines in it. Its
+       release loop runs while it is still in G.s.sims, so the departure has
+       to have already taken its hashrate out of every total or it gets
+       subtracted from the pool twice and stranded in the solo bucket —
+       which drawSimWinner reads to decide how often a solo miner wins. */
+    const m = simsOn(g, cid)[0];
+    const pool = g.s.pools.find(p => p.chain === cid);
+    pool.owner = 'sim'; pool.ownerSim = m.id; pool.live = true;
+    g.setSimPool(m, pool.id);
+
+    // Broke, tiny, nothing left to sell: the departure branch's own test.
+    m.cash = 0; m.coins = 0; g.setSimHash(m, 5);
+    let guard = 0;
+    while (g.s.sims.includes(m) && guard++ < 20000) g.simPulse();
+    expect(g.s.sims.includes(m)).toBe(false);
+
+    /* Asserted as an invariant over what is left rather than as a delta:
+       simPulse moves every other miner too, so only "the totals still
+       describe the sims" is a stable claim — and it is exactly the one the
+       double-subtract broke. */
+    const sum = (arr) => arr.reduce((a, x) => a + x.hash, 0);
+    for (const c of SIM_CHAINS) {
+      const here = simsOn(g, c);
+      expect(g._simChainHash[c]).toBeCloseTo(sum(here), 6);
+      expect(g._simSoloHash[c]).toBeCloseTo(
+        sum(here.filter(x => !x.pool || x.pool === 'solo')), 6);
+    }
+    for (const p of g.s.pools) {
+      if (!p.live) continue;
+      expect(g._simPoolHash[p.id] || 0).toBeCloseTo(
+        sum(g.s.sims.filter(x => x.pool === p.id)), 6);
+    }
+  });
+
   it('holds the running hashrate totals to what the sims actually own', () => {
     const g = freshStore();
     runDays(g, 8);

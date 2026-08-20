@@ -103,7 +103,7 @@ const cards=computed(()=>g.s.chains.map(c=>{
     outgrown:groups.some(gr=>g.groupAdvice(gr)),
     ceiling:g.chainCeiling(c),
     eta:g.blockETA(c), prog:g.blockProg(c),
-    miners:g.s.sims.filter(m=>m.chain===c.id).length,
+    miners:g.simsOn(c.id),
     pools:g.s.pools.filter(x=>x.live&&x.chain===c.id).length,
   };
 }));

@@ -640,7 +640,14 @@ export function installSims(G){
       const i = Math.floor(Math.random() * sims.length);
       const m = sims[i];
       if(m.cash < 15 && m.hash < 20 && m.coins < 10){
-        addHash(m, -m.hash);
+        /* Zero the departing miner's hashrate THROUGH setSimHash first, so
+           everything below is a no-op against the running totals. A bare
+           addHash(m,-m.hash) here left m.hash intact and m still in G.s.sims,
+           so if it owned a pool the release loop's setSimPool(m,'solo')
+           subtracted the same hashrate from _simPoolHash a second time and
+           stranded it in _simSoloHash permanently — and drawSimWinner reads
+           _simSoloHash to size the solo bucket. */
+        setSimHash(m, 0);
         for(const p of G.s.pools){
           if(p.owner === 'sim' && p.ownerSim === m.id && p.live){
             p.live = false;
