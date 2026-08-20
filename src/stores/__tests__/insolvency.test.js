@@ -19,6 +19,64 @@ function addRig(g, overrides = {}) {
   return rig;
 }
 
+describe('the floor rig', () => {
+  it('is priced at what the Build tab would actually charge for it', () => {
+    const g = freshStore();
+    const spec = g.FLOOR_RIG;
+
+    // Drive the real build draft to the floor spec and read the quote the
+    // Build tab gives. This is the guard the hardcoded 12+16+32+26+9 lacked:
+    // reprice any of those parts and this fails instead of drifting silently.
+    Object.assign(g.s.draft, { frame: spec.frame, mobo: spec.mobo, psu: spec.psu,
+      cool: spec.cool, unit: spec.unit, n: spec.n });
+
+    expect(g.FLOOR_COST).toBe(g.dp.cost);
+  });
+
+  it('costs what its own parts cost, not a stale literal', () => {
+    const g = freshStore();
+    const spec = g.FLOOR_RIG;
+    const P = g.PART;
+    expect(g.FLOOR_COST).toBe(
+      P(spec.frame).price + P(spec.mobo).price + P(spec.psu).price + P(spec.cool).price
+      + spec.n * (P(spec.unit).price + g.RISER.price));
+    expect(g.FLOOR_COST).not.toBe(95);   // the drifted sum
+  });
+
+  it('hands back a rig built to exactly that spec when the farm is gone', () => {
+    const g = freshStore();
+    g.s.rigs.length = 0;
+    for(const f of g.s.sites) f.queue.length = 0;
+    g.s.cash = -1;
+
+    g.stepTick(0.01);
+
+    expect(g.s.rigs).toHaveLength(1);
+    const r = g.s.rigs[0];
+    const spec = g.FLOOR_RIG;
+    expect(r.frame).toBe(spec.frame);
+    expect(r.mobo).toBe(spec.mobo);
+    expect(r.psu).toBe(spec.psu);
+    expect(r.cool).toBe(spec.cool);
+    expect(r.units.map(u => u.p)).toEqual([spec.unit]);
+    expect(r.risers).toBe(spec.risers);
+    expect(r.on).toBe(true);            // and it is running, or it earns nothing
+    expect(g.s.cash).toBe(0);
+  });
+
+  it('gives one away only after every other rung is exhausted', () => {
+    const g = freshStore();
+    addRig(g, { on: false });           // something left to sell, but nothing live
+    g.s.cash = -1;
+
+    g.stepTick(0.01);
+
+    // the rig was sold for salvage, not supplemented with a free one
+    expect(g.s.rigs).toHaveLength(0);
+    expect(g.s.cash).toBeGreaterThan(0);
+  });
+});
+
 describe('insolvency escalation', () => {
   it('always zeroes cash once it fires, whatever rung it takes', () => {
     const g = freshStore();
