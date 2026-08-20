@@ -85,11 +85,11 @@ This one mechanic does five things:
 
 ### The simulated network
 
-**A hundred other miners share the chains with you**, spread across the four main ones.
+**A hundred other miners share the chains with you on day one, and thousands do by month four.** Each is a person with a farm, not a share of a chain's hashrate: they start at a card or two, pay a power bill, sell coin, and build from there.
 
-They **choose chains by rate and pools by fee**, a few reconsidering each hour so the network moves without stampeding, and they grow about 0.6% a day. Crucially, they are **who your pool's members actually are** — founding a pool and undercutting the official one is how you take them.
+They **choose chains by rate and crowding, and pools by fee**, a few reconsidering each hour so the network moves without stampeding. Crucially, they are **who your pool's members actually are** — founding a pool and undercutting a rival is how you take them.
 
-The network starts a little above the sum of the four main floors, so **the above-floor case now runs for the first time**: chains dilute, and rates converge as miners move toward whatever pays best. That convergence *is* the floor acting as an attractor, and it had never been observed before.
+**The population is the clock.** A chain's hashrate is what the miners who have turned up have actually built, so every chain opens as fresh territory far below its floor and fills as the network matures — Obelisk in gigahashes at t=0, not the 1.32 TH it used to be handed. `SIM_RATIO` is where a chain **ends up** once everybody has arrived, not where it starts. Newcomers arrive on a logistic curve and land on the chain furthest below the seats its size supports, which converges the split on the chains' floor weights: at the soft cap that puts about one small farm on every seat of every chain. §6o has the detail and what it replaced.
 
 Tessera has no simulated miners at all — it stays a refuge below its floor where a newcomer gets linear returns.
 
@@ -840,6 +840,31 @@ This file is now around 3,500 lines in one document, and the failure modes have 
 **Anything that grows at runtime needs one authoritative array.** Generation cards and supplies both shipped invisible because a reader used the static table. **Rule: when a catalogue can grow, grep every reader.**
 
 **What is still fragile.** The audit suite is retyped from memory each build rather than living in a file, which is the single biggest risk to quality here — it should be checked in beside the prototype and run unchanged every time, so a check can never quietly go missing. The same applies to the headless harness: it is rebuilt per session, and its bugs have twice been mistaken for game bugs.
+
+## 6o. The network grows, instead of arriving finished (v68)
+
+**The symptom.** Obelisk read 1.5 TH off the gate. Twenty-five supposedly-new miners were holding 48 GH each — about 250 starter rigs apiece — on a chain nobody had had time to build.
+
+**Two separate bugs, sharing a cause: the model had a size but no clock.**
+
+`seedSims` handed every chain `SIM_RATIO * floor` at t=0 and split it among a quarter of the starting population. §6e's note that "chains now sit below their own floor" was implemented as a *starting* value, so a world opened with a fully-built network and the "simulated players growing over time" half of the design existed only in a population counter that ticked 18 miners a day — about 900 game-days to fill, against a hardware ladder that caps at 168.
+
+Worse, the network then ran away. Below a chain's floor the difficulty clamp holds `revPerMh` flat at `PAY x mult` — roughly $4.83/MH/day on Obelisk — against a power bill of $0.55, and an agent that reinvests whenever `net > 0` has no stopping point at all against a margin like that. Measured: **Obelisk at 27x its own floor thirty days in**, still climbing toward the ~51x where the price feedback (`fundOf`'s 0.45 exponent) finally caps out. The ladder §2a built was being erased inside a month, every game.
+
+**The population is now the clock.**
+
+- **A chain carries what the miners on it have built.** `simTargetOf` sizes each chain from the population that has actually arrived — `SIM_RATIO * floor * (population / SIM_SOFT_CAP)`, floored at one card per miner present. `SIM_RATIO` keeps its meaning as the mature end state.
+- **Seats are weighted by floor**, because the ladder *is* the chain sizes: Obelisk is not a bigger Ferro, it is the chain thousands of miners work. `SIM_SEATS_MIN` is held back for every chain first so the small rungs keep a pool market, and a player founding a Ferro pool is never told nobody mines there. The two rules meet at the soft cap: 16k miners spread by floor weight put ~96 MH on every seat of every chain.
+- **Expansion has a brake and a lead time.** Reinvestment is scaled by the room the chain has left and capped at `SIM_EXPAND_MAX_DAY` — the sims' version of the build queue the player waits on. Past `SIM_TRIM_AT` they retire cards instead.
+- **Arrivals are logistic**, a trickle who find the chains alone plus word of mouth from everyone already mining, filling the network over about four months.
+
+**A third bug fell out of the first fix, and is worth naming.** Chain choice compared pay alone — and below the floor there is no crowding term in pay at all, so once the miners were small enough to move freely, one lucky swing in Halcyon's price (vol 0.060, the most violent book in the game) took every miner in the world there and none ever came back: **Ferro and Nova at literally zero hashrate inside a week.** §6f's `SWITCH_EDGE` was stickiness holding a field plural, not a force restoring it, and it had been masked purely by the old seed making the agents too big to move. Crowding is now measured where it is actually visible — in *people*, against the seats a chain's size supports — so a chain that fills becomes less attractive and an empty one pulls miners back.
+
+Measured over 150 game-days: population 100 → 15,306, four of four chains populated and growing monotonically throughout, splits tracking their floor weights (Obelisk 85%, Nova 12%, Halcyon 2%, Ferro 0.3% of the miners), and the chains filling bottom-up as a ladder should — Ferro 42% of floor, Halcyon 51%, Nova 35%, Obelisk 20%, none of them ever past `SIM_RATIO`.
+
+**What this does not change: the player's income.** `blocksDay` is `86400 * myHash / diffOf`, and `diffOf` is floored — so what the rest of the network holds never touched what a player earns, before or after. What it changes is what the chains *are* early on: empty frontier with long block windows, where a small farm is a real share of a slow chain, filling into a busy network over the run. Pooling gets more valuable as the network arrives, rather than being the answer from the first minute.
+
+**Old saves are not migrated** (`SAVE_VER` 5). A v4 world holds a network seeded at 0.6 x floor and compounded from there; the population is what sets a chain's size now, and there is no honest rescale from one shape to the other.
 
 ## 6l. Cleanup pass (v63)
 

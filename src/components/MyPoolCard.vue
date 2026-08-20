@@ -33,6 +33,29 @@ const renameDraft = ref('');
 const startRename = () => { renameDraft.value = props.pool.name; renameOpen.value = true; };
 const saveRename = () => { g.renamePool(props.pool, renameDraft.value); renameOpen.value = false; };
 
+/* These scan every miner on the pool's chain — tens of thousands of them once
+   the network has filled — and the template asked for them a dozen times per
+   render between the "Turning away" line, the top-up button's four states and
+   the fee projection. Through computed() each is one call per render, which
+   measured as the difference between ~90 ms and ~15 ms for an open card; the
+   fee slider re-renders on every input event, so that is a live cost.
+
+   They are cacheable because they walk G.s.sims, which IS reactive: a miner's
+   hashrate or chain moving invalidates them.
+
+   poolHash and poolPnl are deliberately NOT memoised here, though they look
+   like the same kind of thing. poolHash reads the sim half of a pool's book
+   out of G._simPoolHash — a plain object sims.js keeps off Vue's reactivity
+   on purpose (see its header) — so a computed over it caches a value nothing
+   will ever invalidate. Memoised, a card whose members were all simulated
+   rendered a frozen "holding 0 MH/s", and with it a frozen FULL badge,
+   capacity bar, blocks-a-day and projection delta. They are cheap anyway:
+   a walk of the player's own groups and rigs, not of the network. */
+const demand = computed(() => g.poolDemand(props.pool));
+const tierBond = computed(() => g.nextTierBond(props.pool));
+const feeProj = computed(() => feeDraft.value === undefined
+  ? null : g.poolProj(props.pool, feeDraft.value));
+
 /* Bond top-up / release amounts, scaled to the order of magnitude the bond is
    already at, so the buttons stay useful from $100 to $100k. */
 const bondSteps = computed(() => {
@@ -160,16 +183,16 @@ const bondSteps = computed(() => {
           <div class="v">{{ g.poolPnl(pool).payback===Infinity?'never'
             :Math.round(g.poolPnl(pool).payback)+' days' }}</div></div>
       </div>
-      <div v-if="g.nextTierBond(pool)>0" class="dl"><dt>Turning away</dt>
-        <dd class="amb">{{ fmt.hash(g.poolDemand(pool)-g.poolHash(pool)) }} wants in but your
+      <div v-if="tierBond>0" class="dl"><dt>Turning away</dt>
+        <dd class="amb">{{ fmt.hash(demand-g.poolHash(pool)) }} wants in but your
           capital will not carry it</dd></div>
-      <button v-if="g.nextTierBond(pool)>0" class="btn btn-wide"
-              :class="g.s.cash>=g.nextTierBond(pool)?'btn-pri':''"
-              :disabled="g.s.cash<g.nextTierBond(pool)"
-              @click="g.addBond(pool,g.nextTierBond(pool))">
-        {{ g.s.cash>=g.nextTierBond(pool)
-           ? 'Post '+fmt.usd(g.nextTierBond(pool))+' and take all '+fmt.hash(g.poolDemand(pool))
-           : 'Needs '+fmt.usd(g.nextTierBond(pool))+' to take everyone waiting' }}</button>
+      <button v-if="tierBond>0" class="btn btn-wide"
+              :class="g.s.cash>=tierBond?'btn-pri':''"
+              :disabled="g.s.cash<tierBond"
+              @click="g.addBond(pool,tierBond)">
+        {{ g.s.cash>=tierBond
+           ? 'Post '+fmt.usd(tierBond)+' and take all '+fmt.hash(demand)
+           : 'Needs '+fmt.usd(tierBond)+' to take everyone waiting' }}</button>
       <div class="dl"><dt>Booked so far</dt>
         <dd :class="pool.earned>=0?'pos':'neg'">{{ fmt.usd(pool.earned) }}</dd></div>
       <div class="dl"><dt>Withdrawable</dt>
@@ -184,10 +207,9 @@ const bondSteps = computed(() => {
       <div v-if="feeDraft!==undefined&&Math.abs(feeDraft-pool.fee)>0.0005"
            class="warnbox" style="margin-top:6px">
         <b>{{ (feeDraft*100).toFixed(2) }}% would settle at
-          {{ fmt.hash(g.poolProj(pool,feeDraft)) }}</b>
-        <span :class="g.poolProj(pool,feeDraft)>g.poolHash(pool)?'pos':'neg'">
-          ({{ g.poolProj(pool,feeDraft)>g.poolHash(pool)?'+':'' }}{{
-            fmt.hash(g.poolProj(pool,feeDraft)-g.poolHash(pool)) }})</span>
+          {{ fmt.hash(feeProj) }}</b>
+        <span :class="feeProj>g.poolHash(pool)?'pos':'neg'">
+          ({{ feeProj>g.poolHash(pool)?'+':'' }}{{ fmt.hash(feeProj-g.poolHash(pool)) }})</span>
         <div class="sb" style="margin-top:3px">Changing the fee resets your fee-stability
           reputation for three days — that cost is in this figure.</div>
         <div style="display:flex;gap:6px;margin-top:6px">

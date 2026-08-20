@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { nextTick } from 'vue';
 import { mountWithStore } from '../../test/mountWithStore.js';
 import MyPoolCard from '../MyPoolCard.vue';
+import { fmt } from '../../utils/format.js';
 
 /* Lifted out of ChainsView's v-for, where every piece of its state was a map
    keyed by pool id. These cover the parts that keying used to reach — rename,
@@ -20,6 +21,27 @@ describe('MyPoolCard', () => {
     const { wrapper, pool } = card();
     expect(wrapper.text()).toContain(pool.name);
     expect(wrapper.text()).toContain('PPLNS');
+  });
+
+  it('reports what the pool is actually holding', () => {
+    /* The holding figure, the FULL badge, the capacity bar and the projection
+       delta are all poolHash. It is deliberately NOT memoised in the component
+       (see the comment there): poolHash reads the simulated half of a pool's
+       book out of G._simPoolHash, which sims.js keeps off Vue's reactivity on
+       purpose, so a computed over it caches a number nothing invalidates and
+       the card renders a frozen "holding 0 MH/s".
+
+       This pins the binding rather than that trap — the sim half is not
+       reachable from the published store surface, so the reasoning has to
+       live in the comment. */
+    const { wrapper, store, pool } = card(g => {
+      g.generatePreset();
+      g.build();
+      for (let i = 0; i < 5; i++) g.stepTick(60);
+      g.setGroupPool(g.s.groups[0], g.myPools[0].id);
+    });
+    expect(store.poolHash(pool)).toBeGreaterThan(0);
+    expect(wrapper.text()).toContain(fmt.hash(store.poolHash(pool)));
   });
 
   it('stays collapsed until asked to open', () => {

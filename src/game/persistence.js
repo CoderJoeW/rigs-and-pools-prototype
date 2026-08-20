@@ -1,4 +1,4 @@
-import { C, TRUST_RAMP, SIM_RATIO, SIM_GROWTH, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
+import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
 import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
@@ -129,16 +129,39 @@ export function installPersistence(G){
       c.floor=base.floor; c.reward=base.reward; c.target=base.target;
       c.mult=base.mult; c.depth=base.depth;
       c.anchor=Math.max(1, SIM_RATIO);
+      /* Rescale the miners on the chain to what the CURRENT model says the
+         chain carries, which is a question about the population that has
+         arrived — not SIM_RATIO*floor compounded by a daily growth rate.
+         That was the old model's answer and it is the seed bug §6o removes:
+         on a day-10 save it would have multiplied every Obelisk miner's
+         hashrate by about 130x, handing the chain a finished network again
+         through the back door. Unreachable while every v5 save's chains match
+         CHAINS, which is exactly why it needs to be right before the next
+         floor retune reaches it. */
       const mine=G.s.sims.filter(m=>m.chain===c.id);
       const have=mine.reduce((a,m)=>a+m.hash,0);
-      const want=SIM_RATIO*base.floor*Math.pow(1+SIM_GROWTH, G.s.t/86400);
-      if(have>0 && want>0){ const k=want/have; for(const m of mine) m.hash*=k; }
+      const want=G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO*base.floor;
+      /* Through setSimHash, not `m.hash *= k`: the running totals sims.js
+         keeps (_simChainHash and the solo/pool splits) are maintained
+         incrementally, and reindexSims has already run by here — so a bare
+         assignment would leave every one of them stale for the session. */
+      if(have>0 && want>0){
+        const k=want/have;
+        for(const m of mine){
+          if(G.setSimHash) G.setSimHash(m, m.hash*k); else m.hash*=k;
+        }
+      }
       c.obs=Math.max(c.floor, want);
     }
     if(G.s.pools.some(p=>p.owner==='server')){
       const dead=new Set(G.s.pools.filter(p=>p.owner==='server').map(p=>p.id));
       G.s.pools=G.s.pools.filter(p=>p.owner!=='server');
-      for(const m of G.s.sims) if(dead.has(m.pool)) m.pool='solo';
+      // Through setSimPool for the same reason the rescale above goes through
+      // setSimHash: a bare assignment strands the miner's hashrate in
+      // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
+      for(const m of G.s.sims) if(dead.has(m.pool)){
+        if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo';
+      }
       for(const gr of G.s.groups) if(dead.has(gr.pool)) gr.pool='solo';
       let seq=0;
       for(const cid of SIM_CHAINS){

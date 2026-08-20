@@ -94,28 +94,62 @@ export function installPoolMarket(G){
      jitter a two-point fee difference was invisible, so cutting your fee did
      nothing a player could see. */
   const FEE_BITE = 3;
-  const poolScore = p => (1-Math.min(0.9,p.fee*FEE_BITE))*poolTrust(p)*(0.97+Math.random()*0.06);
-  const poolOptsFor = m => G.s.pools.filter(p=>p.live&&p.chain===m.chain&&
-    G.poolHash(p)+m.hash<=poolCapLimit(p));
-  function pickPool(m){
-    const opts=poolOptsFor(m);
-    if(!opts.length){
-      if(G.setSimPool) G.setSimPool(m, 'solo'); else m.pool='solo';
-      return;
+  /* Split into the half that is a property of the POOL and the half that is a
+     property of the MINER looking at it, because the pool's half is identical
+     for every miner on the chain and poolTrust is four derived quantities
+     deep. Still one definition of each: poolScore is the two multiplied, and
+     is what sims.js scores a pool with; pickPool reads the same base out of
+     chainPoolTable and draws its own jitter, rather than either of them
+     carrying a second copy of the formula. */
+  const poolScoreBase = p => (1-Math.min(0.9,p.fee*FEE_BITE))*poolTrust(p);
+  // Miners carry +-3% jitter, so a near-tie splits rather than going
+  // winner-take-all. Drawn per miner per pool: that is what makes it a split.
+  const scoreJitter = () => 0.97+Math.random()*0.06;
+  const poolScore = p => poolScoreBase(p)*scoreJitter();
+  /* The half of a pool's book that a miner moving cannot change: its capacity,
+     and the player's own rigs pointed at it. poolHash walks every group and
+     every rig to find the second, and poolOptsFor called it once per pool per
+     MINER — fine at the few hundred sims the network used to reach, seconds
+     once it reaches five figures. Built once per shake and passed down, so
+     there is still one scoring function rather than a fast copy beside it. */
+  function chainPoolTable(chainId){
+    const playerIn = new Map();
+    for(const gr of G.s.groups){
+      if(!gr.pool || gr.pool==='solo') continue;
+      playerIn.set(gr.pool, (playerIn.get(gr.pool)||0) + G.groupHash(gr));
     }
-    let bp=opts[0], bs=-1;
-    for(const p of opts){ const sc=poolScore(p); if(sc>bs){ bs=sc; bp=p; } }
-    if(G.setSimPool) G.setSimPool(m, bp.id); else m.pool=bp.id;
+    const out=[];
+    for(const p of G.s.pools){
+      if(!p.live || p.chain!==chainId) continue;
+      out.push({ p, cap:poolCapLimit(p), mine:playerIn.get(p.id)||0, base:poolScoreBase(p) });
+    }
+    return out;
+  }
+  /* The simulated half is still read live on every miner, so a pool that fills
+     during a shake is full for everyone after it — capacity stays
+     first-come-first-served, exactly as it was. */
+  const simIn = p => G.simPoolHashOf ? G.simPoolHashOf(p) : 0;
+  function pickPool(m, table){
+    const opts = table || chainPoolTable(m.chain);
+    let bp=null, bs=-1;
+    for(const e of opts){
+      if(simIn(e.p)+e.mine+m.hash > e.cap) continue;          // they are full
+      const sc=e.base*scoreJitter();
+      if(sc>bs){ bs=sc; bp=e.p; }
+    }
+    const pick = bp ? bp.id : 'solo';
+    if(G.setSimPool) G.setSimPool(m, pick); else m.pool=pick;
   }
   function poolShake(chainId){
     if(G.ensureMembers) G.ensureMembers();
+    const table = chainPoolTable(chainId);
     if(G._soloMembers && G._poolMembers){
       const seen = new Set();
       const touch = (idx) => {
         if(seen.has(idx)) return;
         seen.add(idx);
         const m = G.s.sims[idx];
-        if(m) pickPool(m);
+        if(m) pickPool(m, table);
       };
       for(const i of (G._soloMembers[chainId] || [])) touch(i);
       for(const p of G.s.pools){
@@ -124,9 +158,18 @@ export function installPoolMarket(G){
       }
       return;
     }
-    for(const m of G.s.sims) if(m.chain===chainId) pickPool(m);
+    for(const m of G.s.sims) if(m.chain===chainId) pickPool(m, table);
   }
-  const simsOn = cid => G.s.sims.filter(m=>m.chain===cid).length;
+  /* O(1) off the head count sims.js keeps incrementally, not a scan. This is
+     read from templates — three times per render on an open pool card, and
+     once per chain inside ChainsView's `cards`, which recomputes every tick
+     because it reads the block clock — so at a five-figure population the
+     scan version was tens of milliseconds of every frame for a number the sim
+     layer already has. No ensureMembers() here on purpose: the count is
+     maintained by bumpN as miners arrive, leave and switch chains, so it is
+     always current, and forcing the member-index rebuild from a render path
+     would trade a scan for a bigger one. */
+  const simsOn = cid => G._simChainN ? (G._simChainN[cid]||0) : 0;
   /* Rival operators are running a business too. Each hour they look at their
      own book: an empty pool cuts its fee to win members back, a full one raises
      it because capacity is the scarce thing, and a pool that sits empty long
@@ -146,9 +189,7 @@ export function installPoolMarket(G){
       // an empty pool bleeds its operator; long enough and they fold
       p.lapse = G.poolHash(p)<1 ? (p.lapse||0)+1 : 0;
       if(p.lapse>72 && Math.random()<0.25){
-        p.live=false;
-        G.s.groups.filter(gr=>gr.pool===p.id).forEach(gr=>{ G.forfeitGroup(gr,'when '+p.name+' folded'); gr.pool='solo'; });
-        for(const m of G.s.sims) if(m.pool===p.id){ if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo'; }
+        G.closeSimPool(p,'when '+p.name+' folded');
         say('pool',p.name+' has closed — it never found enough members');
       }
     }
@@ -184,20 +225,44 @@ export function installPoolMarket(G){
      worth posting. */
   function poolDemand(p,fee){
     const mine=scoreAt(p,fee);
+    /* Score and remaining room per rival, once. Both are the same for every
+       miner on the chain, but they used to be recomputed inside the loop —
+       with poolHash walking every group and every rig each time — so a call
+       on a busy chain cost seconds, and the pool card makes several per
+       render. Nothing here depends on the miner but the capacity comparison. */
+    const rivals=[];
+    for(const q of G.s.pools){
+      if(!q.live||q.chain!==p.chain||q.id===p.id) continue;
+      rivals.push({ score:scoreAt(q), room:poolCapLimit(q)-G.poolHash(q) });
+    }
+    /* The rivals a miner can actually join are exactly those with room for it,
+       so sorted by room they are a SUFFIX of this list — and the best offer
+       among them is a running maximum from the back. One binary search per
+       miner instead of walking every pool for every miner. */
+    rivals.sort((a,b)=>a.room-b.room);
+    const bestFrom=new Array(rivals.length+1);
+    bestFrom[rivals.length]=0;
+    for(let i=rivals.length-1;i>=0;i--)
+      bestFrom[i]=Math.max(bestFrom[i+1], rivals[i].score);
+    const bestFor = mh => {
+      let lo=0, hi=rivals.length;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(rivals[mid].room<mh) lo=mid+1; else hi=mid; }
+      return bestFrom[lo];
+    };
     let h=0;
     for(const m of G.s.sims){
       if(m.chain!==p.chain) continue;
-      let best=0;
-      for(const q of G.s.pools){
-        if(!q.live||q.chain!==p.chain||q.id===p.id) continue;
-        if(G.poolHash(q)+m.hash>poolCapLimit(q)) continue;    // they are full
-        best=Math.max(best, scoreAt(q));
-      }
+      /* Read the miner's hashrate ONCE. G.s is reactive(), so every `m.hash`
+         is a proxy trap and a dependency registration — inside the old rival
+         loop that was 390k of them at 13k miners against 30 pools, and it
+         measured 42 ms of this function's 48. */
+      const mh=m.hash;
+      const best=bestFor(mh);
       // miners carry +-3% jitter, so a near-tie splits rather than going
       // winner-take-all. Without this the preview showed a cliff where the
       // real market shows a slope, and the number on the slider would have
       // been a promise the market does not keep.
-      h += m.hash*(best<=0 ? 1 : soften(mine/best));
+      h += mh*(best<=0 ? 1 : soften(mine/best));
     }
     for(const gr of G.s.groups) if(gr.pool===p.id) h+=G.groupHash(gr);
     return h;
@@ -295,5 +360,5 @@ export function installPoolMarket(G){
   }
 
 
-  Object.assign(G, {FEE_BITE,FLOAT_DAYS,blockValue,bondFor,bondReq,capBinding,floatBondFor,floatPerHash,lastToast,myPools,nextTierBond,pickPool,poolCapLimit,poolDemand,poolOptsFor,poolPnl,poolProj,poolRep,poolScore,poolShake,poolTrust,pop,refreshPools,repAt,repParts,reshuffle,rivalPools,rivalTick,say,scoreAt,simsOn,soften,toastSeen,varBondFor});
+  Object.assign(G, {FEE_BITE,FLOAT_DAYS,blockValue,bondFor,bondReq,capBinding,chainPoolTable,floatBondFor,floatPerHash,lastToast,myPools,nextTierBond,pickPool,poolCapLimit,poolDemand,poolPnl,poolProj,poolRep,poolScore,poolScoreBase,poolShake,poolTrust,pop,refreshPools,repAt,repParts,reshuffle,rivalPools,rivalTick,say,scoreAt,scoreJitter,simsOn,soften,toastSeen,varBondFor});
 }
