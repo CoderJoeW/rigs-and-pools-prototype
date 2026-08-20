@@ -35,8 +35,9 @@ const INTERNAL = new Set([
   // --- sims.js ---
   'SIM_SOFT_CAP', 'SIM_START', 'addHash', 'creditSim', 'creditSimPoolShare',
   'drawSimWinner', 'ensureMembers', 'mkSim', 'rebuildMembers', 'reindexSims',
-  'seedSims', 'setSimChain', 'setSimHash', 'setSimPool', 'simFlatDrip', 'simHashOf',
-  'simPoolHashOf', 'simPulse', 'simSoloHashOf',
+  'seatsFor', 'seedSims', 'setSimChain', 'setSimHash', 'setSimPool', 'simFlatDrip',
+  'simHashOf', 'simPoolHashOf', 'simPulse', 'simRoomOf', 'simSoloHashOf', 'simTargetOf',
+  'overBuilt',
   // --- poolMarket.js ---
   'FEE_BITE', 'FLOAT_DAYS', 'bondFor', 'floatBondFor', 'floatPerHash', 'lastToast',
   'pickPool', 'poolOptsFor', 'poolScore', 'poolShake', 'pop', 'refreshPools', 'repAt',
@@ -60,7 +61,7 @@ const INTERNAL = new Set([
   // waved through by their leading underscore: exempting a whole namespace
   // would leave an unbounded hole in the check, and an escape hatch that is
   // easier to reach for than editing this list will get reached for.
-  '_membersDirty', '_poolMembers', '_simChainHash', '_simPoolHash',
+  '_membersDirty', '_poolMembers', '_simChainHash', '_simChainN', '_simPoolHash',
   '_simSoloHash', '_soloMembers',
 ]);
 

@@ -53,7 +53,14 @@ export const C = {
   // spotlighted tab-by-tab walkthrough, tourDismissed) — bumped again for
   // the same reason: every existing save should meet the new tour fresh,
   // not resume mid-farm on Build with no memory of it ever existing.
-  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:4,
+  // v5: the network now GROWS. Every v4 save holds a network seeded at
+  // 0.6*floor on day one and compounded from there — Obelisk opening at
+  // 1.3 TH across 25 accounts, and 27x its floor a month in. Neither shape
+  // can be rescaled into the new one (the population is what sets a chain's
+  // size now, and a v4 save's is whatever the old 18/day rule left it at),
+  // so those worlds start over rather than hydrate into a network that
+  // contradicts its own rules.
+  SAVE_KEY:'rigs-and-pools-save', SAVE_KEY_OLD:'hashline-save', SAVE_VER:5,
   SAVE_EVERY:30,            // autosave cadence, real seconds
   OFFLINE_CAP:86400,        // offline progress credited, capped at one real day
   TOAST_GAP:4,              // real seconds between toasts, whatever the speed multiplier
@@ -99,7 +106,13 @@ export const SIM_PLAYERS = 100;      // the rest of the network
    it is a real participant instead of a rounding error. Before this, all four
    chains sat at 1.4-2.4 TH and a 60-rig warehouse still owned 1.4% of the
    smallest one. */
-export const SIM_RATIO   = 0.6;      // each chain sits BELOW its floor: fresh territory
+/* Where a chain's independent miners END UP once the whole network has
+   arrived — below the floor, so there is always fresh territory. Not where it
+   starts: the population fills toward SIM_SOFT_CAP over months and a chain's
+   hashrate tracks the miners who have actually turned up (see sims.js,
+   simTargetOf). Reading this as a starting value is what put 1.3 TH on
+   Obelisk at t=0, split between 25 supposedly-new miners. */
+export const SIM_RATIO   = 0.6;
 export const SIM_GROWTH  = 0.0025;   // they build too — 0.25%/day, 2.5x a year. At the old
                               // 0.6% (8.9x a year) a farm that stood still lost half
                               // its share every five weeks.
