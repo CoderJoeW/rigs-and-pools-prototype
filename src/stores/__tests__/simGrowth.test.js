@@ -116,6 +116,30 @@ describe('the network as it grows', () => {
     }
   });
 
+  it('births arrivals at the one-card floor too, not just the miners it seeded', () => {
+    const g = freshStore();
+    const seen = new Set(g.s.sims.map(m => m.id));
+    let arrivals = 0;
+    /* Checked as they appear rather than at the end of a long run: a miner
+       who later gets into trouble sells cards down to a deliberate hard floor
+       of 10 (the distress branch in decide), so a survey of survivors would
+       be testing that mechanic instead of this one. What matters here is what
+       they are BORN with — SIM_MIN_HASH is the floor simTargetOf sizes a
+       chain's seats against, and both the reap and the overBuilt trim compare
+       against it, so a miner born under it is reap-eligible from its first
+       tick and can never be trimmed. */
+    for (let h = 0; h < 24 * 4; h++) {
+      g.stepTick(3600);
+      for (const m of g.s.sims) {
+        if (seen.has(m.id)) continue;
+        seen.add(m.id);
+        arrivals++;
+        expect(m.hash).toBeGreaterThanOrEqual(SIM_MIN_HASH);
+      }
+    }
+    expect(arrivals).toBeGreaterThan(0);
+  });
+
   it('keeps its head count per chain in step with the sims array', () => {
     const g = freshStore();
     runDays(g, 8);

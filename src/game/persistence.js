@@ -1,4 +1,4 @@
-import { C, TRUST_RAMP, SIM_RATIO, SIM_GROWTH, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
+import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
 import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
@@ -129,9 +129,18 @@ export function installPersistence(G){
       c.floor=base.floor; c.reward=base.reward; c.target=base.target;
       c.mult=base.mult; c.depth=base.depth;
       c.anchor=Math.max(1, SIM_RATIO);
+      /* Rescale the miners on the chain to what the CURRENT model says the
+         chain carries, which is a question about the population that has
+         arrived — not SIM_RATIO*floor compounded by a daily growth rate.
+         That was the old model's answer and it is the seed bug §6o removes:
+         on a day-10 save it would have multiplied every Obelisk miner's
+         hashrate by about 130x, handing the chain a finished network again
+         through the back door. Unreachable while every v5 save's chains match
+         CHAINS, which is exactly why it needs to be right before the next
+         floor retune reaches it. */
       const mine=G.s.sims.filter(m=>m.chain===c.id);
       const have=mine.reduce((a,m)=>a+m.hash,0);
-      const want=SIM_RATIO*base.floor*Math.pow(1+SIM_GROWTH, G.s.t/86400);
+      const want=G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO*base.floor;
       if(have>0 && want>0){ const k=want/have; for(const m of mine) m.hash*=k; }
       c.obs=Math.max(c.floor, want);
     }

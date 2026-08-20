@@ -227,19 +227,34 @@ export function installPoolMarket(G){
       if(!q.live||q.chain!==p.chain||q.id===p.id) continue;
       rivals.push({ score:scoreAt(q), room:poolCapLimit(q)-G.poolHash(q) });
     }
+    /* The rivals a miner can actually join are exactly those with room for it,
+       so sorted by room they are a SUFFIX of this list — and the best offer
+       among them is a running maximum from the back. One binary search per
+       miner instead of walking every pool for every miner. */
+    rivals.sort((a,b)=>a.room-b.room);
+    const bestFrom=new Array(rivals.length+1);
+    bestFrom[rivals.length]=0;
+    for(let i=rivals.length-1;i>=0;i--)
+      bestFrom[i]=Math.max(bestFrom[i+1], rivals[i].score);
+    const bestFor = mh => {
+      let lo=0, hi=rivals.length;
+      while(lo<hi){ const mid=(lo+hi)>>1; if(rivals[mid].room<mh) lo=mid+1; else hi=mid; }
+      return bestFrom[lo];
+    };
     let h=0;
     for(const m of G.s.sims){
       if(m.chain!==p.chain) continue;
-      let best=0;
-      for(const q of rivals){
-        if(m.hash>q.room) continue;                           // they are full
-        if(q.score>best) best=q.score;
-      }
+      /* Read the miner's hashrate ONCE. G.s is reactive(), so every `m.hash`
+         is a proxy trap and a dependency registration — inside the old rival
+         loop that was 390k of them at 13k miners against 30 pools, and it
+         measured 42 ms of this function's 48. */
+      const mh=m.hash;
+      const best=bestFor(mh);
       // miners carry +-3% jitter, so a near-tie splits rather than going
       // winner-take-all. Without this the preview showed a cliff where the
       // real market shows a slope, and the number on the slider would have
       // been a promise the market does not keep.
-      h += m.hash*(best<=0 ? 1 : soften(mine/best));
+      h += mh*(best<=0 ? 1 : soften(mine/best));
     }
     for(const gr of G.s.groups) if(gr.pool===p.id) h+=G.groupHash(gr);
     return h;

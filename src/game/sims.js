@@ -240,7 +240,7 @@ export function installSims(G){
   /* A newcomer's farm: one card, sometimes two. Everybody who arrives after
      the world opens starts here and builds up, so a chain's growth is miners
      turning up and buying cards rather than a number being raised. */
-  function newcomerHash(){ return SIM_MIN_HASH * (0.85 + Math.random() * 1.3); }
+  function newcomerHash(){ return SIM_MIN_HASH * (1 + Math.random() * 1.15); }
 
   function seedSims(t){
     simSeq = 0;
