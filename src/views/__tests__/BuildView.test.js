@@ -611,12 +611,16 @@ describe('BuildView', () => {
       store.build();
       for (let i = 0; i < 5; i++) store.stepTick(60); // finish assembly, so it's actually drawing power
 
-      store.s.cash = 1;   // unaffordable, and ticking only drains it further
+      store.s.cash = 1;   // unaffordable
+      // Keep income from refilling cash above the build cost (Tessera's $20
+      // blocks would otherwise flip the gate mid-loop and re-announce).
+      for (const r of store.s.rigs) r.on = false;
       await nextTick();
       expect(store.canBuild).toBe(false);
       const live = () => wrapper.find('[aria-live="polite"].sr-only').text();
       const seen = new Set([live()]);
       for (let i = 0; i < 100; i++) {
+        store.s.cash = Math.max(0, store.s.cash - 0.01); // force a drift without flipping the gate
         store.stepTick(60);
         await nextTick();
         seen.add(live());

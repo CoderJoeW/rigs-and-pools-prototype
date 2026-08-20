@@ -45,6 +45,7 @@ describe('onboarding coach', () => {
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
     expect(g.onboardingStep.id).toBe('automate');
   });
@@ -76,6 +77,7 @@ describe('onboarding coach', () => {
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
+    g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
     expect(g.onboardingStep.id).toBe('automate');
     g.s.autoFix = true;
@@ -128,6 +130,7 @@ describe('the Chains-tab rival-pool nudge (issue #30)', () => {
 
   it('clears once the player founds their own pool, without needing a dismissal', () => {
     const g = freshStore();
+    g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
     expect(g.showChainsNudge).toBe(false);
   });
