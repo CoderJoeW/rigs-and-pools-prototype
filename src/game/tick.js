@@ -412,7 +412,11 @@ export function installTick(G){
   function flatDrip(c, dt){
     for(const gr of G.s.groups){
       if(gr.chain!==c.id) continue;
-      const p=G.poolOf(gr.pool); if(!p||p.scheme!=='PPS') continue;
+      /* `live` as well as the scheme: a closed pool has no bond and no
+         operator, so there is nothing for it to pay out of. Releasing the
+         group is the closing path's job and it does it — this is the backstop
+         that stops a miss there being free money rather than a stale label. */
+      const p=G.poolOf(gr.pool); if(!p||!p.live||p.scheme!=='PPS') continue;
       const drip=(dt*G.groupHash(gr)/G.diffOf(c))*c.reward*(1-p.fee)*(1-0.02*(1-CONN_Q));
       G.s.wallet[c.id]+=drip; G.today().earned+=drip*G.price(c);
     }

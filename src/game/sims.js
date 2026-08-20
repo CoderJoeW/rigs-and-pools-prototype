@@ -575,12 +575,7 @@ export function installSims(G){
       }
       p.lapse = ph < 1 ? (p.lapse || 0) + 1 : 0;
       if(p.lapse > 96 && Math.random() < 0.2){
-        p.live = false;
-        for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
-        for(const gr of G.s.groups) if(gr.pool === p.id){
-          if(G.forfeitGroup) G.forfeitGroup(gr, 'when ' + p.name + ' folded');
-          gr.pool = 'solo';
-        }
+        closeSimPool(p, 'when ' + p.name + ' folded');
         m.cash += p.bond;
         p.bond = 0;
         if(G.say) G.say('pool', p.name + ' has closed — not enough members');
@@ -591,6 +586,24 @@ export function installSims(G){
         p.bond -= take;
         m.cash += take;
       }
+    }
+  }
+
+  /* Shutting a simulated operator's pool down. THREE places did this by hand —
+     an operator folding an empty pool, a PPS bond running dry, and an owner
+     giving up mining altogether — and they had drifted: the last one released
+     the pool's simulated members but not the player's own groups, so a group
+     left pointing at the corpse kept drawing the PPS flat rate out of a pool
+     with a zero bond and nobody running it. Measured at 4.1 coins an hour off
+     one starter rig, forever, because flatDrip only asked whether the pool was
+     PPS and not whether it still existed. One function now, so a fourth caller
+     cannot reopen the same hole. */
+  function closeSimPool(p, why){
+    p.live = false;
+    for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
+    for(const gr of G.s.groups) if(gr.pool === p.id){
+      if(G.forfeitGroup) G.forfeitGroup(gr, why);
+      gr.pool = 'solo';
     }
   }
 
@@ -649,10 +662,8 @@ export function installSims(G){
            _simSoloHash to size the solo bucket. */
         setSimHash(m, 0);
         for(const p of G.s.pools){
-          if(p.owner === 'sim' && p.ownerSim === m.id && p.live){
-            p.live = false;
-            for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
-          }
+          if(p.owner === 'sim' && p.ownerSim === m.id && p.live)
+            closeSimPool(p, 'when ' + p.name + ' shut down');
         }
         sims.splice(i, 1);
         bumpN(m.chain, -1);
@@ -681,12 +692,8 @@ export function installSims(G){
         p.bond -= owed;
         p.earned -= owed;
         if(p.bond <= 0){
-          p.live = false; p.bond = 0;
-          for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
-          for(const gr of G.s.groups) if(gr.pool === p.id){
-            if(G.forfeitGroup) G.forfeitGroup(gr, 'when the pool failed');
-            gr.pool = 'solo';
-          }
+          p.bond = 0;
+          closeSimPool(p, 'when the pool failed');
         }
       }
     }
@@ -696,6 +703,7 @@ export function installSims(G){
     seedSims, reindexSims, simPulse, simHashOf, simPoolHashOf, simSoloHashOf,
     drawSimWinner, creditSim, creditSimPoolShare, simFlatDrip,
     setSimHash, setSimChain, setSimPool, addHash, ensureMembers, rebuildMembers,
-    mkSim, seatsFor, simTargetOf, simRoomOf, overBuilt, SIM_SOFT_CAP, SIM_START,
+    mkSim, seatsFor, simTargetOf, simRoomOf, overBuilt, closeSimPool,
+    SIM_SOFT_CAP, SIM_START,
   });
 }

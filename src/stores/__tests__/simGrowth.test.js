@@ -187,6 +187,38 @@ describe('the network as it grows', () => {
     }
   });
 
+  it('releases the player from a pool whose operator walked away', () => {
+    const g = freshStore();
+    const cid = 'obelisk';
+    const m = simsOn(g, cid)[0];
+    const pool = g.s.pools.find(p => p.chain === cid);
+    pool.owner = 'sim'; pool.ownerSim = m.id; pool.live = true;
+    pool.scheme = 'PPS'; pool.fee = 0.02;
+    g.setSimPool(m, pool.id);
+
+    const gr = g.s.groups[0];
+    g.generatePreset(); g.build();
+    for (let i = 0; i < 5; i++) g.stepTick(60);
+    gr.chain = cid; gr.pool = pool.id;
+
+    m.cash = 0; m.coins = 0; g.setSimHash(m, 5);
+    let guard = 0;
+    while (g.s.sims.includes(m) && guard++ < 20000) g.simPulse();
+    expect(pool.live).toBe(false);
+
+    /* Closing a pool has to release the PLAYER's groups, not just its
+       simulated members. flatDrip pays the PPS flat rate to any group
+       pointed at a PPS pool, so a group left on the corpse drew 4.1 coins an
+       hour off one starter rig — out of a pool with a zero bond and nobody
+       running it — for as long as the save lived. */
+    expect(gr.pool).toBe('solo');
+
+    gr.pool = pool.id;                       // put it back and check the backstop
+    const before = g.s.wallet[cid] || 0;
+    g.flatDrip(g.chain(cid), 3600);
+    expect((g.s.wallet[cid] || 0) - before).toBe(0);
+  });
+
   it('holds the running hashrate totals to what the sims actually own', () => {
     const g = freshStore();
     runDays(g, 8);

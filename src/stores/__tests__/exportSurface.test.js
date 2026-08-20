@@ -35,7 +35,7 @@ const INTERNAL = new Set([
   // --- sims.js ---
   'SIM_SOFT_CAP', 'SIM_START', 'addHash', 'creditSim', 'creditSimPoolShare',
   'drawSimWinner', 'ensureMembers', 'mkSim', 'rebuildMembers', 'reindexSims',
-  'seatsFor', 'seedSims', 'setSimChain', 'setSimHash', 'setSimPool', 'simFlatDrip',
+  'closeSimPool', 'seatsFor', 'seedSims', 'setSimChain', 'setSimHash', 'setSimPool', 'simFlatDrip',
   'simHashOf', 'simPoolHashOf', 'simPulse', 'simRoomOf', 'simSoloHashOf', 'simTargetOf',
   'overBuilt',
   // --- poolMarket.js ---
