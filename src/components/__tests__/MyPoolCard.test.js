@@ -106,6 +106,12 @@ describe('MyPoolCard', () => {
     // renders its own Supports row ("any amount — members carry their own
     // variance"), so asserting it would pass against the wrong branch — the
     // exact fault this test was fixed for.
+    //
+    // One per PPS-gated element, because they are gated separately. The PPLNS
+    // v-else pairs with the Dry-spell v-if, NOT with the Supports one, so
+    // deleting the capacity row leaves every other assertion here true and the
+    // fallback still absent. "limited by" is what covers that row.
+    expect(wrapper.text()).toContain('limited by');      // the capacity row itself
     expect(wrapper.text()).toContain('Dry-spell risk');
     expect(wrapper.text()).toContain('underwritten');
     expect(wrapper.text()).toContain('this is your capacity control');
