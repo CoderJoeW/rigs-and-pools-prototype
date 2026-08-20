@@ -308,3 +308,75 @@ describe('bulk build', () => {
     expect(g.maxBuildQty()).toBe(0);
   });
 });
+
+describe('rushRig', () => {
+  it('charges to collapse a mid-assembly rig\'s remaining build time to (near) zero', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();                                    // the first rig assembles instantly
+    g.s.cash += 20000;
+    g.active.sources.push({ p: 's-400', n: 1 });   // headroom for a second, non-first rig
+    g.generatePreset();
+    g.build();
+    const rig = g.s.rigs[1];
+    expect(rig.building).toBeGreaterThan(0);
+    const cost = g.rushRigCost(rig);
+    expect(cost).toBeGreaterThan(0);
+
+    const cashBefore = g.s.cash;
+    g.rushRig(rig.id);
+    expect(g.s.cash).toBeCloseTo(cashBefore - cost, 5);
+    expect(rig.building).toBeLessThan(0.001);
+
+    g.stepTick(1); // now finishes almost immediately
+    expect(rig.building).toBe(0);
+    expect(g.rigHash(rig)).toBeGreaterThan(0);
+  });
+
+  it('does nothing when cash cannot cover the rush', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    g.s.cash += 20000;
+    g.active.sources.push({ p: 's-400', n: 1 });
+    g.generatePreset();
+    g.build();
+    const rig = g.s.rigs[1];
+    const buildingBefore = rig.building;
+    g.s.cash = 0;
+    g.rushRig(rig.id);
+    expect(rig.building).toBe(buildingBefore);
+  });
+
+  it('is a no-op once the rig is already built', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    const rig = g.s.rigs[0];
+    expect(rig.building).toBe(0);
+    const cashBefore = g.s.cash;
+    g.rushRig(rig.id);
+    expect(g.s.cash).toBe(cashBefore);
+  });
+
+  it('also rushes a rebuild in progress', () => {
+    const g = freshStore();
+    g.generatePreset();
+    g.build();
+    const rig = g.s.rigs[0];
+    for (let i = 0; i < 5; i++) g.stepTick(60); // finish the initial build
+
+    g.startRebuild(rig);
+    g.s.rebuild.draft.n = Math.max(1, rig.units.length - 1);
+    const info = g.rebuildInfo(rig, g.s.rebuild.draft);
+    if (info.ok) {
+      g.applyRebuild();
+      expect(rig.building).toBeGreaterThan(0);
+      const cost = g.rushRigCost(rig);
+      const cashBefore = g.s.cash;
+      g.rushRig(rig.id);
+      expect(g.s.cash).toBeCloseTo(cashBefore - cost, 5);
+      expect(rig.building).toBeLessThan(0.001);
+    }
+  });
+});

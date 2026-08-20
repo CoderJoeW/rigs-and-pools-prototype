@@ -134,7 +134,20 @@ export function installActions(G){
     if(r&&r.building<=0){ r.on=!r.on; r.cut=null; } };   // never touches the group's window
   const setRigGroup = (r,gid)=>{ r.group=gid; };
 
+  /* Pay to finish a rig's assembly or retrofit early — the same trade the
+     site construction queue already offers (sites.js: rush/rushCost), on
+     the same $/hour rate. `building` is real SECONDS rather than the
+     queue's hours, so the rate is applied to the hour-equivalent. Setting
+     `building` to a hair above zero rather than 0 lets the next tick run its
+     own completion path (the 'assembled'/'rebuilt' message, r.rb reset) —
+     one place that finishes a rig, whether it got there by waiting or paying. */
+  const rushRigCost = r => Math.ceil(r.building/3600*C.RUSH_PER_HOUR);
+  function rushRig(id){
+    const r=G.s.rigs.find(x=>x.id===id); if(!r||r.building<=0) return;
+    const c=rushRigCost(r); if(G.s.cash<c) return;
+    G.s.cash-=c; G.s.spent+=c; r.building=0.0001;
+    G.say('sys','Paid to rush '+r.name,'-'+fmt.usd(c),undefined,undefined,-c);
+  }
 
-
-  Object.assign(G, {SLOT_OPTS,applyRebuild,applyRebuildTo,build,rebuildInfo,rebuildTime,renameRig,scrapRig,setRigGroup,startRebuild,swapWorn,toggleRig});
+  Object.assign(G, {SLOT_OPTS,applyRebuild,applyRebuildTo,build,rebuildInfo,rebuildTime,renameRig,rushRig,rushRigCost,scrapRig,setRigGroup,startRebuild,swapWorn,toggleRig});
 }

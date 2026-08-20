@@ -357,7 +357,10 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
                         @click="startRenameRig">Rename</button></span>
               <div class="sb" style="margin-top:3px;display:flex;align-items:center;gap:8px">
                 <Chassis v-bind="chassisOf(rig)" large />
-                <span>{{ stateOf(rig).label }}{{ stateOf(rig).sub?' — '+stateOf(rig).sub:'' }}</span></div></span>
+                <span>{{ stateOf(rig).label }}{{ stateOf(rig).sub?' — '+stateOf(rig).sub:'' }}</span>
+                <button v-if="rig.building>0" class="btn btn-sm rigrush"
+                        :disabled="g.s.cash<g.rushRigCost(rig)" @click="g.rushRig(rig.id)">
+                  Rush {{ fmt.usd(g.rushRigCost(rig)) }}</button></div></span>
             <span style="flex:none;text-align:right">
               <div class="rig-net" :class="g.rigNet(rig)>=0?'pos':'neg'">{{ fmt.usd2(g.rigNet(rig)) }}</div>
               <div class="rig-net-l">per day</div></span>
@@ -443,6 +446,9 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
    else uses: a page header, a hero that fronts the site with a photograph,
    a list of rigs as separate cards rather than rows of one, and the sort /
    select bar between them. */
+
+.rigrush{flex:none;background:var(--amber-t);color:var(--amber);font-weight:500}
+.rigrush:active:not(:disabled){background:color-mix(in srgb,var(--amber) 25%,transparent)}
 
 /* ---- the site hero -------------------------------------------------- */
 .rig-hero{padding:0;overflow:hidden}
