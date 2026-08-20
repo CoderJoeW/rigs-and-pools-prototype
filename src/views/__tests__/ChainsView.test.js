@@ -24,8 +24,8 @@ describe('ChainsView', () => {
     expect(card.text()).toContain('Your hashrate share');
     expect(card.text()).toContain('Emission / day');
     expect(card.text()).toContain('Current difficulty');
-    // Tessera emits one 4.17 reward every 20s — 4,320 blocks a day.
-    expect(card.text()).toContain('18,014.40');
+    // Tessera emits one 833.333 reward every 20s — ~3,599,998.56 coins/day
+    expect(card.text()).toContain('3,599,998.56');
     expect(card.find('.cc-bar').attributes('aria-hidden')).toBe('true');
     expect(card.text()).toMatch(/\d\.\d{4}\/MH/);
   });

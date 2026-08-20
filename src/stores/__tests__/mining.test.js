@@ -8,20 +8,19 @@ import { freshStore } from '../../test/testStore.js';
    overwhelming probability, not flakily. */
 
 describe('Tessera balance', () => {
-  it('pays a modest ~$0.10 block and stays a temporary refuge (below ladder rates)', () => {
+  it('pays a $20 block at 20s target and stays above ladder rates while under floor', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
     const nova = g.s.chains.find(c => c.id === 'nova');
-    expect(tessera.reward * tessera.price).toBeCloseTo(0.10, 2);
+    expect(tessera.reward * tessera.price).toBeCloseTo(20, 1);
     expect(tessera.target).toBe(20);
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
     for (let i = 0; i < 20; i++) g.stepTick(3600);
 
-    // Deliberately below the real ladder so the refuge is temporary
-    expect(g.revPerMh(tessera)).toBeLessThan(g.revPerMh(nova));
-    expect(g.revPerMh(tessera)).toBeGreaterThan(0.5);
+    expect(g.revPerMh(tessera)).toBeGreaterThan(g.revPerMh(nova));
+    expect(g.revPerMh(tessera)).toBeGreaterThan(50);
   });
 
   it('does not permanently pin at the global $0.02 price floor (issue #18)', () => {
@@ -130,15 +129,15 @@ describe('jackpot blocks', () => {
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
 
-    g.s.bestBlock = 1;
-    // Seed below the new ~$0.10 Tessera block so a real block is >3x the median
-    g.s.recentBlockUsd = { tessera: [0.02, 0.02, 0.02, 0.02, 0.02] };
+    // bestBlock above a normal Tessera block so this stays a jackpot, not a record
+    g.s.bestBlock = 100;
+    g.s.recentBlockUsd = { tessera: [0.1, 0.1, 0.1, 0.1, 0.1] };
 
     const before = g.s.recentBlockUsd.tessera.length;
     let guard = 0;
     while (g.s.recentBlockUsd.tessera.length === before && guard++ < 400) g.stepTick(10);
 
     expect(g.s.feed.some(e => e.kind === 'jackpot')).toBe(true);
-    expect(g.s.bestBlock).toBe(1);
+    expect(g.s.bestBlock).toBe(100);
   });
 });

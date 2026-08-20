@@ -1,8 +1,8 @@
 /* No algorithms and no hardware classes. Every chain is mined by graphics
    cards at full rate; chains differ by pay rate, block time, book depth, price
    volatility and floor — four axes without needing a fifth. */
-/* Tessera is the newcomer refuge: short blocks, tiny prize, floor above a
-   single starter rig so the first build gets a genuine below-floor period.
+/* Tessera is the newcomer refuge: short blocks, floor above a single starter
+   rig so the first build gets a genuine below-floor period.
 
    Block timing (unchanged): target:20 means the network mean block interval
    is exactly 20 s once hashrate is at the floor (diffOf = max(floor,obs)*target;
@@ -10,16 +10,13 @@
    the same formula makes every block take longer — the "before 100% floor
    it should take longer" behaviour is structural, not a special case.
 
-   2026-08 payout retune: reward dropped so a block is worth ~$0.10
-   (reward * price ≈ 0.10). Previous ~$0.39 blocks / ~$5+/MH/day made a
-   single passive Tessera rig the dominant strategy for days; the new
-   ~$1.23/MH/day (~$236/day on a 192 MH starter) still teaches the loop
-   with constant small wins but no longer trivialises every later decision.
-   mult set to 0.29 so the identity revPerMh = PAY*mult still holds at
-   floor (4.20*0.29 ≈ 1.22). depth stays large so price does not clamp.
-
+   2026-08-19: block value set to $20 (reward * price = 20).
+     reward  833.333  (20 / 0.024)
+     mult    58.78    so revPerMh = PAY*mult still holds at floor
+                      (4.20 * 58.78 ≈ 246.9 $/MH/day at floor)
    Floor 350 stays above one starter (~192 MH) and is crossed by a second
-   rig's worth, preserving the OUTGROWN advisory timing. */
+   rig's worth. depth 8e7 (scaled with the higher emission) so a solo starter
+   does not pin price at the global $0.02 floor. */
 /* `hue` is the chain's visual identity: an OKLCH hue angle, and ONLY the hue —
    lightness and chroma come from --chain-l/--chain-c in main.css, which the
    two themes set separately. Storing one number rather than a hex means the
@@ -45,9 +42,9 @@
      nova    285  indigo — the blue chip: calm, deep, crowded
      obelisk 320  purple — monolithic, imperial, ten minutes a block */
 export const CHAINS = [
-  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:4.17, price:0.024,
-    mult:0.29, floor:350, vol:0.030, depth:4.0e5, recover:0.50, orphan:0.050, hue:200,
-    blurb:'Twenty-second blocks and a ~$0.10 prize — constant small wins for one rig, worthless at scale.' },
+  { id:'tessera', name:'Tessera', tick:'TSR', target:20, reward:833.333, price:0.024,
+    mult:58.78, floor:350, vol:0.030, depth:8.0e7, recover:0.50, orphan:0.050, hue:200,
+    blurb:'Twenty-second blocks and a $20 prize — constant wins for one rig, worthless at scale.' },
   { id:'ferro', name:'Ferro', tick:'FRO', target:30, reward:2.124, price:4.12,
     mult:1.00, floor:6.0e3, vol:0.014, depth:15400, recover:0.40, orphan:0.045, hue:128,
     blurb:'Frequent small blocks, a deep enough book. The workhorse.' },
