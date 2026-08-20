@@ -61,7 +61,7 @@ export function installBuildDraft(G){
   });
   const canBuild = computed(()=> checks.value.every(c=>c.ok));
   const draftEff = computed(()=> dp.value.coreW>0 ? dp.value.mh/(dp.value.coreW/dp.value.psu.eff) : 0);
-  const buildTime = computed(()=> G.s.rigs.length===0 ? 60 : C.BUILD_BASE*(0.6+G.s.draft.n*0.1));
+  const buildTime = computed(()=> G.s.rigs.length===0 ? 0 : C.BUILD_BASE*(0.6+G.s.draft.n*0.1));
   /* The draft's worth before it exists. Same shape as rigRev/rigPow (best
      live chain, site's marginal $/kWh) so the number a rig is sold on before
      the order and the number expectedDay carries once it's running are the

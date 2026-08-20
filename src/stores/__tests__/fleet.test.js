@@ -8,11 +8,16 @@ function twoRigs(g) {
   g.generatePreset();
   g.build();
   g.s.cash += 20000;
+  // the first rig assembles (and starts drawing power) instantly, so the
+  // site needs real extra headroom for a second rig to clear the power
+  // check right away rather than borrowing room a still-building rig
+  // used to leave unclaimed
+  g.active.sources.push({ p: 's-400', n: 1 });
   g.generatePreset();
   g.build();
-  // the first rig's build time is a flat 60s, but every rig after that uses
-  // the real formula (C.BUILD_BASE-scaled, ~20-30 real minutes) — tick well
-  // past that so both rigs are live before a test touches them
+  // every rig after the first uses the real formula (C.BUILD_BASE-scaled,
+  // ~20-30 real minutes) — tick well past that so both rigs are live
+  // before a test touches them
   for (let i = 0; i < 60; i++) g.stepTick(60);
   return g.s.rigs;
 }
@@ -229,14 +234,20 @@ describe('fleetToSpec / fleetSpecInfo / draftSpec', () => {
 
   it('does nothing when cash cannot cover the whole job', () => {
     const g = freshStore();
-    twoRigs(g);
+    const rigs = twoRigs(g);
     g.generatePreset();
     const spec = g.draftSpec();
     const info = g.fleetSpecInfo(spec, null);
-    if (info.rigs > 0) {
+    // a free (or refunding) rebuild is meant to proceed even at $0 cash —
+    // only a real, positive-cost job is what this guard exists to block
+    if (info.rigs > 0 && info.cost > 0) {
+      const before = rigs.map(r => JSON.stringify(r));
       g.s.cash = 0;
       g.fleetToSpec(spec, null);
-      expect(g.fleetSpecInfo(spec, null).rigs).toBe(info.rigs); // unchanged
+      // no rig was actually rebuilt — checking fleetSpecInfo again isn't
+      // safe here since dropping cash to 0 also blocks rigs it would
+      // otherwise have picked up, independent of whether fleetToSpec ran
+      expect(rigs.map(r => JSON.stringify(r))).toEqual(before);
     }
   });
 });

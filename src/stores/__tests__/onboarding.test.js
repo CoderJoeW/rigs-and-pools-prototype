@@ -10,7 +10,12 @@ describe('onboarding coach', () => {
   it('advances to "earn" once a rig exists, before it clears 100 MH/s', () => {
     const g = freshStore();
     g.generatePreset();
+    // the first rig assembles instantly, and Quick pick's default draft
+    // already clears the h1 (100 MH/s) bar on its own — trim the draft so
+    // this rig lands under it and "earn" is actually observable
+    g.s.draft.n = 1;
     g.build();
+    expect(g.totalHash).toBeLessThan(100);
     expect(g.onboardingStep.id).toBe('earn');
   });
 

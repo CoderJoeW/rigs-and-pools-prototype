@@ -43,6 +43,10 @@ describe('the walkthrough tour and the reactive coach, mounted together', () => 
     expect(wrapper.text()).toContain('Build your first rig');
 
     store.generatePreset();
+    // the first rig assembles instantly, and the default draft alone
+    // already clears the h1 (100 MH/s) bar — trim it so 'earn' still shows
+    // rather than skipping straight to 'grow'
+    store.s.draft.n = 1;
     store.build();
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.tour').exists()).toBe(false); // stays gone, nextId>1 now

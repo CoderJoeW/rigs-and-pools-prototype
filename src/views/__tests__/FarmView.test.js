@@ -181,7 +181,12 @@ describe('FarmView', () => {
         g.s.today.earned = 55; g.s.today.power = 50;                // net 5, pace 10 vs 60
       },
     });
-    const chip = wrapper.find('.delta');
+    // the first rig now mines the instant it's built, so the hashrate card
+    // also gets a (0%, 'up') delta chip ahead of this one in the DOM —
+    // scope to the Profit/loss card specifically rather than the first
+    // '.delta' on the page
+    const card = wrapper.findAll('.ovcard').find(c => c.text().includes('Profit / loss today'));
+    const chip = card.find('.delta');
     expect(chip.exists()).toBe(true);
     expect(chip.classes()).toContain('down');   // profit fell, however gross moved
   });

@@ -967,7 +967,7 @@ The projection was still worth keeping, so it survives under an honest name (`ex
 
 **Tessera rebalanced** — mult 4.00 → 1.50. A single starter rig soloing it now realises about $263 revenue and $229 net over a full day, rather than the ~$1,600 the old subsidy implied.
 
-**The first rig always assembles in one minute**, whatever it is built from, and finishing the build now takes you to the Sites tab where the rig lives.
+**The first rig always assembles instantly**, whatever it is built from, and finishing the build now takes you to the Sites tab where the rig lives.
 
 **Timers are finer.** `fmt.dur` reports seconds below a minute and minutes-and-seconds below an hour — "1 min 26 sec" rather than "1 min" — so a build in progress actually feels like it is moving.
 
