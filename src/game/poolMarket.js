@@ -94,28 +94,61 @@ export function installPoolMarket(G){
      jitter a two-point fee difference was invisible, so cutting your fee did
      nothing a player could see. */
   const FEE_BITE = 3;
-  const poolScore = p => (1-Math.min(0.9,p.fee*FEE_BITE))*poolTrust(p)*(0.97+Math.random()*0.06);
-  const poolOptsFor = m => G.s.pools.filter(p=>p.live&&p.chain===m.chain&&
-    G.poolHash(p)+m.hash<=poolCapLimit(p));
-  function pickPool(m){
-    const opts=poolOptsFor(m);
-    if(!opts.length){
-      if(G.setSimPool) G.setSimPool(m, 'solo'); else m.pool='solo';
-      return;
+  /* Split into the half that is a property of the POOL and the half that is a
+     property of the MINER looking at it, because the pool's half is identical
+     for every miner on the chain and poolTrust is four derived quantities
+     deep. Still one definition of each — poolScore is the two multiplied, and
+     pickPool reads the same base out of chainPoolTable rather than carrying a
+     second copy of the formula. */
+  const poolScoreBase = p => (1-Math.min(0.9,p.fee*FEE_BITE))*poolTrust(p);
+  // Miners carry +-3% jitter, so a near-tie splits rather than going
+  // winner-take-all. Drawn per miner per pool: that is what makes it a split.
+  const scoreJitter = () => 0.97+Math.random()*0.06;
+  const poolScore = p => poolScoreBase(p)*scoreJitter();
+  /* The half of a pool's book that a miner moving cannot change: its capacity,
+     and the player's own rigs pointed at it. poolHash walks every group and
+     every rig to find the second, and poolOptsFor called it once per pool per
+     MINER — fine at the few hundred sims the network used to reach, seconds
+     once it reaches five figures. Built once per shake and passed down, so
+     there is still one scoring function rather than a fast copy beside it. */
+  function chainPoolTable(chainId){
+    const playerIn = new Map();
+    for(const gr of G.s.groups){
+      if(!gr.pool || gr.pool==='solo') continue;
+      playerIn.set(gr.pool, (playerIn.get(gr.pool)||0) + G.groupHash(gr));
     }
-    let bp=opts[0], bs=-1;
-    for(const p of opts){ const sc=poolScore(p); if(sc>bs){ bs=sc; bp=p; } }
-    if(G.setSimPool) G.setSimPool(m, bp.id); else m.pool=bp.id;
+    const out=[];
+    for(const p of G.s.pools){
+      if(!p.live || p.chain!==chainId) continue;
+      out.push({ p, cap:poolCapLimit(p), mine:playerIn.get(p.id)||0, base:poolScoreBase(p) });
+    }
+    return out;
+  }
+  /* The simulated half is still read live on every miner, so a pool that fills
+     during a shake is full for everyone after it — capacity stays
+     first-come-first-served, exactly as it was. */
+  const simIn = p => G.simPoolHashOf ? G.simPoolHashOf(p) : 0;
+  function pickPool(m, table){
+    const opts = table || chainPoolTable(m.chain);
+    let bp=null, bs=-1;
+    for(const e of opts){
+      if(simIn(e.p)+e.mine+m.hash > e.cap) continue;          // they are full
+      const sc=e.base*scoreJitter();
+      if(sc>bs){ bs=sc; bp=e.p; }
+    }
+    const pick = bp ? bp.id : 'solo';
+    if(G.setSimPool) G.setSimPool(m, pick); else m.pool=pick;
   }
   function poolShake(chainId){
     if(G.ensureMembers) G.ensureMembers();
+    const table = chainPoolTable(chainId);
     if(G._soloMembers && G._poolMembers){
       const seen = new Set();
       const touch = (idx) => {
         if(seen.has(idx)) return;
         seen.add(idx);
         const m = G.s.sims[idx];
-        if(m) pickPool(m);
+        if(m) pickPool(m, table);
       };
       for(const i of (G._soloMembers[chainId] || [])) touch(i);
       for(const p of G.s.pools){
@@ -124,7 +157,7 @@ export function installPoolMarket(G){
       }
       return;
     }
-    for(const m of G.s.sims) if(m.chain===chainId) pickPool(m);
+    for(const m of G.s.sims) if(m.chain===chainId) pickPool(m, table);
   }
   const simsOn = cid => G.s.sims.filter(m=>m.chain===cid).length;
   /* Rival operators are running a business too. Each hour they look at their
@@ -184,14 +217,23 @@ export function installPoolMarket(G){
      worth posting. */
   function poolDemand(p,fee){
     const mine=scoreAt(p,fee);
+    /* Score and remaining room per rival, once. Both are the same for every
+       miner on the chain, but they used to be recomputed inside the loop —
+       with poolHash walking every group and every rig each time — so a call
+       on a busy chain cost seconds, and the pool card makes several per
+       render. Nothing here depends on the miner but the capacity comparison. */
+    const rivals=[];
+    for(const q of G.s.pools){
+      if(!q.live||q.chain!==p.chain||q.id===p.id) continue;
+      rivals.push({ score:scoreAt(q), room:poolCapLimit(q)-G.poolHash(q) });
+    }
     let h=0;
     for(const m of G.s.sims){
       if(m.chain!==p.chain) continue;
       let best=0;
-      for(const q of G.s.pools){
-        if(!q.live||q.chain!==p.chain||q.id===p.id) continue;
-        if(G.poolHash(q)+m.hash>poolCapLimit(q)) continue;    // they are full
-        best=Math.max(best, scoreAt(q));
+      for(const q of rivals){
+        if(m.hash>q.room) continue;                           // they are full
+        if(q.score>best) best=q.score;
       }
       // miners carry +-3% jitter, so a near-tie splits rather than going
       // winner-take-all. Without this the preview showed a cliff where the
@@ -295,5 +337,5 @@ export function installPoolMarket(G){
   }
 
 
-  Object.assign(G, {FEE_BITE,FLOAT_DAYS,blockValue,bondFor,bondReq,capBinding,floatBondFor,floatPerHash,lastToast,myPools,nextTierBond,pickPool,poolCapLimit,poolDemand,poolOptsFor,poolPnl,poolProj,poolRep,poolScore,poolShake,poolTrust,pop,refreshPools,repAt,repParts,reshuffle,rivalPools,rivalTick,say,scoreAt,simsOn,soften,toastSeen,varBondFor});
+  Object.assign(G, {FEE_BITE,FLOAT_DAYS,blockValue,bondFor,bondReq,capBinding,chainPoolTable,floatBondFor,floatPerHash,lastToast,myPools,nextTierBond,pickPool,poolCapLimit,poolDemand,poolPnl,poolProj,poolRep,poolScore,poolScoreBase,poolShake,poolTrust,pop,refreshPools,repAt,repParts,reshuffle,rivalPools,rivalTick,say,scoreAt,scoreJitter,simsOn,soften,toastSeen,varBondFor});
 }

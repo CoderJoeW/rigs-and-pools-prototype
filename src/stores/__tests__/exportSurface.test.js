@@ -40,7 +40,8 @@ const INTERNAL = new Set([
   'overBuilt',
   // --- poolMarket.js ---
   'FEE_BITE', 'FLOAT_DAYS', 'bondFor', 'floatBondFor', 'floatPerHash', 'lastToast',
-  'pickPool', 'poolOptsFor', 'poolScore', 'poolShake', 'pop', 'refreshPools', 'repAt',
+  'chainPoolTable', 'pickPool', 'poolScore', 'poolScoreBase', 'poolShake', 'pop',
+  'refreshPools', 'repAt', 'scoreJitter',
   'reshuffle', 'rivalTick', 'say', 'scoreAt', 'soften', 'toastSeen', 'varBondFor',
   // --- buildDraft.js ---
   'openBuildCost',

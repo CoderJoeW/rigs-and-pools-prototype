@@ -56,6 +56,15 @@ export const SIM_EXPAND_MAX_DAY = 0.25;
    while the population caught up — the retirement branch eating the seed
    faster than anybody could build. */
 export const SIM_TRIM_AT = 1.15;
+/* Ceiling on the gap a single decision may account for. Decisions are budgeted
+   (SIM_DECIDE_BUDGET an hour, whatever the population), so at the soft cap a
+   miner's turn comes round about every 190 hours — and the old 48-hour clamp
+   meant they were billed for a quarter of the power they actually burned and
+   allowed a quarter of the building they actually had time for. Still a
+   clamp, because a save resumed after a long absence must not hand anybody a
+   year's bill in one turn; just one set above the cadence the model reaches
+   rather than under it. */
+export const SIM_DECIDE_MAX_H = 336;      // a fortnight
 
 let simSeq = 0;
 let poolSeq = 0;
@@ -428,7 +437,8 @@ export function installSims(G){
       m.cash += sell * (1 - C.EXCH_FEE);
     }
 
-    const hoursSince = Math.min(48, Math.max(0.5, (m._lastDecide) ? (t - m._lastDecide) / 3600 : 6));
+    const hoursSince = Math.min(SIM_DECIDE_MAX_H,
+      Math.max(0.5, (m._lastDecide) ? (t - m._lastDecide) / 3600 : 6));
     m._lastDecide = t;
     const powerBill = powerCostDay(m) * (hoursSince / 24);
     m.cash -= powerBill;
@@ -463,7 +473,12 @@ export function installSims(G){
       const pace = Math.max(SIM_MIN_HASH, m.hash * SIM_EXPAND_MAX_DAY) * (hoursSince / 24);
       const want = Math.floor(Math.min(pace, m.cash * (0.08 + m.style * 0.18) * room / cost));
       const buy = Math.max(0, Math.min(want, Math.floor(m.cash / cost)));
-      if(buy >= 5){
+      /* One MH, not five. `pace` is a rate times the elapsed hours, so the
+         card-a-day floor it is supposed to guarantee the smallest miners comes
+         out as 2.5 MH over a three-hour turn — under a five-MH minimum
+         purchase, which silently pinned exactly the miners the floor exists
+         for at zero. Ferro sat at its seed for the whole of a 30-day run. */
+      if(buy >= 1){
         m.cash -= buy * cost;
         setSimHash(m, m.hash + buy);
       }

@@ -154,9 +154,13 @@ describe('what a chain carries', () => {
     for (const cid of SIM_CHAINS) {
       const target = g.simTargetOf(cid);
       expect(g._simChainHash[cid]).toBeCloseTo(target, -1);
-      // Sitting on the line, not over it: the miners here have built what
-      // there was to build, so nobody is expanding and nobody is retiring.
-      expect(g.simRoomOf(cid)).toBe(0);
+      /* Sitting on the line, not over it: the miners here have built what
+         there was to build, so nobody is expanding and nobody is retiring.
+         Compared with a tolerance rather than to 0 exactly — the seed splits
+         the target across the chain's miners, so whether the sum lands a
+         half-ULP under it (leaving 2e-16 of "room") or over is down to the
+         draw. */
+      expect(g.simRoomOf(cid)).toBeLessThan(1e-9);
       expect(g.overBuilt(cid)).toBe(false);
     }
   });
