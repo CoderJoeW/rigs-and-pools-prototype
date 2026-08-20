@@ -10,7 +10,14 @@ import { PART, RISER } from '../../data/hardware.js';
    from the rest of the tick don't perturb the hand-built scenario). It
    takes exactly one step down its escalation ladder per call — whichever
    rung matches the current state. rigSalvage() is exercised indirectly
-   through scrapRig(), which is exported. */
+   through scrapRig(), which is exported.
+
+   One exception, in "the floor rig" below: FLOOR_COST feeds a guard only
+   reachable once cash has already been zeroed, so it is true at any value and
+   nothing observable can pin it. That block installs the module against a bare
+   context to read it directly, rather than publishing it to be testable. The
+   store-level tests here still enforce that the module is wired into
+   createGame, so the bare-context read is not a blind spot. */
 
 function addRig(g, overrides = {}) {
   const rig = { id: g.s.nextId++, kind: 'gpu', frame: 'f2', mobo: 'm2', psu: 'p450', cool: 'x0',

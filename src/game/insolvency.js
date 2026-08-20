@@ -86,6 +86,9 @@ export function installInsolvency(G){
     }
     if(G.s.cash<FLOOR_COST){
       G.s.rigs.push({ id:G.s.nextId++, kind:FLOOR_RIG.kind, frame:FLOOR_RIG.frame,
+        // ctrl is inert here: never read for kind 'gpu', and no controller
+        // catalogue exists for PART() to find it in. Do not fold it into the
+        // spec above — pricing it would throw.
         mobo:FLOOR_RIG.mobo, psu:FLOOR_RIG.psu, cool:FLOOR_RIG.cool, ctrl:'k3',
         units:Array.from({length:FLOOR_RIG.n},()=>({p:FLOOR_RIG.unit,w:0})),
         risers:FLOOR_RIG.n, refurb:0,          // one riser per card, as billed
