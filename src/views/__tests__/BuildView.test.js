@@ -612,7 +612,7 @@ describe('BuildView', () => {
       for (let i = 0; i < 5; i++) store.stepTick(60); // finish assembly, so it's actually drawing power
 
       store.s.cash = 1;   // unaffordable
-      // Keep income from refilling cash above the build cost (Tessera's $20
+      // Keep income from refilling cash above the build cost (Tessera's $3
       // blocks would otherwise flip the gate mid-loop and re-announce).
       for (const r of store.s.rigs) r.on = false;
       await nextTick();

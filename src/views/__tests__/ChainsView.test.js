@@ -39,8 +39,8 @@ describe('ChainsView', () => {
     expect(card.text()).toContain('Your hashrate share');
     expect(card.text()).toContain('Emission / day');
     expect(card.text()).toContain('Current difficulty');
-    // Tessera emits one 833.333 reward every 20s — ~3,599,998.56 coins/day
-    expect(card.text()).toContain('3,599,998.56');
+    // Tessera emits one 125 reward every 20s — 540,000 coins/day
+    expect(card.text()).toContain('540,000.00');
     // The bar is decorative: the share it draws is printed as text beside it,
     // inside the same button, so labelling it too said the figure twice.
     expect(card.find('.cc-bar').attributes('aria-hidden')).toBe('true');

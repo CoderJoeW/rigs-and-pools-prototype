@@ -8,11 +8,11 @@ import { freshStore } from '../../test/testStore.js';
    overwhelming probability, not flakily. */
 
 describe('Tessera balance', () => {
-  it('pays a $20 block at 20s target and stays above ladder rates while under floor', () => {
+  it('pays a $3 block at 20s target and stays above ladder rates while under floor', () => {
     const g = freshStore();
     const tessera = g.s.chains.find(c => c.id === 'tessera');
     const nova = g.s.chains.find(c => c.id === 'nova');
-    expect(tessera.reward * tessera.price).toBeCloseTo(20, 1);
+    expect(tessera.reward * tessera.price).toBeCloseTo(3, 1);
     expect(tessera.target).toBe(20);
     g.generatePreset();
     g.build();
@@ -20,7 +20,7 @@ describe('Tessera balance', () => {
     for (let i = 0; i < 20; i++) g.stepTick(3600);
 
     expect(g.revPerMh(tessera)).toBeGreaterThan(g.revPerMh(nova));
-    expect(g.revPerMh(tessera)).toBeGreaterThan(50);
+    expect(g.revPerMh(tessera)).toBeGreaterThan(15);
   });
 
   it('does not permanently pin at the global $0.02 price floor (issue #18)', () => {
@@ -110,7 +110,7 @@ describe('solo block finding', () => {
 describe('PPLNS payouts', () => {
   it('"blocks today" only counts a block once it actually pays, not the pending-lag block that credits nothing yet (issue #13)', () => {
     const g = freshStore();
-    g.s.cash = 10000; // bond scales with $20 block value
+    g.s.cash = 10000; // bond scales with $3 block value
     g.foundPool('tessera', 'PPLNS', 0.02);
     const pool = g.s.pools.find(p => p.owner === 'you');
     g.generatePreset();
@@ -154,7 +154,7 @@ describe('jackpot blocks', () => {
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
 
-    // bestBlock above a normal Tessera (~$20) block so this stays a jackpot, not a record
+    // bestBlock above a normal Tessera (~$3) block so this stays a jackpot, not a record
     g.s.bestBlock = 100;
     g.s.recentBlockUsd = { tessera: [0.1, 0.1, 0.1, 0.1, 0.1] };
 
@@ -250,7 +250,7 @@ describe('jackpot blocks', () => {
 
     g.s.bestBlock = 1e9;
     g.s.recentBlockUsd = { tessera: [0.1, 0.1, 0.1, 0.1, 0.1] };
-    g.s.cash = 10000; // bond scales with $20 block value
+    g.s.cash = 10000; // bond scales with $3 block value
 
     g.foundPool('tessera', 'PPLNS', 0.30);
     const pool = g.s.pools.find(p => p.owner === 'you');
