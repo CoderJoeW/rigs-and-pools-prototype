@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { computed } from 'vue';
 import { createGame } from '../game.js';
 import { SIM_CHAINS, SIM_RATIO } from '../../data/constants.js';
 import { SIM_MIN_HASH, SIM_SEATS_MIN, SIM_SOFT_CAP, SIM_START } from '../../game/sims.js';
@@ -217,6 +218,19 @@ describe('the network as it grows', () => {
     const before = g.s.wallet[cid] || 0;
     g.flatDrip(g.chain(cid), 3600);
     expect((g.s.wallet[cid] || 0) - before).toBe(0);
+  });
+
+  it('keeps the head count something a computed can watch', () => {
+    const g = freshStore();
+    /* simsOn reads the incremental head count rather than scanning the sims
+       array, which is what makes it O(1) — and would make it invisible to
+       Vue if that count were a plain object. Both templates that call it
+       happen to re-render every tick for other reasons, so nothing shows
+       today; this pins the guarantee rather than the accident. */
+    const n = computed(() => g.simsOn('obelisk'));
+    const start = n.value;
+    g.setSimChain(simsOn(g, 'obelisk')[0], 'ferro');
+    expect(n.value).toBe(start - 1);
   });
 
   it('leaves nobody stranded in a pool the player closed', () => {

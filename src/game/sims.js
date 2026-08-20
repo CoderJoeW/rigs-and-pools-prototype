@@ -1,4 +1,5 @@
 import { SIM_CHAINS, SIM_PLAYERS, SIM_RATIO, C, TX_FEES, PPLNS_COVER, RIVAL_NAMES } from '../data/constants.js';
+import { reactive } from 'vue';
 import { CHAINS } from '../data/chains.js';
 import { gauss } from '../utils/random.js';
 
@@ -76,8 +77,21 @@ export function installSims(G){
     o.tessera = 0;
     return o;
   }
+  /* The head count is the ONE aggregate here that templates read (simsOn), so
+     it is the one that has to be reactive — the rest of these are hot-path
+     totals the tick maintains and nothing renders directly. Five keys, written
+     only when a miner arrives, leaves or switches chains, so the proxy costs
+     nothing; rebuildMembers deliberately tallies into a plain object and
+     publishes those five values at the end rather than doing 16k reactive
+     writes. Individual sims stay raw — see the header. */
+  const emptyChainN = () => {
+    const o = {};
+    for(const cid of SIM_CHAINS) o[cid] = 0;
+    o.tessera = 0;
+    return o;
+  };
   G._simChainHash = emptyChainHash();
-  G._simChainN = emptyChainHash();
+  G._simChainN = reactive(emptyChainN());
   G._simPoolHash = Object.create(null);
   G._simSoloHash = emptyChainHash();
   G._poolMembers = new Map();
@@ -89,11 +103,11 @@ export function installSims(G){
   function rebuildMembers(){
     G._poolMembers.clear();
     for(const cid of Object.keys(G._soloMembers)) G._soloMembers[cid] = [];
-    for(const cid of Object.keys(G._simChainN)) G._simChainN[cid] = 0;
+    const tally = emptyChainN();
     const sims = G.s.sims;
     for(let i = 0; i < sims.length; i++){
       const m = sims[i];
-      G._simChainN[m.chain] = (G._simChainN[m.chain] || 0) + 1;
+      tally[m.chain] = (tally[m.chain] || 0) + 1;
       if(m.pool === 'solo' || !m.pool){
         (G._soloMembers[m.chain] || (G._soloMembers[m.chain] = [])).push(i);
       } else {
@@ -102,6 +116,10 @@ export function installSims(G){
         arr.push(i);
       }
     }
+    // Published in one pass over the union of both key sets, so a chain that
+    // has emptied goes to 0 rather than keeping its last count.
+    for(const cid of new Set([...Object.keys(G._simChainN), ...Object.keys(tally)]))
+      G._simChainN[cid] = tally[cid] || 0;
     G._membersDirty = false;
   }
   /* Head count per chain, kept incrementally alongside the hashrate totals.
@@ -246,7 +264,6 @@ export function installSims(G){
     simSeq = 0;
     poolSeq = 0;
     G._simChainHash = emptyChainHash();
-    G._simChainN = emptyChainHash();
     G._simPoolHash = Object.create(null);
     G._simSoloHash = emptyChainHash();
     G._poolMembers.clear();
@@ -330,7 +347,6 @@ export function installSims(G){
 
   function reindexSims(){
     G._simChainHash = emptyChainHash();
-    G._simChainN = emptyChainHash();
     G._simPoolHash = Object.create(null);
     G._simSoloHash = emptyChainHash();
     let maxId = 0;

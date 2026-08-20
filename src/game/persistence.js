@@ -156,7 +156,12 @@ export function installPersistence(G){
     if(G.s.pools.some(p=>p.owner==='server')){
       const dead=new Set(G.s.pools.filter(p=>p.owner==='server').map(p=>p.id));
       G.s.pools=G.s.pools.filter(p=>p.owner!=='server');
-      for(const m of G.s.sims) if(dead.has(m.pool)) m.pool='solo';
+      // Through setSimPool for the same reason the rescale above goes through
+      // setSimHash: a bare assignment strands the miner's hashrate in
+      // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
+      for(const m of G.s.sims) if(dead.has(m.pool)){
+        if(G.setSimPool) G.setSimPool(m,'solo'); else m.pool='solo';
+      }
       for(const gr of G.s.groups) if(dead.has(gr.pool)) gr.pool='solo';
       let seq=0;
       for(const cid of SIM_CHAINS){
