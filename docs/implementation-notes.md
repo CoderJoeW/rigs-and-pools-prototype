@@ -519,6 +519,88 @@ A `finally` block always runs to completion before the original rejection
 (if any) continues propagating, so putting the real startup there rather
 than after the `try`/`finally` is what makes it unconditional too.
 
+## Audio service (`src/services/audio.js`)
+
+Three short synthesized cues, no asset files.
+
+**Why synthesis.** Every sound is built at play time from oscillators and
+gain envelopes, so the bundle gains nothing but this file: no audio
+assets to license, host, cache-bust or wait on before the first cue can
+fire.
+
+**Why a service, not a `game/*.js` module.** The game modules install
+onto the shared context `G` because they read and write game state.
+Sound has no game state — it's a pure side effect with exactly one
+preference behind it, and that preference deliberately doesn't live in
+the save (see below). So it's a plain singleton, imported directly by the
+two places that need it, the same way `src/services/storage.js` is.
+
+**Why its own `localStorage` key, not `g.s`.** `g.s.help`/`g.s.theme`
+were the obvious precedent, but everything in `g.s` is written into the
+save blob and is therefore also exported and imported (`persistence.js`
+hydrates with `Object.assign(G.s, data.state)`). Loading someone else's
+backup, or your own from another machine, would then reach across and
+unmute a device that was deliberately muted. Whether this browser tab is
+allowed to make noise is a property of the device and the moment, not of
+the run — so it gets its own key and survives a save wipe, an import, and
+starting a fresh game.
+
+**`CUE` mapping** reuses `pop()`'s existing toast `cls`/`kind` vocabulary
+unchanged — toast class first, then toast kind. Anything not named stays
+silent, which is almost every toast: only the three moments issue #46
+calls out actually earn a sound.
+
+**`COOLDOWN`** is in real milliseconds, exactly like `C.TOAST_GAP` — a
+speed multiplier moves game time, not `Date.now()`, so 3600x cannot beat
+these. Tessera's 20s blocks arrive every 20,000 real ms at 1x and every
+~5.6ms at 3600x; the block cue is the one that has to survive that, so it
+carries the longest gap. A rank-up fires five or six times in an entire
+run and is never throttled.
+
+**Default volume is silent.** The originating issue floated "probably on,
+but quiet"; this errs the other way on purpose. A tab that starts making
+noise on its own is the one failure here that can't be undone after the
+fact, and browser autoplay policy makes "on by default" a half-truth
+anyway — nothing can sound until the first gesture, so a default-on
+build's first cue would land unannounced in the middle of whatever the
+player just clicked. Opt-in, one visibly-labelled click away in the top
+bar, and remembered forever after.
+
+**The `AudioContext` is never constructed at import or page load.**
+Browsers start a context made outside a user gesture in `'suspended'` and
+log about it, and a suspended context would silently queue everything the
+offline catch-up replays. `unlock()` is called from the volume toggle's
+own click handler, and from a one-shot document gesture listener armed in
+`main.js` for players who already turned sound on in an earlier session
+(`armUnlock`).
+
+A caught `unlock()` failure logs rather than silently swallowing, because
+a swallowed failure here is indistinguishable from "the player muted it,"
+and this codebase has been bitten by exactly that before (see `tick.js`'s
+milestone catch) — the game stays playable in silence, but not silently
+broken.
+
+**Voice envelopes.** `exponentialRampToValueAtTime` never reaches 0, so
+envelopes start and end at 0.0001 rather than 0 — ramping to a true zero
+throws, and starting at a true zero makes the ramp a no-op (and an
+audible click). The three cues are deliberately unequal in weight — the
+rarer the event, the more there is to hear: a block is one soft falling
+blip (routine income, nothing to notice twice); a jackpot is a rising
+major-triad chord with a low sine under it for body, reading as bigger
+without being louder; a rank-up is a four-note rise in fifths through an
+opening lowpass filter, with the last note held — the only cue with a
+tail, since it fires just 5-6 times in a whole run.
+
+**The `rp-sfx` CustomEvent** dispatched from `play()` is a cheap,
+dependency-free seam: an end-to-end check can prove a real block or
+rank-up reached the audio path (and that muting suppresses it) without a
+sound card. Nothing in the app itself listens for it.
+
+**Volume control is a 3-state pill, not a slider.** Muted → quiet →
+louder → muted. A separate slider would have to fit into a top bar
+already full at 320px, and a game with three cues doesn't need continuous
+gain — it needs "off," "on," and "on, I am across the room."
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
