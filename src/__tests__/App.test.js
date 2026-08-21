@@ -93,6 +93,44 @@ describe('App', () => {
     expect(wrapper.find('.boot').exists()).toBe(false);
   });
 
+  it('credits real time missed while the tab was backgrounded, not just after a reload', async () => {
+    // setInterval is throttled or fully suspended once a tab is hidden, so
+    // without a visibilitychange-driven catch-up the tick loop just stalls
+    // until the page is reloaded (the only other path that credits away
+    // time). This exercises the mid-session path instead.
+    const { wrapper, store } = mountWithStore(App, {
+      seed: (g) => { g.generatePreset(); g.build(); },
+    });
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(store.s.rigs.length).toBeGreaterThan(0);
+    const tBefore = store.s.t;
+
+    const visDesc = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    let now = Date.now();
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      now += 3600 * 1000; // an hour passes while backgrounded, tab never reloaded
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      dateSpy.mockRestore();
+
+      while (store.s.catchUp) await new Promise(r => setTimeout(r, 20));
+      await flushPromises();
+
+      // The real assertion: game time actually moved by close to the hour
+      // that passed while hidden, instead of stalling until a reload.
+      expect(store.s.t).toBeGreaterThanOrEqual(tBefore + 3500);
+    } finally {
+      dateSpy.mockRestore();
+      if (visDesc) Object.defineProperty(document, 'visibilityState', visDesc);
+      else delete document.visibilityState;
+    }
+  });
+
   it('pins the overlay covering the whole screen during any catch-up, not just the loading one', () => {
     // jsdom doesn't do real hit-testing by z-index/position, so a click
     // dispatched at the "Restore from backup" button would fire its

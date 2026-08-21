@@ -112,8 +112,21 @@ watch(()=>g.s.toast.n, ()=>{
   clearTimeout(flashTimer);
   flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
 });
-let timer=null, saver=null;
-const onHide=()=>{ if(document.visibilityState==='hidden') g.saveNow(); };
+let timer=null, saver=null, hiddenAt=null;
+/* setInterval is throttled (often to ~1/s) or fully suspended once a tab is
+   backgrounded, so the tick loop effectively stalls while the app isn't in
+   front — without this, game time only caught up on a full reload (via
+   loadSave's own away-time credit in persistence.js). Mirrors that same
+   mechanism for the mid-session case: note when the tab went hidden, then
+   credit the real time that passed once it's visible again. */
+const onVisibility=()=>{
+  if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); g.saveNow(); }
+  else if(hiddenAt!=null){
+    const away=(Date.now()-hiddenAt)/1000;
+    hiddenAt=null;
+    g.creditAway(away);
+  }
+};
 const onLeave=()=>g.saveNow();
 /* loadSave() now yields periodically during a long offline catch-up (see
    persistence.js) rather than running as one blocking synchronous task, so
@@ -151,12 +164,12 @@ onMounted(async ()=>{
     saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);
     g.saveNow();
     window.addEventListener('pagehide',onLeave);
-    document.addEventListener('visibilitychange',onHide);
+    document.addEventListener('visibilitychange',onVisibility);
   }
 });
 onUnmounted(()=>{ clearInterval(timer); clearInterval(saver); clearTimeout(flashTimer);
   window.removeEventListener('pagehide',onLeave);
-  document.removeEventListener('visibilitychange',onHide);
+  document.removeEventListener('visibilitychange',onVisibility);
   for(const k of AMB_KEYS) document.documentElement.style.removeProperty(k);
   if(darkMedia) darkMedia.removeEventListener('change',onSystemThemeChange); });
 const views={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
