@@ -55,6 +55,26 @@ export function installPersistence(G){
     if(!data || data.ver!==C.SAVE_VER) return false;
     return await hydrate(data);
   }
+  /* Shared by both offline catch-up paths: a fresh load (away since savedAt)
+     and a backgrounded tab resuming mid-session (away since it went hidden —
+     see App.vue's visibilitychange handler). Browsers throttle or fully
+     suspend a hidden tab's timers, so without this second call site the tick
+     loop just stalls while the tab isn't in front, and only a reload (which
+     already goes through loadSave) ever caught it up. Guarded against
+     overlapping itself the same way hydrate() guards against overlapping
+     hydrates — two catch-ups racing the same G.s would corrupt it. */
+  async function creditAway(away){
+    if(G.s.catchUp || away<=60 || !G.s.rigs.length) return 0;
+    const cashBefore=G.s.cash, coinsBefore=G.walletUsd.value;
+    const credited=await advance(away);
+    const gain=(G.s.cash-cashBefore)+(G.walletUsd.value-coinsBefore);
+    const hrs=(credited/3600);
+    G.pop('Welcome back','+'+fmt.usd(Math.max(0,gain))+' while away '+
+      (hrs>=1?hrs.toFixed(1)+'h':Math.round(credited/60)+'m')+
+      (away>C.OFFLINE_CAP?' (capped at 24h)':''),'grn',{always:true});
+    G.say('sys','Away '+fmt.dur(away)+' — '+fmt.dur(credited)+' of progress credited');
+    return credited;
+  }
   async function hydrate(data){
     if(hydrating) return false;
     hydrating=true;
@@ -188,17 +208,7 @@ export function installPersistence(G){
     }
     G.ensureWeather(); G.ensureGens();
     restoring=false;
-    const away=Math.max(0,(Date.now()-data.savedAt)/1000);
-    if(away>60 && G.s.rigs.length){
-      const cashBefore=G.s.cash, coinsBefore=G.walletUsd.value;
-      const credited=await advance(away);
-      const gain=(G.s.cash-cashBefore)+(G.walletUsd.value-coinsBefore);
-      const hrs=(credited/3600);
-      G.pop('Welcome back','+'+fmt.usd(Math.max(0,gain))+' while away '+
-        (hrs>=1?hrs.toFixed(1)+'h':Math.round(credited/60)+'m')+
-        (away>C.OFFLINE_CAP?' (capped at 24h)':''),'grn',{always:true});
-      G.say('sys','Away '+fmt.dur(away)+' — '+fmt.dur(credited)+' of progress credited');
-    }
+    await creditAway(Math.max(0,(Date.now()-data.savedAt)/1000));
     return true;
   }
   function resetState(){
@@ -260,7 +270,7 @@ export function installPersistence(G){
     blockValue:G.blockValue,bondReq:G.bondReq,poolTrust:G.poolTrust,TRUST_RAMP,poolCapLimit:G.poolCapLimit,poolHash:G.poolHash,poolProfit:G.poolProfit,withdrawProfit:G.withdrawProfit,
     battFirm:G.battFirm,flowOf:G.flowOf,chainHash:G.chainHash,easeOf:G.easeOf,blockETA:G.blockETA,blockProg:G.blockProg,winChance:G.winChance,fundOf:G.fundOf,groupAdvice:G.groupAdvice,chainCeiling:G.chainCeiling,idleCashAdvice:G.idleCashAdvice,draftGroup:G.draftGroup,battAdvice:G.battAdvice,myPools:G.myPools,foundPool:G.foundPool,setPoolFee:G.setPoolFee,renamePool:G.renamePool,simsOn:G.simsOn,poolRep:G.poolRep,repParts:G.repParts,rivalPools:G.rivalPools,poolDemand:G.poolDemand,poolProj:G.poolProj,nextTierBond:G.nextTierBond,poolPnl:G.poolPnl,addBond:G.addBond,releaseBond:G.releaseBond,capBinding:G.capBinding,bondFloor:G.bondFloor,topUpBond:G.topUpBond,closePool:G.closePool,
     stepTick:G.stepTick,build:G.build,scrapRig:G.scrapRig,swapWorn:G.swapWorn,expectedDay:G.expectedDay,powerRateDay:G.powerRateDay,
-    SLOT_OPTS:G.SLOT_OPTS,rebuildInfo:G.rebuildInfo,startRebuild:G.startRebuild,applyRebuild:G.applyRebuild,toggleRig:G.toggleRig,setRigGroup:G.setRigGroup,groupOf:G.groupOf,groupHash:G.groupHash,groupRigs:G.groupRigs,setGroupChain:G.setGroupChain,setGroupPool:G.setGroupPool,addGroup:G.addGroup,dropGroup:G.dropGroup,renameGroup:G.renameGroup,newSite:G.newSite,addSitePart:G.addSitePart,chooseFab:G.chooseFab,rush:G.rush,rushCost:G.rushCost,rushRig:G.rushRig,rushRigCost:G.rushRigCost,upgradeShell:G.upgradeShell,renameSite:G.renameSite,renameRig:G.renameRig,decommissionSite:G.decommissionSite,sell:G.sell,buy:G.buy,fleetMove:G.fleetMove,fleetMoveInfo:G.fleetMoveInfo,draftSpec:G.draftSpec,fleetSpecInfo:G.fleetSpecInfo,fleetToSpec:G.fleetToSpec,dripCost:G.dripCost,dripWorst:G.dripWorst,setDrip:G.setDrip,toggleHold:G.toggleHold,MILESTONES,RANKS,fleetWorn:G.fleetWorn,rigWorn:G.rigWorn,fleetRepair:G.fleetRepair,fleetRefitInfo:G.fleetRefitInfo,fleetRefit:G.fleetRefit,onboardingStep:G.onboardingStep,dismissOnboarding:G.dismissOnboarding,showChainsNudge:G.showChainsNudge,dismissChainsNudge:G.dismissChainsNudge,TOUR_SLIDES:G.TOUR_SLIDES,showTour:G.showTour,dismissTour:G.dismissTour,restartTour:G.restartTour,saveNow,loadSave,wipeSave,exportSave,importSave};
+    SLOT_OPTS:G.SLOT_OPTS,rebuildInfo:G.rebuildInfo,startRebuild:G.startRebuild,applyRebuild:G.applyRebuild,toggleRig:G.toggleRig,setRigGroup:G.setRigGroup,groupOf:G.groupOf,groupHash:G.groupHash,groupRigs:G.groupRigs,setGroupChain:G.setGroupChain,setGroupPool:G.setGroupPool,addGroup:G.addGroup,dropGroup:G.dropGroup,renameGroup:G.renameGroup,newSite:G.newSite,addSitePart:G.addSitePart,chooseFab:G.chooseFab,rush:G.rush,rushCost:G.rushCost,rushRig:G.rushRig,rushRigCost:G.rushRigCost,upgradeShell:G.upgradeShell,renameSite:G.renameSite,renameRig:G.renameRig,decommissionSite:G.decommissionSite,sell:G.sell,buy:G.buy,fleetMove:G.fleetMove,fleetMoveInfo:G.fleetMoveInfo,draftSpec:G.draftSpec,fleetSpecInfo:G.fleetSpecInfo,fleetToSpec:G.fleetToSpec,dripCost:G.dripCost,dripWorst:G.dripWorst,setDrip:G.setDrip,toggleHold:G.toggleHold,MILESTONES,RANKS,fleetWorn:G.fleetWorn,rigWorn:G.rigWorn,fleetRepair:G.fleetRepair,fleetRefitInfo:G.fleetRefitInfo,fleetRefit:G.fleetRefit,onboardingStep:G.onboardingStep,dismissOnboarding:G.dismissOnboarding,showChainsNudge:G.showChainsNudge,dismissChainsNudge:G.dismissChainsNudge,TOUR_SLIDES:G.TOUR_SLIDES,showTour:G.showTour,dismissTour:G.dismissTour,restartTour:G.restartTour,saveNow,loadSave,wipeSave,exportSave,importSave,creditAway};
 
-  Object.assign(G, {advance,exportSave,importSave,loadSave,resetState,saveNow,wipeSave,wiped});
+  Object.assign(G, {advance,creditAway,exportSave,importSave,loadSave,resetState,saveNow,wipeSave,wiped});
 }
