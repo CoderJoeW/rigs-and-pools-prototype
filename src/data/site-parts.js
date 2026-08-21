@@ -1,10 +1,19 @@
 import { FAB } from './fab.js';
 
 /* ---- site parts. Nothing is a preset tier: you buy a shell for floor space,
-   then install power and cooling yourself. Capacity is whatever you paid for. */
+   then install power and cooling yourself. Capacity is whatever you paid for.
+
+   The FIRST tier past the free starter kit in each category — shed, 30A
+   service, a rooftop panel or turbine, extractor fans, a home battery — has
+   its build time halved from what the rest of its ladder would suggest.
+   Those are the purchases a brand-new player is queuing in their first
+   session, and at 18h (three full day/night cycles at the new 6h day) a
+   shed alone used to eat the whole first sitting before it even opened.
+   Everything past that first tier keeps its original pacing — this is
+   about clearing the on-ramp, not compressing the whole game. */
 export const SHELLS = [
   { id:'bedroom',   name:'Spare bedroom',          slots:4,   price:0,      hours:0 },
-  { id:'shed',      name:'Garden shed',            slots:10,  price:700,    hours:18 },
+  { id:'shed',      name:'Garden shed',            slots:10,  price:700,    hours:9 },
   { id:'garage',    name:'Garage conversion',      slots:24,  price:9000,   hours:60 },
   { id:'unit',      name:'Light industrial unit',  slots:60,  price:80000,  hours:150 },
   { id:'warehouse', name:'Warehouse bay',          slots:140, price:400000, hours:300 },
@@ -27,7 +36,7 @@ export const SHELLS = [
    ceiling tied to it), not a price a grid-connected site would ever prefer. */
 export const SOURCES = [
   { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:15.00, price:0,     hours:0 },
-  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:15.00, price:120,   hours:10 },
+  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:15.00, price:120,   hours:5 },
   { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:15.00, price:900,   hours:30 },
   { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:15.00, price:6500,  hours:90 },
   { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:32.30, price:5200,  hours:14 },
@@ -47,11 +56,11 @@ export const SOURCES = [
      matching s-sol1's 840 W delivered would take 28 of these, for $2,100 —
      50% more than s-sol1's own $1,400. */
   { id:'s-solmini', name:'Single solar panel', kind:'solar', peak:75,    yield:0.40, rate:0.00, price:75,    hours:1 },
-  { id:'s-sol1',  name:'Rooftop panel set',   kind:'solar', peak:1200,  yield:0.70, rate:0.00, price:1400,  hours:8 },
+  { id:'s-sol1',  name:'Rooftop panel set',   kind:'solar', peak:1200,  yield:0.70, rate:0.00, price:1400,  hours:4 },
   { id:'s-sol3',  name:'3 kW panel array',    kind:'solar', peak:3000,  yield:0.85, rate:0.00, price:3300,  hours:18 },
   { id:'s-sol8',  name:'8 kW solar array',    kind:'solar', peak:8000,  rate:0.00, price:7800,  hours:40 },
   { id:'s-sol30', name:'30 kW solar farm',    kind:'solar', peak:30000, rate:0.00, price:26000, hours:110 },
-  { id:'s-win1',  name:'Rooftop turbine',     kind:'wind',  peak:1000,  yield:0.45, rate:0.00, price:1900,  hours:10 },
+  { id:'s-win1',  name:'Rooftop turbine',     kind:'wind',  peak:1000,  yield:0.45, rate:0.00, price:1900,  hours:5 },
   { id:'s-win4',  name:'4 kW turbine',        kind:'wind',  peak:4000,  yield:0.70, rate:0.00, price:5400,  hours:26 },
   { id:'s-win15', name:'15 kW wind turbine',  kind:'wind',  peak:15000, rate:0.00, price:17500, hours:70 },
   { id:'s-win60', name:'60 kW wind turbine',  kind:'wind',  peak:60000, rate:0.00, price:62000, hours:200 },
@@ -64,13 +73,13 @@ export const SOURCES = [
    renewable site through the night instead of shedding. Infrastructure-tier
    paybacks (~100-160 days) before counting brownout protection. */
 export const STORAGE = [
-  { id:'st-home', name:'Home battery',      kwh:8,   kw:3,  price:700,   hours:6 },
+  { id:'st-home', name:'Home battery',      kwh:8,   kw:3,  price:700,   hours:3 },
   { id:'st-rack', name:'Rack battery',      kwh:50,  kw:14, price:3900,  hours:24 },
   { id:'st-cont', name:'Container battery', kwh:350, kw:90, price:23000, hours:90 },
 ];
 export const PLANTS = [
   { id:'p-open', name:'Open air',            cap:1200,  pue:0.00, price:0,     hours:0 },
-  { id:'p-fans', name:'Extractor fans',      cap:6000,  pue:0.08, price:700,   hours:8 },
+  { id:'p-fans', name:'Extractor fans',      cap:6000,  pue:0.08, price:700,   hours:4 },
   { id:'p-ac',   name:'Air conditioning',    cap:20000, pue:0.42, price:5500,  hours:30 },
   { id:'p-evap', name:'Evaporative cooling', cap:34000, pue:0.20, price:14000, hours:60 },
   { id:'p-imm',  name:'Immersion loop',      cap:90000, pue:0.05, price:22000, hours:140 },

@@ -36,7 +36,7 @@ describe('addSitePart', () => {
     const f = g.active;
     const cashBefore = g.s.cash;
 
-    g.addSitePart(f.id, 's-30', 'source'); // 30A service: $120, 10 hours
+    g.addSitePart(f.id, 's-30', 'source'); // 30A service: $120, 5 hours
 
     expect(g.s.cash).toBeCloseTo(cashBefore - 120, 5);
     expect(f.queue).toHaveLength(1);
@@ -121,9 +121,9 @@ describe('rush', () => {
     const g = freshStore();
     g.s.cash = 2000;
     const f = g.active;
-    g.addSitePart(f.id, 's-30', 'source'); // job A: left = 10h
-    g.stepTick(3600); // job A now has ~9h left
-    g.addSitePart(f.id, 's-30', 'source'); // job B: left = 10h, fresh
+    g.addSitePart(f.id, 's-30', 'source'); // job A: left = 5h
+    g.stepTick(3600); // job A now has ~4h left
+    g.addSitePart(f.id, 's-30', 'source'); // job B: left = 5h, fresh
 
     const costA = g.rushCost(f.queue[0]);
     const costB = g.rushCost(f.queue[1]);
