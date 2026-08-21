@@ -6,35 +6,19 @@ import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from './Compare.vue';
 
-/* The Build tab's part picker. Which slot is open is store state (g.s.picker),
-   and choosing writes straight to g.s.draft, so those stay where they are. What
-   the sheet cannot work out for itself is what the DRAFT currently implies —
-   the field descriptions and the card limit the frame/board pair allows — so
-   the view passes those in. */
+// Part picker architecture (props vs store, emit-not-write, custom parts):
+// docs/implementation-notes.md#part-picker-sheet-srccomponentspartpickersheetvue.
 const props = defineProps({
-  /* The FIELDS rows: {k, label, job, sub(part)} — the copy for each slot. */
-  fields: { type: Array, required: true },
-  /* {n, frame, mobo}: how many cards this frame/board pair can wire. */
-  cardLimit: { type: Object, required: true },
-  /* Card options, which follow the generation ladder rather than a constant. */
-  units: { type: Array, required: true },
+  fields: { type: Array, required: true },     // FIELDS rows: {k, label, job, sub(part)}
+  cardLimit: { type: Object, required: true }, // {n, frame, mobo}: cards this pair can wire
+  units: { type: Array, required: true },      // card options, following the generation ladder
 });
-/* Picking is emitted rather than written here. The choice has to be clamped
-   against the limit the NEW frame/board pair allows, and a prop still holds the
-   value from the last parent render at the moment of the click — so the parent,
-   which owns the live computed, does the write. cardLimit as a prop is right
-   for the row notes below, which are read during render. */
 const emit = defineEmits(['pick']);
 
 const g = useGameStore();
 
 const field = computed(() => props.fields.find(f => f.k === g.s.picker) || null);
 
-/* Fab-designed parts (data/customParts.js) sit past the top of every
-   catalogue ladder rather than inside it — generatePreset's own search
-   never reaches for them (see buildDraft.js's header comment on why that's
-   deliberate), so the only door in is here, appended to whichever ladder
-   the design's slot type matches. */
 const optionsFor = k => {
   const base = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:props.units;
   return base.concat(g.s.customParts.filter(p => p.kind === k));

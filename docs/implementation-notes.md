@@ -199,6 +199,103 @@ which pricing formula applies. The object is frozen because it's the
 definition, not mutable state — changing it at runtime would put the spec
 and the price back out of step with each other.
 
+## Part picker sheet (`src/components/PartPickerSheet.vue`)
+
+Which slot is open is store state (`g.s.picker`), and choosing writes
+straight to `g.s.draft` — the sheet only needs props for what it can't work
+out for itself: the field descriptions and the card limit the current
+frame/board pair allows.
+
+**Picking is emitted, not written locally.** The choice has to be clamped
+against the limit the *new* frame/board pair allows, and a prop still
+holds the value from the last parent render at the moment of the click —
+so the parent, which owns the live computed, does the write. `cardLimit`
+stays a prop (rather than being read from the store directly) because the
+row notes below are read during render and need the same value.
+
+**Fab-designed custom parts** (`data/customParts.js`) sit past the top of
+every catalogue ladder rather than inside it — `generatePreset`'s own
+search never reaches for them, deliberately, so the picker is the only
+door in, appending custom parts to whichever ladder the design's slot type
+matches. A custom part also has no catalogue id and so no photograph;
+`PartTile` falls back to an empty tile to keep the column aligned.
+
+## Build view verdict panel (`src/views/BuildView.vue`)
+
+Verdict panel ranking (cost/payback, then hashrate/efficiency, then site
+cost) is design-spec.md §6i; this section covers the implementation-level
+notes/aria logic layered on top.
+
+**`ceilingNote`** is thread 32's signal, stated in the checker's grammar
+but deliberately *not* folded into `canBuild`: being at a chain's ceiling
+is a reason to point the rig somewhere else, never a reason you may not
+build it. `chainCeiling` is forward-looking — it folds this not-yet-built
+rig's hash into the gate — so the chain may currently be below its floor
+even when the projection clears it; the copy's tense follows that (issue
+#25): "is at" only when the chain is already there *today*.
+
+**`subsidyNote`** (issue #6): a brand-new player's first Build-tab numbers
+can show a same-day payback worth several times the starting balance —
+honest, but reads as "this must be broken" with no context. It's real:
+below its floor a chain pays every miner the same flat rate no matter how
+little hash they bring (design-spec.md §1), so a first rig on an empty
+chain earns a rate the chain can't sustain once it fills. The flat rate is
+governed by `diffOf`'s own condition (`dispatch.js`:
+`Math.max(c.floor, c.obs)*c.target)`, not raw `chainHash` — `obs` can sit
+stale-high after a brownout, in which case the chain is *not* paying the
+flat floor rate even while `chainHash` is still under the floor. Gating on
+`chainHash` alone previously hid `subsidyNote` in exactly the case it
+matters most: right after a first rig lands (~192 MH, still under
+Tessera's 350 floor), a second rig's draft already reads as "at ceiling"
+via `ceilingNote` even though the currently-quoted rate is still the
+fully undiluted flat one. Both notes are true at once and both render —
+clarifying rather than contradicting: "you're on the welcome rate right
+now, and this next rig would end it."
+
+**Accessibility announcement snapshotting (`draftKey`/`gateKey`).** A
+screen-reader user gets no equivalent of watching checkmarks flip live
+while editing, so `buildStatus` announces the outcome via
+`aria-live="polite"`, built from `g.checks` read directly (not through the
+tweened `costShown` etc.). Reading `checks` directly is exactly why a
+naive computed re-read on every render would be wrong: two of the six
+check labels embed live figures (cash, site power draw) that drift on
+*every* simulation tick, not just on a real draft edit — a plain computed
+would re-announce a fresh cash figure up to 10x/second at high speed while
+sitting unaffordable, worse than the tween-spam this was written to avoid
+(`aria-live="polite"` queues every distinct string it's given, so that
+reads as an unbroken stream of stale numbers blocking anything else from
+being announced).
+
+Snapshotting only on `gateKey` (which checks pass/fail) closes that but is
+too coarse alone: a part swap that changes cost without flipping any
+check's pass/fail (e.g. a pricier frame while still comfortably
+affordable) would then never re-announce, leaving the reader stuck hearing
+an increasingly wrong price. `draftKey` — a snapshot of the draft's own
+fields, which only change on a real player edit, never on a tick — covers
+that other half. Between the two: `draftKey` changing always means the
+player did something; `gateKey` changing with `draftKey` held still means
+the world moved the outcome out from under them (e.g. cash finally
+catching up to an affordable total while idle) — both worth announcing
+once. A tick that moves neither (cash draining further under an
+already-failing check) correctly announces nothing.
+
+**Quick pick's condensed checks.** Quick pick only ever lands on a
+combination `generatePreset()` already ran the full `canBuild` gate
+against, so every check is guaranteed to pass the *moment* a preset
+exists. But that's a snapshot, not an invariant: `presetFound` only
+re-runs on mount or switching back into Quick pick, never on a tick, so
+cash draining or site capacity shifting underneath an already-open Quick
+pick can make `canBuild` go false while nothing here regenerates. Showing
+zero checks unconditionally would then leave the Order button reading
+"Fix the crosses above" with no crosses on screen — worse than the wall of
+green checkmarks this split exists to cut in the first place, since
+`buildStatus` (which reads `g.checks` directly) would still correctly
+announce a real failure to assistive tech while the visible panel had
+nothing to show a sighted player. So: checks stay empty in the common case
+(`canBuild` true) and fall back to the real failing ones the instant it
+isn't. `ceilingNote`/`subsidyNote` stay visible in both modes regardless —
+they're context about the chain, not gate diagnostics.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call

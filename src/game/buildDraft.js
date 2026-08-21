@@ -3,13 +3,8 @@ import { C } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 
-/* 06-build-draft.js — installed into the shared context G.
-   Cross-module references go through G, so the 7 mutually dependent
-   module pairs still resolve at call time exactly as the closure did.
-   Declarations are untouched: hoisting, evaluation order and
-   intra-module references are the same code they always were. */
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installBuildDraft(G){
-  /* ---- build draft ---- */
   const dp = computed(()=>{
     const d=G.s.draft, x=PART(d.cool);
     let base;
@@ -23,11 +18,9 @@ export function installBuildDraft(G){
       base = { maxSlots:k.boards, coreW:k.w+x.w+d.n*u.w, psu:p, unit:u, air:1.30*x.fac,
         conn:d.n*u.conn, mh:d.n*u.mh, cost:k.price+p.price+x.price+d.n*u.price };
     }
-    /* `wall` is what the site's meter would see: core draw grossed up by the
-       supply's efficiency, the same relationship rigWallW applies to a rig
-       that already exists — so the Build hero and the Rigs list quote the
-       same figure for the same hardware. Derived here rather than in the
-       template because Build's hero, its verdict and draftEff all want it. */
+    // wall = core draw grossed up by supply efficiency, same relationship
+    // rigWallW applies to a built rig — Build's hero and the Rigs list quote
+    // the same figure for the same hardware.
     return { ...base, wall: base.coreW/base.psu.eff };
   });
   const checks = computed(()=>{
@@ -62,11 +55,9 @@ export function installBuildDraft(G){
   const canBuild = computed(()=> checks.value.every(c=>c.ok));
   const draftEff = computed(()=> dp.value.coreW>0 ? dp.value.mh/(dp.value.coreW/dp.value.psu.eff) : 0);
   const buildTime = computed(()=> G.s.rigs.length===0 ? 0 : C.BUILD_BASE*(0.6+G.s.draft.n*0.1));
-  /* The draft's worth before it exists. Same shape as rigRev/rigPow (best
-     live chain, site's marginal $/kWh) so the number a rig is sold on before
-     the order and the number expectedDay carries once it's running are the
-     same calculation — never a separate "sounds good" estimate. Labelled
-     'expected' on screen because netDay is realised earnings and this isn't. */
+  // Same shape as rigRev/rigPow so the pre-purchase estimate and the
+  // running rig's netDay are the same calculation, never a separate
+  // "sounds good" guess. Labelled 'expected' since netDay is realised.
   const draftExpected = computed(()=>{
     const p=dp.value, f=G.active.value;
     const rev=p.mh*G.draftRate();
@@ -74,36 +65,14 @@ export function installBuildDraft(G){
     const net=rev-pow;
     return { rev,pow,net, payback:net>0?p.cost/net:Infinity };
   });
-  /* ---- preset generator ----
-     Tries real drafts against the real canBuild/checks gate rather than a
-     parallel notion of "good" — the fastest way this project has shipped a
-     preset that agrees with the field list is to make it use the exact same
-     acceptance test. Cash-bound favours cheap cards (thin margin, fast
-     payback); once the site is near its power ceiling it favours MH/W
-     instead, matching the flip in Appendix A.
-
-     v64 fixes two units being confused. `n` is cards-per-rig, bounded by the
-     frame and board ladders. It used to also be bounded by the site's free
-     RIG POSITIONS, which are a different thing entirely — so a garage with
-     one position left offered a one-card rig at 24 MH where the frame would
-     carry sixteen at 384, a 16x loss on the last position with 96 kW spare.
-     Whether a position exists at all is checks[3]'s job and always was.
-
-     Cooling is deliberately NOT escalated here. Trying coolers inside the
-     card loop was measured and rejected — it bought a $420 immersion kit to
-     add two $3 cards, turning a 0.51-day payback into 0.78 — and trying them
-     only as a fallback was measured to be dead code: a better cooler adds
-     its own watts while only dividing the plant's share, so below about
-     three cards it always makes the power check HARDER, and "nothing fits"
-     only ever happens at one card. See §6n. */
-  /* The one search both generatePreset and openBuildCost run — used to be
-     two ~13-line near-copies that had already silently diverged once
-     (issue #27): openBuildCost's cool-delta expression was missing the
-     divide-by-zero guard checks.value's has (now shared below). Yields
-     buildable-on-paper candidates in strategy order; each caller applies
-     its own acceptance test to the tail — generatePreset writes the draft
-     and runs the full canBuild gate (incl. cash); openBuildCost skips cash
-     and tests power headroom directly, read-only. */
+  // Preset generator: tries real drafts against the real canBuild/checks
+  // gate (cash-bound favours cheap cards, power-bound favours MH/W) — the
+  // 16x rig-positions-vs-frame-slots bug and the rejected cooling-escalation
+  // idea are both documented in design-spec.md §6n.
+  // candidateBuilds is the one search both generatePreset and openBuildCost
+  // run, replacing two copies that had silently diverged (issue #27):
+  // generatePreset writes the draft and runs the full canBuild gate incl.
+  // cash; openBuildCost skips cash and tests power headroom directly, read-only.
   function* candidateBuilds(f){
     const flip = G.siteDemand(f) >= G.siteCapacity(f)*C.FLIP_AT;
     const pool = G.cards();
@@ -139,19 +108,12 @@ export function installBuildDraft(G){
     const net  = u.mh*G.draftRate() - wall/1000*24*G.margRate(f);
     return { net, wall, payback:net>0?u.price/net:Infinity, perKw:net/(wall/1000), mhw:u.mh/u.w };
   };
-  /* Issue #7's idle-cash advisory needs "is something buildable right now,
-     and what would it cost" WITHOUT depending on the player having recently
-     visited Build. G.s.draft is shared, global state that only refreshes on
-     BuildView's mount (or a manual re-preset), so reading dp/canBuild
-     directly is stale the instant the site's real constraints move past
-     whatever was last drafted — concretely, right after the site's power
-     headroom is mostly spent on rig one, the still-drafted rig-one preset no
-     longer fits, and stays that way on Farm/every other tab forever, since
-     nothing there ever calls generatePreset(). Mirrors generatePreset()'s
-     own search (same site-aware strategy and order) but touches no state —
-     it answers the query, it doesn't try to become the draft — and skips
-     the cash check specifically, since the whole point here is a cost to
-     compare cash against, not a "would this be affordable" verdict. */
+  // openBuildCost answers issue #7's idle-cash advisory ("is something
+  // buildable, and what would it cost") without depending on G.s.draft,
+  // which only refreshes on BuildView's mount and goes stale the moment site
+  // constraints move past it. Mirrors generatePreset()'s search read-only
+  // and skips the cash check, since the point here is a cost to compare
+  // cash against, not an affordability verdict.
   const siteRigsOpen = f => G.siteSlots(f)-G.siteRigs(f).length;
   const openBuildCost = f => {
     if(siteRigsOpen(f)<=0) return null;

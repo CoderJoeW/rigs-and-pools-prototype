@@ -169,6 +169,15 @@ Reinvesting on `net > 0` alone has no stopping point otherwise (see
 a room, so `SIM_EXPAND_MAX_DAY` caps the pace, with a card a day as the
 floor for the small miners the cap would otherwise pin at zero.
 
+## Generation card pricing exponent (`genCardsFor` in `hardware.js`)
+
+Price tracks hashrate's growth exponent (1.22), not a steeper curve. At
+1.38 the top card cost 6,000x more after a year while earning only 158x
+more, so generations quietly became unaffordable — the treadmill's own
+answer (design-spec.md §3b) outran the player. The price exponent (1.30)
+is deliberately steeper than the hashrate one (1.22) so a bigger farm
+still finds money a real constraint, just not an impossible one.
+
 ## `IDLE_CASH_MULT` (2)
 
 Issue #7: nothing pulled cash toward the next purchase once a rig and site

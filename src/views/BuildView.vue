@@ -12,15 +12,13 @@ const units=computed(()=>g.cards());
 const mode=ref('preset');           // 'preset' | 'custom' — preset first, always
 const presetFound=ref(true);
 function runPreset(){ presetFound.value=g.generatePreset(); }
-// Run once, right here, before the tweened refs below read their starting
-// value — otherwise they'd initialize off the default draft from state.js
-// and then immediately animate to the real preset on first paint, a
-// mismatch putting this in onMounted (a tick later) couldn't avoid.
+// Run synchronously here, before the tweened refs below read their starting
+// value — an onMounted (a tick later) would let them animate from the
+// default draft to the real preset on first paint. docs/implementation-notes.md.
 runPreset();
-/* Bulk order count. Local UI state, not on the draft — the draft is a
-   single-rig specification and stays that way so generatePreset /
-   openBuildCost / fleet-to-spec keep working unchanged. Clamped live to
-   maxBuildQty so the stepper never offers more than the site can take. */
+// Bulk order count. Local UI state, not on the draft — the draft stays a
+// single-rig spec so generatePreset/openBuildCost/fleet-to-spec keep
+// working unchanged. Clamped live to maxBuildQty.
 const qty=ref(1);
 const maxQty=computed(()=> g.maxBuildQty());
 watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
@@ -30,16 +28,9 @@ function setMode(m){
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
 
-/* The verdict panel is the one readout a player actually watches while
-   iterating on a build — every part swap or stepper tap changes several of
-   these at once, and a flat swap-on-render reads as a spreadsheet
-   recalculating rather than a build coming together. Tweened the same way
-   TopBar's cash and Farm's "Net today" already are (useTweenedNumber's own
-   header comment names those as the deliberately short list this opts
-   into — draft numbers are the third case it's meant for: a discrete,
-   player-initiated change, not an ambient value ticking in the background).
-   Formatting stays exactly what it was — fmt.* is only ever handed the
-   CURRENT eased value, one frame at a time. */
+// Verdict panel numbers are tweened (like TopBar's cash and Farm's "Net
+// today") so a part swap reads as a build coming together, not a
+// spreadsheet recalculating. docs/implementation-notes.md.
 const costShown = useTweenedNumber(()=>g.dp.cost);
 const netShown = useTweenedNumber(()=>g.draftExpected.net);
 const paybackShown = useTweenedNumber(()=>g.draftExpected.payback);
@@ -47,32 +38,21 @@ const hashShown = useTweenedNumber(()=>g.dp.mh);
 const effShown = useTweenedNumber(()=>g.draftEff);
 const drawShown = useTweenedNumber(()=>g.dp.wall);
 
-/* Frame and board both cap the card count, which was the confusion. The fix
-   is to state each one's job in the label and to show, permanently, which of
-   them is currently your limit — rather than only saying so when you exceed it. */
+// Frame and board both cap the card count: design-spec.md §6i.
 const cardLimit=computed(()=>{
   const f=g.PART(g.s.draft.frame), m=g.PART(g.s.draft.mobo);
   return { n:Math.min(f.slots,m.pcie),
            by: f.slots<m.pcie?'the frame':f.slots>m.pcie?'the motherboard':'both, equally',
            frame:f.slots, mobo:m.pcie };
 });
-/* The visual rig: one cell per physical position on the current frame.
-   Filled cells are cards you've committed to; dashed/greyed cells past
-   the frame-vs-board limit are positions that exist but can't be wired —
-   the binding constraint as a shape, not a sentence. */
+// Visual rig: one cell per physical frame position: design-spec.md §6i.
 const slotCells=computed(()=>{
   const f=g.PART(g.s.draft.frame), lim=cardLimit.value.n, n=g.s.draft.n;
   return Array.from({length:f.slots},(_,i)=> i<n?'filled':i<lim?'open':'locked');
 });
 
-/* Cards first, as the mockup lists them: the cards are what the rig is for,
-   and every other slot is chosen to carry them.
-
-   `qty` is the count of that part in one rig. Only the cards vary — a rig has
-   one frame, one board, one cooler and one supply, and showing a stepper on
-   each row (as the mockup does) would offer a choice this simulation does not
-   have. The number is stated either way, so the column still reads as a bill
-   of materials. */
+// `qty` is the count of that part in one rig — only the cards vary; a rig
+// has exactly one frame/board/cooler/supply, so no stepper on those rows.
 const FIELDS=computed(()=>{
   const x=g.s.draft, n=x.n;
   return [
@@ -88,24 +68,17 @@ const FIELDS=computed(()=>{
       part:g.PART(x.psu), sub:p=>partSub('psu',p)},
   ];
 });
-/* The hero's photograph. Not a fixed studio shot any more: the frame in the
-   draft decides which of the three rig classes is on screen, so swapping the
-   frame in the picker changes the machine you are looking at rather than only
-   the line of text under it. Always the `run` state — this is a preview of
-   what you are about to own, not of a rig mid-assembly. */
+// Hero photo tracks the draft's frame (always the 'run' state — a preview
+// of ownership, not assembly) and free positions mirrors the floor-space
+// check. docs/implementation-notes.md.
 const heroShot=computed(()=>rigShot(g.s.draft.frame,'run'));
-/* What the hero's status corner reports. Free positions is the same figure
-   the floor-space check gates on, said before it becomes a cross. */
 const freePositions=computed(()=>{
   const f=g.active;
   return Math.max(0, g.siteSlots(f)-g.siteRigs(f).length);
 });
-/* The draw stat's sub-line. Deliberately NOT this rig's draw over the site's
-   capacity: that reads as a small, calm fraction of a site already close to
-   its limit, which is exactly when it should be shouting. It is the site's
-   demand AFTER this rig against what the site can serve — the same arithmetic
-   the power check gates on, including the extra cooling the rig's own heat
-   pulls in, so the colour turns at the moment the check does. */
+// Deliberately site-demand-AFTER-this-rig vs capacity, not this rig's draw
+// alone — the same arithmetic the power check gates on (incl. extra
+// cooling), so the colour turns exactly when the check does.
 const siteAfter=computed(()=>{
   const f=g.active, p=g.dp;
   const cap=g.siteCapacity(f)+g.battFirm(f);
@@ -116,34 +89,23 @@ const siteAfter=computed(()=>{
   // where nothing can run.
   return { after, cap, frac: cap>0 ? after/cap : (after>0 ? Infinity : 0) };
 });
-/* A narrower frame or board can leave the card count past what the new pair
-   can actually wire — the slot map would read "8 of 4 usable slots filled",
-   canBuild would go false, and the "+" stepper would be disabled, so the only
-   way out is tapping "−" until it is legal again. Clamp instead.
-   Stays here, not in the picker: it has to read cardLimit AFTER the draft
-   changes, and a prop the child received is a render old by then. */
+// Clamps card count to the new frame/board pair's limit rather than
+// leaving canBuild false with no way out but tapping "-" repeatedly. Stays
+// here, not in the picker: needs cardLimit AFTER the draft changes, and a
+// prop the child received is a render old by then.
 const choose=id=>{
   g.s.draft[g.s.picker]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };
 
-/* Verdict panel, always ranked the same way: cost and payback first,
-   then hashrate and efficiency, then what it costs the site. Guidance
-   stays visible whether or not anything is currently wrong. */
-/* Thread 32's signal, in the checker's grammar but NOT in canBuild.
-   Being at a chain's ceiling is a reason to point the rig somewhere
-   else, never a reason you may not build it — so it reads like a check
-   and is deliberately absent from the gate. */
+// Verdict panel ranking: design-spec.md §6i. ceilingNote is thread 32's
+// signal, deliberately kept out of canBuild's gate — see docs/implementation-notes.md.
 const ceilingNote=computed(()=>{
   const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
   const ceil=g.chainCeiling(c, g.dp.mh);
   if(!ceil) return null;
-  // chainCeiling is forward-looking — it folds this not-yet-built rig's
-  // hash into the gate — so the chain may currently be below its floor
-  // even when the projection clears it. Tense the copy accordingly
-  // (issue #25): "is at" only when the chain is already there today.
-  const already=g.chainHash(c)>c.floor;
+  const already=g.chainHash(c)>c.floor;   // "is at" only when true today, not just projected — issue #25
   return { tone:'warn',
     label: already
       ? c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours'
@@ -153,27 +115,8 @@ const ceilingNote=computed(()=>{
         +'/day once it is at or above its floor, so this rig mostly divides '
         +'the same pot. Move the group to another chain and it earns on top.' };
 });
-/* Issue #6: a brand-new player's first Build-tab numbers can be a same-day
-   payback worth several times the starting balance — honest, but reads as
-   "this must be broken" with no context. It's real: below its floor a
-   chain pays every miner the same flat rate no matter how little hash
-   they bring (§1), so a first rig on an empty chain earns a rate the
-   chain can't sustain once it fills.
-
-   The flat rate is governed by diffOf's own condition (dispatch.js:
-   Math.max(c.floor, c.obs)*c.target), not by raw chainHash — obs can sit
-   stale-high after a brownout (more likely since #19 raised BASE_WEAR),
-   in which case the chain is NOT paying the flat floor rate even while
-   chainHash itself is still under the floor. Gating on chainHash alone
-   both undersold that gap and, combined with an incorrect assumption
-   that this was mutually exclusive with ceilingNote, silently hid the
-   note in exactly the case it matters most: chainCeiling(c, dp.mh)
-   projects the NEXT rig's hash forward, so right after the first rig
-   lands (~192 MH, still under Tessera's 350 floor) a second rig's draft
-   already reads as "at ceiling" even though the currently-quoted rate is
-   still the fully undiluted flat one. Both are true at once, so both
-   notes render — clarifying rather than contradicting: "you're on the
-   welcome rate right now, and this next rig would end it." */
+// Issue #6 — new-miner subsidy context, coexists with ceilingNote by design:
+// docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const subsidyNote=computed(()=>{
   const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
   if(!c || c.obs>c.floor) return null;
@@ -182,35 +125,8 @@ const subsidyNote=computed(()=>{
         +'of how little hash they bring — the fast payback is a deliberate '
         +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
 });
-/* Sighted users watch the checkmarks flip live while editing in Customise;
-   a screen reader user gets no equivalent signal without re-reading the
-   whole panel after every change. This announces the OUTCOME, built from
-   checks — which, unlike costShown etc., read the real, untweened store
-   directly.
-
-   That directness is exactly why the naive version (a computed re-read on
-   every render) is wrong: two of the six check labels embed live figures —
-   cash (buildDraft.js's "Parts cost X, you hold Y") and site power draw —
-   that drift on EVERY simulation tick, not just on a real draft edit. A
-   plain computed would re-announce a fresh cash figure up to 10x/second at
-   high speed while sitting unaffordable, which is worse than the tween
-   spam this was written to avoid: aria-live="polite" queues every distinct
-   string it's given, so that reads as an unbroken stream of stale numbers
-   that blocks anything else from being announced.
-
-   Snapshotting only on gateKey (which checks pass/fail) closes that, but
-   is too coarse on its own: a part swap that changes the cost WITHOUT
-   flipping any check's pass/fail state (e.g. picking a pricier frame while
-   still comfortably affordable) would then never re-announce either, and
-   the reader would be stuck hearing an increasingly wrong price. draftKey
-   covers that other half — a snapshot of the draft's OWN fields, which
-   only change on a real player edit, never on a tick. Between the two:
-   draftKey changing always means the player did something; gateKey
-   changing (with draftKey held still) means the WORLD moved the outcome
-   out from under them, e.g. cash finally catching up to an affordable
-   total while they sat idle — both are worth announcing once. A tick that
-   moves neither (cash draining further under an already-failing check) is
-   the only case left, and correctly announces nothing. */
+// aria-live announcement snapshotting (why draftKey AND gateKey, not a
+// naive computed): docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const draftKey=computed(()=> JSON.stringify(g.s.draft));
 const gateKey=computed(()=> g.checks.map(c=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
 const buildStatus=ref('');
@@ -222,33 +138,13 @@ watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
         : 'Ready to order for '+fmt.usd(g.dp.cost)+'.')
     : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
 }, { immediate:true });
-/* Quick pick only ever lands on a combination generatePreset() already ran
-   the FULL canBuild gate against — every check is guaranteed to pass the
-   MOMENT a preset exists at all (the "nothing fits" case above is its own
-   message, not a failing checklist). But that guarantee is a snapshot, not
-   an invariant: presetFound only re-runs on mount or switching back into
-   Quick pick (setMode), never on a tick, so cash draining or the site's
-   own power/capacity shifting underneath an already-open Quick pick CAN
-   make canBuild go false while nothing here re-generates. Showing zero
-   checks unconditionally would leave the Order button reading "Fix the
-   crosses above" with no crosses anywhere on screen — worse than the wall
-   of green checkmarks this split exists to cut, since the aria-live status
-   below (buildStatus, which reads g.checks directly and doesn't go through
-   this computed) would still correctly announce a real failure to assistive
-   tech while the visible panel had nothing to show a sighted player. So:
-   checks stay empty in the common case (canBuild true) and fall back to
-   the real failing ones the instant it isn't — Quick pick is condensed,
-   never silent. Notes (ceiling/subsidy) stay in both modes regardless:
-   those are context about the chain, not gate diagnostics — ceilingNote
-   in particular never blocks canBuild at all (see its own comment above). */
+// Quick pick's condensed-not-silent checks: docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
   const notes=[ceilingNote.value,subsidyNote.value].filter(Boolean);
-  /* Cost, hashrate and draw moved to the hero, where the mockup puts them,
-     so what is left down here is what the hero has no room for: the notes in
-     both modes, and in Customise the second-order figures a player
-     troubleshooting a combination actually reads. */
+  // Cost/hashrate/draw live on the hero; this is what's left — notes in
+  // both modes, second-order figures only in Customise.
   if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter(x=>!x.ok), notes } ];
   return [
     { t:'Cost & payback', rows:[], checks:[c[5]], notes },
