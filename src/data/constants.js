@@ -40,6 +40,16 @@ export const C = {
   EXCH_FEE:0.004, START_CASH:500,
   BUILD_BASE:22*60,         // rig assembly, real seconds
   RUSH_PER_HOUR:70,
+  /* The day/night + tariff cycle runs on its own clock, faster than real
+     time, purely so a player can watch a full sunrise-to-sunrise power-grid
+     cycle without a 24h wait. DAY_HOURS is that cycle's real-time length;
+     timeOfDay.js's hourOf() is the only reader (band/solarFactor/ambient all
+     build on hourOf, so this one knob covers all three). Everything that
+     turns real dollars — block cadence, PAY, wear, billing, GEN_DAYS, pool
+     trust, price drift — stays on s.t at its original real-time pace and
+     never reads DAY_HOURS, so payouts are exactly as they were; only the
+     sky and the tariff sign move faster. */
+  DAY_HOURS:6,
   // time-of-use tariff: grid rates are multiplied by the band of the hour.
   // 2026-08-21: widened from {0.70, 1.00, 1.55}. Off-peak got cheaper and
   // peak got sharply more expensive — the blended 24h average for a site

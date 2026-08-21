@@ -43,13 +43,16 @@ if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
    detail, not something a component should own.
 
    The hour is restated here because timeOfDay.js keeps hourOf() internal (it
-   isn't on the store's export surface). `elev` is that module's own
-   sin(pi*(h-6)/12) solar curve, kept SIGNED instead of clamped at 0 so it stays
-   continuous through the night: +1 at noon, 0 at 06:00/18:00, -1 at midnight.
-   That sign is what makes dawn and dusk a smooth crossing rather than a jump. */
+   isn't on the store's export surface) — on the same DAY_HOURS cycle that
+   module's hourOf() uses, not the 86400s-per-day economic clock. `elev` is
+   that module's own sin(pi*(h-6)/12) solar curve, kept SIGNED instead of
+   clamped at 0 so it stays continuous through the night: +1 at noon, 0 at
+   06:00/18:00, -1 at midnight. That sign is what makes dawn and dusk a smooth
+   crossing rather than a jump. */
 const clamp01 = v => v<0 ? 0 : v>1 ? 1 : v;
+const CYCLE_S = g.C.DAY_HOURS*3600;
 const atmosphere = computed(()=>{
-  const h = (((g.s.t%86400)+86400)%86400)/3600;
+  const h = (((g.s.t%CYCLE_S)+CYCLE_S)%CYCLE_S)/CYCLE_S*24;
   const elev = Math.sin(Math.PI*(h-6)/12);
   const cloud = clamp01(g.s.weather ? g.s.weather.now.cloud : 0);
   const day = clamp01((elev+0.15)/0.55);              // 0 through the night, 1 by mid-morning

@@ -1,3 +1,5 @@
+import { C } from '../data/constants.js';
+
 /* Which photograph — and which film — a site is wearing.
 
    WHY THE OLD SCHEME HAD TO GO. There were three plates, dealt out by
@@ -55,10 +57,13 @@ export function siteFilm(shell) {
 /* Day or night, from the simulation's own clock.
 
    timeOfDay.js keeps hourOf() internal, so the hour is restated here the same
-   way App.vue restates it for the ambient factors. The threshold is the solar
-   elevation crossing zero — 06:00 and 18:00 — which is exactly where the
-   day and night plates were lit to meet. */
+   way App.vue restates it for the ambient factors — both on the DAY_HOURS
+   cycle, so the photograph always agrees with the sky and tariff, not the
+   old 24-real-hour one. The threshold is the solar elevation crossing zero —
+   06:00 and 18:00 on that cycle — which is exactly where the day and night
+   plates were lit to meet. */
+const CYCLE_S = C.DAY_HOURS * 3600;
 export function sitePhase(t) {
-  const h = (((t % 86400) + 86400) % 86400) / 3600;
+  const h = (((t % CYCLE_S) + CYCLE_S) % CYCLE_S) / CYCLE_S * 24;
   return Math.sin(Math.PI * (h - 6) / 12) > 0 ? 'day' : 'night';
 }
