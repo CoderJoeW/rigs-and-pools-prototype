@@ -9,16 +9,20 @@ export const SHELLS = [
   { id:'unit',      name:'Light industrial unit',  slots:60,  price:80000,  hours:150 },
   { id:'warehouse', name:'Warehouse bay',          slots:140, price:400000, hours:300 },
 ];
-/* 2026-08-21: grid and generator rates raised ~10% flat (4.20/4.00/3.60/3.10/
-   9.00 -> 4.60/4.40/3.95/3.40/9.90) — the ladder's relative shape (bigger
-   service = cheaper per kWh, generator the expensive-but-flexible outlier)
-   is unchanged, but electricity itself now bites harder everywhere, on top
-   of the widened TOU spread above. */
+/* 2026-08-21: grid electricity moved off the per-tier rate ladder onto one
+   flat $15/kWh baseline (rate:'grid' entries only — the diesel generator
+   keeps its own flat 9.90, being off-grid power, not "the grid"). That
+   baseline IS the shoulder rate: TOU:{off,shoulder,peak} in constants.js
+   still multiplies it exactly as before (shoulder's multiplier is 1.00 by
+   definition), so a bigger grid service no longer buys a cheaper rate — the
+   ladder's job now is purely peak WATTAGE (1,500 -> 96,000), at a rising
+   upfront price and build time. Previously 4.60/4.40/3.95/3.40 (before that,
+   4.20/4.00/3.60/3.10 — see the prior revision of this comment). */
 export const SOURCES = [
-  { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:4.60, price:0,     hours:0 },
-  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:4.40, price:120,   hours:10 },
-  { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:3.95, price:900,   hours:30 },
-  { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:3.40, price:6500,  hours:90 },
+  { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:15.00, price:0,     hours:0 },
+  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:15.00, price:120,   hours:10 },
+  { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:15.00, price:900,   hours:30 },
+  { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:15.00, price:6500,  hours:90 },
   { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:9.90, price:5200,  hours:14 },
   /* Small renewables are cheap to reach and genuinely bad — `yield` is the
      fraction of nameplate the kit actually delivers, which is how real small kit

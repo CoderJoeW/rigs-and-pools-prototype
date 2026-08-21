@@ -220,7 +220,7 @@ export function installDispatch(G){
     : rigWear(r)>0.6 ? {k:'wearing', dot:'warn', label:'Wearing', sub:'cards past 60%'}
     : {k:'run', dot:'run', label:'Running', sub:''};
 
-  const DEFAULT_ELEC = 0.63;
+  const DEFAULT_ELEC = 15.00; // matches SOURCES' flat grid baseline — see site-parts.js
   const margRate = f => {
     const d=siteDemand(f);
     return d>0 ? siteCostPerHour(f)/d*1000 : DEFAULT_ELEC;
