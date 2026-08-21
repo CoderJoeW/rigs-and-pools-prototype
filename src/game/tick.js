@@ -3,6 +3,7 @@ import { SITEPART } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { PART, PART_MAP } from '../data/hardware.js';
 import { MILESTONES, RANKS } from '../data/milestones.js';
+import { ANCHOR_DECAY } from '../data/chains.js';
 import { fmt } from '../utils/format.js';
 import { gauss } from '../utils/random.js';
 
@@ -54,6 +55,18 @@ export function installTick(G){
       runBlockWindow(c, dt);
       if(mine>0) flatDrip(c, dt);
       if(!c.anchor) c.anchor=Math.max(1, G.chainHash(c)/c.floor);
+      /* anchor0 freezes the save's starting anchor so decay always relaxes
+         toward a fraction of THAT, not of whatever anchor last was —
+         persistence's sim-reseed/reset/retune paths overwrite c.anchor
+         directly (see persistence.js) without touching anchor0, so a
+         mid-decay save that goes through one of those keeps its original
+         maturity floor instead of resetting it. */
+      if(!c.anchor0) c.anchor0=c.anchor;
+      const decay=ANCHOR_DECAY[c.id];
+      if(decay){
+        const floorAnchor=c.anchor0*decay.floor;
+        c.anchor=floorAnchor+(c.anchor-floorAnchor)*Math.exp(-days*Math.LN2/decay.half);
+      }
       c.ref += (G.fundOf(c)-c.ref)*Math.min(1, days/3);
       c.ref*=Math.exp((-0.5*c.vol*c.vol)*days + c.vol*Math.sqrt(days)*gauss());
       c.ref=Math.max(0.02,c.ref);

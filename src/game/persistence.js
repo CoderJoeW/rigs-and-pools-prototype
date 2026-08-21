@@ -87,7 +87,11 @@ export function installPersistence(G){
       for(const c of G.s.chains){
         const start = G.simHashOf(c);
         c.obs = Math.max(c.floor, start);
-        c.anchor = Math.max(1, (c.anchor || start / Math.max(1, c.floor)));
+        /* Preserve an existing (possibly decayed-below-1) anchor as-is —
+           only the fallback for a chain that has none yet gets the >=1
+           floor, so this repair path can't undo anchor-decay progress on
+           an otherwise-healthy save. */
+        c.anchor = c.anchor || Math.max(1, start / Math.max(1, c.floor));
       }
       G.say('sys','The network re-formed — independent miners now earn, spend and compete');
     } else if(G.reindexSims){
@@ -129,6 +133,10 @@ export function installPersistence(G){
       c.floor=base.floor; c.reward=base.reward; c.target=base.target;
       c.mult=base.mult; c.depth=base.depth;
       c.anchor=Math.max(1, SIM_RATIO);
+      /* A rebalance patch invalidates any decay progress too — the chain's
+         economics just changed, so maturity restarts from this new
+         baseline rather than chasing a floor computed from the old one. */
+      c.anchor0=c.anchor;
       /* Rescale the miners on the chain to what the CURRENT model says the
          chain carries, which is a question about the population that has
          arrived — not SIM_RATIO*floor compounded by a daily growth rate.
@@ -208,6 +216,7 @@ export function installPersistence(G){
         const start = G.simHashOf(c);
         c.obs = Math.max(c.floor, start);
         c.anchor = Math.max(1, start / Math.max(1, c.floor));
+        c.anchor0 = c.anchor;
       }
     }
     G.say('sys','A spare bedroom, a 1.5 kW outlet and $500');

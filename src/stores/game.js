@@ -61,6 +61,7 @@ export function createGame(){
       const start = G.simHashOf(c);
       c.obs = Math.max(c.floor, start);
       c.anchor = Math.max(1, start / Math.max(1, c.floor));
+      c.anchor0 = c.anchor;
     }
   }
   return G;
