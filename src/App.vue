@@ -64,20 +64,25 @@ watch(()=>g.s.toast.n, ()=>{
   clearTimeout(flashTimer);
   flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
 });
-let timer=null, saver=null, hiddenAt=null, lastTickAt=null;
-// Credits time lost to setInterval throttling while backgrounded: docs/implementation-notes.md#app-shell-srcappvue.
+let timer=null, saver=null, lastTickAt=null;
+/* Credits time lost to setInterval throttling or an outright stall, from
+   either of two triggers — a backgrounded tab (onVisibility) or a stall
+   visibilitychange never reports at all, like an OS sleep/lid-close that
+   freezes a still-foreground tab (onTick's own gap check): docs/
+   implementation-notes.md#app-shell-srcappvue. Both share lastTickAt as
+   the single checkpoint of "game time is accounted for up to here" —
+   background tabs aren't fully frozen, just throttled (often to ~1/min
+   once hidden a while), so onTick can itself credit part of a background
+   span before onVisibility's 'visible' branch runs; computing away from
+   that same checkpoint (instead of a separate hidden-at timestamp) is
+   what stops the latter from re-crediting time onTick already caught. */
 const onVisibility=()=>{
-  if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); g.saveNow(); }
-  else if(hiddenAt!=null){
-    const away=(Date.now()-hiddenAt)/1000;
-    hiddenAt=null;
-    g.creditAway(away);
-  }
+  if(document.visibilityState==='hidden'){ g.saveNow(); return; }
+  const now=Date.now();
+  const away=lastTickAt!=null ? (now-lastTickAt)/1000 : 0;
+  lastTickAt=now;
+  if(away>60) g.creditAway(away);
 };
-/* Backstop for stalls visibilitychange never reports — an OS-level sleep/
-   resume (lid close, screen lock) doesn't hide a foreground tab, so
-   onVisibility above never fires, yet setInterval was frozen for the whole
-   suspend just the same: docs/implementation-notes.md#app-shell-srcappvue. */
 const onTick=()=>{
   const now=Date.now();
   // A catch-up already in flight (from here or from onVisibility) is
