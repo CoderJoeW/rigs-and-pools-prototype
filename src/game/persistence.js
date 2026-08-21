@@ -10,13 +10,8 @@ import { allUnlocked } from './state.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
 
-/* 13-persistence-and-exports.js — installed into the shared context G.
-   Cross-module references go through G, so the 7 mutually dependent
-   module pairs still resolve at call time exactly as the closure did.
-   Declarations are untouched: hoisting, evaluation order and
-   intra-module references are the same code they always were. */
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPersistence(G){
-  /* ---- persistence ---- */
   let wiped=false;
   let restoring=false;
   let hydrating=false;
@@ -55,14 +50,10 @@ export function installPersistence(G){
     if(!data || data.ver!==C.SAVE_VER) return false;
     return await hydrate(data);
   }
-  /* Shared by both offline catch-up paths: a fresh load (away since savedAt)
-     and a backgrounded tab resuming mid-session (away since it went hidden —
-     see App.vue's visibilitychange handler). Browsers throttle or fully
-     suspend a hidden tab's timers, so without this second call site the tick
-     loop just stalls while the tab isn't in front, and only a reload (which
-     already goes through loadSave) ever caught it up. Guarded against
-     overlapping itself the same way hydrate() guards against overlapping
-     hydrates — two catch-ups racing the same G.s would corrupt it. */
+  // Shared by both offline catch-up paths (fresh load, and a backgrounded
+  // tab resuming mid-session — see App.vue's visibilitychange handler and
+  // docs/implementation-notes.md#app-shell-srcappvue). Guarded against
+  // overlapping itself the same way hydrate() guards hydrates.
   async function creditAway(away){
     if(G.s.catchUp || away<=60 || !G.s.rigs.length) return 0;
     const cashBefore=G.s.cash, coinsBefore=G.walletUsd.value;
@@ -157,15 +148,9 @@ export function installPersistence(G){
          economics just changed, so maturity restarts from this new
          baseline rather than chasing a floor computed from the old one. */
       c.anchor0=c.anchor;
-      /* Rescale the miners on the chain to what the CURRENT model says the
-         chain carries, which is a question about the population that has
-         arrived — not SIM_RATIO*floor compounded by a daily growth rate.
-         That was the old model's answer and it is the seed bug §6o removes:
-         on a day-10 save it would have multiplied every Obelisk miner's
-         hashrate by about 130x, handing the chain a finished network again
-         through the back door. Unreachable while every v5 save's chains match
-         CHAINS, which is exactly why it needs to be right before the next
-         floor retune reaches it. */
+      // Rescale to what the CURRENT model says the chain carries (population
+      // arrived), not the old growth-rate model design-spec.md §6o replaced —
+      // that model's answer would have multiplied every Obelisk miner ~130x.
       const mine=G.s.sims.filter(m=>m.chain===c.id);
       const have=mine.reduce((a,m)=>a+m.hash,0);
       const want=G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO*base.floor;
