@@ -361,6 +361,73 @@ are caught in two shapes because they aren't the same everywhere: browsers
 reject the returned promise, while environments without a media stack
 (jsdom, under component tests) throw synchronously instead.
 
+## Tour spotlight tracking (`src/components/WelcomeTour.vue`)
+
+`TOUR_SLIDES` (see docs/onboarding.md) is one fixed script shared by the
+automatic first-session run and a later replay (`restartTour()`, TopBar's
+"tour" pill). The only slide whose wording actually goes wrong for the
+replay case is the last one, which frames Build as "your first rig"
+(`nextId===1`); an established player replaying it already has one.
+Everything else in `TOUR_SLIDES` reads fine either way (explanations of
+what a tab *is*, not claims about the player's current state), so
+`displaySlide` overrides just that one slide rather than threading an
+`isReplay` flag through the whole script.
+
+**The spotlight** is a single element sized to the real target's own
+rect, with a `box-shadow` spread wide enough to cover the rest of the
+viewport. `box-shadow` is pure paint, never hit-tested, so this dims
+everything without a second overlay element and without ever intercepting
+a click — the same "caption, not a lock" rule the rest of the tour
+follows.
+
+**Retry-until-ready measurement.** The tab switch, the view remount
+behind it, and the target actually existing in the DOM don't all land in
+the same tick, so `measureWhenReady` retries across a few animation
+frames rather than assuming one `nextTick` is enough. `measure()` itself
+scrolls to and measures a *newly arrived-at* target, but `main.css`'s
+`.viewfade` transition (160ms, up to a 7px `translateY`) is still
+animating when the target first exists, so an immediate read lands a few
+px off its resting position — corrected by a second read once it's done.
+`retrack()` re-measures *without* scrolling, for resize/scroll, where the
+target hasn't changed and re-centering it would fight the player's own
+scroll input every time they tried to look at anything else.
+
+**`alive` flag.** The retry/settle chain is plain
+`requestAnimationFrame`/`setTimeout` recursion, not a Vue watcher, so
+unmounting mid-chain would otherwise keep it alive — and free to touch a
+torn-down component's refs — until it ran itself out.
+
+**Scroll-transition suppression.** `.tour-spot`'s CSS transition
+(`main.css`) is what makes moving to a new slide's target feel like a
+deliberate pop rather than a jump-cut — but during an active scroll,
+`retrack()` fires many times a second, and that same transition makes the
+highlight visibly lag a beat behind the content it's supposed to be glued
+to, chasing rather than tracking. The `scrolling` flag turns the
+transition off while a scroll is live, restored once it's been quiet for
+a moment (not on every single event, since a scroll gesture is a stream
+of them, not one).
+
+**Two-directional tab sync.** One watcher drives the tab to match the
+current slide (so the spotlight always lands on the real screen it's
+describing) and resets to slide 0 whenever the tour transitions from
+hidden to shown — covering both the ordinary first-session case and a
+replay, where `step` would otherwise still be wherever a previous run
+left off. It's registered *before* the tab-sync watcher so it always
+resolves first within the same reactive flush.
+
+The other watcher runs the reverse direction: several of the tour's own
+spotlighted targets are themselves live buttons that jump tabs on click
+(FarmView's "Go shopping", RigsView's "Build one", both pointing at
+Build). Clicking one used to leave the tour's own step wherever
+Next/Back last put it — caption still reading "Rigs," spotlight hunting
+for a target that no longer exists on the Build tab underneath. This
+watcher makes the tour follow instead: every tab is one of its own
+slides, so any tab change while it's up (one of these buttons, or just
+tapping the tab bar directly) resyncs the displayed slide to match,
+keeping caption, spotlight and the real screen in agreement no matter
+which of the two moves first. Guarded on actually differing so it can't
+bounce against the other watcher.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
