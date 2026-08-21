@@ -484,13 +484,39 @@ settled to transparent before the node leaves. The `:key` is the
 counter, so two rank-ups in quick succession restart the animation rather
 than the second landing on an element mid-fade.
 
-**Tab-visibility time catch-up.** `setInterval` is throttled (often to
-~1/s) or fully suspended once a tab is backgrounded, so the tick loop
-effectively stalls while the app isn't in front — without this, game time
-only caught up on a full reload (via `loadSave`'s own away-time credit in
-`persistence.js`). `onVisibility` mirrors that mechanism for the
-mid-session case: note when the tab went hidden, then credit the real
-time that passed once it's visible again.
+**Tab-visibility and stall time catch-up.** `setInterval` is throttled
+(often to ~1/min once a tab has been hidden a while) or fully suspended
+once a tab is backgrounded, so the tick loop effectively stalls while the
+app isn't in front — without this, game time only caught up on a full
+reload (via `loadSave`'s own away-time credit in `persistence.js`).
+`onVisibility` mirrors that mechanism for the mid-session case: credit
+the real time that passed once the tab is visible again. But a
+foreground tab can lose the same real time with no hide/show transition
+at all — an OS-level sleep, screen lock, or lid close freezes
+`setInterval` right along with everything else, yet the tab was never
+hidden from the page's point of view, so `visibilitychange` never fires
+either at sleep or at wake. `onTick` (the timer's own callback) is the
+backstop for that case: it stamps `lastTickAt` on every firing and, when
+the gap since the last one exceeds the same 60s floor `creditAway`
+already uses, treats that gap as away time instead of taking it as one
+ordinary tick. The ordinary case (ticks arriving close to `TICK_MS`
+apart) is untouched — `stepTick()` still runs with its usual fixed,
+speed-scaled `dt`, so this only ever engages for a real stall.
+
+Both paths read and advance the *same* `lastTickAt`, rather than
+`onVisibility` keeping its own separate hidden-at timestamp — a
+backgrounded tab isn't fully frozen, just throttled, so `onTick`'s own
+gap check can fire (and credit part of the background span) before the
+tab is ever revisited. If `onVisibility` computed `away` from an
+independent hidden-at mark instead, its 'visible' branch would span the
+whole background duration and re-credit the slice `onTick` already paid
+out — real money for time already spent. Sharing the checkpoint means
+whichever path last accounted for time is the one the other measures
+from, so neither can double up on the other's work. `onTick` is also
+guarded against overlapping a catch-up already under way (from either
+path) the same way `hydrating` and `G.s.catchUp` already guard the other
+two entry points — otherwise a live tick could land in the middle of a
+replay that's mid-flight through `advance()`.
 
 **Boot sequencing.** `loadSave()` yields periodically during a long
 offline catch-up (`persistence.js`) rather than running as one blocking

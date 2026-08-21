@@ -131,6 +131,84 @@ describe('App', () => {
     }
   });
 
+  it('credits real time lost to a stall even with no visibilitychange at all (e.g. an OS sleep)', async () => {
+    // An OS-level sleep/lock freezes setInterval exactly like a backgrounded
+    // tab does, but never hides the tab — visibilitychange fires on neither
+    // end of it, so onVisibility never engages at all. Only the tick loop's
+    // own gap-from-Date.now() check can catch this one.
+    const { wrapper, store } = mountWithStore(App, {
+      seed: (g) => { g.generatePreset(); g.build(); },
+    });
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(store.s.rigs.length).toBeGreaterThan(0);
+    const tBefore = store.s.t;
+
+    let now = Date.now();
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      now += 2 * 3600 * 1000; // two hours pass with the tab never hidden
+      // real (unmocked) wall-clock wait so the app's own real setInterval
+      // actually fires at least once while the mocked jump is still live
+      await new Promise(r => setTimeout(r, 150));
+
+      while (store.s.catchUp) await new Promise(r => setTimeout(r, 20));
+      await flushPromises();
+
+      expect(store.s.t).toBeGreaterThanOrEqual(tBefore + 2 * 3600 - 60);
+    } finally {
+      dateSpy.mockRestore();
+    }
+  });
+
+  it('does not double-credit background time the tick loop already caught on its own', async () => {
+    // A backgrounded tab isn't fully frozen, just throttled — onTick's own
+    // stall backstop can fire (and credit part of the background span)
+    // before the tab is ever revisited. If onVisibility credited the whole
+    // hidden duration from an independent hidden-at mark instead of the
+    // same shared checkpoint, it would re-pay the slice onTick already
+    // caught.
+    const { wrapper, store } = mountWithStore(App, {
+      seed: (g) => { g.generatePreset(); g.build(); },
+    });
+    mounted.push(wrapper);
+    await flushPromises();
+    const tBefore = store.s.t;
+
+    const visDesc = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    let now = Date.now();
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // 90 seconds pass while still hidden — enough for onTick's own gap
+      // check (>60s) to fire and credit that span on its own.
+      now += 90 * 1000;
+      await new Promise(r => setTimeout(r, 150)); // let the real timer actually fire
+      while (store.s.catchUp) await new Promise(r => setTimeout(r, 20));
+
+      // another 30 minutes pass, still hidden, before the tab comes back
+      now += 30 * 60 * 1000;
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      dateSpy.mockRestore();
+
+      while (store.s.catchUp) await new Promise(r => setTimeout(r, 20));
+      await flushPromises();
+
+      const totalAway = 90 + 30 * 60; // 1890s total, credited across both paths
+      expect(store.s.t).toBeGreaterThanOrEqual(tBefore + totalAway - 60);
+      // the regression this guards: double-crediting would land close to
+      // tBefore + totalAway + 90 (the onTick slice paid out twice)
+      expect(store.s.t).toBeLessThan(tBefore + totalAway + 60);
+    } finally {
+      dateSpy.mockRestore();
+      if (visDesc) Object.defineProperty(document, 'visibilityState', visDesc);
+      else delete document.visibilityState;
+    }
+  });
+
   it('pins the overlay covering the whole screen during any catch-up, not just the loading one', () => {
     // jsdom doesn't do real hit-testing by z-index/position, so a click
     // dispatched at the "Restore from backup" button would fire its
