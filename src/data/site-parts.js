@@ -38,15 +38,15 @@ export const SOURCES = [
      monotone on EFFECTIVE cost per watt ($1.67 → $1.29 → $0.97 → $0.87 for
      solar), so paying more still always buys better, exactly as elsewhere.
 
-     s-solmini breaks that trend ON PURPOSE, at the bottom: one panel, no
-     tracking, cheap enough to buy turn one ($150, against $500 starting
-     cash) and small enough to barely matter (150 W nameplate). Its $2.50
+     s-solmini breaks that trend ON PURPOSE, at the bottom: one small panel,
+     no tracking, cheap enough to buy turn one ($75, against $500 starting
+     cash) and small enough to barely matter (75 W nameplate). Its $2.50
      effective cost/watt is the worst of any solar tier — 50% worse than
      s-sol1's $1.67 — so it is a fine impulse buy while every other source is
-     still out of reach, and a bad one to keep buying once s-sol1 isn't: ten
-     of these cost more than one Rooftop panel set (1,500 vs 1,400) while
-     delivering barely 70% of its watts (600 W vs 840 W effective). */
-  { id:'s-solmini', name:'Single solar panel', kind:'solar', peak:150,   yield:0.40, rate:0.00, price:150,   hours:2 },
+     still out of reach, and a bad one to keep buying once s-sol1 isn't:
+     matching s-sol1's 840 W delivered would take 28 of these, for $2,100 —
+     50% more than s-sol1's own $1,400. */
+  { id:'s-solmini', name:'Single solar panel', kind:'solar', peak:75,    yield:0.40, rate:0.00, price:75,    hours:1 },
   { id:'s-sol1',  name:'Rooftop panel set',   kind:'solar', peak:1200,  yield:0.70, rate:0.00, price:1400,  hours:8 },
   { id:'s-sol3',  name:'3 kW panel array',    kind:'solar', peak:3000,  yield:0.85, rate:0.00, price:3300,  hours:18 },
   { id:'s-sol8',  name:'8 kW solar array',    kind:'solar', peak:8000,  rate:0.00, price:7800,  hours:40 },
