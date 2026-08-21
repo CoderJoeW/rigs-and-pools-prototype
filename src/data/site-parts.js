@@ -9,12 +9,17 @@ export const SHELLS = [
   { id:'unit',      name:'Light industrial unit',  slots:60,  price:80000,  hours:150 },
   { id:'warehouse', name:'Warehouse bay',          slots:140, price:400000, hours:300 },
 ];
+/* 2026-08-21: grid and generator rates raised ~10% flat (4.20/4.00/3.60/3.10/
+   9.00 -> 4.60/4.40/3.95/3.40/9.90) — the ladder's relative shape (bigger
+   service = cheaper per kWh, generator the expensive-but-flexible outlier)
+   is unchanged, but electricity itself now bites harder everywhere, on top
+   of the widened TOU spread above. */
 export const SOURCES = [
-  { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:4.20, price:0,     hours:0 },
-  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:4.00, price:120,   hours:10 },
-  { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:3.60, price:900,   hours:30 },
-  { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:3.10, price:6500,  hours:90 },
-  { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:9.00, price:5200,  hours:14 },
+  { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:4.60, price:0,     hours:0 },
+  { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:4.40, price:120,   hours:10 },
+  { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:3.95, price:900,   hours:30 },
+  { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:3.40, price:6500,  hours:90 },
+  { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:9.90, price:5200,  hours:14 },
   /* Small renewables are cheap to reach and genuinely bad — `yield` is the
      fraction of nameplate the kit actually delivers, which is how real small kit
      behaves: budget panels with no tracking on a poor roof, and especially

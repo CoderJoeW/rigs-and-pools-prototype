@@ -58,7 +58,7 @@ const WINDOW='18h';
 const coinUsd=p=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);
 /* "Thin" against the field rather than against a fixed number: the old
    markup tested depth<=400 and no chain in the catalog has ever been that
-   shallow (the shallowest is 2130), so the badge could not render — including
+   shallow (the shallowest is 2470), so the badge could not render — including
    on Halcyon, whose own blurb is about its thin book. Measured off the
    shallowest book actually in play, so it keeps meaning something if the
    catalog moves. */

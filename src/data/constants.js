@@ -40,8 +40,16 @@ export const C = {
   EXCH_FEE:0.004, START_CASH:500,
   BUILD_BASE:22*60,         // rig assembly, real seconds
   RUSH_PER_HOUR:70,
-  // time-of-use tariff: grid rates are multiplied by the band of the hour
-  TOU:{ off:0.70, shoulder:1.00, peak:1.55 },
+  // time-of-use tariff: grid rates are multiplied by the band of the hour.
+  // 2026-08-21: widened from {0.70, 1.00, 1.55}. Off-peak got cheaper and
+  // peak got sharply more expensive — the blended 24h average for a site
+  // that runs flat and never manages its schedule still rises (~0.99x ->
+  // ~1.03x), so power is a bigger drag by default, while the much wider
+  // off/peak spread makes actually watching the clock — the drip/rush/
+  // autoOff levers, sizing a battery to shift load, deciding which rigs to
+  // shed for the 17:00-21:00 window — worth meaningfully more than before.
+  // shoulder, the reference band the multiplier is anchored to, is untouched.
+  TOU:{ off:0.65, shoulder:1.00, peak:1.90 },
   OFF_START:23, OFF_END:7, PEAK_START:17, PEAK_END:21,
   GEN_DAYS:14,              // a new card generation lands every fortnight, forever
   // v2: the full onboarding pass (coach's 'automate' step, the Chains-tab
@@ -101,11 +109,15 @@ export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's v
 export const SIM_PLAYERS = 100;      // the rest of the network
 /* The chains are a LADDER, not a wall. Each rung's network is twice its own
    floor, so revPerMh = PAY*mult/2 — each chain keeps its own personality
-   (Halcyon +55%, Nova -10%) instead of the mults cancelling out. The
-   rungs then sit ~7x apart, so every stage of a farm's life has a chain where
-   it is a real participant instead of a rounding error. Before this, all four
-   chains sat at 1.4-2.4 TH and a 60-rig warehouse still owned 1.4% of the
-   smallest one. */
+   (2026-08-21: Halcyon +35%, Nova +75%, Obelisk +120%, all measured against
+   Ferro's mult:1.00) instead of the mults cancelling out, and every step up
+   the ladder pays strictly more per MH than the one below it — graduating
+   a farm onto the next chain is never a pay cut. The
+   rungs then sit 8-10x apart (up from ~7x), so every stage of a farm's life has a chain where
+   it is a real participant instead of a rounding error, and outgrowing one
+   rung still leaves the next genuinely out of reach until the farm has grown
+   into it. Before the original ladder, all four chains sat at 1.4-2.4 TH and
+   a 60-rig warehouse still owned 1.4% of the smallest one. */
 /* Where a chain's independent miners END UP once the whole network has
    arrived — below the floor, so there is always fresh territory. Not where it
    starts: the population fills toward SIM_SOFT_CAP over months and a chain's
