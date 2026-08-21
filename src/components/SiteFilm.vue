@@ -2,32 +2,10 @@
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import { sitePlate, siteFilm } from '../utils/siteArt.js';
 
-/* The backdrop of the site hero: two stills that cross-fade with the sim's own
-   day/night, and — on the three biggest shells — a silent loop over the top.
-
-   WHY BOTH PLATES ARE ALWAYS MOUNTED. The cross-fade is the point. Swapping
-   one <img>'s src at dawn shows a blank frame while the new plate decodes;
-   holding both and animating opacity means the change is a dissolve, and the
-   browser has had the other plate decoded since mount either way. They are the
-   same room from the same camera, so a dissolve reads as the light changing
-   rather than as a different picture arriving.
-
-   WHY THE FILM IS NEVER LOAD-BEARING. Motion here is a decoration on a card
-   that must stay readable, so it is layered OVER a still that is doing the
-   real work, and every path that ends in "no video" — reduced motion, a save
-   -data connection, a codec the browser will not take, an autoplay refusal, a
-   shell with no film — simply leaves the still showing. There is no fallback
-   branch to get wrong because the fallback IS the base layer.
-
-   The film is only shown against the NIGHT plate: it was cut from the night
-   generation, and running it over a daylit still would put two different
-   times of day in one frame. That also means it costs nothing for half the
-   game clock, which is a fair trade for one 65 KB file per shell.
-
-   `playsinline` and `muted` are what let iOS autoplay at all. The element is
-   only mounted once the hero is actually in its night phase, so by the time
-   `preload` matters the file is wanted — a site never seen after dark never
-   fetches it. */
+// Site hero backdrop: two always-mounted stills cross-fading with day/night,
+// plus a night-only silent loop on big shells. Full rationale (why both
+// plates stay mounted, why the film is never load-bearing, autoplay
+// handling): docs/implementation-notes.md#site-hero-backdrop-srccomponentssitefilmvue.
 const props = defineProps({
   shell: { type: String, required: true },
   phase: { type: String, default: 'day' },   // 'day' | 'night'
@@ -38,11 +16,7 @@ const dayPlate = computed(() => sitePlate(props.shell, 'day'));
 const nightPlate = computed(() => sitePlate(props.shell, 'night'));
 const film = computed(() => siteFilm(props.shell));
 
-/* Decided once, at mount, rather than per render: both are device
-   preferences, and re-reading them on every tick would be a matchMedia call
-   inside a hot path for a value that changes about never. A user who flips
-   "reduce motion" mid-session gets the still on the next reload, which is the
-   same deal every other animation in the app offers. */
+// Decided once at mount, not per render — see docs/implementation-notes.md.
 const allowed = ref(false);
 onMounted(() => {
   const mq = typeof matchMedia === 'function'
@@ -64,17 +38,12 @@ const showFilm = computed(() =>
    it is refused the poster stays up, which is the night plate, which is what
    the card would have shown anyway. */
 const filmEl = ref(null);
-/* Watches the film as well as the flag: showFilm stays true across a move
-   between two film-bearing sites, so the flag alone would never fire again
-   and the freshly keyed element would sit at its poster. */
+// Watches film as well as showFilm — see docs/implementation-notes.md.
 watch([showFilm, film], async ([on]) => {
   if (!on) return;
   await nextTick();
   const v = filmEl.value;
   if (!v || !v.play) return;
-  // Both shapes of failure, because they are not the same shape everywhere:
-  // browsers reject the returned promise, and environments without a media
-  // stack (jsdom, under the component tests) throw synchronously instead.
   try {
     const r = v.play();
     if (r && r.catch) r.catch(() => {});

@@ -296,6 +296,71 @@ nothing to show a sighted player. So: checks stay empty in the common case
 isn't. `ceilingNote`/`subsidyNote` stay visible in both modes regardless —
 they're context about the chain, not gate diagnostics.
 
+## Construction-job part lookup (`jobPart` in `src/data/site-parts.js`)
+
+A construction-queue job's `p` is a shell/source/plant/storage id for
+every kind except `'fab'` (looks up `FABS` instead) and `'mfg'` — a
+fab-designed custom part (`data/customParts.js`), which carries its own
+finished part object on the job rather than an id into any catalogue,
+since it was never in one to begin with. `paidCash` on an `'mfg'` job is
+what rush/insolvency need `.price` to mean here: what was actually paid to
+queue it, which is *not* the same number as the part's own `.price` (the
+unit price Build charges each time the finished design gets used to build
+a rig). Every place that turns a job back into its part (rush,
+insolvency's cancel-a-job branch, ...) needs this discrimination; giving
+it one shared home (`jobPart`) means a new job kind only has to teach it
+here.
+
+## Site hero backdrop (`src/components/SiteFilm.vue`)
+
+The backdrop is two stills that cross-fade with the sim's own day/night,
+plus — on the three biggest shells — a silent loop over the top.
+
+**Why both plates are always mounted.** The cross-fade is the point.
+Swapping one `<img>`'s src at dawn shows a blank frame while the new plate
+decodes; holding both and animating opacity means the change is a
+dissolve, and the browser has had the other plate decoded since mount
+either way. They're the same room from the same camera, so a dissolve
+reads as the light changing rather than as a different picture arriving.
+
+**Why the film is never load-bearing.** Motion here is a decoration on a
+card that must stay readable, so it's layered *over* a still doing the
+real work, and every path that ends in "no video" — reduced motion, a
+save-data connection, a codec the browser won't take, an autoplay
+refusal, a shell with no film — simply leaves the still showing. There's
+no fallback branch to get wrong because the fallback *is* the base layer.
+
+The film is only shown against the night plate: it was cut from the night
+generation, and running it over a daylit still would put two different
+times of day in one frame. That also means it costs nothing for half the
+game clock, a fair trade for one 65 KB file per shell.
+
+`playsinline` and `muted` are what let iOS autoplay at all. The element
+is only mounted once the hero is actually in its night phase, so by the
+time `preload` matters the file is wanted — a site never seen after dark
+never fetches it.
+
+**Reduced-motion/save-data check runs once at mount, not per render**:
+both are device preferences, and re-reading them on every tick would be a
+`matchMedia` call inside a hot path for a value that changes about never.
+A user who flips "reduce motion" mid-session gets the still on the next
+reload, the same deal every other animation in the app offers.
+
+**Manual `play()`, not just the `autoplay` attribute.** A muted inline
+video is allowed to autoplay on every current browser, but the attribute
+only fires if the element is in the document when the browser gets round
+to it, and this element is mounted later — the moment the sim crosses
+into night. Calling `play()` the tick after mount is the reliable half;
+the `.catch()` is the other half, since a refusal is a normal outcome (a
+strict autoplay policy, battery-saver mode) that must not surface as an
+unhandled rejection. When refused, the poster stays up — the night plate,
+which is what the card would have shown anyway. `showFilm` is watched
+alongside the flag itself because it stays true across a move between two
+film-bearing sites, so the flag alone would never re-fire. Play failures
+are caught in two shapes because they aren't the same everywhere: browsers
+reject the returned promise, while environments without a media stack
+(jsdom, under component tests) throw synchronously instead.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call

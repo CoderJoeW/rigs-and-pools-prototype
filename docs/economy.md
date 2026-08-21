@@ -178,6 +178,41 @@ answer (design-spec.md §3b) outran the player. The price exponent (1.30)
 is deliberately steeper than the hashrate one (1.22) so a bigger farm
 still finds money a real constraint, just not an impossible one.
 
+## Grid electricity flat-rate baseline (`src/data/site-parts.js`, 2026-08-21)
+
+design-spec.md §4 describes the earlier per-tier grid rate ladder (each
+service tier priced its own $/kWh rate). As of 2026-08-21 this changed:
+grid electricity moved off the per-tier rate ladder onto one flat
+$15/kWh baseline (the `rate:'grid'` entries only). That baseline *is* the
+shoulder rate — `TOU:{off,shoulder,peak}` in `constants.js` still
+multiplies it exactly as before (shoulder's multiplier is 1.00 by
+definition) — so a bigger grid service no longer buys a cheaper rate; the
+ladder's job now is purely peak *wattage* (1,500 → 96,000 W), at a rising
+upfront price and build time. Prior rates, for reference: 4.60/4.40/3.95/
+3.40 (and before that, 4.20/4.00/3.60/3.10).
+
+The diesel generator (`s-gen`) was rebalanced alongside it to hold the
+same relationship it always had: strictly worse than grid at any band,
+including peak — the old rate (9.90) was 13% above the old domestic peak
+rate (4.60 × 1.90 = 8.74); the new rate (32.30) is the same 13% above the
+new one (15.00 × 1.90 = 28.50). Its own rate stays flat (off-grid power
+doesn't see the tariff band), so what it buys is flexibility — no service
+to build, no capacity ceiling tied to it — never a price a grid-connected
+site would prefer.
+
+## `s-solmini` — the impulse-buy solar tier (`site-parts.js`)
+
+design-spec.md §4 covers the general shape of the small-renewables ladder
+(each tier's `yield` factor, effective-$/watt staying monotone). `s-solmini`
+deliberately *breaks* that monotone trend at the very bottom: one small
+panel, no tracking, cheap enough to buy turn one ($75 against $500
+starting cash) and small enough to barely matter (75 W nameplate). Its
+$2.50 effective cost/watt is the worst of any solar tier — 50% worse than
+`s-sol1`'s $1.67 — so it's a fine impulse buy while every other source is
+still out of reach, and a bad one to keep buying once `s-sol1` isn't:
+matching `s-sol1`'s 840 W delivered would take 28 of these, for $2,100 —
+50% more than `s-sol1`'s own $1,400.
+
 ## `IDLE_CASH_MULT` (2)
 
 Issue #7: nothing pulled cash toward the next purchase once a rig and site
