@@ -79,6 +79,96 @@ up the ladder still pays strictly more per MH than the one below it, and
 graduating to the next chain is never a pay cut. §2a's table should be
 refreshed to match next time that section is touched.
 
+## Simulated miner population model (`src/game/sims.js`)
+
+design-spec.md §6o (The network grows, instead of arriving finished) and
+§6e (The newcomer cliff and the first hour) cover the player-facing shape
+of this model — start on the terminology there. This section covers the
+implementation-level derivations behind the constants and functions in
+`sims.js` that aren't spelled out in the spec.
+
+**Arrivals (`SIM_JOIN_BASE`, `SIM_JOIN_WORD`).** Logistic, not a flat rate:
+a trickle who find the chains on their own, plus word of mouth from
+everybody already mining, tapering off as the network saturates. The old
+rule was a flat 18/day scaled by `(1-n/cap)^2`, which needed roughly 900
+game-days to fill the network — far past the end of any farm's arc
+(`GEN_DAYS` caps the hardware ladder at 168 days) — so the "miners arrive
+over time" half of the model never actually showed up in play. The current
+constants fill it over about four months instead.
+
+**`SIM_MIN_HASH` (20 — one RX-470).** A simulated miner is a person with a
+farm, not a share of a chain's hashrate: they start at a card or two and
+build from there, so the floor on what one of them can hold is one card.
+
+**`SIM_SEATS_MIN` (12).** Every chain keeps this many miners whatever its
+size, so the pool market on the bottom rungs always has somebody to
+recruit, and a player who founds a Ferro pool is never told nobody mines
+there.
+
+**`SIM_EXPAND_MAX_DAY` (0.25).** The most one miner can add to their own
+farm in a day. Space, power and lead times bind for them exactly as the
+build queue binds for the player; without it a sim converts cash to
+hashrate instantly and compounds at ~90%/day.
+
+**`SIM_TRIM_AT` (1.15).** How far over what a chain supports it has to run
+before miners there start retiring cards. A dead band, not a line: a world
+is seeded *at* its target, so trimming at 1.0 had the opening network
+shrinking for its first fortnight while the population caught up — the
+retirement branch eating the seed faster than anybody could build.
+
+**`SIM_DECIDE_MAX_H` (336 — a fortnight).** Ceiling on the gap a single
+decision may account for. Decisions are budgeted (`SIM_DECIDE_BUDGET` an
+hour, whatever the population), so at the soft cap a miner's turn comes
+round about every 190 hours — and the old 48-hour clamp meant they were
+billed for a quarter of the power they actually burned and allowed a
+quarter of the building they actually had time for. Still a clamp, because
+a save resumed after a long absence must not hand anybody a year's bill in
+one turn; just set above the cadence the model reaches rather than under
+it.
+
+**`seatsFor` / `simTargetOf` / `simRoomOf`.** Seats per chain are weighted
+by floor, because the ladder *is* the chain sizes: Obelisk is not a bigger
+version of Ferro, it is the chain that thousands of miners work.
+`SIM_SEATS_MIN` is held back for every chain first so the small rungs keep
+a pool market. The two rules agree at the soft cap — 16k miners spread by
+floor weight put about 96 MH on every seat of every chain, i.e. one small
+farm each, which is what a simulated miner is supposed to be. Before this
+model, `seedSims` handed every chain `0.6 * floor` at t=0 and split it
+among 25 accounts — which is how Obelisk came up reading 1.3 TH off the
+gate, 25 "new players" holding 48 GH each, about 250 starter rigs apiece.
+
+`simRoomOf` is the brake the model was missing: below a chain's floor the
+difficulty clamp means revenue per MH never falls however much hashrate
+piles in, so an agent that simply reinvests while `net > 0` compounds
+without limit — a 30-day run reached 27x Obelisk's floor and was still
+climbing toward the price cap at ~51x.
+
+**`chainDraw` (crowding).** Pay alone cannot rank chains: below the floor
+the difficulty clamp holds revenue per MH flat at `PAY * mult` however
+much hashrate piles in, so a rule that compared only pay had no crowding
+term in it at all — one lucky swing in Halcyon's price (vol 0.060, the
+most violent book in the game) sent every miner in the world there and
+none ever came back, leaving Ferro and Nova at literally zero hashrate
+within a week. `chainDraw` compares people against the seats a chain's
+size supports instead, clamped to keep it a nudge rather than a stampede
+in either direction.
+
+**A newcomer's starting reserve.** Sized to its own power bill — a
+fortnight to a month of runway. `mkSim`'s default is a newcomer's few
+hundred dollars, which on Obelisk is a couple of days: seeded with that,
+the big chains' solo miners were selling cards to pay the power inside a
+week, every time, because one Obelisk block takes a small farm months to
+find and there is nothing else coming in until the seeded pools have aged
+into enough trust to recruit them.
+
+**`decide()`'s two binds.** *Room* — a chain carries the hashrate its
+economics support, no more; once the miners on it have built that out
+they stop adding, and the chain grows again only as new miners arrive.
+Reinvesting on `net > 0` alone has no stopping point otherwise (see
+`simRoomOf` above). *Lead time* — a farm is bought in cards and racked in
+a room, so `SIM_EXPAND_MAX_DAY` caps the pace, with a card a day as the
+floor for the small miners the cap would otherwise pin at zero.
+
 ## `IDLE_CASH_MULT` (2)
 
 Issue #7: nothing pulled cash toward the next purchase once a rig and site

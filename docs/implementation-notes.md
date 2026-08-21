@@ -90,6 +90,115 @@ carry a fixed-string amount with no `num`/`usd` — those differ order to
 order and must stay separate feed lines, or the feed would silently
 under-report what was spent.
 
+## Simulated economy (`src/game/sims.js`)
+
+**Performance rules (battery / 20k target).** Running totals
+`G._simChainHash` / `_simPoolHash` / `_simSoloHash` are updated
+incrementally; the hot-path `simHash`/`poolHash` never scan the array.
+Decision work is budgeted: at most `SIM_DECIDE_BUDGET` agents wake per
+hourly pulse, staggered by each sim's `next` time. Block-winner sampling
+picks a bucket (pool or solo) via aggregates, then walks only that
+bucket's members — never the full population list. Individual sims carry
+no Vue reactivity; they live in a plain array. The one exception is
+`G._simChainN`, the per-chain head count templates read directly (via
+`simsOn`) — the only aggregate here that has to be `reactive()`, written
+only when a miner arrives, leaves or switches chains so the proxy cost is
+negligible; `rebuildMembers` deliberately tallies into a plain object and
+publishes those few values at the end rather than doing thousands of
+reactive writes per rebuild.
+
+**Largest-remainder seat allocation** (`seedSims`) — so seeded seats
+actually sum to `SIM_START` instead of leaving a remainder for a filler
+loop to dump on whichever chain happens to be listed last.
+
+**Lognormal spare split** (`seedSims`) — everyone gets their minimum-hash
+card first, and only what the chain carries on top of that is split
+lognormally across the seeded miners. Clamping a lognormal draw up to the
+minimum *afterwards* would have overshot the target by a third on the
+chains where the minimum binds.
+
+**"One MH, not five" purchase floor** (`decide()`). `pace` is a rate times
+the elapsed hours, so the card-a-day floor it's meant to guarantee the
+smallest miners came out as 2.5 MH over a three-hour turn — under a
+five-MH minimum purchase, which silently pinned exactly the miners the
+floor exists for at zero. Ferro sat at its seed for the whole of a 30-day
+run before this was caught. The buy threshold is 1 MH, not a rounder
+number.
+
+**"Don't be the whale" migration check** (`decide()`'s chain-switch loop).
+Measured against what a chain currently carries, not its floor: the floor
+is where a chain ends up, and early on that is hundreds of times what is
+actually there, so checking against the floor would let one big miner
+swamp a chain that's still mostly empty.
+
+**Pool-closure consolidation** (`closeSimPool`). Closing a simulated
+operator's pool used to be handled by hand in three separate places — an
+operator folding an empty pool, a PPS bond running dry, and an owner
+giving up mining altogether — and they had drifted: the last one released
+the pool's simulated members but not the player's own groups, so a group
+left pointing at the corpse kept drawing the PPS flat rate out of a pool
+with zero bond and nobody running it (measured at 4.1 coins/hour off one
+starter rig, forever, because `flatDrip` only asked whether the pool was
+PPS, not whether it still existed). All five closure paths — those three,
+a rival operator folding, and the player closing their own pool — now go
+through `closeSimPool`. The player-closes-own-pool path had the same bug
+in reverse: it released the player's groups but not the pool's simulated
+members, leaving their hashrate stuck in `_simPoolHash`, a bucket
+`drawSimWinner` skips, and absent from `_simSoloHash`, the bucket it
+walks. Callers keep their own bond handling and feed line; what they must
+not each own separately is who gets released.
+
+**Departure sampling scaled to population** (`simPulse`). Departures used
+to sample one miner an hour, a rate written when the network held about a
+hundred of them. At the population the network now reaches, a failed farm
+could sit derelict for years — still counted in `_simChainN`, still
+inflating both `chainDraw`'s crowding term and `simTargetOf`'s per-seat
+floor with people who'd already left. The number of looks per pulse is
+now scaled with population so the odds of any given broke miner giving up
+stay what they always were.
+
+**Hashrate-zero-before-release ordering** (`simPulse`'s departure branch).
+A departing miner's hashrate is zeroed *through* `setSimHash` first, so
+everything that follows (releasing any pool they owned) is a no-op against
+the running totals. A bare `addHash(m, -m.hash)` here previously left
+`m.hash` intact while `m` was removed from `G.s.sims`; if that miner owned
+a pool, the release loop's `setSimPool(m, 'solo')` then subtracted the
+same hashrate from `_simPoolHash` a second time and stranded it in
+`_simSoloHash` permanently — and `drawSimWinner` reads `_simSoloHash` to
+size the solo bucket.
+
+## Insolvency floor rig spec (`src/game/insolvency.js`)
+
+`FLOOR_RIG` / `FLOOR_COST` is the rig insolvency hands back when the farm
+is completely gone, and what the player would pay to build it themselves.
+Both used to be stated twice — the parts inline at the push site, and the
+price as a hardcoded sum that had drifted badly (12+16+32+26+9 = $95
+against a rig that actually costs $60, because the board and the card
+were repriced — $16→$4, $26→$3 — and the literal sum was never updated).
+
+Worth being exact about the impact of the fix: nothing observable changed
+at the time. The one place `FLOOR_COST` is read is only reachable with
+zero rigs and no construction queue, and every rung above it in
+`insolvency()` returns first, so cash is still the 0 set at the top of the
+function — the comparison is true at $95 and true at $60 alike. The guard
+states an intent ("only give one away if the player cannot buy one") that
+its position made vacuous at the time; it's kept because the intent is
+right and the escalation ladder may grow a rung that leaves cash behind.
+So this was a latent-correctness fix, not a balance change — one spec now,
+priced with the same formula the Build tab charges (`buildDraft.js`: frame
++ board + supply + cooling + n × (card + riser)).
+
+`n` on `FLOOR_RIG` is deliberately both the card count and the riser
+count: the build formula bills one riser per card, so a separate `risers`
+field on the spec would be a second number free to disagree with the
+first — the exact class of failure being fixed. There is deliberately no
+`ctrl` field on the spec itself: it's only read for non-gpu rig kinds, and
+no controller catalogue exists, so `PART('k3')` is undefined and pricing
+it into the sum would throw. `kind` lives on the spec because it decides
+which pricing formula applies. The object is frozen because it's the
+definition, not mutable state — changing it at runtime would put the spec
+and the price back out of step with each other.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
