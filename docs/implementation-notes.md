@@ -649,6 +649,38 @@ already counts groups that *are* in a given pool, so a group not yet
 joined is added on top — that's the comparison being made (what would
 change if you joined).
 
+## Swipe gesture composable (`src/composables/useSwipeAction.js`)
+
+Swipe-a-row-to-reveal-an-action, the pointer half of it. One row is open
+at a time. Dragging left past `SW_ARM` claims the gesture from the page
+scroll; past `SW_OPEN` it rests at `SW_REST` showing the button; past
+`SW_FIRE` it fires on release without needing the button at all. `SW_MAX`
+is a hard stop so a long drag can't pull the row off its own track.
+Everything is in CSS pixels of leftward travel.
+
+The composable knows nothing about rigs or any other domain: it deals in
+opaque row ids and calls back out for the two decisions that are the
+caller's — `can(id)` (checked on pointerdown and again before firing) and
+`fire(id)` (the action itself). `within` is a selector for the row
+wrapper; a pointerdown anywhere outside one closes the open row.
+
+`sw` is `reactive()` because the template positions the slide from it;
+`drag` is kept separate from `x > 0` so CSS can drop its transition only
+while a finger is actually down. `close()` animates shut (x goes to 0
+immediately, but the row stays mounted for the CSS transition's length so
+it slides home instead of vanishing); `reset()` shuts instantly with no
+animation, for when the list underneath changes and the open row may not
+even exist any more.
+
+In `onMove`, vertical wins ties (a mostly-vertical flick still scrolls the
+list), and once a drag is claimed, `SW_ARM` is subtracted back out of the
+travel distance so the row starts moving from where the finger actually
+is, not with a jump of the arming distance. A finished drag lands as a
+click on the row underneath; `takeClick()` lets the row's own click
+handler check first, so opening a detail sheet isn't the accidental
+result of swiping. Pressing the revealed button (`fireNow`) is not a
+drag, so there's no click to eat there.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
