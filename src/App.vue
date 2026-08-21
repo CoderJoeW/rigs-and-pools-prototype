@@ -64,7 +64,7 @@ watch(()=>g.s.toast.n, ()=>{
   clearTimeout(flashTimer);
   flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
 });
-let timer=null, saver=null, hiddenAt=null;
+let timer=null, saver=null, hiddenAt=null, lastTickAt=null;
 // Credits time lost to setInterval throttling while backgrounded: docs/implementation-notes.md#app-shell-srcappvue.
 const onVisibility=()=>{
   if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); g.saveNow(); }
@@ -73,6 +73,20 @@ const onVisibility=()=>{
     hiddenAt=null;
     g.creditAway(away);
   }
+};
+/* Backstop for stalls visibilitychange never reports — an OS-level sleep/
+   resume (lid close, screen lock) doesn't hide a foreground tab, so
+   onVisibility above never fires, yet setInterval was frozen for the whole
+   suspend just the same: docs/implementation-notes.md#app-shell-srcappvue. */
+const onTick=()=>{
+  const now=Date.now();
+  // A catch-up already in flight (from here or from onVisibility) is
+  // replaying game time itself — stepTick()ing alongside it would inject a
+  // stray live tick into the middle of that replay.
+  if(g.s.catchUp){ lastTickAt=now; return; }
+  const gap=lastTickAt!=null ? (now-lastTickAt)/1000 : 0;
+  lastTickAt=now;
+  if(gap>60) g.creditAway(gap); else g.stepTick();
 };
 const onLeave=()=>g.saveNow();
 // Boot sequencing (booting flag, catchUp overlay reused for backup import): docs/implementation-notes.md#app-shell-srcappvue.
@@ -84,7 +98,8 @@ onMounted(async ()=>{
   finally{
     // Unconditional startup even if loadSave rejected: docs/implementation-notes.md#app-shell-srcappvue.
     booting.value=false;
-    timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);
+    lastTickAt=Date.now();
+    timer=setInterval(onTick,g.C.TICK_MS);
     saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);
     g.saveNow();
     window.addEventListener('pagehide',onLeave);

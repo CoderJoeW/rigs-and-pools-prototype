@@ -131,6 +131,36 @@ describe('App', () => {
     }
   });
 
+  it('credits real time lost to a stall even with no visibilitychange at all (e.g. an OS sleep)', async () => {
+    // An OS-level sleep/lock freezes setInterval exactly like a backgrounded
+    // tab does, but never hides the tab — visibilitychange fires on neither
+    // end of it, so onVisibility's hiddenAt mechanism never engages. Only
+    // the tick loop's own gap-from-Date.now() check can catch this one.
+    const { wrapper, store } = mountWithStore(App, {
+      seed: (g) => { g.generatePreset(); g.build(); },
+    });
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(store.s.rigs.length).toBeGreaterThan(0);
+    const tBefore = store.s.t;
+
+    let now = Date.now();
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      now += 2 * 3600 * 1000; // two hours pass with the tab never hidden
+      // real (unmocked) wall-clock wait so the app's own real setInterval
+      // actually fires at least once while the mocked jump is still live
+      await new Promise(r => setTimeout(r, 150));
+
+      while (store.s.catchUp) await new Promise(r => setTimeout(r, 20));
+      await flushPromises();
+
+      expect(store.s.t).toBeGreaterThanOrEqual(tBefore + 2 * 3600 - 60);
+    } finally {
+      dateSpy.mockRestore();
+    }
+  });
+
   it('pins the overlay covering the whole screen during any catch-up, not just the loading one', () => {
     // jsdom doesn't do real hit-testing by z-index/position, so a click
     // dispatched at the "Restore from backup" button would fire its

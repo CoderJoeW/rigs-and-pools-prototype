@@ -492,6 +492,23 @@ only caught up on a full reload (via `loadSave`'s own away-time credit in
 mid-session case: note when the tab went hidden, then credit the real
 time that passed once it's visible again.
 
+**Stall catch-up (no visibility change at all).** `onVisibility` only
+fires on a hide/show transition, but a foreground tab can still lose the
+same real time without one — an OS-level sleep, screen lock, or lid close
+freezes `setInterval` right along with everything else, yet the tab was
+never hidden from the page's point of view, so `visibilitychange` never
+fires either at sleep or at wake. `onTick` (the timer's own callback) is
+the backstop: it stamps `lastTickAt` on every firing and, when the gap
+since the last one exceeds the same 60s floor `creditAway` already uses,
+treats that gap as away time instead of taking it as one ordinary tick.
+The ordinary case (ticks arriving close to `TICK_MS` apart, including
+mild backgrounded throttling) is untouched — `stepTick()` still runs with
+its usual fixed, speed-scaled `dt`, so this only ever engages for a real
+stall. Guarded against overlapping a catch-up already under way (from
+either this or `onVisibility`) the same way `hydrating` and `G.s.catchUp`
+already guard the other two entry points — otherwise a live tick could
+land in the middle of a replay that's mid-flight through `advance()`.
+
 **Boot sequencing.** `loadSave()` yields periodically during a long
 offline catch-up (`persistence.js`) rather than running as one blocking
 synchronous task, so the tab stays responsive — but Vue still mounts and
