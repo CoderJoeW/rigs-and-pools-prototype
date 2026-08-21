@@ -428,6 +428,97 @@ keeping caption, spotlight and the real screen in agreement no matter
 which of the two moves first. Guarded on actually differing so it can't
 bounce against the other watcher.
 
+## App shell (`src/App.vue`)
+
+**Theme sync.** `'auto'` leaves no `[data-theme]` so `main.css`'s
+`prefers-color-scheme` query decides the CSS palette; the
+`<meta name="theme-color">` that colors the OS status bar has no such
+query-based equivalent for content, so it's kept in sync here instead —
+including tracking a live system-preference change while on `'auto'`.
+`loadSave()` may overwrite `g.s.theme` after boot, and the watcher reacts
+to that too.
+
+**Ambient atmosphere.** The decorative `.ambient` layer reads the
+simulation's own sky rather than sitting still. Purely presentational: it
+consumes the same values TopBar already puts on screen as chips
+(`solarFactor`, ambient temp, cloud cover) and publishes four unitless
+0..1 factors that `main.css` folds into `.ambient`'s `color-mix()`
+gradients. Set on `documentElement` next to the theme-color sync for the
+same reason — it's a document-level paint detail, not something a
+component should own.
+
+The hour is restated here because `timeOfDay.js` keeps `hourOf()`
+internal (not on the store's export surface) — on the same `DAY_HOURS`
+cycle that module's `hourOf()` uses, not the 86400s-per-day economic
+clock. `elev` is that module's own `sin(pi*(h-6)/12)` solar curve, kept
+*signed* instead of clamped at 0 so it stays continuous through the
+night: +1 at noon, 0 at 06:00/18:00, -1 at midnight. That sign is what
+makes dawn and dusk a smooth crossing rather than a jump. The four
+factors: `--amb-lum` is how much light there is at all (mostly solar,
+with a daylight floor so an overcast noon still outranks midnight);
+`--amb-warm` is golden hour, dulled by cloud, plus a little of the
+afternoon's heat; `--amb-cool` is the night's cool cast, time-of-day only
+regardless of brightness; `--amb-haze` is cloud cover, which desaturates
+rather than dims. Only values that actually moved are written on each
+tick, since at 1x most ticks change nothing past 3 decimals.
+
+**Rank-up flash (issue #47).** #40 gave a rank-up its own toast, but a
+toast is one fixed box at the top of the screen the player may not be
+looking at, and the rarest, most permanent event in the game (5-6 in a
+whole run) occupied exactly the same amount of the visual field as a
+routine "Biggest block yet." Detected here rather than pushed from
+`tick.js` for the same reason the `--amb-*` factors are computed here:
+this is a presentational, document-level reaction to a game-state change,
+and the game has no business knowing the screen flashed. `pop()` already
+funnels every "worth interrupting the player for" moment through one
+place and stamps it with a `cls`, and `s.toast.n` is the counter that
+increments once per toast that actually lands — so watching it catches
+exactly the rank-ups that reached the screen, and none that `pop()`'s
+rate limit swallowed. Fires only for `cls==='rankup'`. The watch is not
+immediate, so a save restored with a rank-up toast still in `s.toast`
+doesn't re-flash it on reload. The flash element is mounted for
+`FLASH_MS` then removed — with motion suppressed the layer is a static
+edge glow present for that window and then gone (`.rankflash` in
+`main.css`); the CSS animation is shorter than the window, so it has
+settled to transparent before the node leaves. The `:key` is the
+counter, so two rank-ups in quick succession restart the animation rather
+than the second landing on an element mid-fade.
+
+**Tab-visibility time catch-up.** `setInterval` is throttled (often to
+~1/s) or fully suspended once a tab is backgrounded, so the tick loop
+effectively stalls while the app isn't in front — without this, game time
+only caught up on a full reload (via `loadSave`'s own away-time credit in
+`persistence.js`). `onVisibility` mirrors that mechanism for the
+mid-session case: note when the tab went hidden, then credit the real
+time that passed once it's visible again.
+
+**Boot sequencing.** `loadSave()` yields periodically during a long
+offline catch-up (`persistence.js`) rather than running as one blocking
+synchronous task, so the tab stays responsive — but Vue still mounts and
+paints the *default* state on the very first frame regardless, since
+`loadSave` hasn't resolved yet. Without the `booting` flag that shows as
+a flash of a fresh $500 start before the real save (and its catch-up)
+lands on top of it a moment later.
+
+The catch-up progress display itself (bound to `g.s.catchUp`) is
+deliberately *not* nested inside the `booting` branch, only guarded by
+`g.s.catchUp` being set on its own — a catch-up also runs on MarketView's
+"Restore from backup" import, well after boot, with the rest of the app
+fully mounted and interactive around it. Rendered as a full-screen
+overlay there, it doubles as the fix for a real bug: two overlapping
+catch-ups collide and corrupt each other (see the `hydrating` guard in
+`persistence.js`) — the button that starts one is behind this overlay the
+instant one is running, so a second click during the first import's
+catch-up can no longer reach it.
+
+Everything after the `try`/`finally` in `onMounted` runs unconditionally,
+not just `booting.value=false` — a `loadSave()` that somehow rejected
+must not strand the app on the loading screen forever with the tick loop,
+autosave and pagehide listener all silently never having started either.
+A `finally` block always runs to completion before the original rejection
+(if any) continues propagating, so putting the real startup there rather
+than after the `try`/`finally` is what makes it unconditional too.
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
