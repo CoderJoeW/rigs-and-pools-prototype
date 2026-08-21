@@ -213,6 +213,38 @@ still out of reach, and a bad one to keep buying once `s-sol1` isn't:
 matching `s-sol1`'s 840 W delivered would take 28 of these, for $2,100 —
 50% more than `s-sol1`'s own $1,400.
 
+## Block-count milestone thresholds (`b2`/`b3` in `milestones.js`)
+
+design-spec.md §8 covers the career board generally. `b2`/`b3` are pure
+block-*count* milestones, deliberately distinct from `b4`'s dollar
+threshold, and their specific numbers needed real derivation: post-issue
+#17 (Tessera's $-value rebalance), an untouched passive single rig on
+Tessera still solves ~2,300 blocks/day purely from its ~20s block target
+— pure elapsed-time volume, not skill or decisions. At the old thresholds
+(25, 500) both cleared inside the very first sim-day, before the player
+had made a single choice beyond the opening build.
+
+`h1`/`b1` stay untouched on purpose: `h1` deliberately mirrors
+onboarding's `earn` step (see `onboarding.js`), and `b1` is meant to be a
+quick, celebratory first-block moment — both are supposed to fire fast.
+
+`b2`/`b3` are raised to actually require sustained operation: ~7,500
+(~3 days at that same passive rate) for "habit"; ~50,000 for "machine" is
+out of reach of a rig left running with zero further attention — wear
+drags a never-repaired rig's own output down over time, and it
+permanently brownouts (measured: day 12-14, plateaued around 24k-28k
+blocks) well short of 50k, the same "neglect has real consequences" bar
+the wear/brownout system already sets elsewhere. Reaching it means either
+some stewardship (a repair, an added rig) or the ordinary early-game path
+of banking blocks on fast Tessera before migrating elsewhere — it does
+*not* require staying on Tessera forever, since `blocksSolved` is a
+lifetime total a chain switch never resets, but it does mean this one
+track is inherently paced by how much fast-chain volume a run
+accumulates, the same way the Pools track is paced by whether a run ever
+founds one. Both remain within reach of patient idle play (design-spec.md
+§12 explicitly protects that pattern) without being clearable before
+breakfast on day one.
+
 ## `IDLE_CASH_MULT` (2)
 
 Issue #7: nothing pulled cash toward the next purchase once a rig and site

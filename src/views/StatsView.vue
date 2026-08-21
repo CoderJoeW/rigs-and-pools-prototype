@@ -33,12 +33,8 @@ const segKey=e=>{
   const el=segEl[seg.value]; if(el&&el.focus) el.focus();
 };
 
-/* One emblem per milestone: six contact sheets, one per track, each cut into
-   four. Every track has its own metal and its own engraved colour, and within
-   a track the four grow more ornate — so the panel reads as a set of awards
-   with an order to them rather than as a checklist with pictures stuck on.
-   An emblem is lit when earned and knocked back to near-monochrome when not,
-   which is the one thing the render itself cannot say. */
+// One emblem per milestone, six per-track contact sheets cut into four;
+// lit when earned, near-monochrome when not.
 const EMBLEMS = import.meta.glob('../assets/mile/*.webp', { eager: true, import: 'default' });
 const emblemOf = id => EMBLEMS[`../assets/mile/${id}.webp`];
 
@@ -53,12 +49,8 @@ const nextRank=computed(()=>{
   const i=rankIdx.value+1;
   return i<g.RANKS.length ? g.RANKS[i] : null;
 });
-/* The mockup's XP bar, over the currency this game actually counts:
-   milestones. Measured BETWEEN the two rank thresholds rather than from
-   zero, so the bar reports progress through the rank you are in — from zero
-   it would read as nearly full for most of the last rank and barely move
-   across a whole tier. The top rank has nothing above it, so it is complete
-   rather than dividing by a threshold that does not exist. */
+// Progress measured between the two rank thresholds, not from zero, so it
+// reports progress through the CURRENT rank rather than the whole climb.
 const rankProg=computed(()=>{
   const from=g.RANKS[rankIdx.value][0];
   const to=nextRank.value?nextRank.value[0]:null;
