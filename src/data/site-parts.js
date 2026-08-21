@@ -10,26 +10,43 @@ export const SHELLS = [
   { id:'warehouse', name:'Warehouse bay',          slots:140, price:400000, hours:300 },
 ];
 /* 2026-08-21: grid electricity moved off the per-tier rate ladder onto one
-   flat $15/kWh baseline (rate:'grid' entries only — the diesel generator
-   keeps its own flat 9.90, being off-grid power, not "the grid"). That
-   baseline IS the shoulder rate: TOU:{off,shoulder,peak} in constants.js
-   still multiplies it exactly as before (shoulder's multiplier is 1.00 by
-   definition), so a bigger grid service no longer buys a cheaper rate — the
-   ladder's job now is purely peak WATTAGE (1,500 -> 96,000), at a rising
-   upfront price and build time. Previously 4.60/4.40/3.95/3.40 (before that,
-   4.20/4.00/3.60/3.10 — see the prior revision of this comment). */
+   flat $15/kWh baseline (rate:'grid' entries only). That baseline IS the
+   shoulder rate: TOU:{off,shoulder,peak} in constants.js still multiplies it
+   exactly as before (shoulder's multiplier is 1.00 by definition), so a
+   bigger grid service no longer buys a cheaper rate — the ladder's job now
+   is purely peak WATTAGE (1,500 -> 96,000), at a rising upfront price and
+   build time. Previously 4.60/4.40/3.95/3.40 (before that, 4.20/4.00/3.60/
+   3.10 — see the prior revision of this comment).
+
+   The diesel generator is rebalanced right along with it, to hold the same
+   relationship it always had: strictly worse than grid at ANY band,
+   including peak — 9.90 was 13% above the old domestic peak rate (4.60 x
+   1.90 = 8.74); 32.30 is the same 13% above the new one (15.00 x 1.90 =
+   28.50). Its own rate stays flat — off-grid power doesn't see the tariff
+   band — so what it buys is flexibility (no service to build, no capacity
+   ceiling tied to it), not a price a grid-connected site would ever prefer. */
 export const SOURCES = [
   { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:15.00, price:0,     hours:0 },
   { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:15.00, price:120,   hours:10 },
   { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:15.00, price:900,   hours:30 },
   { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:15.00, price:6500,  hours:90 },
-  { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:9.90, price:5200,  hours:14 },
+  { id:'s-gen',   name:'20 kW diesel set',    kind:'gen',   peak:20000, rate:32.30, price:5200,  hours:14 },
   /* Small renewables are cheap to reach and genuinely bad — `yield` is the
      fraction of nameplate the kit actually delivers, which is how real small kit
      behaves: budget panels with no tracking on a poor roof, and especially
      micro-turbines sitting in turbulent air near the ground. The ladder stays
      monotone on EFFECTIVE cost per watt ($1.67 → $1.29 → $0.97 → $0.87 for
-     solar), so paying more still always buys better, exactly as elsewhere. */
+     solar), so paying more still always buys better, exactly as elsewhere.
+
+     s-solmini breaks that trend ON PURPOSE, at the bottom: one panel, no
+     tracking, cheap enough to buy turn one ($150, against $500 starting
+     cash) and small enough to barely matter (150 W nameplate). Its $2.50
+     effective cost/watt is the worst of any solar tier — 50% worse than
+     s-sol1's $1.67 — so it is a fine impulse buy while every other source is
+     still out of reach, and a bad one to keep buying once s-sol1 isn't: ten
+     of these cost more than one Rooftop panel set (1,500 vs 1,400) while
+     delivering barely 70% of its watts (600 W vs 840 W effective). */
+  { id:'s-solmini', name:'Single solar panel', kind:'solar', peak:150,   yield:0.40, rate:0.00, price:150,   hours:2 },
   { id:'s-sol1',  name:'Rooftop panel set',   kind:'solar', peak:1200,  yield:0.70, rate:0.00, price:1400,  hours:8 },
   { id:'s-sol3',  name:'3 kW panel array',    kind:'solar', peak:3000,  yield:0.85, rate:0.00, price:3300,  hours:18 },
   { id:'s-sol8',  name:'8 kW solar array',    kind:'solar', peak:8000,  rate:0.00, price:7800,  hours:40 },
