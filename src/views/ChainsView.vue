@@ -18,13 +18,7 @@ import { CHAIN_HUE } from '../data/chains.js';
 const g = useGameStore();
 const open=reactive({});
 
-/* ---- the tab's three halves -------------------------------------------
-   This tab was one scroll carrying five unrelated sections: the chains, the
-   pool market, the rivals in it, the pools you run, and the form to found
-   another. The mockup puts a segmented control at the top, and these are the
-   seams it falls along — the chains you mine, the market you compete in, and
-   the business you run. Nothing moved between sections and nothing was cut;
-   the scroll was only ever the reason they were hard to find. */
+// Segmented layout rationale: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
   {k:'chains', label:'Chains',
    icon:'M9.5 14.5 14.5 9.5M8 12l-2 2a3.5 3.5 0 0 0 5 5l2-2M16 12l2-2a3.5 3.5 0 0 0-5-5l-2 2'},
@@ -33,9 +27,7 @@ const SEGS=[
    icon:'M16 20v-1.6a3.4 3.4 0 0 0-3.4-3.4H6.4A3.4 3.4 0 0 0 3 18.4V20M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1.6a3.4 3.4 0 0 0-2.6-3.3M15.5 4.2a3.4 3.4 0 0 1 0 6.6'},
 ];
 const seg=ref('chains');
-/* A tablist is a single tab stop with the arrows moving between tabs, so the
-   roles the mockup's control implies are actually implemented rather than
-   only announced: one tabindex=0 at a time, and focus follows selection. */
+// Real ARIA tablist, not just visually styled: docs/implementation-notes.md.
 const segEl=reactive({});
 const segKey=e=>{
   const d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1
@@ -48,22 +40,11 @@ const segKey=e=>{
   seg.value=SEGS[n].k;
   const el=segEl[seg.value]; if(el&&el.focus) el.focus();
 };
-/* The (i) beside ACTIVE CHAINS. Its own flag rather than s.help: this one
-   paragraph is a reference someone comes back to, and hiding it behind the
-   app-wide hint preference put it out of reach of a player who had turned
-   hints off precisely because they did not want them on every other row. */
+// chainsInfo has its own flag, not s.help: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const chainsInfo=ref(false);
 
-/* ---- the chain card ---------------------------------------------------
-   Everything the card states is something the simulation already computes;
-   nothing here is a new number invented for the design.
-
-   Derived once per chain in one computed rather than called from the
-   template, the way FarmView already does it for the same helpers: ticks
-   land ten times a second, five cards read three or four of these each, and
-   groupAdvice alone walks every chain against every group against every rig.
-   Called from the template that is O(chains^2 x groups x rigs) at 10Hz for
-   figures that change on a block. */
+// cards computed once per chain, not from the template — perf rationale:
+// docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const hueOf=c=>CHAIN_HUE[c.id];
 /* Difficulty is a raw magnitude, not a hashrate, so it takes its own compact
    formatter rather than fmt.hash's MH/GH/TH ladder. */
@@ -88,19 +69,10 @@ const cards=computed(()=>g.s.chains.map(c=>{
     mine:g.myHash(c),
     net:g.chainHash(c),
     diff:g.diffOf(c),
-    /* What the chain itself pays out in a day: one block every `target`
-       seconds, `reward` coins each. A property of the chain, not of your
-       share of it. */
-    emission:86400/c.target*c.reward,
-    // The realized rate, not the `mult` constant: chains.js documents the two
-    // diverging by ~17% once the price clamps.
-    rate:g.revPerMh(c),
+    emission:86400/c.target*c.reward,   // chain's own daily payout, not your share of it
+    rate:g.revPerMh(c),   // realized rate, not `mult` — chains.js: the two diverge ~17% once price clamps
     ease, easeWord:easeWord(ease),
-    /* The two advisories the Farm tab already raises against a group,
-       restated against the chain they point at — a chain you have outgrown
-       and a chain at its ceiling are facts about the chain, and this is the
-       tab about chains. */
-    outgrown:groups.some(gr=>g.groupAdvice(gr)),
+    outgrown:groups.some(gr=>g.groupAdvice(gr)),   // Farm's advisories, restated as chain facts
     ceiling:g.chainCeiling(c),
     eta:g.blockETA(c), prog:g.blockProg(c),
     miners:g.simsOn(c.id),
@@ -108,22 +80,8 @@ const cards=computed(()=>g.s.chains.map(c=>{
   };
 }));
 
-/* ---- solo against a pool ----------------------------------------------
-   Deliberately a comparison of HOW OFTEN you are paid, not of how much. In
-   this simulation a pool can never pay more per hash than solo — evMult is
-   (1-fee) against solo's 1+TX_FEES — so a "pool advantage" measured in money
-   would be a number that is always below 1. What a pool actually buys is
-   frequency: its blocks land far more often than yours would, and every one
-   of them pays you a share. That is the trade the two columns are for, and
-   the hint underneath says the other half of it out loud.
-
-   The counterfactual for hashrate that is not in a pool is the biggest live
-   pool on its chain — the one it would most likely join. Hashrate on a chain
-   with no pool at all contributes its solo rate to both columns, because solo
-   is the only thing on offer there. */
+// Solo-vs-pool comparison rationale (frequency not money): docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const bestPoolOn=c=>{
-  // poolHash is a full scan of the rigs, so each candidate is measured once
-  // rather than the incumbent being re-measured for every comparison.
   let best=null, bestH=-1;
   for(const p of g.s.pools){
     if(!p.live||p.chain!==c.id) continue;
@@ -134,21 +92,13 @@ const bestPoolOn=c=>{
 };
 const payouts=computed(()=>{
   let solo=0, pooled=0;
-  /* Gathered per pool rather than added per group: a pool's blocks pay every
-     member, so it contributes once however many of your groups sit in it —
-     but each of those groups still has to be counted into what the pool would
-     be holding, which a dedupe-and-skip would throw away. */
   const join=new Map();
   for(const gr of g.s.groups){
     const h=g.groupHash(gr); if(h<=0) continue;
     const c=g.chain(gr.chain); if(!c) continue;
     solo+=86400*h/Math.max(1,g.diffOf(c));
     const p=gr.pool==='solo'?bestPoolOn(c):g.poolOf(gr.pool);
-    // Nowhere to point it: solo is the only thing on offer on this chain, so
-    // it counts the same on both sides rather than vanishing from one.
     if(!p){ pooled+=86400*h/Math.max(1,g.diffOf(c)); continue; }
-    // poolHash already counts the groups that ARE in p; one you have not
-    // joined would be bigger by yours, which is the comparison being made.
     join.set(p, (join.get(p)||0)+(gr.pool===p.id?0:h));
   }
   for(const [p,extra] of join)

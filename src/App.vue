@@ -16,11 +16,7 @@ import MarketView from './views/MarketView.vue';
 import StatsView from './views/StatsView.vue';
 
 const g = useGameStore();
-// 'auto' leaves no [data-theme] so main.css's prefers-color-scheme query decides
-// the CSS palette; the <meta name="theme-color"> that colors the OS status bar
-// has no such query-based equivalent for content, so it's kept in sync here
-// instead — including tracking a live system-preference change while on auto.
-// loadSave() may overwrite g.s.theme after boot, and this reacts to that too.
+// Theme sync (meta theme-color, system-preference tracking): docs/implementation-notes.md#app-shell-srcappvue.
 const LIGHT_BG='#F7F6F1', DARK_BG='#0A0D0A';
 const darkMedia = typeof matchMedia==='function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 function applyTheme(theme){
@@ -34,21 +30,7 @@ watch(()=>g.s.theme, applyTheme, {immediate:true});
 const onSystemThemeChange=()=>{ if(g.s.theme==='auto') applyTheme('auto'); };
 if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
 
-/* Ambient atmosphere — the decorative .ambient layer reads the simulation's own
-   sky rather than sitting still. Purely presentational: it consumes the same
-   values the TopBar already puts on screen as chips (solarFactor, ambient temp,
-   cloud cover) and publishes four unitless 0..1 factors that main.css folds into
-   .ambient's color-mix() gradients. Set on documentElement next to the
-   theme-color sync above for the same reason: it's a document-level paint
-   detail, not something a component should own.
-
-   The hour is restated here because timeOfDay.js keeps hourOf() internal (it
-   isn't on the store's export surface) — on the same DAY_HOURS cycle that
-   module's hourOf() uses, not the 86400s-per-day economic clock. `elev` is
-   that module's own sin(pi*(h-6)/12) solar curve, kept SIGNED instead of
-   clamped at 0 so it stays continuous through the night: +1 at noon, 0 at
-   06:00/18:00, -1 at midnight. That sign is what makes dawn and dusk a smooth
-   crossing rather than a jump. */
+// Ambient atmosphere factors, published to documentElement style: docs/implementation-notes.md#app-shell-srcappvue.
 const clamp01 = v => v<0 ? 0 : v>1 ? 1 : v;
 const CYCLE_S = g.C.DAY_HOURS*3600;
 const atmosphere = computed(()=>{
@@ -60,52 +42,19 @@ const atmosphere = computed(()=>{
   const heat = clamp01((g.ambient-g.C.AMBIENT_LOW)/(g.C.AMBIENT_HIGH-g.C.AMBIENT_LOW));
   const solar = clamp01(g.solarFactor);               // already cloud-attenuated by sky()
   return {
-    // How much light there is at all: mostly solar, with a floor of daylight so
-    // an overcast noon still outranks midnight.
     '--amb-lum': clamp01(0.08+0.62*solar+0.30*day).toFixed(3),
-    // Golden hour, dulled by cloud, plus a little of the afternoon's heat.
     '--amb-warm': clamp01(0.80*golden*(1-0.55*cloud)+0.20*heat*day).toFixed(3),
-    // The night's cool cast — time of day only, independent of how bright it is.
     '--amb-cool': (1-day).toFixed(3),
-    // Cloud cover, which desaturates everything rather than dimming it.
     '--amb-haze': cloud.toFixed(3),
   };
 });
 const AMB_KEYS=['--amb-lum','--amb-warm','--amb-cool','--amb-haze'];
 const ambApplied={};
-/* Ticks land every TICK_MS, so only the values that actually moved are written
-   — at 1x most ticks change nothing past 3 decimals. */
 watch(atmosphere, vals=>{
   const st=document.documentElement.style;
   for(const k of AMB_KEYS) if(ambApplied[k]!==vals[k]){ ambApplied[k]=vals[k]; st.setProperty(k,vals[k]); }
 }, {immediate:true});
-/* Rank-up flourish (issue #47) — the screen acknowledges a rank-up, not just
-   the toast. #40 gave a rank-up its own toast, but a toast is one fixed box at
-   the top of the screen the player may not be looking at, and the rarest,
-   most permanent event in the game (5-6 in a whole run) occupied exactly the
-   same amount of the visual field as a routine "Biggest block yet".
-
-   Detected here rather than pushed from tick.js for the same reason the
-   --amb-* factors above are computed here: this is a presentational,
-   document-level reaction to a game-state change, and the game has no
-   business knowing the screen flashed. pop() already funnels every "worth
-   interrupting the player for" moment through one place and stamps it with a
-   cls, and s.toast.n is the counter that increments once per toast that
-   actually lands — so watching it catches exactly the rank-ups that reached
-   the screen, and none that pop()'s rate limit swallowed. It fires only for
-   cls==='rankup'; every other kind of toast is unaccompanied, as before.
-
-   Nothing is watched deeply and nothing is read on the first tick: the watch
-   is not immediate, so a save restored with a rank-up toast still in s.toast
-   does not re-flash it on reload.
-
-   The element is mounted for FLASH_MS and then removed, which is what makes
-   the reduced-motion fallback work: with motion suppressed the layer is a
-   static edge glow that is simply present for that window and then gone (see
-   .rankflash in main.css). The CSS animation is shorter than the window, so
-   it has already settled to transparent before the node leaves. The :key is
-   the counter, so two rank-ups in quick succession restart the animation
-   rather than the second one landing on an element mid-fade. */
+// Rank-up screen flash (issue #47): docs/implementation-notes.md#app-shell-srcappvue.
 const FLASH_MS=900;
 const rankFlash=ref(0);
 let flashTimer=null;
@@ -116,12 +65,7 @@ watch(()=>g.s.toast.n, ()=>{
   flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
 });
 let timer=null, saver=null, hiddenAt=null;
-/* setInterval is throttled (often to ~1/s) or fully suspended once a tab is
-   backgrounded, so the tick loop effectively stalls while the app isn't in
-   front — without this, game time only caught up on a full reload (via
-   loadSave's own away-time credit in persistence.js). Mirrors that same
-   mechanism for the mid-session case: note when the tab went hidden, then
-   credit the real time that passed once it's visible again. */
+// Credits time lost to setInterval throttling while backgrounded: docs/implementation-notes.md#app-shell-srcappvue.
 const onVisibility=()=>{
   if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); g.saveNow(); }
   else if(hiddenAt!=null){
@@ -131,37 +75,14 @@ const onVisibility=()=>{
   }
 };
 const onLeave=()=>g.saveNow();
-/* loadSave() now yields periodically during a long offline catch-up (see
-   persistence.js) rather than running as one blocking synchronous task, so
-   the tab stays responsive — but Vue still mounts and paints the DEFAULT
-   state on the very first frame regardless, since loadSave hasn't resolved
-   yet. Without this flag that shows as a flash of a fresh $500 start
-   before the real save (and its catch-up) lands on top of it a moment
-   later. `booting` covers that gap with a loading screen instead.
-
-   The catch-up progress display itself (bound to g.s.catchUp in the
-   template) is deliberately NOT nested inside this flag's branch, only
-   guarded by g.s.catchUp being set on its own — a catch-up also runs on
-   MarketView's "Restore from backup" import, well after boot, with the
-   rest of the app fully mounted and interactive around it. Rendered as a
-   full-screen overlay there, it doubles as the fix for a real bug: two
-   overlapping catch-ups collide and corrupt each other (see the
-   `hydrating` guard in persistence.js) — the button that starts one is
-   behind this overlay the instant one is running, so a second click
-   during the first import's catch-up can no longer reach it. */
+// Boot sequencing (booting flag, catchUp overlay reused for backup import): docs/implementation-notes.md#app-shell-srcappvue.
 const booting=ref(true);
 const catchUpPct=computed(()=> g.s.catchUp
   ? Math.round(g.s.catchUp.done/g.s.catchUp.credited*100) : 0);
 onMounted(async ()=>{
   try{ await g.loadSave(); }                 // resume first, then start the clock
   finally{
-    // everything below is unconditional, not just booting=false — a
-    // loadSave() that somehow rejected must not strand the app on this
-    // loading screen forever WITH the tick loop, autosave and pagehide
-    // listener all silently never having started either. A finally block
-    // always runs to completion before the original rejection (if any)
-    // continues propagating, so putting the real startup here rather than
-    // after the try/finally is what makes it unconditional too.
+    // Unconditional startup even if loadSave rejected: docs/implementation-notes.md#app-shell-srcappvue.
     booting.value=false;
     timer=setInterval(()=>g.stepTick(),g.C.TICK_MS);
     saver=setInterval(()=>g.saveNow(),g.C.SAVE_EVERY*1000);

@@ -1,54 +1,19 @@
 import { reactive } from 'vue';
 
-/* audio — three short synthesized cues, no asset files.
-
-   WHY SYNTHESIS. Every sound here is built at play time from oscillators and
-   gain envelopes, so the bundle gains nothing but this file: no audio assets
-   to license, host, cache-bust or wait on before the first cue can fire.
-
-   WHY A SERVICE, NOT A game/*.js MODULE. The game modules are installed into
-   the shared context G because they read and write game state. Sound has no
-   game state — it is a pure side effect with exactly one preference behind it,
-   and that preference deliberately does NOT live in the save (see below). So
-   it is a plain singleton, imported directly by the two places that need it,
-   the same way src/services/storage.js is.
-
-   WHY ITS OWN localStorage KEY, NOT g.s. `g.s.help`/`g.s.theme` were the
-   obvious precedent, but everything in `g.s` is written into the save blob and
-   is therefore also EXPORTED and IMPORTED (persistence.js hydrates with
-   Object.assign(G.s, data.state)). Loading someone else's backup, or your own
-   from another machine, would then reach across and unmute a device that was
-   deliberately muted. Whether this browser tab is allowed to make noise is a
-   property of the device and the moment, not of the run — so it gets its own
-   key and survives a save wipe, an import, and starting a fresh game. */
+// Audio service — synthesized cues, own localStorage key, not a game/*.js
+// module. Full rationale: docs/implementation-notes.md#audio-service-srcservicesaudiojs.
 
 const KEY = 'rigs-and-pools-audio';
 
-/* Toast class first, then toast kind — pop()'s existing vocabulary, unchanged.
-   Anything not named here stays silent, which is almost every toast: only the
-   three moments issue #46 calls out actually earn a sound. */
 const CUE = { rankup:'rankup', jackpot:'jackpot', record:'jackpot', block:'block' };
 
-/* Cooldowns in REAL milliseconds, exactly like C.TOAST_GAP — a speed
-   multiplier moves game time, not Date.now(), so 3600x cannot beat these.
-   Tessera's 20 s blocks arrive every 20 000 real ms at 1x and every ~5.6 ms at
-   3600x; the block cue is the one that has to survive that, so it carries the
-   longest gap. A rank-up fires five or six times in an entire run and is never
-   throttled. */
+// Real-millisecond cooldowns, immune to the speed multiplier: docs/implementation-notes.md.
 const COOLDOWN = { block:1200, jackpot:600, rankup:0 };
 
 const VOLUMES = [0, 0.45, 0.9];       // the pill cycles through these
 
 export const sfx = reactive({
-  /* DEFAULT: SILENT. The issue floated "probably on, but quiet"; this errs
-     the other way on purpose. A tab that starts making noise on its own is
-     the one failure here that cannot be undone after the fact, and browser
-     autoplay policy makes "on by default" a half-truth anyway — nothing can
-     sound until the first gesture, so a default-on build's first cue lands
-     unannounced in the middle of whatever the player just clicked. Opt-in,
-     one visibly-labelled click away in the top bar, and remembered forever
-     after. */
-  volume: 0,
+  volume: 0,   // default silent, deliberately — docs/implementation-notes.md
   ready: false,        // a running AudioContext exists
   busy: false,         // offline catch-up is replaying hours; stay quiet
   plays: 0,            // observable counters — the e2e check reads these
@@ -77,12 +42,8 @@ loadPref();
 let ctx = null, master = null;
 const lastAt = Object.create(null);
 
-/* Never constructed at import or at page load: browsers start a context made
-   outside a gesture in 'suspended' and log about it, and a suspended context
-   would silently queue everything the offline catch-up replays. unlock() is
-   called from the toggle's own click handler, and from a one-shot document
-   gesture listener armed in main.js for players who already turned sound on
-   in an earlier session. */
+// Never constructed at import/page load — must be inside a user gesture:
+// docs/implementation-notes.md#audio-service-srcservicesaudiojs.
 export function unlock(){
   if(typeof window === 'undefined') return false;
   const Ctor = window.AudioContext || window.webkitAudioContext;
@@ -98,19 +59,14 @@ export function unlock(){
     sfx.ready = ctx.state === 'running';
     return true;
   }catch(e){
-    /* Not fatal — the game is playable in silence — but not silent about it
-       either: a swallowed failure here is indistinguishable from "the player
-       muted it", and this codebase has been bitten by exactly that before
-       (see tick.js's milestone catch). */
+    // Logged, not silently swallowed — docs/implementation-notes.md.
     console.warn('audio unavailable:', e && e.message);
     ctx = null; master = null; sfx.ready = false; return false;
   }
 }
 
 /* ---- voices ---- */
-/* One enveloped oscillator. exponentialRampToValueAtTime never reaches 0, so
-   envelopes start and end at 0.0001 rather than 0 — ramping to a true zero
-   throws, and starting at a true zero makes the ramp a no-op (and a click). */
+// Envelopes start/end at 0.0001, not 0 — see docs/implementation-notes.md.
 function voice(out, at, o){
   const osc = ctx.createOscillator(), g = ctx.createGain();
   osc.type = o.type || 'sine';
@@ -124,9 +80,7 @@ function voice(out, at, o){
   osc.start(at); osc.stop(at + o.dur + 0.03);
 }
 
-/* Three cues, deliberately unequal in weight — the rarer the event, the more
-   there is to hear. A block is one note, a jackpot is a chord that arrives in
-   pieces, a rank-up is the only one that resolves upward and rings out. */
+// Three cues, deliberately unequal in weight: docs/implementation-notes.md.
 const VOICES = {
   // routine income: a soft, short, falling blip. Nothing to notice twice.
   block(out, t){
@@ -178,9 +132,7 @@ export function play(name){
   }catch(e){ return false; }
   lastAt[name] = now;
   sfx.plays++; sfx.last = name;
-  /* A cheap, dependency-free seam: an end-to-end check can prove a real block
-     or rank-up reached the audio path (and that muting suppresses it) without
-     a sound card. Nothing in the app listens. */
+  // Test seam, nothing in-app listens: docs/implementation-notes.md.
   try{ window.dispatchEvent(new CustomEvent('rp-sfx', { detail:{ name, plays: sfx.plays } })); }
   catch(e){}
   return true;
@@ -194,10 +146,7 @@ export function cue(cls, kind){
 }
 
 /* ---- the control ---- */
-/* One pill, three states: muted -> quiet -> louder -> muted. A separate
-   slider would have to fit into a top bar that is already full at 320 px, and
-   a game with three cues does not need continuous gain — it needs "off",
-   "on", and "on, I am across the room". */
+// 3-state pill, not a slider: docs/implementation-notes.md.
 export function cycleVolume(){
   const i = VOLUMES.indexOf(sfx.volume);
   sfx.volume = VOLUMES[(i < 0 ? 0 : i + 1) % VOLUMES.length];

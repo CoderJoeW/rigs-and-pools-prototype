@@ -1,31 +1,8 @@
 import { computed } from 'vue';
 
-/* Onboarding — a reactive coach, plus one scripted walkthrough.
-   The coach below is still what v57's removal note describes: no step
-   index, no "next" to drift out of sync — each step is a predicate over
-   real game state, and the first one not yet satisfied is what's shown.
-   TOUR_SLIDES is deliberately the one click-through exception. A brand-new
-   player has zero state for a predicate to read yet — no rig, no site
-   choice, nothing to react to — so there is nothing for the reactive coach
-   to say until 'build' resolves itself. The tour exists to fill exactly
-   that gap: game basics and every tab, once, before the coach has
-   anything to work with. It gates on nextId itself (see showTour) rather
-   than tracking a slide index in a predicate, so it still can't drift the
-   way a tracked tour could — building a rig by any route ends it outright,
-   tour or no tour.
-
-   Each slide names the real tab it's about AND a `target` — a CSS selector
-   for the one element on that tab worth actually looking at, tagged with a
-   data-tour attribute in the view itself (FarmView's empty-state card,
-   BuildView's Order-parts button, etc.). The tour drives navigation there
-   itself (WelcomeTour.vue watches the slide and sets s.tab to match), then
-   spotlights the target: everything else on screen dims, the target stays
-   lit. So a slide is always pointing at one real, live, specific thing —
-   not just the right tab in the abstract. It's a caption and a spotlight,
-   not a modal: the dimming is purely visual (pointer-events:none — nothing
-   here blocks tapping around, or through the highlight, on your own), and
-   doing the thing a slide is pointing at (e.g. actually building on the
-   last one) ends the tour exactly the same way skipping it would. */
+// Onboarding — a reactive coach plus one scripted walkthrough. Full
+// rationale (why predicates not a step index, why TOUR_SLIDES is the
+// click-through exception, target/spotlight mechanics): docs/onboarding.md.
 const TOUR_SLIDES = [
   { tab:'farm', target:'[data-tour="farm"]', title:'Welcome to Rigs & Pools',
     body:'This is Farm, your dashboard. You’re starting with $500, a spare bedroom, and a 1.5 kW outlet. Rigs run 24/7, earning whether or not you’re watching — let’s walk through every tab so you know what you’re looking at.' },
@@ -49,23 +26,10 @@ const STEPS = [
   { id:'earn',
     done: G => G.totalHash.value>=100, // mirrors milestone h1, "First real hashrate"
     text: 'Rig ordered — it starts earning once assembly finishes. Watch it on Farm, or check Chains to see where else it could mine.' },
-  { id:'grow',
-    // issue #8: the rival-pool layer (12 named competitors, live reputation,
-    // a PPS/PPLNS mix) is some of the game's best content, but it only
-    // exists on the non-Tessera chains — so it goes entirely unseen by a
-    // player who never has a concrete reason to leave the newcomer chain.
-    // Naming what's actually there (reputation, fills, the PPS/PPLNS
-    // choice) gives Chains a specific pull instead of a generic "or found
-    // a pool" afterthought; the second-site path stays equally valid.
+  { id:'grow',   // issue #8 rationale: docs/onboarding.md
     done: G => G.s.sites.length>1 || G.s.pools.some(p=>p.owner==='you'),
     text: 'Cash flowing? Add a second site on Sites — or check Chains: Halcyon, Nova, Ferro and Obelisk each run rival pools with live reputations and fills, and founding your own grows past what one rig on one chain can earn.' },
-  { id:'automate',
-    // Rigs run 24/7 whether or not anyone is watching (§1's "idle floor"),
-    // and with no notifications a rig can drift into losing money over
-    // hours with nothing announcing it (§2's automated-shutdown section).
-    // Nothing had ever pointed a new player at the one lever that makes
-    // that safe. Placed last: it only matters once there's a farm worth
-    // protecting, and by 'grow' there is.
+  { id:'automate',   // placed last deliberately: docs/onboarding.md
     done: G => !!(G.s.autoOff || G.s.autoFix),
     text: 'Rigs keep running while you’re away, and nothing will flag a rig that quietly starts losing money. Open Automation on Farm: shut off anything earning under a threshold, or auto-replace cards once they wear past a point you pick.' },
 ];
@@ -77,37 +41,12 @@ export function installOnboarding(G){
   });
   const dismissOnboarding = () => { G.s.onboardingDismissed = true; };
 
-  /* issue #30: the coach's 'grow' step names the rival-pool ecosystem, but
-     it lives in a banner that the CHEAPER of its own two exits (a second
-     site) erases before a player who took that path ever opened Chains.
-     This nudge lives on the Chains tab itself instead, dismissed on its
-     own — so it survives exactly the exit that used to eat it, and only
-     goes away by a direct dismissal or by the thing it's pointing at
-     actually happening (founding a pool). */
+  // issue #30 rationale (why this nudge lives on Chains, not the banner): docs/onboarding.md.
   const showChainsNudge = computed(()=>
     !G.s.chainsNudgeDismissed && !G.s.pools.some(p=>p.owner==='you'));
   const dismissChainsNudge = () => { G.s.chainsNudgeDismissed = true; };
 
-  /* The walkthrough tour. Shown once, before the first rig — and never
-     again once one exists, tour-dismissed or not, so it can't reappear
-     over a farm that's already running (an imported save, a second
-     device). While it's up, the reactive banner stays quiet: both would
-     otherwise open on the same 'build your first rig' point at once.
-
-     Gated on nextId, NOT rigs.length: rigs.length is not monotonic —
-     scrapping the last rig, or an insolvency sell-off (insolvency.js)
-     taking the farm to zero, both drop it back to 0 on an established
-     save that legitimately dismissed the tour long ago. nextId only ever
-     increments (every real build, plus insolvency's last-rig grant) and
-     only resets via freshState/resetState — a genuine fresh start — so
-     nextId===1 means "no rig has EVER existed," which is what "shown
-     once, first session only" actually requires.
-
-     tourReplay is the escape hatch from "once" — TopBar's "tour" pill,
-     for a player who skipped it, wants a refresher, or is just curious.
-     It's a second, independent way IN rather than a hole punched in the
-     nextId gate itself, so the automatic first-session trigger stays
-     exactly as strict as the comment above claims. */
+  // showTour gating (nextId not rigs.length, tourReplay escape hatch): docs/onboarding.md.
   const showTour = computed(()=>
     !G.s.tourDismissed && (G.s.nextId===1 || G.s.tourReplay));
   const dismissTour = () => { G.s.tourDismissed = true; G.s.tourReplay = false; };

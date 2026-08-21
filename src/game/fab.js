@@ -11,14 +11,12 @@ const PART_NAME = { frame:'Custom frame', mobo:'Custom board', cool:'Custom cool
 const liveTopOf = (G,kind) => kind==='unit' ? G.cards()[G.cards().length-1]
   : kind==='psu' ? G.livePsus[G.livePsus.length-1] : undefined;
 
-/* 11-fab.js — installed into the shared context G. The design-and-build
-   mechanic data/fab.js's own header comment points at: a fab bay (the site
-   upgrade itself, game/sites.js's chooseFab) unlocks which slot types can
-   be designed here and how big a budget the design can spend from. This
-   module is that spend: an in-progress design lives at G.s.design (same
-   lifecycle as G.s.picker/sitePicker — open, edit, close-or-commit), and
-   manufacturing queues a real construction job on the site, same queue and
-   same completion path (tick.js) every other site part uses. */
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
+// A fab bay (game/sites.js's chooseFab) unlocks which slot types can be
+// designed and how big a budget a design may spend; G.s.design holds the
+// in-progress design (same open/edit/close-or-commit lifecycle as
+// G.s.picker), and manufacturing queues a real construction job through
+// the same queue/completion path (tick.js) every other site part uses.
 export function installFab(G){
   function openDesign(fid, kind){
     const f=G.site(fid), fb=f&&f.fab&&FAB(f.fab);
@@ -47,13 +45,9 @@ export function installFab(G){
     if(G.s.cash<buildCash) return;
     G.s.cash-=buildCash; G.s.spent+=buildCash;
     const stats=designStats(d.kind, d.picks, liveTop);
-    // timestamp+random rather than a saved counter like s.nextSite/s.nextId:
-    // PART_MAP (data/hardware.js) is a page-load-scoped singleton, not a
-    // per-store one — a persisted counter still starts over at its initial
-    // value for every FRESH STORE INSTANCE sharing that same module graph
-    // (concretely: successive freshStore() calls across tests in one file),
-    // which would mint colliding ids for genuinely different parts. A real
-    // page reload is fine either way; this is what a counter can't cover.
+    // timestamp+random, not a saved counter: PART_MAP (data/hardware.js) is a
+    // page-load-scoped singleton, so a persisted counter would collide across
+    // multiple freshStore() instances sharing that module graph (e.g. tests).
     const id='custom-'+d.kind+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     const part={ ...stats, id, name:PART_NAME[d.kind], kind:d.kind, price:unitPrice, custom:true };
     f.queue.push({ kind:'mfg', part, paidCash:buildCash, left:hours, total:hours });

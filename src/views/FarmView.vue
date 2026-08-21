@@ -24,17 +24,10 @@ const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
 const totalDemand=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteDemand(f),0));
 
-/* The overview cards' "vs yesterday" chips. Both helpers return null whenever
-   there is nothing honest to compare against — no adjacent closed day (a fresh
-   save, or one resumed across a multi-day gap), or too little of today elapsed
-   to project — and the chip simply doesn't render. An invented 0.0% would read
-   as "flat" rather than as "no comparison yet".
-
-   Hashrate is a reading and compares directly. Profit and cost are counters
-   still filling up, so they go through dayPaceDelta, which projects today to a
-   full day before comparing it with yesterday's finished one. And profit
-   compares 'net', matching the figure printed above it — comparing gross
-   revenue under a net headline would call a day green while profit fell. */
+// "vs yesterday" chips: dayDelta/dayPaceDelta return null with nothing honest
+// to compare against, rather than an invented 0.0%. Hashrate compares
+// directly; profit/cost are still-filling counters, projected to a full
+// day first via dayPaceDelta. Profit compares 'net' to match the headline above it.
 const hashDelta=computed(()=>g.dayDelta('hash', g.totalHash));
 const netDelta=computed(()=>g.dayPaceDelta('net', g.netDay));
 const costDelta=computed(()=>g.dayPaceDelta('power', g.powerDay));
