@@ -34,16 +34,7 @@ const chassisOf=r=>{
   };
 };
 const siteRigs=computed(()=>g.siteRigs(f.value));
-/* Each filter carries its own mark rather than a count: a coloured .dot is the
-   same vocabulary the rows underneath use for the state it selects, so the
-   chip and the rows it would leave behind say the same thing in the same way.
-   `attention` is the one that cannot — "needs attention" is four states at
-   once, not one colour — so it takes the warning glyph instead. What the count
-   used to carry is still there, in the disabled state: a filter that would
-   empty the list is dimmed and unclickable rather than silently landing the
-   player on "no rigs match". The one already selected is never disabled — its
-   last match can be repaired or powered off underneath it, and a chip you
-   cannot leave is worse than one that shows nothing. */
+// Filter chips: design-spec.md §6n.
 const FILTERS=[
   {k:'all',     label:'All',      test:()=>true,  mark:'layers'},
   {k:'attention',label:'Needs attention', test:needsEye, alert:true, mark:'warn'},
@@ -57,17 +48,12 @@ const counts=computed(()=>{
   const o={}; for(const x of FILTERS) o[x.k]=siteRigs.value.filter(x.test).length;
   return o;
 });
-/* Every sort now names its direction, so "Name (A–Z)" and "Net/day
-   (high → low)" are one control rather than a label and an unstated
-   convention. `cmp` is always written ascending and reversed when the
-   direction is flipped; `ends` is what that direction is called for this
-   particular column, since A–Z and low→high are the same order under two
-   different names. */
+// Each sort names its own direction (e.g. "Net/day (high -> low)"); cmp is
+// always written ascending and reversed when flipped.
 const SORTS=[
   {k:'name', label:'Name',
-   /* By name, not by id: rigs are renameable from this very view, so an
-      id order under an A–Z label starts lying the moment one is renamed.
-      Numeric collation so "Rig 2" precedes "Rig 10"; id breaks a tie. */
+   // By name, not id, since rigs are renameable here; numeric collation so
+   // "Rig 2" precedes "Rig 10", id breaks a tie.
    cmp:(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
    ends:['A–Z','Z–A']},
   {k:'net',  label:'Net/day', cmp:(a,b)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
@@ -75,9 +61,7 @@ const SORTS=[
   {k:'wear', label:'Wear',    cmp:(a,b)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
 ];
 const sortBy=ref('name');
-/* Held per column, so flipping Net/day and then going back to Name does not
-   hand Name the other column's direction. Seeded from each sort's own natural
-   end: a name list wants A first, a money list wants the biggest number first. */
+// Direction held per column so switching sorts doesn't leak one's flip into another.
 const sortDesc=reactive(Object.fromEntries(SORTS.map(x=>[x.k,!!x.desc])));
 const sortOpen=ref(false);
 const sortOf=k=>SORTS.find(x=>x.k===k);
@@ -147,14 +131,9 @@ const siteHash=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigHash(r),0));
 const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
 const siteLive=computed(()=>siteRigs.value.filter(r=>g.rigLive(r)).length);
 const siteSlots=computed(()=>g.siteSlots(f.value));
-/* The card at the top of Rigs names a SITE, so it wears that site's shell in
-   the light the sim says it is — the same plate the Sites tab and the Farm
-   rows use. It used to be a studio photograph of one rig, which said nothing
-   about which site's fleet you were looking at. */
+// Hero wears the site's own shell (same plate as Sites/Farm), not a fixed rig photo.
 const heroShot=computed(()=>sitePlate(f.value.shell, sitePhase(g.s.t)));
-/* The hero's one-word verdict on the site. Deliberately the same dot
-   vocabulary the rows underneath use — green is a machine that is earning,
-   here as there — rather than a fourth colour meaning "site" specifically. */
+// Same dot vocabulary the rows use, not a fourth "site" colour.
 const siteStatus=computed(()=>{
   if(siteLive.value) return {dot:'run', label:'Active'};
   if(siteRigs.value.some(r=>r.building>0)) return {dot:'build', label:'Building'};

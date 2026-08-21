@@ -4,20 +4,13 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import ChainMark from './ChainMark.vue';
 
-/* One mining group on the Farm tab: its name, the chain and pool it points at,
-   its share of the racks, and whatever advice the group currently warrants.
-
-   In the view this was a v-for body over groupRows, with its rename state held
-   in maps keyed by group id. One row per component makes those plain refs. */
+// One mining group row on the Farm tab: name, chain/pool, rack share, advice.
+// Extracted from a v-for body so rename state can be plain refs per group.
 const props = defineProps({
   gr: { type: Object, required: true },
-  /* Both computed by the view's groupRows, which knows the whole farm.
-     advice: {alt, mult} — a chain that would pay more per MH than this one.
-     ceiling: {share, grossCap} — this group is past the chain's emission floor. */
-  advice: { type: Object, default: null },
-  ceiling: { type: Object, default: null },
-  /* Racks across every site — the denominator for this group's share. */
-  totalSlots: { type: Number, default: 0 },
+  advice: { type: Object, default: null },   // {alt, mult}: a chain paying more per MH
+  ceiling: { type: Object, default: null },  // {share, grossCap}: past the chain's emission floor
+  totalSlots: { type: Number, default: 0 },  // racks across every site — this group's share denominator
 });
 
 const g = useGameStore();
