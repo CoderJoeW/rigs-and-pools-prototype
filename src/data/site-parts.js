@@ -3,9 +3,9 @@ import { FAB } from './fab.js';
 /* ---- site parts. Nothing is a preset tier: you buy a shell for floor space,
    then install power and cooling yourself. Capacity is whatever you paid for.
 
-   The FIRST tier past the free starter kit in each category — shed, 30A
-   service, a rooftop panel or turbine, extractor fans, a home battery — has
-   its build time halved from what the rest of its ladder would suggest.
+   The FIRST tier past the free starter kit in each category — shed, a 1 kW
+   grid bump, 30A service, a rooftop panel or turbine, extractor fans, a home
+   battery — is cut well below what the rest of its ladder would suggest.
    Those are the purchases a brand-new player is queuing in their first
    session, and at 18h (three full day/night cycles at the new 6h day) a
    shed alone used to eat the whole first sitting before it even opened.
@@ -13,7 +13,7 @@ import { FAB } from './fab.js';
    about clearing the on-ramp, not compressing the whole game. */
 export const SHELLS = [
   { id:'bedroom',   name:'Spare bedroom',          slots:4,   price:0,      hours:0 },
-  { id:'shed',      name:'Garden shed',            slots:10,  price:700,    hours:9 },
+  { id:'shed',      name:'Garden shed',            slots:10,  price:700,    hours:5 },
   { id:'garage',    name:'Garage conversion',      slots:24,  price:9000,   hours:60 },
   { id:'unit',      name:'Light industrial unit',  slots:60,  price:80000,  hours:150 },
   { id:'warehouse', name:'Warehouse bay',          slots:140, price:400000, hours:300 },
@@ -36,6 +36,11 @@ export const SHELLS = [
    ceiling tied to it), not a price a grid-connected site would ever prefer. */
 export const SOURCES = [
   { id:'s-dom',   name:'Domestic outlet',     kind:'grid',  peak:1500,  rate:15.00, price:0,     hours:0 },
+  // The on-ramp's grid rung: a 1 kW bump on top of the free domestic
+  // outlet (sources stack, they don't replace one another), priced and
+  // timed to be a trivial turn-one top-up rather than a real upgrade —
+  // 30A service two lines down is still the first REAL capacity jump.
+  { id:'s-1kw',   name:'1 kW service',        kind:'grid',  peak:1000,  rate:15.00, price:50,    hours:5/60 },
   { id:'s-30',    name:'30A service',         kind:'grid',  peak:7000,  rate:15.00, price:120,   hours:5 },
   { id:'s-100',   name:'100A service',        kind:'grid',  peak:24000, rate:15.00, price:900,   hours:30 },
   { id:'s-400',   name:'400A service',        kind:'grid',  peak:96000, rate:15.00, price:6500,  hours:90 },
@@ -73,7 +78,7 @@ export const SOURCES = [
    renewable site through the night instead of shedding. Infrastructure-tier
    paybacks (~100-160 days) before counting brownout protection. */
 export const STORAGE = [
-  { id:'st-home', name:'Home battery',      kwh:8,   kw:3,  price:700,   hours:3 },
+  { id:'st-home', name:'Home battery',      kwh:8,   kw:3,  price:700,   hours:0.5 },
   { id:'st-rack', name:'Rack battery',      kwh:50,  kw:14, price:3900,  hours:24 },
   { id:'st-cont', name:'Container battery', kwh:350, kw:90, price:23000, hours:90 },
 ];
