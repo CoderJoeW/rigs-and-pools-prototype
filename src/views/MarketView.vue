@@ -10,13 +10,7 @@ const g = useGameStore();
 const open=reactive({});
 const slip=(c,f)=>Math.min(0.5,0.5*(g.s.wallet[c.id]*f)/c.depth);
 
-/* ---- the tab's four halves --------------------------------------------
-   Prices, the auto-sell drip, the ledger and the app's own settings were
-   one scroll with nothing in common but the tab they landed on — the
-   backup-and-erase controls in particular sat directly under a coin's Sell
-   buttons. The mockup's segmented control is the seam. Same pattern as the
-   Chains tab: a real tablist, panels kept in the DOM so a segment
-   remembers where it was. */
+// Segmented layout, same real-tablist pattern as ChainsView: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
   {k:'prices', label:'Prices', icon:'M4 19V5M4 19h16M8 14.5l3.5-4 3 2.5L20 8'},
   {k:'drip',   label:'Auto-sell',
@@ -40,28 +34,13 @@ const segKey=e=>{
   const el=segEl[seg.value]; if(el&&el.focus) el.focus();
 };
 
-/* ---- the price cards ---------------------------------------------------
-   The change is measured between the last two SAMPLES, not against the live
-   price: tick.js pushes one every 0.75 sim-days, so two of them are exactly
-   18 hours apart and the figure describes a closed window. Comparing the
-   live price to the last sample would have given a window of anything from
-   zero to eighteen hours, relabelled every tick as if it were the same
-   measurement. The label says 18h because that is what it is — this
-   simulation does not keep an hourly series to make it a 24h one.
-
-   Derived in one computed rather than called from the template: five cards
-   read six of these each, and a tick lands ten times a second. */
+// Change is measured between the last two SAMPLES (18h apart, tick.js
+// pushes one every 0.75 sim-days), not against the live price — a live
+// comparison would relabel a 0-18h window as if it were always the same measurement.
 const WINDOW='18h';
-/* Two decimals is the app's money format, but a coin trading at $0.024 rounds
-   to "$0.02" and a whole day's move disappears into the rounding. Sub-dollar
-   coins get the digits their price actually varies in. */
-const coinUsd=p=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);
-/* "Thin" against the field rather than against a fixed number: the old
-   markup tested depth<=400 and no chain in the catalog has ever been that
-   shallow (the shallowest is 2470), so the badge could not render — including
-   on Halcyon, whose own blurb is about its thin book. Measured off the
-   shallowest book actually in play, so it keeps meaning something if the
-   catalog moves. */
+const coinUsd=p=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);   // sub-dollar coins get extra digits so a day's move isn't rounded away
+// "Thin" measured against the shallowest book actually in the catalog, not
+// a fixed number — a fixed depth<=400 threshold never fired (shallowest is 2470).
 const thinnest=computed(()=>Math.min(...g.s.chains.map(c=>c.depth)));
 const coins=computed(()=>g.s.chains.map(c=>{
   const h=c.hist||[], n=h.length;

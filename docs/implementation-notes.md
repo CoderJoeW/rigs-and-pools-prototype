@@ -601,6 +601,54 @@ louder → muted. A separate slider would have to fit into a top bar
 already full at 320px, and a game with three cues doesn't need continuous
 gain — it needs "off," "on," and "on, I am across the room."
 
+## Chains view (`src/views/ChainsView.vue`)
+
+**Segmented layout.** This tab used to be one scroll carrying five
+unrelated sections: the chains, the pool market, the rivals in it, the
+pools you run, and the form to found another. The segmented control
+splits it along those seams — the chains you mine, the market you
+compete in, the business you run — without moving or cutting anything;
+the scroll was only ever the reason they were hard to find.
+
+**Segmented control is a real ARIA tablist**, not just visually styled
+like one: a single tab stop with the arrow keys moving between tabs
+(`segKey`), one `tabindex=0` at a time, and focus follows selection —
+implementing the roles the design implies rather than only announcing
+them.
+
+**`chainsInfo`'s own flag, not `s.help`.** The (i) beside ACTIVE CHAINS
+is a reference someone comes back to, and hiding it behind the app-wide
+hint preference would put it out of reach of a player who turned hints
+off precisely because they didn't want them on every other row.
+
+**`cards` computed once per chain, not called from the template.** Ticks
+land ten times a second, five cards each read three or four of these
+values, and `groupAdvice` alone walks every chain against every group
+against every rig — called from the template that's O(chains² × groups ×
+rigs) at 10Hz. Everything the card states is something the simulation
+already computes; nothing here is a new number invented for the design.
+
+**`bestPoolOn`** measures each pool candidate once via `poolHash` (a full
+scan of the rigs) rather than re-measuring the incumbent for every
+comparison.
+
+**Solo-vs-pool comparison is deliberately about frequency, not amount.**
+In this simulation a pool can never pay more per hash than solo —
+`evMult` is `(1-fee)` against solo's `1+TX_FEES` — so a "pool advantage"
+measured in money would always be a number below 1. What a pool actually
+buys is frequency: its blocks land far more often than yours would, and
+every one pays a share. That's the trade the two columns represent.
+
+Gathered per pool rather than added per group: a pool's blocks pay every
+member, so it contributes once however many of a player's groups sit in
+it — but each of those groups still has to be counted into what the pool
+would be holding, which a dedupe-and-skip would throw away. Two edge
+cases: a chain with no pool at all counts solo the same on both sides
+rather than vanishing from one side of the comparison; and `poolHash`
+already counts groups that *are* in a given pool, so a group not yet
+joined is added on top — that's the comparison being made (what would
+change if you joined).
+
 ## Toasts (`pop()` in `poolMarket.js`)
 
 **Sound hangs off `pop()`**, not off the twenty-odd individual event call
