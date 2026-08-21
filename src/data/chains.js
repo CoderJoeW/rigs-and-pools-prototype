@@ -69,3 +69,20 @@ export const CHAIN_BASE = Object.fromEntries(CHAINS.map(c=>[c.id,c.price]));
    players until they started a new game. The id -> hue map is static data and
    is always current. */
 export const CHAIN_HUE = Object.fromEntries(CHAINS.map(c=>[c.id,c.hue]));
+
+/* Anchor decay: fundOf's ratio term is chainHash/floor/anchor, so shrinking
+   `anchor` over game-time raises the fundamental price even at flat
+   hashrate — a slow structural drift layered under the hashrate-driven and
+   buy/sell-driven moves tick.js already models. `half` is the game-days
+   half-life of the relaxation; `floor` is where anchor asymptotes, as a
+   fraction of its start-of-save value (installTick lazily captures that as
+   c.anchor0). Ordered to match each chain's blurb: Tessera, the newcomer
+   refuge, matures fastest and furthest; Nova, the calm blue chip, barely
+   moves. */
+export const ANCHOR_DECAY = {
+  tessera: { half:10, floor:0.15 },
+  halcyon: { half:14, floor:0.25 },
+  ferro:   { half:20, floor:0.40 },
+  obelisk: { half:30, floor:0.55 },
+  nova:    { half:45, floor:0.70 },
+};
