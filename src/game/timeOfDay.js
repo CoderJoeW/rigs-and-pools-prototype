@@ -7,8 +7,11 @@ import { C, TX_FEES } from '../data/constants.js';
    Declarations are untouched: hoisting, evaluation order and
    intra-module references are the same code they always were. */
 export function installTimeOfDay(G){
-  /* ---- time of day drives solar; tariff band drives grid prices ---- */
-  const hourOf = t => (t%86400)/3600;
+  /* ---- time of day drives solar; tariff band drives grid prices ----
+     hourOf runs on a DAY_HOURS-long real-time cycle, not the 86400s-per-day
+     economic clock s.t otherwise keeps — see constants.js's DAY_HOURS. */
+  const cycleS = C.DAY_HOURS*3600;
+  const hourOf = t => ((t%cycleS)/cycleS)*24;
   const bandOf = h => (h>=C.OFF_START||h<C.OFF_END) ? 'off'
                     : (h>=C.PEAK_START&&h<C.PEAK_END) ? 'peak' : 'shoulder';
   const band = computed(()=> bandOf(hourOf(G.s.t)));

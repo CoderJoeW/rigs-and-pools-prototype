@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
@@ -15,6 +16,19 @@ const g = useGameStore();
    different from a page reload (issue #43). Display only: g.s.cash is still
    the truth everything else reads. */
 const cashShown = useTweenedNumber(() => g.s.cash);
+
+/* This chip is the "what time is it" readout, shown right beside sun% and
+   the grid band — so it has to be on the same DAY_HOURS cycle those run on
+   (timeOfDay.js's hourOf), not fmt.day/fmt.clock's real-time 86400s day.
+   Everywhere else fmt.day/fmt.clock/fmt.hm are used — the feed log's
+   timestamps — they're a record of real elapsed session time and are
+   deliberately left alone. */
+const CYCLE_S = g.C.DAY_HOURS*3600;
+const dayClock = computed(()=>{
+  const t=((g.s.t%CYCLE_S)+CYCLE_S)%CYCLE_S, hourFloat=t/CYCLE_S*24;
+  const h=Math.floor(hourFloat), m=Math.floor((hourFloat-h)*60);
+  return 'd'+(Math.floor(g.s.t/CYCLE_S)+1)+' '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+});
 </script>
 
 <template>
@@ -27,7 +41,7 @@ const cashShown = useTweenedNumber(() => g.s.cash);
           <circle cx="12" cy="12" r="2.5"/></svg></span>
         Rigs &amp; Pools
         <span class="live" role="status" aria-label="Simulation running"></span></span>
-      <span class="chip">d{{ fmt.day(g.s.t) }} {{ fmt.clock(g.s.t) }}</span>
+      <span class="chip">{{ dayClock }}</span>
       <span v-if="g.solarFactor>0.05" class="chip" style="background:var(--gold-t);color:var(--gold)">
         sun {{ fmt.pct(g.solarFactor,0) }}</span>
       <span class="chip">{{ g.ambient.toFixed(0) }}&deg; out</span>

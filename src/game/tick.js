@@ -151,7 +151,7 @@ export function installTick(G){
       f.bill[G.band.value==='off'?'off':G.band.value==='peak'?'peak':'sh']+=c;
       if(fl.load>0) f.bill.cool+=c*fl.cool/fl.load;
       const gridRate=f.sources.reduce((a,x)=>{const P=SITEPART(x.p);
-        return P.rate>0?Math.min(a,G.rateAt(P)):a;},0.63);
+        return P.rate>0?Math.min(a,G.rateAt(P)):a;},15.00);
       f.bill.saved+=(fl.inRenew+fl.inBatt)/1000*hrs*gridRate;
     }
 

@@ -4,6 +4,12 @@ import { mount } from '@vue/test-utils';
 import SiteFilm from '../SiteFilm.vue';
 import { sitePlate, siteFilm, sitePhase } from '../../utils/siteArt.js';
 import { SHELLS } from '../../data/site-parts.js';
+import { C } from '../../data/constants.js';
+
+// sitePhase runs on the DAY_HOURS visual cycle, not a literal 24h clock —
+// express test times as hour-of-cycle so they hold regardless of DAY_HOURS.
+const CYCLE = C.DAY_HOURS * 3600;
+const atHour = h => (h / 24) * CYCLE;
 
 const mountFilm = props => mount(SiteFilm, { props, attachTo: document.body });
 /* The film is gated on device preferences read in onMounted, so it is never
@@ -24,12 +30,12 @@ describe('siteArt', () => {
   });
 
   it('reads day and night off the same solar curve the sky uses', () => {
-    expect(sitePhase(13 * 3600)).toBe('day');
-    expect(sitePhase(23 * 3600)).toBe('night');
-    expect(sitePhase(3 * 3600)).toBe('night');
-    // Negative and past-midnight times both wrap, since s.t only grows.
-    expect(sitePhase(-3 * 3600)).toBe('night');
-    expect(sitePhase(86400 + 12 * 3600)).toBe('day');
+    expect(sitePhase(atHour(13))).toBe('day');
+    expect(sitePhase(atHour(23))).toBe('night');
+    expect(sitePhase(atHour(3))).toBe('night');
+    // Negative and past-cycle times both wrap, since s.t only grows.
+    expect(sitePhase(atHour(-3))).toBe('night');
+    expect(sitePhase(CYCLE + atHour(12))).toBe('day');
   });
 
   it('offers a film only for the shells that have one, in two codecs', () => {
