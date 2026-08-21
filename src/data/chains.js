@@ -62,7 +62,7 @@
        one" still runs the thinnest book and the most violent price)
      Nova:    reward 71.12->518.66, block $840->$6,126 (+75% per MH; no
        longer the ladder's worst-paying chain, still the calmest price)
-     Obelisk: reward 8144.8->27192, block $73,792->$246,341 (+120% per MH;
+     Obelisk: reward 8144.8->27192, block $73,792->$246,360 (+120% per MH;
        now unambiguously the biggest prize on the network, not just the
        longest wait for one) */
 /* `hue` is the chain's visual identity: an OKLCH hue angle, and ONLY the hue —

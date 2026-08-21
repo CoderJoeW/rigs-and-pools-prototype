@@ -37,7 +37,7 @@ describe('sell', () => {
   it('selling into a thin book costs more slippage than a deep one', () => {
     const g = freshStore();
     const thin = g.s.chains.find(c => c.id === 'halcyon');  // depth 2470
-    const deep = g.s.chains.find(c => c.id === 'obelisk');  // depth 406000
+    const deep = g.s.chains.find(c => c.id === 'obelisk');  // depth 222700
     g.s.wallet.halcyon = 500;
     g.s.wallet.obelisk = 500;
 
