@@ -31,139 +31,139 @@ let poolSeq = 0;
 
 export function installSims(G){
   function emptyChainHash(){
-    const o = Object.create(null);
-    for(const cid of SIM_CHAINS) o[cid] = 0;
-    o.tessera = 0;
-    return o;
+    const hashByChain = Object.create(null);
+    for(const chainId of SIM_CHAINS) hashByChain[chainId] = 0;
+    hashByChain.tessera = 0;
+    return hashByChain;
   }
   // Reactivity rationale: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-  const emptyChainN = () => {
-    const o = {};
-    for(const cid of SIM_CHAINS) o[cid] = 0;
-    o.tessera = 0;
-    return o;
+  const emptyChainCounts = () => {
+    const countByChain = {};
+    for(const chainId of SIM_CHAINS) countByChain[chainId] = 0;
+    countByChain.tessera = 0;
+    return countByChain;
   };
   G._simChainHash = emptyChainHash();
-  G._simChainN = reactive(emptyChainN());
+  G._simChainN = reactive(emptyChainCounts());
   G._simPoolHash = Object.create(null);
   G._simSoloHash = emptyChainHash();
   G._poolMembers = new Map();
   G._soloMembers = Object.create(null);
-  for(const cid of SIM_CHAINS) G._soloMembers[cid] = [];
+  for(const chainId of SIM_CHAINS) G._soloMembers[chainId] = [];
   G._soloMembers.tessera = [];
   G._membersDirty = true;
 
   function rebuildMembers(){
     G._poolMembers.clear();
-    for(const cid of Object.keys(G._soloMembers)) G._soloMembers[cid] = [];
-    const tally = emptyChainN();
+    for(const chainId of Object.keys(G._soloMembers)) G._soloMembers[chainId] = [];
+    const tally = emptyChainCounts();
     const sims = G.s.sims;
     for(let i = 0; i < sims.length; i++){
-      const m = sims[i];
-      tally[m.chain] = (tally[m.chain] || 0) + 1;
-      if(m.pool === 'solo' || !m.pool){
-        (G._soloMembers[m.chain] || (G._soloMembers[m.chain] = [])).push(i);
+      const sim = sims[i];
+      tally[sim.chain] = (tally[sim.chain] || 0) + 1;
+      if(sim.pool === 'solo' || !sim.pool){
+        (G._soloMembers[sim.chain] || (G._soloMembers[sim.chain] = [])).push(i);
       } else {
-        let arr = G._poolMembers.get(m.pool);
-        if(!arr){ arr = []; G._poolMembers.set(m.pool, arr); }
-        arr.push(i);
+        let members = G._poolMembers.get(sim.pool);
+        if(!members){ members = []; G._poolMembers.set(sim.pool, members); }
+        members.push(i);
       }
     }
     // Published in one pass over the union of both key sets, so a chain that
     // has emptied goes to 0 rather than keeping its last count.
-    for(const cid of new Set([...Object.keys(G._simChainN), ...Object.keys(tally)]))
-      G._simChainN[cid] = tally[cid] || 0;
+    for(const chainId of new Set([...Object.keys(G._simChainN), ...Object.keys(tally)]))
+      G._simChainN[chainId] = tally[chainId] || 0;
     G._membersDirty = false;
   }
-  function bumpN(cid, d){ G._simChainN[cid] = (G._simChainN[cid] || 0) + d; }
+  function bumpChainCount(chainId, delta){ G._simChainN[chainId] = (G._simChainN[chainId] || 0) + delta; }
   function ensureMembers(){ if(G._membersDirty) rebuildMembers(); }
 
-  function addHash(m, delta){
+  function addHash(sim, delta){
     if(!delta) return;
-    G._simChainHash[m.chain] = (G._simChainHash[m.chain] || 0) + delta;
-    if(m.pool === 'solo' || !m.pool){
-      G._simSoloHash[m.chain] = (G._simSoloHash[m.chain] || 0) + delta;
+    G._simChainHash[sim.chain] = (G._simChainHash[sim.chain] || 0) + delta;
+    if(sim.pool === 'solo' || !sim.pool){
+      G._simSoloHash[sim.chain] = (G._simSoloHash[sim.chain] || 0) + delta;
     } else {
-      G._simPoolHash[m.pool] = (G._simPoolHash[m.pool] || 0) + delta;
+      G._simPoolHash[sim.pool] = (G._simPoolHash[sim.pool] || 0) + delta;
     }
   }
-  function setSimHash(m, newHash){
-    const d = newHash - m.hash;
-    m.hash = newHash;
-    addHash(m, d);
+  function setSimHash(sim, newHash){
+    const delta = newHash - sim.hash;
+    sim.hash = newHash;
+    addHash(sim, delta);
   }
-  function setSimChain(m, cid){
-    if(cid === m.chain) return;
-    addHash(m, -m.hash);
-    bumpN(m.chain, -1);
-    m.chain = cid;
-    m.pool = 'solo';
-    bumpN(m.chain, 1);
-    addHash(m, m.hash);
+  function setSimChain(sim, chainId){
+    if(chainId === sim.chain) return;
+    addHash(sim, -sim.hash);
+    bumpChainCount(sim.chain, -1);
+    sim.chain = chainId;
+    sim.pool = 'solo';
+    bumpChainCount(sim.chain, 1);
+    addHash(sim, sim.hash);
     G._membersDirty = true;
   }
-  function setSimPool(m, pid){
-    const next = pid || 'solo';
-    if(next === m.pool) return;
-    addHash(m, -m.hash);
-    m.pool = next;
-    addHash(m, m.hash);
+  function setSimPool(sim, poolId){
+    const next = poolId || 'solo';
+    if(next === sim.pool) return;
+    addHash(sim, -sim.hash);
+    sim.pool = next;
+    addHash(sim, sim.hash);
     G._membersDirty = true;
   }
 
   // Seat/target model: design-spec.md §6o; derivation: docs/economy.md.
-  const FLOOR_TOTAL = SIM_CHAINS.reduce((a, cid) => {
-    const c = CHAINS.find(x => x.id === cid);
-    return a + (c ? c.floor : 0);
+  const FLOOR_TOTAL = SIM_CHAINS.reduce((sum, chainId) => {
+    const chainDef = CHAINS.find(entry => entry.id === chainId);
+    return sum + (chainDef ? chainDef.floor : 0);
   }, 0);
 
-  function seatsFor(cid, n){
-    const c = CHAINS.find(x => x.id === cid);
-    if(!c || FLOOR_TOTAL <= 0) return 0;
-    const pop = n == null ? G.s.sims.length : n;
+  function seatsFor(chainId, population){
+    const chain = CHAINS.find(entry => entry.id === chainId);
+    if(!chain || FLOOR_TOTAL <= 0) return 0;
+    const pop = population == null ? G.s.sims.length : population;
     const spare = Math.max(0, pop - SIM_SEATS_MIN * SIM_CHAINS.length);
-    return SIM_SEATS_MIN + spare * c.floor / FLOOR_TOTAL;
+    return SIM_SEATS_MIN + spare * chain.floor / FLOOR_TOTAL;
   }
-  function simTargetOf(cid, n, seats){
-    const c = CHAINS.find(x => x.id === cid);
-    if(!c) return 0;
-    const pop = n == null ? G.s.sims.length : n;
+  function simTargetOf(chainId, population, seats){
+    const chain = CHAINS.find(entry => entry.id === chainId);
+    if(!chain) return 0;
+    const pop = population == null ? G.s.sims.length : population;
     const fill = Math.min(1, pop / SIM_SOFT_CAP);
-    const s = seats == null ? (G._simChainN[cid] || 0) : seats;
-    return Math.max(s * SIM_MIN_HASH, SIM_RATIO * c.floor * fill);
+    const seatCount = seats == null ? (G._simChainN[chainId] || 0) : seats;
+    return Math.max(seatCount * SIM_MIN_HASH, SIM_RATIO * chain.floor * fill);
   }
   // 1 while a chain has room its economics support, 0 once built out — the
   // reinvestment brake; see docs/economy.md.
-  function simRoomOf(cid){
-    const target = simTargetOf(cid);
+  function simRoomOf(chainId){
+    const target = simTargetOf(chainId);
     if(target <= 0) return 0;
-    return Math.max(0, Math.min(1, 1 - (G._simChainHash[cid] || 0) / target));
+    return Math.max(0, Math.min(1, 1 - (G._simChainHash[chainId] || 0) / target));
   }
-  function overBuilt(cid){
-    const target = simTargetOf(cid);
-    return target > 0 && (G._simChainHash[cid] || 0) > target * SIM_TRIM_AT;
+  function overBuilt(chainId){
+    const target = simTargetOf(chainId);
+    return target > 0 && (G._simChainHash[chainId] || 0) > target * SIM_TRIM_AT;
   }
   // Crowding term (people vs seats, not just pay): docs/economy.md.
-  function chainDraw(cid){
-    const seats = seatsFor(cid);
-    const have = G._simChainN[cid] || 0;
+  function chainDraw(chainId){
+    const seats = seatsFor(chainId);
+    const have = G._simChainN[chainId] || 0;
     return Math.max(0.25, Math.min(1.6, seats / Math.max(1, have)));
   }
   // A newcomer picks the chain furthest below its seat entitlement — see design-spec.md §6o.
-  function pickJoinChain(n){
+  function pickJoinChain(population){
     let best = SIM_CHAINS[0], bestGap = -Infinity;
-    for(const cid of SIM_CHAINS){
-      const gap = seatsFor(cid, n) - (G._simChainN[cid] || 0);
-      if(gap > bestGap){ bestGap = gap; best = cid; }
+    for(const chainId of SIM_CHAINS){
+      const gap = seatsFor(chainId, population) - (G._simChainN[chainId] || 0);
+      if(gap > bestGap){ bestGap = gap; best = chainId; }
     }
     return best;
   }
 
-  function mkSim(opts){
-    const style = opts.style != null ? opts.style : Math.min(1, Math.max(0, 0.5 + gauss() * 0.28));
-    const chain = opts.chain || SIM_CHAINS[Math.floor(Math.random() * SIM_CHAINS.length)];
-    const hash = opts.hash != null ? opts.hash : newcomerHash();
-    const cash = opts.cash != null ? opts.cash : 80 + Math.random() * 420 + style * 600;
+  function mkSim(options){
+    const style = options.style != null ? options.style : Math.min(1, Math.max(0, 0.5 + gauss() * 0.28));
+    const chain = options.chain || SIM_CHAINS[Math.floor(Math.random() * SIM_CHAINS.length)];
+    const hash = options.hash != null ? options.hash : newcomerHash();
+    const cash = options.cash != null ? options.cash : 80 + Math.random() * 420 + style * 600;
     return {
       id: ++simSeq,
       cash,
@@ -171,83 +171,83 @@ export function installSims(G){
       chain,
       pool: 'solo',
       style,
-      next: (opts.t || 0) + Math.random() * 3600 * 6,
+      next: (options.time || 0) + Math.random() * 3600 * 6,
       coins: 0,
     };
   }
 
   function newcomerHash(){ return SIM_MIN_HASH * (1 + Math.random() * 1.15); }   // one card, sometimes two
 
-  function seedSims(t){
+  function seedSims(now){
     simSeq = 0;
     poolSeq = 0;
     G._simChainHash = emptyChainHash();
     G._simPoolHash = Object.create(null);
     G._simSoloHash = emptyChainHash();
     G._poolMembers.clear();
-    for(const cid of Object.keys(G._soloMembers)) G._soloMembers[cid] = [];
+    for(const chainId of Object.keys(G._soloMembers)) G._soloMembers[chainId] = [];
     G._membersDirty = true;
 
     const sims = [];
-    const add = m => { sims.push(m); bumpN(m.chain, 1); addHash(m, m.hash); };
+    const addSim = sim => { sims.push(sim); bumpChainCount(sim.chain, 1); addHash(sim, sim.hash); };
     // Largest-remainder allocation: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-    const raw = SIM_CHAINS.map(cid => seatsFor(cid, SIM_START));
-    const seats = raw.map(Math.floor);
-    let left = SIM_START - seats.reduce((a, x) => a + x, 0);
-    const order = raw.map((x, i) => i).sort((a, b) => (raw[b] - seats[b]) - (raw[a] - seats[a]));
+    const rawSeats = SIM_CHAINS.map(chainId => seatsFor(chainId, SIM_START));
+    const seats = rawSeats.map(Math.floor);
+    let left = SIM_START - seats.reduce((sum, seatCount) => sum + seatCount, 0);
+    const order = rawSeats.map((_, i) => i).sort((indexA, indexB) => (rawSeats[indexB] - seats[indexB]) - (rawSeats[indexA] - seats[indexA]));
     for(let k = 0; left > 0; k++, left--) seats[order[k % order.length]]++;
 
-    SIM_CHAINS.forEach((cid, ci) => {
-      const n = Math.max(1, seats[ci]);
-      const target = simTargetOf(cid, SIM_START, n);
+    SIM_CHAINS.forEach((chainId, chainIndex) => {
+      const seatCount = Math.max(1, seats[chainIndex]);
+      const target = simTargetOf(chainId, SIM_START, seatCount);
       // Lognormal spare split rationale: docs/implementation-notes.md.
-      const spare = Math.max(0, target - n * SIM_MIN_HASH);
+      const spare = Math.max(0, target - seatCount * SIM_MIN_HASH);
       const weights = [];
-      let tot = 0;
-      for(let i = 0; i < n; i++){
-        const w = Math.exp(gauss() * 0.85);
-        weights.push(w); tot += w;
+      let weightTotal = 0;
+      for(let i = 0; i < seatCount; i++){
+        const weight = Math.exp(gauss() * 0.85);
+        weights.push(weight); weightTotal += weight;
       }
-      for(let i = 0; i < n; i++){
-        const hash = SIM_MIN_HASH + spare * weights[i] / tot;
+      for(let i = 0; i < seatCount; i++){
+        const hash = SIM_MIN_HASH + spare * weights[i] / weightTotal;
         // Reserve sizing rationale: docs/economy.md#simulated-miner-population-model-srcgamesimsjs.
         const reserve = hash * SIM_POWER_PER_MH * (14 + Math.random() * 16);
-        add(mkSim({ chain: cid, hash, t, style: Math.random(),
+        addSim(mkSim({ chain: chainId, hash, time: now, style: Math.random(),
                     cash: reserve + 80 + Math.random() * 300 }));
       }
     });
     G.s.sims = sims;
-    seedStarterPools(t);
+    seedStarterPools(now);
     rebuildMembers();
     return sims;
   }
 
-  function seedStarterPools(t){
+  function seedStarterPools(now){
     const names = RIVAL_NAMES;
-    let ni = 0;
-    for(const cid of SIM_CHAINS){
-      const c = CHAINS.find(x => x.id === cid);
-      const candidates = G.s.sims.filter(m => m.chain === cid).sort((a, b) => b.cash - a.cash);
+    let nameIndex = 0;
+    for(const chainId of SIM_CHAINS){
+      const chain = CHAINS.find(entry => entry.id === chainId);
+      const candidates = G.s.sims.filter(sim => sim.chain === chainId).sort((simA, simB) => simB.cash - simA.cash);
       for(let k = 0; k < 2 && k < candidates.length; k++){
-        const m = candidates[k];
-        if(m.cash < 200) continue;
+        const sim = candidates[k];
+        if(sim.cash < 200) continue;
         const scheme = Math.random() < 0.4 ? 'PPS' : 'PPLNS';
         const fee = scheme === 'PPS' ? 0.02 + Math.random() * 0.03 : 0.006 + Math.random() * 0.02;
-        const bond = Math.min(m.cash * 0.55, Math.round(
-          m.hash * C.PAY * c.mult * (scheme === 'PPS' ? 1.0 : PPLNS_COVER) * 1.2
+        const bond = Math.min(sim.cash * 0.55, Math.round(
+          sim.hash * C.PAY * chain.mult * (scheme === 'PPS' ? 1.0 : PPLNS_COVER) * 1.2
           + (scheme === 'PPS' ? 400 : 80)
         ));
         if(bond < 50) continue;
-        m.cash -= bond;
-        const id = 's' + m.id + 'p' + (++poolSeq);
-        const p = {
-          id, chain: cid, owner: 'sim', ownerSim: m.id,
-          name: names[ni++ % names.length] + (ni > names.length ? ' ' + Math.ceil(ni / names.length) : ''),
-          scheme, fee, bond, bond0: bond, cap: 0, born: t || 0, live: true,
+        sim.cash -= bond;
+        const id = 's' + sim.id + 'p' + (++poolSeq);
+        const pool = {
+          id, chain: chainId, owner: 'sim', ownerSim: sim.id,
+          name: names[nameIndex++ % names.length] + (nameIndex > names.length ? ' ' + Math.ceil(nameIndex / names.length) : ''),
+          scheme, fee, bond, bond0: bond, cap: 0, born: now || 0, live: true,
           earned: 0, found: 0, feeMoved: -1e9, lapse: 0,
         };
-        G.s.pools.push(p);
-        setSimPool(m, id);
+        G.s.pools.push(pool);
+        setSimPool(sim, id);
       }
     }
   }
@@ -257,44 +257,44 @@ export function installSims(G){
     G._simPoolHash = Object.create(null);
     G._simSoloHash = emptyChainHash();
     let maxId = 0;
-    for(const m of G.s.sims){
-      if(m.id > maxId) maxId = m.id;
-      if(m.coins == null) m.coins = 0;
-      if(m.style == null) m.style = 0.5;
-      if(m.next == null) m.next = G.s.t + Math.random() * 7200;
-      if(!m.pool) m.pool = 'solo';
-      addHash(m, m.hash);
+    for(const sim of G.s.sims){
+      if(sim.id > maxId) maxId = sim.id;
+      if(sim.coins == null) sim.coins = 0;
+      if(sim.style == null) sim.style = 0.5;
+      if(sim.next == null) sim.next = G.s.t + Math.random() * 7200;
+      if(!sim.pool) sim.pool = 'solo';
+      addHash(sim, sim.hash);
     }
     simSeq = Math.max(simSeq, maxId);
-    for(const p of G.s.pools){
-      if(p.owner === 'sim' && p.id){
-        const n = parseInt(String(p.id).replace(/\D/g, ''), 10);
-        if(n > poolSeq) poolSeq = n;
+    for(const pool of G.s.pools){
+      if(pool.owner === 'sim' && pool.id){
+        const poolNum = parseInt(String(pool.id).replace(/\D/g, ''), 10);
+        if(poolNum > poolSeq) poolSeq = poolNum;
       }
     }
     rebuildMembers();
   }
 
-  const simHashOf = c => G._simChainHash[c.id] || 0;
-  const simPoolHashOf = p => G._simPoolHash[p.id] || 0;
-  const simSoloHashOf = cid => G._simSoloHash[cid] || 0;
+  const simHashOf = chain => G._simChainHash[chain.id] || 0;
+  const simPoolHashOf = pool => G._simPoolHash[pool.id] || 0;
+  const simSoloHashOf = chainId => G._simSoloHash[chainId] || 0;
 
-  function drawSimWinner(c, budget){
+  function drawSimWinner(chain, budget){
     ensureMembers();
-    let x = budget;
-    for(const p of G.s.pools){
-      if(!p.live || p.chain !== c.id) continue;
-      const h = G._simPoolHash[p.id] || 0;
-      if(h <= 0) continue;
-      x -= h;
-      if(x <= 0){
-        const members = G._poolMembers.get(p.id) || [];
-        return pickMember(members, p.id);
+    let remainingHash = budget;
+    for(const pool of G.s.pools){
+      if(!pool.live || pool.chain !== chain.id) continue;
+      const poolHashAmount = G._simPoolHash[pool.id] || 0;
+      if(poolHashAmount <= 0) continue;
+      remainingHash -= poolHashAmount;
+      if(remainingHash <= 0){
+        const members = G._poolMembers.get(pool.id) || [];
+        return pickMember(members, pool.id);
       }
     }
-    const soloH = G._simSoloHash[c.id] || 0;
-    if(soloH > 0){
-      const members = G._soloMembers[c.id] || [];
+    const soloHash = G._simSoloHash[chain.id] || 0;
+    if(soloHash > 0){
+      const members = G._soloMembers[chain.id] || [];
       return pickMember(members, 'solo');
     }
     return { pool: 'solo', mine: false };
@@ -302,31 +302,31 @@ export function installSims(G){
   function pickMember(indices, poolId){
     if(!indices.length) return { pool: poolId, mine: false };
     let total = 0;
-    for(const i of indices) total += G.s.sims[i].hash;
+    for(const index of indices) total += G.s.sims[index].hash;
     if(total <= 0) return { pool: poolId, mine: false, sim: G.s.sims[indices[0]] };
-    let x = Math.random() * total;
-    for(const i of indices){
-      x -= G.s.sims[i].hash;
-      if(x <= 0) return { pool: poolId, mine: false, sim: G.s.sims[i] };
+    let remainingHash = Math.random() * total;
+    for(const index of indices){
+      remainingHash -= G.s.sims[index].hash;
+      if(remainingHash <= 0) return { pool: poolId, mine: false, sim: G.s.sims[index] };
     }
     return { pool: poolId, mine: false, sim: G.s.sims[indices[indices.length - 1]] };
   }
 
-  function creditSim(m, usd){
-    if(!m) return;
-    m.coins = (m.coins || 0) + usd;
+  function creditSim(sim, usd){
+    if(!sim) return;
+    sim.coins = (sim.coins || 0) + usd;
   }
   function creditSimPoolShare(pool, fullCoin, price){
     if(!pool || !pool.live) return;
-    const ph = (G._simPoolHash[pool.id] || 0);
-    if(ph <= 0) return;
+    const poolHashAmount = (G._simPoolHash[pool.id] || 0);
+    if(poolHashAmount <= 0) return;
     const shareCoin = fullCoin * (1 - pool.fee);
     ensureMembers();
     const members = G._poolMembers.get(pool.id) || [];
-    for(const i of members){
-      const m = G.s.sims[i];
-      const part = shareCoin * (m.hash / ph);
-      m.coins += part * price;
+    for(const index of members){
+      const sim = G.s.sims[index];
+      const memberShare = shareCoin * (sim.hash / poolHashAmount);
+      sim.coins += memberShare * price;
     }
     if(pool.owner === 'sim'){
       const take = pool.scheme === 'PPS' ? fullCoin * price : fullCoin * price * pool.fee;
@@ -339,212 +339,212 @@ export function installSims(G){
     const gen = G.s.gen || 0;
     return SIM_HASH_COST * Math.pow(1.12, Math.min(gen, 12));
   }
-  function powerCostDay(m){ return m.hash * SIM_POWER_PER_MH; }
-  function expectedNetDay(m){
-    const c = G.chain(m.chain);
-    if(!c) return 0;
-    const rev = m.hash * G.revPerMh(c);
+  function powerCostDay(sim){ return sim.hash * SIM_POWER_PER_MH; }
+  function expectedNetDay(sim){
+    const chain = G.chain(sim.chain);
+    if(!chain) return 0;
+    const rev = sim.hash * G.revPerMh(chain);
     let mult = 1;
-    if(m.pool && m.pool !== 'solo'){
-      const p = G.poolOf(m.pool);
-      if(p && p.live) mult = (1 - p.fee) * (p.scheme === 'PPS' ? 1 : 1 + TX_FEES * 0.5);
+    if(sim.pool && sim.pool !== 'solo'){
+      const pool = G.poolOf(sim.pool);
+      if(pool && pool.live) mult = (1 - pool.fee) * (pool.scheme === 'PPS' ? 1 : 1 + TX_FEES * 0.5);
     }
-    return rev * mult - powerCostDay(m);
+    return rev * mult - powerCostDay(sim);
   }
 
-  function decide(m){
-    const t = G.s.t;
-    sellSomeCoins(m);
-    const hoursSince = payPowerBillAndCoverShortfall(m, t);
-    reinvestOrTrimHash(m, hoursSince);
-    switchToBetterChain(m);
-    pickSimPool(m);
-    if(m.style > 0.62 && m.cash > 400 && Math.random() < 0.008 + m.style * 0.012){
-      tryFoundPool(m);
+  function decide(sim){
+    const now = G.s.t;
+    sellSomeCoins(sim);
+    const hoursSince = payPowerBillAndCoverShortfall(sim, now);
+    reinvestOrTrimHash(sim, hoursSince);
+    switchToBetterChain(sim);
+    pickSimPool(sim);
+    if(sim.style > 0.62 && sim.cash > 400 && Math.random() < 0.008 + sim.style * 0.012){
+      tryFoundPool(sim);
     }
-    manageOwnedPools(m);
+    manageOwnedPools(sim);
 
-    const base = 3600 * (2.5 - m.style * 1.4);
-    m.next = t + base * (0.55 + Math.random() * 0.9);
+    const base = 3600 * (2.5 - sim.style * 1.4);
+    sim.next = now + base * (0.55 + Math.random() * 0.9);
   }
 
-  function sellSomeCoins(m){
-    if(m.coins > 5 && Math.random() < 0.35 + m.style * 0.25){
-      const sell = m.coins * (SIM_SELL_FRAC * (0.6 + Math.random() * 0.8));
-      m.coins -= sell;
-      m.cash += sell * (1 - C.EXCH_FEE);
+  function sellSomeCoins(sim){
+    if(sim.coins > 5 && Math.random() < 0.35 + sim.style * 0.25){
+      const sell = sim.coins * (SIM_SELL_FRAC * (0.6 + Math.random() * 0.8));
+      sim.coins -= sell;
+      sim.cash += sell * (1 - C.EXCH_FEE);
     }
   }
 
-  function payPowerBillAndCoverShortfall(m, t){
+  function payPowerBillAndCoverShortfall(sim, now){
     const hoursSince = Math.min(SIM_DECIDE_MAX_H,
-      Math.max(0.5, (m._lastDecide) ? (t - m._lastDecide) / 3600 : 6));
-    m._lastDecide = t;
-    const powerBill = powerCostDay(m) * (hoursSince / 24);
-    m.cash -= powerBill;
-    if(m.cash < 0){
-      if(m.coins > 0){ m.cash += m.coins * (1 - C.EXCH_FEE); m.coins = 0; }
-      if(m.cash < 0 && m.hash > 15){
-        const cut = Math.min(m.hash * 0.15, m.hash - 10);
-        setSimHash(m, m.hash - cut);
-        m.cash += cut * hashCost() * 0.35;
+      Math.max(0.5, (sim._lastDecide) ? (now - sim._lastDecide) / 3600 : 6));
+    sim._lastDecide = now;
+    const powerBill = powerCostDay(sim) * (hoursSince / 24);
+    sim.cash -= powerBill;
+    if(sim.cash < 0){
+      if(sim.coins > 0){ sim.cash += sim.coins * (1 - C.EXCH_FEE); sim.coins = 0; }
+      if(sim.cash < 0 && sim.hash > 15){
+        const cut = Math.min(sim.hash * 0.15, sim.hash - 10);
+        setSimHash(sim, sim.hash - cut);
+        sim.cash += cut * hashCost() * 0.35;
       }
-      if(m.cash < 0) m.cash = 0;
+      if(sim.cash < 0) sim.cash = 0;
     }
     return hoursSince;
   }
 
-  function reinvestOrTrimHash(m, hoursSince){
-    const net = expectedNetDay(m);
+  function reinvestOrTrimHash(sim, hoursSince){
+    const net = expectedNetDay(sim);
     const cost = hashCost();
     // Room + lead-time binds on reinvestment: docs/economy.md.
-    const room = simRoomOf(m.chain);
-    if(room > 0 && m.cash > cost * 40 && net > 0 &&
-       Math.random() < (0.12 + m.style * 0.28) * room){
-      const pace = Math.max(SIM_MIN_HASH, m.hash * SIM_EXPAND_MAX_DAY) * (hoursSince / 24);
-      const want = Math.floor(Math.min(pace, m.cash * (0.08 + m.style * 0.18) * room / cost));
-      const buy = Math.max(0, Math.min(want, Math.floor(m.cash / cost)));
+    const room = simRoomOf(sim.chain);
+    if(room > 0 && sim.cash > cost * 40 && net > 0 &&
+       Math.random() < (0.12 + sim.style * 0.28) * room){
+      const pace = Math.max(SIM_MIN_HASH, sim.hash * SIM_EXPAND_MAX_DAY) * (hoursSince / 24);
+      const want = Math.floor(Math.min(pace, sim.cash * (0.08 + sim.style * 0.18) * room / cost));
+      const buy = Math.max(0, Math.min(want, Math.floor(sim.cash / cost)));
       // Buy-floor of 1 MH, not a rounder number: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
       if(buy >= 1){
-        m.cash -= buy * cost;
-        setSimHash(m, m.hash + buy);
+        sim.cash -= buy * cost;
+        setSimHash(sim, sim.hash + buy);
       }
-    } else if(overBuilt(m.chain) && m.hash > SIM_MIN_HASH && Math.random() < 0.05){
-      const cut = Math.min(m.hash * 0.08, m.hash - SIM_MIN_HASH);
-      setSimHash(m, m.hash - cut);
-      m.cash += cut * hashCost() * 0.35;
+    } else if(overBuilt(sim.chain) && sim.hash > SIM_MIN_HASH && Math.random() < 0.05){
+      const cut = Math.min(sim.hash * 0.08, sim.hash - SIM_MIN_HASH);
+      setSimHash(sim, sim.hash - cut);
+      sim.cash += cut * hashCost() * 0.35;
     }
   }
 
-  function switchToBetterChain(m){
-    let best = m.chain;
-    let bestR = G.revPerMh(G.chain(m.chain)) * chainDraw(m.chain) * SWITCH_EDGE;
-    for(const cid of SIM_CHAINS){
-      const c = G.chain(cid);
-      const simH = G._simChainHash[cid] || 0;
+  function switchToBetterChain(sim){
+    let best = sim.chain;
+    let bestRevenue = G.revPerMh(G.chain(sim.chain)) * chainDraw(sim.chain) * SWITCH_EDGE;
+    for(const chainId of SIM_CHAINS){
+      const chain = G.chain(chainId);
+      const chainSimHash = G._simChainHash[chainId] || 0;
       // Whale check measured against current hashrate, not the floor: docs/implementation-notes.md.
-      if(cid !== m.chain && simH + m.hash > simTargetOf(cid) && m.hash > 0.25 * Math.max(1, simH))
+      if(chainId !== sim.chain && chainSimHash + sim.hash > simTargetOf(chainId) && sim.hash > 0.25 * Math.max(1, chainSimHash))
         continue;
-      const r = G.revPerMh(c) * chainDraw(cid) * (0.88 + Math.random() * 0.24);
-      if(r > bestR){ bestR = r; best = cid; }
+      const revenue = G.revPerMh(chain) * chainDraw(chainId) * (0.88 + Math.random() * 0.24);
+      if(revenue > bestRevenue){ bestRevenue = revenue; best = chainId; }
     }
-    if(best !== m.chain) setSimChain(m, best);
+    if(best !== sim.chain) setSimChain(sim, best);
   }
 
-  function pickSimPool(m){
-    const opts = G.s.pools.filter(p => p.live && p.chain === m.chain &&
-      (G.poolCapLimit ? (G._simPoolHash[p.id] || 0) + m.hash <= G.poolCapLimit(p) * 1.02 : true));
-    if(!opts.length){ setSimPool(m, 'solo'); return; }
+  function pickSimPool(sim){
+    const poolOptions = G.s.pools.filter(pool => pool.live && pool.chain === sim.chain &&
+      (G.poolCapLimit ? (G._simPoolHash[pool.id] || 0) + sim.hash <= G.poolCapLimit(pool) * 1.02 : true));
+    if(!poolOptions.length){ setSimPool(sim, 'solo'); return; }
     // Scores through poolMarket's own poolScore(), not a third hand-rolled
     // copy of the formula — a pool's worth must mean the same thing
     // regardless of which rule moved a miner.
-    let best = null, bestS = -1;
-    for(const p of opts){
-      const sc = G.poolScore(p);
-      if(sc > bestS){ bestS = sc; best = p; }
+    let best = null, bestScore = -1;
+    for(const pool of poolOptions){
+      const score = G.poolScore(pool);
+      if(score > bestScore){ bestScore = score; best = pool; }
     }
-    const soloS = 0.72 * G.scoreJitter();
-    if(soloS > bestS) setSimPool(m, 'solo');
-    else if(best) setSimPool(m, best.id);
+    const soloScore = 0.72 * G.scoreJitter();
+    if(soloScore > bestScore) setSimPool(sim, 'solo');
+    else if(best) setSimPool(sim, best.id);
   }
 
-  function tryFoundPool(m){
-    const c = G.chain(m.chain);
-    if(!c || c.id === 'tessera') return;
-    const liveN = G.s.pools.filter(p => p.live && p.chain === m.chain).length;
-    if(liveN > 14) return;
-    const scheme = m.style > 0.75 && m.cash > 2000 ? (Math.random() < 0.45 ? 'PPS' : 'PPLNS') : 'PPLNS';
+  function tryFoundPool(sim){
+    const chain = G.chain(sim.chain);
+    if(!chain || chain.id === 'tessera') return;
+    const liveCount = G.s.pools.filter(pool => pool.live && pool.chain === sim.chain).length;
+    if(liveCount > 14) return;
+    const scheme = sim.style > 0.75 && sim.cash > 2000 ? (Math.random() < 0.45 ? 'PPS' : 'PPLNS') : 'PPLNS';
     const fee = scheme === 'PPS' ? 0.018 + Math.random() * 0.04 : 0.004 + Math.random() * 0.025;
     const bond = Math.round(Math.min(
-      m.cash * 0.4,
-      Math.max(120, m.hash * C.PAY * c.mult * (scheme === 'PPS' ? 0.8 : PPLNS_COVER) + (scheme === 'PPS' ? 300 : 60))
+      sim.cash * 0.4,
+      Math.max(120, sim.hash * C.PAY * chain.mult * (scheme === 'PPS' ? 0.8 : PPLNS_COVER) + (scheme === 'PPS' ? 300 : 60))
     ));
-    if(bond < 80 || m.cash < bond + 50) return;
-    m.cash -= bond;
-    const id = 's' + m.id + 'p' + (++poolSeq);
+    if(bond < 80 || sim.cash < bond + 50) return;
+    sim.cash -= bond;
+    const id = 's' + sim.id + 'p' + (++poolSeq);
     const name = RIVAL_NAMES[poolSeq % RIVAL_NAMES.length] +
       (poolSeq >= RIVAL_NAMES.length ? ' ' + Math.ceil(poolSeq / RIVAL_NAMES.length) : '');
-    const p = {
-      id, chain: m.chain, owner: 'sim', ownerSim: m.id,
+    const pool = {
+      id, chain: sim.chain, owner: 'sim', ownerSim: sim.id,
       name, scheme, fee, bond, bond0: bond, cap: 0, born: G.s.t, live: true,
       earned: 0, found: 0, feeMoved: -1e9, lapse: 0,
     };
-    G.s.pools.push(p);
-    setSimPool(m, id);
-    if(G.say) G.say('pool', p.name + ' has opened on ' + c.name + ' at ' + (fee * 100).toFixed(1) + '%');
+    G.s.pools.push(pool);
+    setSimPool(sim, id);
+    if(G.say) G.say('pool', pool.name + ' has opened on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%');
   }
 
-  function manageOwnedPools(m){
-    for(const p of G.s.pools){
-      if(p.owner !== 'sim' || p.ownerSim !== m.id || !p.live) continue;
-      const ph = G._simPoolHash[p.id] || 0;
-      const cap = G.poolCapLimit ? G.poolCapLimit(p) : Infinity;
-      const full = ph >= cap * 0.95;
-      const share = ph / Math.max(1, G._simChainHash[p.chain] || 1);
+  function manageOwnedPools(sim){
+    for(const pool of G.s.pools){
+      if(pool.owner !== 'sim' || pool.ownerSim !== sim.id || !pool.live) continue;
+      const poolHashAmount = G._simPoolHash[pool.id] || 0;
+      const cap = G.poolCapLimit ? G.poolCapLimit(pool) : Infinity;
+      const full = poolHashAmount >= cap * 0.95;
+      const share = poolHashAmount / Math.max(1, G._simChainHash[pool.chain] || 1);
       if(full && Math.random() < 0.25){
-        if(G.setPoolFee) G.setPoolFee(p, Math.min(0.09, p.fee * 1.05));
-        else p.fee = Math.min(0.09, p.fee * 1.05);
-        const add = Math.min(p.earned * 0.1, m.cash * 0.05);
-        if(add > 10){ p.bond += add; p.bond0 = Math.max(p.bond0, p.bond); p.earned -= add; }
+        if(G.setPoolFee) G.setPoolFee(pool, Math.min(0.09, pool.fee * 1.05));
+        else pool.fee = Math.min(0.09, pool.fee * 1.05);
+        const bondTopUp = Math.min(pool.earned * 0.1, sim.cash * 0.05);
+        if(bondTopUp > 10){ pool.bond += bondTopUp; pool.bond0 = Math.max(pool.bond0, pool.bond); pool.earned -= bondTopUp; }
       } else if(share < 0.05 && Math.random() < 0.3){
-        if(G.setPoolFee) G.setPoolFee(p, Math.max(0.002, p.fee * 0.92));
-        else p.fee = Math.max(0.002, p.fee * 0.92);
+        if(G.setPoolFee) G.setPoolFee(pool, Math.max(0.002, pool.fee * 0.92));
+        else pool.fee = Math.max(0.002, pool.fee * 0.92);
       }
-      p.lapse = ph < 1 ? (p.lapse || 0) + 1 : 0;
-      if(p.lapse > 96 && Math.random() < 0.2){
-        closeSimPool(p, 'when ' + p.name + ' folded');
-        m.cash += p.bond;
-        p.bond = 0;
-        if(G.say) G.say('pool', p.name + ' has closed — not enough members');
+      pool.lapse = poolHashAmount < 1 ? (pool.lapse || 0) + 1 : 0;
+      if(pool.lapse > 96 && Math.random() < 0.2){
+        closeSimPool(pool, 'when ' + pool.name + ' folded');
+        sim.cash += pool.bond;
+        pool.bond = 0;
+        if(G.say) G.say('pool', pool.name + ' has closed — not enough members');
       }
-      if(p.bond > p.bond0 * 1.3 && Math.random() < 0.15){
-        const room = p.bond - p.bond0;
+      if(pool.bond > pool.bond0 * 1.3 && Math.random() < 0.15){
+        const room = pool.bond - pool.bond0;
         const take = room * 0.4;
-        p.bond -= take;
-        m.cash += take;
+        pool.bond -= take;
+        sim.cash += take;
       }
     }
   }
 
   // Consolidates 5 previously-separate, drifted closure paths: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-  function closeSimPool(p, why){
-    p.live = false;
-    for(const s of G.s.sims) if(s.pool === p.id) setSimPool(s, 'solo');
-    for(const gr of G.s.groups) if(gr.pool === p.id){
-      if(G.forfeitGroup) G.forfeitGroup(gr, why);
-      gr.pool = 'solo';
+  function closeSimPool(pool, why){
+    pool.live = false;
+    for(const sim of G.s.sims) if(sim.pool === pool.id) setSimPool(sim, 'solo');
+    for(const group of G.s.groups) if(group.pool === pool.id){
+      if(G.forfeitGroup) G.forfeitGroup(group, why);
+      group.pool = 'solo';
     }
   }
 
   function simPulse(){
-    const t = G.s.t;
+    const now = G.s.t;
     const sims = G.s.sims;
     let budget = SIM_DECIDE_BUDGET;
     const start = Math.floor(Math.random() * Math.max(1, sims.length));
     for(let k = 0; k < sims.length && budget > 0; k++){
-      const i = (start + k) % sims.length;
-      const m = sims[i];
-      if(m.next > t) continue;
-      decide(m);
+      const index = (start + k) % sims.length;
+      const sim = sims[index];
+      if(sim.next > now) continue;
+      decide(sim);
       budget--;
     }
 
-    const n = sims.length;
-    if(n < SIM_SOFT_CAP){
-      const sat = 1 - n / SIM_SOFT_CAP;
-      const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * n) * sat / 24;
+    const population = sims.length;
+    if(population < SIM_SOFT_CAP){
+      const sat = 1 - population / SIM_SOFT_CAP;
+      const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * population) * sat / 24;
       let spawn = Math.floor(expect);
       if(Math.random() < expect - spawn) spawn++;
-      for(let s = 0; s < spawn; s++){
-        const m = mkSim({
+      for(let spawnIndex = 0; spawnIndex < spawn; spawnIndex++){
+        const newSim = mkSim({
           chain: pickJoinChain(sims.length),
           hash: newcomerHash(),
           cash: 60 + Math.random() * 280,
-          t,
+          time: now,
         });
-        sims.push(m);
-        bumpN(m.chain, 1);
-        addHash(m, m.hash);
+        sims.push(newSim);
+        bumpChainCount(newSim.chain, 1);
+        addHash(newSim, newSim.hash);
         G._membersDirty = true;
       }
     }
@@ -553,46 +553,46 @@ export function installSims(G){
     const looks = Math.max(1, Math.round(sims.length / SIM_START));
     for(let k = 0; k < looks; k++){
       if(sims.length <= SIM_START || Math.random() >= 0.08) continue;
-      const i = Math.floor(Math.random() * sims.length);
-      const m = sims[i];
-      if(m.cash < 15 && m.hash < 20 && m.coins < 10){
+      const index = Math.floor(Math.random() * sims.length);
+      const sim = sims[index];
+      if(sim.cash < 15 && sim.hash < 20 && sim.coins < 10){
         // Zero hashrate through setSimHash before releasing pools: docs/implementation-notes.md.
-        setSimHash(m, 0);
-        for(const p of G.s.pools){
-          if(p.owner === 'sim' && p.ownerSim === m.id && p.live){
-            closeSimPool(p, 'when ' + p.name + ' shut down');
-            if(G.say) G.say('pool', p.name + ' has closed — its operator has left mining');
+        setSimHash(sim, 0);
+        for(const pool of G.s.pools){
+          if(pool.owner === 'sim' && pool.ownerSim === sim.id && pool.live){
+            closeSimPool(pool, 'when ' + pool.name + ' shut down');
+            if(G.say) G.say('pool', pool.name + ' has closed — its operator has left mining');
           }
         }
-        sims.splice(i, 1);
-        bumpN(m.chain, -1);
+        sims.splice(index, 1);
+        bumpChainCount(sim.chain, -1);
         G._membersDirty = true;
       }
     }
   }
 
-  function simFlatDrip(c, dt){
-    const price = G.price(c);
-    const diff = G.diffOf(c);
+  function simFlatDrip(chain, dt){
+    const price = G.price(chain);
+    const diff = G.diffOf(chain);
     if(diff <= 0) return;
     ensureMembers();
-    for(const p of G.s.pools){
-      if(!p.live || p.chain !== c.id || p.scheme !== 'PPS') continue;
-      const members = G._poolMembers.get(p.id);
+    for(const pool of G.s.pools){
+      if(!pool.live || pool.chain !== chain.id || pool.scheme !== 'PPS') continue;
+      const members = G._poolMembers.get(pool.id);
       if(!members || !members.length) continue;
-      for(const i of members){
-        const m = G.s.sims[i];
-        const drip = (dt * m.hash / diff) * c.reward * (1 - p.fee);
-        m.coins += drip * price;
+      for(const index of members){
+        const sim = G.s.sims[index];
+        const drip = (dt * sim.hash / diff) * chain.reward * (1 - pool.fee);
+        sim.coins += drip * price;
       }
-      if(p.owner === 'sim'){
-        const ph = G._simPoolHash[p.id] || 0;
-        const owed = (dt * ph / diff) * c.reward * price * (1 - p.fee);
-        p.bond -= owed;
-        p.earned -= owed;
-        if(p.bond <= 0){
-          p.bond = 0;
-          closeSimPool(p, 'when the pool failed');
+      if(pool.owner === 'sim'){
+        const poolHashAmount = G._simPoolHash[pool.id] || 0;
+        const owed = (dt * poolHashAmount / diff) * chain.reward * price * (1 - pool.fee);
+        pool.bond -= owed;
+        pool.earned -= owed;
+        if(pool.bond <= 0){
+          pool.bond = 0;
+          closeSimPool(pool, 'when the pool failed');
         }
       }
     }
