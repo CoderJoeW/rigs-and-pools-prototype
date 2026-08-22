@@ -41,6 +41,9 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // See setupWebStorage.js: Node's own global localStorage otherwise
+    // shadows jsdom's, and not portably enough to fix via a NODE_OPTIONS flag.
+    setupFiles: ['./src/test/setupWebStorage.js'],
     // Several offline-catch-up tests run the real engine through a 24h
     // return (~2,880 tick chunks) and now also yield periodically rather
     // than blocking — both real seconds of work, measured at 4-4.7s on
