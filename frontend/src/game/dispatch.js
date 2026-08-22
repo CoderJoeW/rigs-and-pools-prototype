@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { C } from '../data/constants.js';
+import { dayIndexOf } from '../utils/calendar.js';
 import { CHAIN_BASE } from '../data/chains.js';
 import { SHELLS, SITEPART } from '../data/site-parts.js';
 import { PART, RISER } from '../data/hardware.js';
@@ -237,7 +238,7 @@ export function installDispatch(G){
      actually ran is kept: a save resumed after a multi-day gap rolls straight
      past the empty days in between, and `yday.day` is what tells the view the
      stashed figures are the immediately preceding day and not a stale one. */
-  const today = () => { const d=Math.floor(G.s.t/86400);
+  const today = () => { const d=dayIndexOf(G.s.t);
     if(!G.s.today||G.s.today.day!==d){
       if(G.s.today&&G.s.today.day===d-1) G.s.yday={...G.s.today,hash:totalHash.value};
       G.s.today={day:d,earned:0,power:0,blocks:0};
@@ -248,7 +249,7 @@ export function installDispatch(G){
      derived rather than stored — the snapshot keeps the two counters it is
      the difference of. */
   const yday = k => { const y=G.s.yday;
-    if(!y || y.day!==Math.floor(G.s.t/86400)-1) return null;
+    if(!y || y.day!==dayIndexOf(G.s.t)-1) return null;
     const v = k==='net' ? y.earned-y.power : y[k];
     return Number.isFinite(v) ? v : null; };
   /* Fractional change of an INSTANTANEOUS reading (hashrate, say) against

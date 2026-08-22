@@ -1,4 +1,5 @@
 import { C, TX_FEES, CONN_Q, BLOCK_K, RETARGET } from '../data/constants.js';
+import { dayIndexOf } from '../utils/calendar.js';
 import { SITEPART } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { PART, PART_MAP } from '../data/hardware.js';
@@ -144,7 +145,7 @@ export function installTick(G){
 
     const bill=G.powerRateDay.value*days;
     G.s.cash-=bill; G.s.powerPaid+=bill; G.today().power+=bill;
-    const dayIdx=Math.floor(G.s.t/86400);
+    const dayIdx=dayIndexOf(G.s.t);
     for(const f of G.s.sites){
       if(!f.bill||f.bill.day!==dayIdx) f.bill={day:dayIdx,off:0,sh:0,peak:0,cool:0,saved:0};
       const fl=G.flowOf(f), c=G.siteCostPerHour(f)*hrs;
