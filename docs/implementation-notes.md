@@ -17,6 +17,20 @@ still resolve at call time exactly as the closure did; declaration order,
 hoisting and intra-module references are otherwise untouched. See
 design-spec.md §13e (The closure refactor) for the full migration story.
 
+## Weather async-readiness seam (`src/services/weatherService.js`, `src/game/weather.js`)
+
+`weatherService` exposes `peek(day)` (sync, returns cached reading or
+`undefined`) and `ensure(day)` (returns a Promise, fills the cache). Today
+`ensure()` fills the cache synchronously — `generateLocal()` never actually
+waits on anything — so this is a no-op behavior change. The split exists so
+`weather.js`'s `ensureWeather()`, which `stepTick` calls synchronously every
+tick and never awaits, is already correct once `ensure()` is swapped for a
+real `fetch('/weather/'+day)`: it fires `ensure()`, reads via `peek()`, and
+falls back to a neutral reading (`{cloud:0.3, wind:0.5}`) until the promise
+lands, picking up the real value on the next tick. `weather.js` should be
+the only place that needs no further change for that move; `weatherService`
+is the one file that does.
+
 ## Pool market (`src/game/poolMarket.js`)
 
 **`FEE_BITE`.** One scoring function feeds both the hourly market drift
