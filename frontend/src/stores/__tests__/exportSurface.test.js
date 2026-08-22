@@ -15,13 +15,13 @@ import { createGame } from '../game.js';
    so a new entry lands somewhere obvious rather than at the end. */
 const INTERNAL = new Set([
   // --- state.js ---
-  'freshState',
+  'freshState', 'spend',
   // --- generations.js ---
   'builtGen', 'ensureGens', 'liveCards',
   // --- weather.js ---
   'ensureWeather', 'sky',
   // --- timeOfDay.js ---
-  'bandOf', 'evMult', 'hourOf', 'rateAt', 'site',
+  'bandOf', 'evMult', 'hourOf', 'rateAt', 'rig', 'site',
   // --- dispatch.js ---
   'BATT_HORIZON', 'DEFAULT_ELEC', 'blocksDay', 'chassisW', 'draftRate', 'liveUnits',
   'margRate', 'psuCarrying', 'psuUsableW', 'psuWithConn', 'rigAir', 'rigCoreW',

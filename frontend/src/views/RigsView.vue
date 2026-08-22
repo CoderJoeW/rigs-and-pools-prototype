@@ -5,6 +5,7 @@ import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useSwipeAction } from '../composables/useSwipeAction.js';
+import { useInlineRename } from '../composables/useInlineRename.js';
 import RebuildSheet from '../components/RebuildSheet.vue';
 import FleetSheet from '../components/FleetSheet.vue';
 import ChainMark from '../components/ChainMark.vue';
@@ -116,11 +117,9 @@ watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 const openRig=ref(null);
 const rig=computed(()=> openRig.value==null ? null
   : g.s.rigs.find(r=>r.id===openRig.value) || null);
-const renameOpen=ref(false);
-const renameDraft=ref('');
+const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
+  useInlineRename(()=>rig.value.name, name=>g.renameRig(rig.value.id,name));
 watch(openRig, ()=>{ renameOpen.value=false; resetSwipe(); });
-const startRenameRig=()=>{ renameDraft.value=rig.value.name; renameOpen.value=true; };
-const saveRenameRig=()=>{ g.renameRig(rig.value.id,renameDraft.value); renameOpen.value=false; };
 const fleetOpen=ref(false);
 const REPAIR_AT=C.REPAIR_AT;
 

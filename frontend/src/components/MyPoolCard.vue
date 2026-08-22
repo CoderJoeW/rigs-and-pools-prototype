@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainMark from './ChainMark.vue';
+import { useInlineRename } from '../composables/useInlineRename.js';
 
 /* One pool you own, on the Chains tab: capacity and bond, the members you can
    point at it, the fee dial and its projection, and the close/top-up controls.
@@ -28,10 +29,8 @@ const spark = hist => sparkPath(hist, 32, 26);
 /* An unset fee draft means "showing the live fee" — the projection and the
    Move/Cancel pair only appear once the player has actually moved the slider. */
 const feeDraft = ref(undefined);
-const renameOpen = ref(false);
-const renameDraft = ref('');
-const startRename = () => { renameDraft.value = props.pool.name; renameOpen.value = true; };
-const saveRename = () => { g.renamePool(props.pool, renameDraft.value); renameOpen.value = false; };
+const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
+  useInlineRename(() => props.pool.name, name => g.renamePool(props.pool, name));
 
 /* These scan every miner on the pool's chain — tens of thousands of them once
    the network has filled — and the template asked for them a dozen times per

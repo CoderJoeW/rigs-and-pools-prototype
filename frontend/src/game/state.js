@@ -56,5 +56,13 @@ export function installState(G){
   };
   }
   const s = reactive(freshState());
-  Object.assign(G, {freshState,s});
+  // A purchase that counts toward the lifetime "spent" stat goes through
+  // this rather than touching s.cash directly, so the two can't drift out
+  // of sync. Not every cash decrease counts as "spent" (e.g. founding a
+  // pool's bond isn't), so this is opt-in, not a blanket cash setter.
+  function spend(amount){ s.cash-=amount; s.spent+=amount; }
+  Object.assign(G, {freshState,s,spend});
 }
+
+// Trims free-text names (rigs, sites, pools, groups) to one shared length cap.
+export function trimName(name, max=24){ return (name||'').trim().slice(0,max); }

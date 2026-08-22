@@ -6,6 +6,7 @@ import { sparkPath } from '../utils/spark.js';
 import ChainMark from '../components/ChainMark.vue';
 import MyPoolCard from '../components/MyPoolCard.vue';
 import ChainGem from '../components/ChainGem.vue';
+import { useSegTabs } from '../composables/useSegTabs.js';
 
 /* One banner plate per chain, shot as a single sheet and cut into five so
    the set shares its lighting. Each is composed with its subject on the left
@@ -26,20 +27,8 @@ const SEGS=[
   {k:'yours',  label:'Your pools',
    icon:'M16 20v-1.6a3.4 3.4 0 0 0-3.4-3.4H6.4A3.4 3.4 0 0 0 3 18.4V20M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1.6a3.4 3.4 0 0 0-2.6-3.3M15.5 4.2a3.4 3.4 0 0 1 0 6.6'},
 ];
-const seg=ref('chains');
 // Real ARIA tablist, not just visually styled: docs/implementation-notes.md.
-const segEl=reactive({});
-const segKey=e=>{
-  const d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1
-          : e.key==='Home' ? 'first' : e.key==='End' ? 'last' : 0;
-  if(!d) return;
-  e.preventDefault();
-  const i=SEGS.findIndex(x=>x.k===seg.value);
-  const n = d==='first' ? 0 : d==='last' ? SEGS.length-1
-          : (i+d+SEGS.length)%SEGS.length;
-  seg.value=SEGS[n].k;
-  const el=segEl[seg.value]; if(el&&el.focus) el.focus();
-};
+const { seg, segEl, segKey } = useSegTabs(SEGS, 'chains');
 // chainsInfo has its own flag, not s.help: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const chainsInfo=ref(false);
 

@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { useInlineRename } from '../composables/useInlineRename.js';
 import DesignSheet from '../components/DesignSheet.vue';
 import Compare from '../components/Compare.vue';
 import RackTile from '../components/RackTile.vue';
@@ -55,10 +56,8 @@ const choosePlant=id=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=nul
 const chooseShell=id=>{ g.newSite(id); g.s.sitePicker=null; };
 const chooseFabPick=id=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
 const chooseExpand=id=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
-const renameDraft=ref('');
-const renameOpen=ref(false);
-const startRename=()=>{ renameDraft.value=f.value.name; renameOpen.value=true; };
-const saveRename=()=>{ g.renameSite(f.value.id,renameDraft.value); renameOpen.value=false; };
+const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
+  useInlineRename(()=>f.value.name, name=>g.renameSite(f.value.id,name));
 const decomArm=ref(false);
 /* The switcher is a disclosure rather than a permanent list: on a farm with
    one site the list says nothing the trigger has not already said, and on a

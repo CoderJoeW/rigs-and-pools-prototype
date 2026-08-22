@@ -1,4 +1,4 @@
-import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, RIVAL_NAMES, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
+import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
 import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
@@ -7,6 +7,7 @@ import { DESIGN_AXES, MAX_AXIS_POINTS, designTotals, designStats, designCost } f
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { allUnlocked } from './state.js';
+import { nextRivalName } from './rivals.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
 
@@ -185,7 +186,7 @@ export function installPersistence(G){
           const per=C.PAY*c.mult*(scheme==='PPS'?COVER_DAYS:PPLNS_COVER);
           const bond=Math.round(per*SIM_RATIO*c.floor*(0.12+Math.random()*0.45));
           G.s.pools.push({ id:'rm'+(++seq), chain:cid, owner:'rival',
-            name:RIVAL_NAMES[seq%RIVAL_NAMES.length], scheme, fee, bond, bond0:bond,
+            name:nextRivalName(seq), scheme, fee, bond, bond0:bond,
             cap:0, born:G.s.t, live:true, earned:0, found:0, feeMoved:-1e9, lapse:0 });
         }
       }

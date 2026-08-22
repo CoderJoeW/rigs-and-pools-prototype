@@ -57,6 +57,11 @@ export const CARDS = [
 ];
 export const RISER = { name:'PCIe riser', w:3, price:9 };
 
+// Untuned/unworn core draw for a GPU rig spec — chassis + cooler + n risers
+// + n cards. Shared by the Build draft preview, its preset search, and the
+// rebuild planner so "what would this draw" is one formula, not three.
+export const gpuCoreW = (frame,mobo,cool,unit,n) => frame.w+mobo.w+cool.w+n*RISER.w+n*unit.w;
+
 // Hardware generations — the treadmill answer: design-spec.md §3b.
 export const GEN_SERIES=['Axion','Vireo','Kestrel','Zephyr','Onyx','Quasar','Helix','Titan',
   'Aurel','Basalt','Cinder','Drift'];

@@ -5,6 +5,7 @@ import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainGem from '../components/ChainGem.vue';
 import { CHAIN_HUE } from '../data/chains.js';
+import { useSegTabs } from '../composables/useSegTabs.js';
 
 const g = useGameStore();
 const open=reactive({});
@@ -20,19 +21,7 @@ const SEGS=[
   {k:'setup',  label:'Setup',
    icon:'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4M4 12h1.6M18.4 12H20M12 4v1.6M12 18.4V20M6.3 6.3l1.1 1.1M16.6 16.6l1.1 1.1M17.7 6.3l-1.1 1.1M7.4 16.6l-1.1 1.1'},
 ];
-const seg=ref('prices');
-const segEl=reactive({});
-const segKey=e=>{
-  const d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1
-          : e.key==='Home' ? 'first' : e.key==='End' ? 'last' : 0;
-  if(!d) return;
-  e.preventDefault();
-  const i=SEGS.findIndex(x=>x.k===seg.value);
-  const n = d==='first' ? 0 : d==='last' ? SEGS.length-1
-          : (i+d+SEGS.length)%SEGS.length;
-  seg.value=SEGS[n].k;
-  const el=segEl[seg.value]; if(el&&el.focus) el.focus();
-};
+const { seg, segEl, segKey } = useSegTabs(SEGS, 'prices');
 
 // Change is measured between the last two SAMPLES (18h apart, tick.js
 // pushes one every 0.75 sim-days), not against the live price — a live

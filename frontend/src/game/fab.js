@@ -43,7 +43,7 @@ export function installFab(G){
     const liveTop=liveTopOf(G,d.kind);
     const { buildCash, hours, unitPrice }=designCost(d.kind, d.picks, liveTop);
     if(G.s.cash<buildCash) return;
-    G.s.cash-=buildCash; G.s.spent+=buildCash;
+    G.spend(buildCash);
     const stats=designStats(d.kind, d.picks, liveTop);
     // timestamp+random, not a saved counter: PART_MAP (data/hardware.js) is a
     // page-load-scoped singleton, so a persisted counter would collide across

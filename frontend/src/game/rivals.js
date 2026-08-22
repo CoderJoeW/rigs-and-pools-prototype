@@ -7,6 +7,20 @@ import { C, TX_FEES, SIM_RATIO, COVER_DAYS, PPLNS_COVER, VAR_K, RIVAL_NAMES } fr
    (rather than in data/constants.js, where the rest of the network-sim
    tuning lives) because it isn't a constant — it's an entity factory with
    its own mutable sequence counter, i.e. game logic. */
+// One naming sequence shared by every place that mints a rival/sim pool name
+// (mkRival below, sims.js's seedStarterPools/tryFoundPool, persistence.js's
+// server-pool replacement) so they can't drift into different conventions —
+// they previously did, including one path that dropped the disambiguating
+// suffix entirely and would have produced duplicate names once its sequence
+// ran past RIVAL_NAMES.length. `seq` is 1-based: the count of names minted
+// so far, including the one being named. First pass through the list gets no
+// suffix; each further pass appends its cycle number (2, 3, ...).
+export function nextRivalName(seq){
+  const idx=(seq-1)%RIVAL_NAMES.length;
+  const cycle=Math.ceil(seq/RIVAL_NAMES.length);
+  return RIVAL_NAMES[idx]+(cycle>1?' '+cycle:'');
+}
+
 let rivalSeq=0;
 export function mkRival(cid,t){
   const c=CHAINS.find(x=>x.id===cid);
@@ -21,8 +35,9 @@ export function mkRival(cid,t){
   const bond=Math.round(Math.max(
     want*C.PAY*c.mult*(scheme==='PPS'?1.0:PPLNS_COVER),
     scheme==='PPS' ? VAR_K*Math.sqrt(N)*bv : 0));
-  return { id:'r'+(++rivalSeq), chain:cid, owner:'rival',
-    name:RIVAL_NAMES[(rivalSeq-1)%RIVAL_NAMES.length]+(rivalSeq>RIVAL_NAMES.length?' '+Math.ceil(rivalSeq/RIVAL_NAMES.length):''),
+  rivalSeq++;
+  return { id:'r'+rivalSeq, chain:cid, owner:'rival',
+    name:nextRivalName(rivalSeq),
     scheme, fee, bond, bond0:bond, cap:0, born:t||0, live:true, earned:0,
     found:0, feeMoved:-1e9, lapse:0 };
 }
