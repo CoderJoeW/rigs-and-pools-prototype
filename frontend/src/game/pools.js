@@ -9,29 +9,29 @@ import { fmt } from '../utils/format.js';
 export function installPools(G){
   /* ---- running a pool ---- */
   function foundPool(chainId,scheme,fee){
-    const c=G.chain(chainId), need=G.bondReq(c,scheme);
+    const chain=G.chain(chainId), need=G.bondReq(chain,scheme);
     if(G.s.cash<need) return;
     G.s.cash-=need;
     G.s.pools.push({ id:'you'+Math.random().toString(36).slice(2,7), chain:chainId,
-      name:'Your '+c.name+' pool', scheme, fee, owner:'you',
+      name:'Your '+chain.name+' pool', scheme, fee, owner:'you',
       bond:need, bond0:need, cap:0, born:G.s.t, live:true, earned:0, _blocks:0 });
-    G.say('sys','Founded a '+scheme+' pool on '+c.name+' at '+(fee*100).toFixed(1)+'%',
+    G.say('sys','Founded a '+scheme+' pool on '+chain.name+' at '+(fee*100).toFixed(1)+'%',
       '-'+fmt.usd(need));
     G.pop('Pool opened','bond posted: '+fmt.usd(need),'blu',{always:true});
     G.s.shakeAt=G.s.t+300; G.s.shakeOn=chainId;
     if(!G.simsOn(chainId))
-      G.say('bad','No other miners work '+c.name+' — this pool can only ever hold your own rigs');
+      G.say('bad','No other miners work '+chain.name+' — this pool can only ever hold your own rigs');
   }
-  function renamePool(p,name){
-    if(p.owner!=='you') return;               // a rival's pool is not yours to rename
-    const n=(name||'').trim().slice(0,24);
-    if(n) p.name=n;
+  function renamePool(pool,name){
+    if(pool.owner!=='you') return;               // a rival's pool is not yours to rename
+    const trimmedName=(name||'').trim().slice(0,24);
+    if(trimmedName) pool.name=trimmedName;
   }
-  function setPoolFee(p,fee){
-    if(Math.abs(fee-p.fee)>0.0005) p.feeMoved=G.s.t;
-    p.fee=Math.max(0,Math.min(0.15,fee));
+  function setPoolFee(pool,fee){
+    if(Math.abs(fee-pool.fee)>0.0005) pool.feeMoved=G.s.t;
+    pool.fee=Math.max(0,Math.min(0.15,fee));
     G.s.shakeAt=G.s.t+300;      // word gets around in five minutes; debounces a slider drag
-    G.s.shakeOn=p.chain;
+    G.s.shakeOn=pool.chain;
   }
   /* The bond is a lever, not a fixed opening stake. On PPS it is literally the
      capacity control — it is the capital backing four days of member payouts,
@@ -42,31 +42,31 @@ export function installPools(G){
   /* What the bond may not go below: on PPS, cover for the members you already
      have. Without this you could pull your capital the moment a dry spell
      started and leave members underwritten by nothing. */
-  const bondFloor = p => Math.max(
-    G.bondReq(G.chain(p.chain), p.scheme),        // never below the entry stake
-    G.bondFor(p, G.poolHash(p)));                 // nor below cover for current members
-  function addBond(p,amt){
-    amt=Math.min(Math.round(amt), Math.floor(G.s.cash)); if(amt<=0) return;
-    G.s.cash-=amt; p.bond+=amt; p.bond0=Math.max(p.bond0,p.bond);
-    G.say('sys','Added '+fmt.usd(amt)+' to '+p.name+"'s bond",'-'+fmt.usd(amt),undefined,undefined,-amt);
+  const bondFloor = pool => Math.max(
+    G.bondReq(G.chain(pool.chain), pool.scheme),        // never below the entry stake
+    G.bondFor(pool, G.poolHash(pool)));                 // nor below cover for current members
+  function addBond(pool,amount){
+    amount=Math.min(Math.round(amount), Math.floor(G.s.cash)); if(amount<=0) return;
+    G.s.cash-=amount; pool.bond+=amount; pool.bond0=Math.max(pool.bond0,pool.bond);
+    G.say('sys','Added '+fmt.usd(amount)+' to '+pool.name+"'s bond",'-'+fmt.usd(amount),undefined,undefined,-amount);
   }
-  function releaseBond(p,amt){
-    const room=Math.max(0, p.bond-bondFloor(p));
-    amt=Math.min(Math.round(amt), Math.floor(room)); if(amt<=0) return;
-    p.bond-=amt; G.s.cash+=amt;
-    p.bond0=p.bond;      // a deliberate downsize is an announcement, not a default:
-    G.say('sys','Released '+fmt.usd(amt)+' from '+p.name+"'s bond",'+'+fmt.usd(amt),undefined,undefined,amt);
+  function releaseBond(pool,amount){
+    const room=Math.max(0, pool.bond-bondFloor(pool));
+    amount=Math.min(Math.round(amount), Math.floor(room)); if(amount<=0) return;
+    pool.bond-=amount; G.s.cash+=amount;
+    pool.bond0=pool.bond;      // a deliberate downsize is an announcement, not a default:
+    G.say('sys','Released '+fmt.usd(amount)+' from '+pool.name+"'s bond",'+'+fmt.usd(amount),undefined,undefined,amount);
   }                      // losses still push bond below bond0 and cost you trust
-  function topUpBond(p,amt){ addBond(p,amt); }
-  const poolProfit = p => Math.max(0, p.bond - p.bond0);
-  function withdrawProfit(p){
-    const amt=Math.round(poolProfit(p));
-    if(amt<=0) return;
-    p.bond-=amt; G.s.cash+=amt; G.s.poolTake=(G.s.poolTake||0)+amt;
-    G.say('sys','Withdrew profit from '+p.name,'+'+fmt.usd(amt),undefined,undefined,amt);
+  function topUpBond(pool,amount){ addBond(pool,amount); }
+  const poolProfit = pool => Math.max(0, pool.bond - pool.bond0);
+  function withdrawProfit(pool){
+    const amount=Math.round(poolProfit(pool));
+    if(amount<=0) return;
+    pool.bond-=amount; G.s.cash+=amount; G.s.poolTake=(G.s.poolTake||0)+amount;
+    G.say('sys','Withdrew profit from '+pool.name,'+'+fmt.usd(amount),undefined,undefined,amount);
   }
-  function closePool(p){
-    const back=Math.round(p.bond);
+  function closePool(pool){
+    const back=Math.round(pool.bond);
     G.s.cash+=back;
     /* Through the shared closing path, which releases the pool's simulated
        members as well as your own groups. Releasing only the groups left
@@ -75,20 +75,20 @@ export function installPools(G){
        bucket it walks — counted in the chain's hashrate, so the blocks kept
        coming, but unreachable, so the ones that should have been theirs fell
        through to solo. */
-    G.closeSimPool(p,'when you closed the pool');
-    G.say('sys','Closed '+p.name+' — bond returned','+'+fmt.usd(back),undefined,undefined,back);
+    G.closeSimPool(pool,'when you closed the pool');
+    G.say('sys','Closed '+pool.name+' — bond returned','+'+fmt.usd(back),undefined,undefined,back);
   }
-  function doSell(c,amt,quiet){
-    if(!Number.isFinite(amt)||amt<=0) return;   // one bad argument must not poison a price forever
-    if(amt<=0) return;
-    const slip=Math.min(0.5,0.5*amt/c.depth);
-    const net=amt*G.price(c)*(1-slip)*(1-C.EXCH_FEE);
-    G.s.wallet[c.id]-=amt; G.s.cash+=net; G.s.earned+=net;
-    c.impact=Math.min(0.85,c.impact+amt/c.depth);
-    if(!quiet) G.say('pay','Sold '+fmt.c(amt)+' '+c.tick+
+  function doSell(chain,amount,quiet){
+    if(!Number.isFinite(amount)||amount<=0) return;   // one bad argument must not poison a price forever
+    if(amount<=0) return;
+    const slip=Math.min(0.5,0.5*amount/chain.depth);
+    const net=amount*G.price(chain)*(1-slip)*(1-C.EXCH_FEE);
+    G.s.wallet[chain.id]-=amount; G.s.cash+=net; G.s.earned+=net;
+    chain.impact=Math.min(0.85,chain.impact+amount/chain.depth);
+    if(!quiet) G.say('pay','Sold '+fmt.c(amount)+' '+chain.tick+
       (slip>0.005?' ('+fmt.pct(slip)+' slippage)':''),'+'+fmt.usd2(net));
   }
-  const sell = (cid,frac)=> doSell(G.chain(cid), G.s.wallet[cid]*frac);
+  const sell = (chainId,frac)=> doSell(G.chain(chainId), G.s.wallet[chainId]*frac);
   /* Buying is doSell's mirror image, not a separate model: the same book
      depth sets slippage, the same exchange fee applies, and impact moves
      the same way — just signed the other direction. Selling pushes impact
@@ -97,44 +97,44 @@ export function installPools(G){
      in tick.js, so a premium fades exactly as a discount does. This is
      what completes the buy side the design spec's v33 fundamentals never
      shipped — no new price model, just the existing one used both ways. */
-  function doBuy(c,usd){
+  function doBuy(chain,usd){
     if(!Number.isFinite(usd)||usd<=0) return;
     const cost=Math.min(usd,G.s.cash);     // total cash committed, fee included
     if(cost<=0) return;
     const netUsd=cost/(1+C.EXCH_FEE);      // what actually buys coins, after the fee
-    const coins=netUsd/G.price(c);         // what a frictionless fill would buy
-    const slip=Math.min(0.5,0.5*coins/c.depth);
+    const coins=netUsd/G.price(chain);         // what a frictionless fill would buy
+    const slip=Math.min(0.5,0.5*coins/chain.depth);
     const filled=coins*(1-slip);           // slippage: fewer coins for the same dollar
-    G.s.cash-=cost; G.s.wallet[c.id]+=filled; G.s.spent+=cost;
-    c.impact=Math.max(-0.85,c.impact-coins/c.depth);
-    G.say('pay','Bought '+fmt.c(filled)+' '+c.tick+
+    G.s.cash-=cost; G.s.wallet[chain.id]+=filled; G.s.spent+=cost;
+    chain.impact=Math.max(-0.85,chain.impact-coins/chain.depth);
+    G.say('pay','Bought '+fmt.c(filled)+' '+chain.tick+
       (slip>0.005?' ('+fmt.pct(slip)+' slippage)':''),'-'+fmt.usd2(cost));
   }
-  const buy = (cid,frac)=> doBuy(G.chain(cid), G.s.cash*frac);
+  const buy = (chainId,frac)=> doBuy(G.chain(chainId), G.s.cash*frac);
   function fireDrip(){
-    for(const c of G.s.chains){
-      if(G.s.hold&&G.s.hold[c.id]) continue;          // exempt what you are holding
-      if(G.price(c)<G.s.minSell) continue;            // and what is below your floor
-      const amt=G.s.wallet[c.id]*G.s.drip.frac;
-      if(amt>0.0005) doSell(c,Math.min(amt,G.s.wallet[c.id]),true);
+    for(const chain of G.s.chains){
+      if(G.s.hold&&G.s.hold[chain.id]) continue;          // exempt what you are holding
+      if(G.price(chain)<G.s.minSell) continue;            // and what is below your floor
+      const amount=G.s.wallet[chain.id]*G.s.drip.frac;
+      if(amount>0.0005) doSell(chain,Math.min(amount,G.s.wallet[chain.id]),true);
     }
   }
   /* What one order at the current setting would cost this coin, as a fraction.
      Same formula doSell charges, so the number on screen is the real one. */
-  const dripCost = (c,frac)=>
-    Math.min(0.5, 0.5*(G.s.wallet[c.id]*(frac!==undefined?frac:G.s.drip.frac))/c.depth);
+  const dripCost = (chain,frac)=>
+    Math.min(0.5, 0.5*(G.s.wallet[chain.id]*(frac!==undefined?frac:G.s.drip.frac))/chain.depth);
   /* The coin the current setting treats worst — the one worth naming. */
   const dripWorst = ()=>{
     let worst=null;
-    for(const c of G.s.chains){
-      if(G.s.hold&&G.s.hold[c.id]) continue;
-      const cost=dripCost(c);
-      if(cost>0.01 && (!worst||cost>worst.cost)) worst={c,cost,at25:dripCost(c,0.25)};
+    for(const chain of G.s.chains){
+      if(G.s.hold&&G.s.hold[chain.id]) continue;
+      const cost=dripCost(chain);
+      if(cost>0.01 && (!worst||cost>worst.cost)) worst={c:chain,cost,at25:dripCost(chain,0.25)};
     }
     return worst;
   };
-  const setDrip=(k,v)=>{ G.s.drip[k]=v; G.s.dripAt=G.s.t+G.s.drip.hours*3600; };
-  const toggleHold=cid=>{ G.s.hold=G.s.hold||{}; G.s.hold[cid]=!G.s.hold[cid]; };
+  const setDrip=(key,value)=>{ G.s.drip[key]=value; G.s.dripAt=G.s.t+G.s.drip.hours*3600; };
+  const toggleHold=chainId=>{ G.s.hold=G.s.hold||{}; G.s.hold[chainId]=!G.s.hold[chainId]; };
 
 
   Object.assign(G, {addBond,bondFloor,buy,closePool,doBuy,doSell,dripCost,dripWorst,fireDrip,foundPool,poolProfit,releaseBond,renamePool,sell,setDrip,setPoolFee,toggleHold,topUpBond,withdrawProfit});
