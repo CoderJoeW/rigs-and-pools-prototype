@@ -83,7 +83,15 @@ describe('App', () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.boot').exists()).toBe(true);
     expect(wrapper.text()).toContain('Catching up on');
-    expect(wrapper.find('.boot .cd-bar i').exists()).toBe(true);
+    // Not '.boot .cd-bar i': App's template has two root-level v-if blocks
+    // (.boot, and the real shell), so Vue always compiles it to a Fragment.
+    // While booting, .boot is the ONLY element root vue-test-utils' find()
+    // sees, and Element.querySelectorAll('.boot ...') never matches a
+    // selector whose leftmost class is the query root itself — there is no
+    // further .boot *inside* .boot. .cd-bar only ever renders inside .boot,
+    // so scoping through .boot here would add nothing this check doesn't
+    // already cover via the assertion just above.
+    expect(wrapper.find('.cd-bar i').exists()).toBe(true);
 
     // let the real catch-up finish (real seconds — same cost as the
     // dedicated persistence.test.js coverage of the same 24h path) so
