@@ -15,7 +15,7 @@ export function installWeather(G){
     const cached=weatherService.peek(day);
     if(cached) return cached;
     weatherService.ensure(day);
-    return FALLBACK_READING;
+    return weatherService.peek(day) || FALLBACK_READING;
   }
   function ensureWeather(){
     const d=dayIndexOf(G.s.t);
