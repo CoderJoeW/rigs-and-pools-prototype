@@ -354,12 +354,29 @@ export function installSims(G){
 
   function decide(m){
     const t = G.s.t;
+    sellSomeCoins(m);
+    const hoursSince = payPowerBillAndCoverShortfall(m, t);
+    reinvestOrTrimHash(m, hoursSince);
+    switchToBetterChain(m);
+    pickSimPool(m);
+    if(m.style > 0.62 && m.cash > 400 && Math.random() < 0.008 + m.style * 0.012){
+      tryFoundPool(m);
+    }
+    manageOwnedPools(m);
+
+    const base = 3600 * (2.5 - m.style * 1.4);
+    m.next = t + base * (0.55 + Math.random() * 0.9);
+  }
+
+  function sellSomeCoins(m){
     if(m.coins > 5 && Math.random() < 0.35 + m.style * 0.25){
       const sell = m.coins * (SIM_SELL_FRAC * (0.6 + Math.random() * 0.8));
       m.coins -= sell;
       m.cash += sell * (1 - C.EXCH_FEE);
     }
+  }
 
+  function payPowerBillAndCoverShortfall(m, t){
     const hoursSince = Math.min(SIM_DECIDE_MAX_H,
       Math.max(0.5, (m._lastDecide) ? (t - m._lastDecide) / 3600 : 6));
     m._lastDecide = t;
@@ -374,7 +391,10 @@ export function installSims(G){
       }
       if(m.cash < 0) m.cash = 0;
     }
+    return hoursSince;
+  }
 
+  function reinvestOrTrimHash(m, hoursSince){
     const net = expectedNetDay(m);
     const cost = hashCost();
     // Room + lead-time binds on reinvestment: docs/economy.md.
@@ -394,7 +414,9 @@ export function installSims(G){
       setSimHash(m, m.hash - cut);
       m.cash += cut * hashCost() * 0.35;
     }
+  }
 
+  function switchToBetterChain(m){
     let best = m.chain;
     let bestR = G.revPerMh(G.chain(m.chain)) * chainDraw(m.chain) * SWITCH_EDGE;
     for(const cid of SIM_CHAINS){
@@ -407,16 +429,6 @@ export function installSims(G){
       if(r > bestR){ bestR = r; best = cid; }
     }
     if(best !== m.chain) setSimChain(m, best);
-
-    pickSimPool(m);
-
-    if(m.style > 0.62 && m.cash > 400 && Math.random() < 0.008 + m.style * 0.012){
-      tryFoundPool(m);
-    }
-    manageOwnedPools(m);
-
-    const base = 3600 * (2.5 - m.style * 1.4);
-    m.next = t + base * (0.55 + Math.random() * 0.9);
   }
 
   function pickSimPool(m){

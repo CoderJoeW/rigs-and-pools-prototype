@@ -15,6 +15,27 @@ export function installTick(G){
     G.s.t+=dt;
     G.ensureWeather(); G.ensureGens();
 
+    advanceSiteQueues(hrs);
+    driftSiteWindAndBattery(dt, hrs);
+    finishRigBuilds(dt);
+    advanceChains(dt, days);
+    settleYourPoolBonds(dt);
+    wearCardsAndWarnOnHeat(days);
+    billPower(dt, days, hrs);
+    shedAndRestoreOverCapacityRigs();
+    applyAutoOffPolicy();
+    fireDueDrips(dt);
+    applyAutoFixPolicy();
+    if(G.s.cash<0) G.insolvency();
+    sampleHistorySeries(dt);
+
+    G.refreshPools();
+    samplePoolHashHistory(dt);
+    if(G.s.shakeAt && G.s.t>=G.s.shakeAt){ G.poolShake(G.s.shakeOn); G.s.shakeAt=0; }
+    if(G.s.t%3600<dt){ if(G.simPulse) G.simPulse(); }
+  }
+
+  function advanceSiteQueues(hrs){
     for(const f of G.s.sites){
       for(let i=f.queue.length-1;i>=0;i--){
         const j=f.queue[i]; j.left-=hrs;
@@ -34,6 +55,11 @@ export function installTick(G){
           G.pop('Construction finished',name,'blu',{kind:'construction'});
         }
       }
+    }
+  }
+
+  function driftSiteWindAndBattery(dt, hrs){
+    for(const f of G.s.sites){
       const tgt=G.s.weather?G.s.weather.now.wind:0.5;
       f.wind = Math.max(0.05, Math.min(1.6,
         f.wind + (tgt-f.wind)*0.15*hrs + gauss()*0.05*Math.sqrt(hrs)));
@@ -43,6 +69,9 @@ export function installTick(G){
           (f.batt||0) + (pl.chW*0.95 + pl.gridChW*0.90 - pl.disW/0.95)*dt/3.6e6));
       }
     }
+  }
+
+  function finishRigBuilds(dt){
     for(const r of G.s.rigs){
       if(r.building>0){ r.building-=dt;
         if(r.building<=0){ r.building=0;
@@ -50,7 +79,9 @@ export function installTick(G){
             G.pop('Rebuild finished',r.name,'grn',{kind:'build'}); }
           else { G.say('sys',r.name+' assembled'); G.pop('Build finished',r.name,'grn',{kind:'build'}); } } }
     }
+  }
 
+  function advanceChains(dt, days){
     for(const c of G.s.chains){
       const mine=G.myHash(c);
       runBlockWindow(c, dt);
@@ -72,6 +103,12 @@ export function installTick(G){
       c.ref*=Math.exp((-0.5*c.vol*c.vol)*days + c.vol*Math.sqrt(days)*gauss());
       c.ref=Math.max(0.02,c.ref);
       c.impact*=Math.pow(1-c.recover,days);
+      checkMilestones();
+      if(G.s.t%(86400*0.75)<dt){ c.hist.push(G.price(c)); if(c.hist.length>110) c.hist.shift(); }
+    }
+  }
+
+  function checkMilestones(){
     if(!G.s.mile) G.s.mile={done:{},rank:0};
     G.s.peakNetDay=Math.max(G.s.peakNetDay||0, G.netDay.value);
     for(const m of MILESTONES){
@@ -97,9 +134,9 @@ export function installTick(G){
         }
       }
     }
-    if(G.s.t%(86400*0.75)<dt){ c.hist.push(G.price(c)); if(c.hist.length>110) c.hist.shift(); }
-    }
+  }
 
+  function settleYourPoolBonds(dt){
     for(const p of G.s.pools){
       if(p.owner!=='you'||!p.live) continue;
       const c=G.chain(p.chain);
@@ -114,7 +151,9 @@ export function installTick(G){
         G.pop('Your pool failed','it could not cover payouts','dark',{always:true});
       }
     }
+  }
 
+  function wearCardsAndWarnOnHeat(days){
     for(const f of G.s.sites){
       const temp=G.siteTemp(f);
       const heat=1+Math.pow(Math.max(0,(temp-58)/12),2);
@@ -142,7 +181,9 @@ export function installTick(G){
         }
       }
     }
+  }
 
+  function billPower(dt, days, hrs){
     const bill=G.powerRateDay.value*days;
     G.s.cash-=bill; G.s.powerPaid+=bill; G.today().power+=bill;
     const dayIdx=dayIndexOf(G.s.t);
@@ -155,7 +196,9 @@ export function installTick(G){
         return P.rate>0?Math.min(a,G.rateAt(P)):a;},15.00);
       f.bill.saved+=(fl.inRenew+fl.inBatt)/1000*hrs*gridRate;
     }
+  }
 
+  function shedAndRestoreOverCapacityRigs(){
     for(const f of G.s.sites){
       let guard=0;
       const battAvail=()=>G.battFirm(f);
@@ -182,73 +225,77 @@ export function installTick(G){
         }
       }
     }
+  }
 
-    if(G.s.autoOff){
-      for(const r of G.s.rigs){
-        if(r.building>0) continue;
-        const n=netIfOn(r);
-        if(r.on && n<G.s.offThreshold){ r.on=false;
-          G.say('sys','Policy: '+r.name+' powered down'); }
-        else if(!r.on && n>G.s.offThreshold*1.2+0.4){
-          const f=G.site(r.site);
-          if(G.siteDemand(f)+G.rigWallW({...r,on:true})<G.siteCapacity(f)){
-            r.on=true; G.say('sys','Policy: '+r.name+' back online'); }
-        }
+  function applyAutoOffPolicy(){
+    if(!G.s.autoOff) return;
+    for(const r of G.s.rigs){
+      if(r.building>0) continue;
+      const n=netIfOn(r);
+      if(r.on && n<G.s.offThreshold){ r.on=false;
+        G.say('sys','Policy: '+r.name+' powered down'); }
+      else if(!r.on && n>G.s.offThreshold*1.2+0.4){
+        const f=G.site(r.site);
+        if(G.siteDemand(f)+G.rigWallW({...r,on:true})<G.siteCapacity(f)){
+          r.on=true; G.say('sys','Policy: '+r.name+' back online'); }
       }
     }
-    if(G.s.drip&&G.s.drip.on){
-      const t0=G.s.t-dt;
-      const iv=G.s.drip.hours*3600;
-      if(!G.s.dripAt||G.s.dripAt<t0-30*86400||G.s.dripAt>t0+iv) G.s.dripAt=t0+iv;
-      let guard=0;
-      while(G.s.t>=G.s.dripAt && guard++<60){ G.fireDrip(); G.s.dripAt+=iv; }
-    }
-    if(G.s.autoFix){
-      for(const r of G.s.rigs){
-        if(r.building>0) continue;
-        const {n,cost}=G.rigWorn(r,G.s.fixAt);
-        if(!n) continue;
-        if(G.s.cash>=cost*2) G.swapWorn(r.id,G.s.fixAt);
-      }
-    }
-    if(G.s.cash<0) G.insolvency();
+  }
 
+  function fireDueDrips(dt){
+    if(!G.s.drip||!G.s.drip.on) return;
+    const t0=G.s.t-dt;
+    const iv=G.s.drip.hours*3600;
+    if(!G.s.dripAt||G.s.dripAt<t0-30*86400||G.s.dripAt>t0+iv) G.s.dripAt=t0+iv;
+    let guard=0;
+    while(G.s.t>=G.s.dripAt && guard++<60){ G.fireDrip(); G.s.dripAt+=iv; }
+  }
+
+  function applyAutoFixPolicy(){
+    if(!G.s.autoFix) return;
+    for(const r of G.s.rigs){
+      if(r.building>0) continue;
+      const {n,cost}=G.rigWorn(r,G.s.fixAt);
+      if(!n) continue;
+      if(G.s.cash>=cost*2) G.swapWorn(r.id,G.s.fixAt);
+    }
+  }
+
+  function sampleHistorySeries(dt){
     G.s.peakHash=Math.max(G.s.peakHash,G.totalHash.value);
-    if(G.s.t%(86400*0.75)<dt){
-      G.s.netHist.push(G.netDay.value); if(G.s.netHist.length>110) G.s.netHist.shift();
-      (G.s.hashHist=G.s.hashHist||[]).push(G.totalHash.value); if(G.s.hashHist.length>110) G.s.hashHist.shift();
-      (G.s.cashHist=G.s.cashHist||[]).push(G.s.cash); if(G.s.cashHist.length>110) G.s.cashHist.shift();
-      /* Power spend has its own series because Farm's "Cost today" card needs a
-         cost trend, and netHist is profit — under a cost heading a rising
-         profit line reads as rising spend, exactly backwards. */
-      (G.s.powerHist=G.s.powerHist||[]).push(G.powerDay.value);
-      if(G.s.powerHist.length>110) G.s.powerHist.shift();
-      /* Efficiency has to be its own series rather than hashHist over
-         powerHist: powerHist is what the power COST, in dollars, while MH/W
-         is hashrate over watts drawn — the two are only proportional while
-         the tariff and the band hold still, which is exactly what this game
-         moves around. Stored the way effMhw computes it, once per sample. */
-      (G.s.effHist=G.s.effHist||[]).push(G.effMhw.value);
-      if(G.s.effHist.length>110) G.s.effHist.shift();
-      /* Net TO DATE, sampled — not a running sum of netHist. netDay is
-         today().earned-today().power and today() resets at every midnight,
-         so netHist holds partial-day snapshots taken at whatever fraction of
-         the day the 0.75-day cadence lands on; adding them up gives a number
-         with no meaning and about half the real total. lifetimeNet is the
-         cumulative figure itself, so the series records that. */
-      (G.s.netCumHist=G.s.netCumHist||[]).push(G.lifetimeNet.value);
-      if(G.s.netCumHist.length>110) G.s.netCumHist.shift();
-    }
+    if(G.s.t%(86400*0.75)>=dt) return;
+    G.s.netHist.push(G.netDay.value); if(G.s.netHist.length>110) G.s.netHist.shift();
+    (G.s.hashHist=G.s.hashHist||[]).push(G.totalHash.value); if(G.s.hashHist.length>110) G.s.hashHist.shift();
+    (G.s.cashHist=G.s.cashHist||[]).push(G.s.cash); if(G.s.cashHist.length>110) G.s.cashHist.shift();
+    /* Power spend has its own series because Farm's "Cost today" card needs a
+       cost trend, and netHist is profit — under a cost heading a rising
+       profit line reads as rising spend, exactly backwards. */
+    (G.s.powerHist=G.s.powerHist||[]).push(G.powerDay.value);
+    if(G.s.powerHist.length>110) G.s.powerHist.shift();
+    /* Efficiency has to be its own series rather than hashHist over
+       powerHist: powerHist is what the power COST, in dollars, while MH/W
+       is hashrate over watts drawn — the two are only proportional while
+       the tariff and the band hold still, which is exactly what this game
+       moves around. Stored the way effMhw computes it, once per sample. */
+    (G.s.effHist=G.s.effHist||[]).push(G.effMhw.value);
+    if(G.s.effHist.length>110) G.s.effHist.shift();
+    /* Net TO DATE, sampled — not a running sum of netHist. netDay is
+       today().earned-today().power and today() resets at every midnight,
+       so netHist holds partial-day snapshots taken at whatever fraction of
+       the day the 0.75-day cadence lands on; adding them up gives a number
+       with no meaning and about half the real total. lifetimeNet is the
+       cumulative figure itself, so the series records that. */
+    (G.s.netCumHist=G.s.netCumHist||[]).push(G.lifetimeNet.value);
+    if(G.s.netCumHist.length>110) G.s.netCumHist.shift();
+  }
 
-    G.refreshPools();
-    if(G.s.t%14400<dt) for(const p of G.s.pools){
+  function samplePoolHashHistory(dt){
+    if(G.s.t%14400>=dt) return;
+    for(const p of G.s.pools){
       if(!p.live) continue;
       (p.hist=p.hist||[]).push(G.poolHash(p));
       if(p.hist.length>42) p.hist.shift();
     }
-    if(G.s.shakeAt && G.s.t>=G.s.shakeAt){ G.poolShake(G.s.shakeOn); G.s.shakeAt=0; }
-    if(G.s.t%3600<dt){ if(G.simPulse) G.simPulse(); }
-
   }
 
   function addTo(arr,pid){ const e=arr.find(x=>x.p===pid); if(e) e.n++; else arr.push({p:pid,n:1}); }
