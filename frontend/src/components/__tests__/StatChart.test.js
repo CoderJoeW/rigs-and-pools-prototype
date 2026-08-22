@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import StatChart from '../StatChart.vue';
+
+/* @vue/test-utils' trigger() re-applies every option as a direct property
+   set after construction — including ones the PointerEvent constructor
+   already applied, like clientX — guarded by an own-property lookup on the
+   event's immediate prototype. jsdom 30 defines clientX on MouseEvent's
+   prototype rather than PointerEvent's own, so that lookup misses and the
+   redundant set throws on the getter-only inherited accessor. Dispatching
+   the constructed event ourselves sidesteps the bug; the constructor already
+   sets clientX correctly, so nothing here needs to touch it again. */
+async function firePointer(el, type, opts) {
+  el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...opts }));
+  await nextTick();
+}
 
 describe('StatChart', () => {
   it('renders a title and the latest value, formatted as hashrate by default', () => {
@@ -77,17 +91,17 @@ describe('StatChart', () => {
     plot.element.getBoundingClientRect = () => ({ left: 0, width: 100, top: 0, height: 86 });
 
     expect(wrapper.find('.sc-dot').classes()).toContain('live');
-    await plot.trigger('pointerdown', { clientX: 0 });
+    await firePointer(plot.element, 'pointerdown', { clientX: 0 });
     expect(wrapper.find('.sc-chip').text()).toContain('100');
     expect(wrapper.find('.sc-dot').classes()).not.toContain('live');
     expect(wrapper.find('.sc-cross').exists()).toBe(true);
 
-    await plot.trigger('pointermove', { clientX: 50 });
+    await firePointer(plot.element, 'pointermove', { clientX: 50 });
     expect(wrapper.find('.sc-chip').text()).toContain('300');
     // Two samples back from the live end, at 0.75 days each.
     expect(wrapper.find('.sc-day').text()).toBe('2D ago');
 
-    await plot.trigger('pointerup');
+    await firePointer(plot.element, 'pointerup');
     // Back to the live end, and the crosshair goes with it.
     expect(wrapper.find('.sc-chip').text()).toContain('500');
     expect(wrapper.find('.sc-cross').exists()).toBe(false);

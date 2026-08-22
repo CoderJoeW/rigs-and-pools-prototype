@@ -19,7 +19,7 @@ const INTERNAL = new Set([
   // --- generations.js ---
   'builtGen', 'ensureGens', 'liveCards',
   // --- weather.js ---
-  'drawWeather', 'ensureWeather', 'sky',
+  'ensureWeather', 'sky',
   // --- timeOfDay.js ---
   'bandOf', 'evMult', 'hourOf', 'rateAt', 'site',
   // --- dispatch.js ---
