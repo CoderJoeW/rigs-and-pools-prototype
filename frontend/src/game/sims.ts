@@ -5,12 +5,10 @@ import { gauss } from '../utils/random.js';
 import { nextRivalName } from './rivals.js';
 import type { Game, ChainState, Sim } from './types.js';
 
-// Economic simulated players: cash, hashrate, chain, pool, style, decision
-// timer, a coin-inventory value. They reinvest, switch chains/pools, sell,
-// and occasionally found live pools the player competes with.
-// Design model: design-spec.md §6o / §6e. Derivations, perf rules and bug
-// history: docs/economy.md#simulated-miner-population-model-srcgamesimsjs
-// and docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+// Economic simulated players (cash, hashrate, chain, pool, style, decision
+// timer, coin inventory) that reinvest, switch chains/pools, sell, and
+// occasionally found live pools the player competes with. Design model:
+// design-spec.md §6o/§6e. Derivations/perf/bug history: docs/economy.md#simulated-miner-population-model-srcgamesimsjs, docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
 
 export const SIM_START = SIM_PLAYERS;          // 100 — the network on day one
 export const SIM_SOFT_CAP = 16000;             // logistic ceiling on the population
@@ -31,10 +29,9 @@ export const SIM_DECIDE_MAX_H = 336;           // a fortnight — decision-gap c
 let simSeq = 0;
 let poolSeq = 0;
 
-// Every chain a sim can operate on, including tessera — SIM_CHAINS itself
-// deliberately excludes tessera (comment on its own definition:
-// "Tessera stays a newcomer refuge"), but the per-chain trackers below
-// (hash, counts, solo-member lists) still need a zeroed slot for it.
+// Every chain a sim can operate on: SIM_CHAINS itself deliberately excludes
+// tessera ("Tessera stays a newcomer refuge"), but the per-chain trackers
+// below still need a zeroed slot for it.
 const ALL_SIM_CHAINS = [...SIM_CHAINS, 'tessera'];
 
 // Reactivity rationale: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
@@ -46,9 +43,9 @@ function zeroPerChain(): Record<string, number> {
 
 interface SimPoolOptions { id: string; chain: string; sim: Sim; name: string; scheme: 'PPS' | 'PPLNS'; fee: number; bond: number; born: number }
 
-// A sim-owned pool's shape, shared by seedStarterPools (the day-one market)
-// and tryFoundPool (pools sims open later) — the two differ only in how
-// they size the bond and pick a scheme/fee, not in what a pool object is.
+// A sim-owned pool's shape, shared by seedStarterPools (day-one market) and
+// tryFoundPool (pools sims open later) — they differ only in bond sizing
+// and scheme/fee choice, not in what a pool object is.
 function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }: SimPoolOptions) {
   return { id, chain, owner: 'sim', ownerSim: sim.id, name, scheme, fee,
     bond, bond0: bond, cap: 0, born, live: true,

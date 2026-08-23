@@ -53,7 +53,7 @@ export function installPoolMarket(G: Game): void {
     }
   }
   // Opening a pool or moving its fee triggers an immediate reshuffle on that
-  // chain rather than waiting for the slow hourly drift: design-spec.md §5.
+  // chain rather than waiting for the slow hourly drift (design-spec.md §5).
   // FEE_BITE tuning: docs/implementation-notes.md#pool-market-srcgamepoolmarketjs.
   const FEE_BITE = 3;
   // poolScoreBase/poolScore split rationale: docs/implementation-notes.md.
