@@ -33,7 +33,7 @@ describe('rigHash wear decay', () => {
 describe('chainCeiling', () => {
   it('returns null for a missing chain', () => {
     const g = freshStore();
-    expect(g.chainCeiling(null)).toBeNull();
+    expect(g.chainCeiling(undefined)).toBeNull();
   });
 
   it('returns null before any hash is on the chain', () => {
@@ -84,7 +84,7 @@ describe('chainCeiling', () => {
     expect(g.totalHash).toBeGreaterThan(tessera.floor);
     const ceiling = g.chainCeiling(tessera);
     expect(ceiling).not.toBeNull();
-    expect(ceiling.share).toBe(1); // Tessera has no simulated miners
+    expect(ceiling!.share).toBe(1); // Tessera has no simulated miners
   });
 });
 
@@ -138,8 +138,8 @@ describe('groupAdvice', () => {
 
     const advice = g.groupAdvice(g.s.groups[0]);
     expect(advice).not.toBeNull();
-    expect(advice.share).toBe(1);
-    expect(g.s.chains.map(c => c.id)).toContain(advice.alt.toLowerCase());
+    expect(advice!.share).toBe(1);
+    expect(g.s.chains.map(c => c.id)).toContain(advice!.alt.toLowerCase());
   });
 });
 

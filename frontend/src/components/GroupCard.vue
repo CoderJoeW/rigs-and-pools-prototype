@@ -4,14 +4,14 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import ChainMark from './ChainMark.vue';
 import { useInlineRename } from '../composables/useInlineRename.js';
-import type { Group } from '../game/types.js';
+import type { Group, GroupAdvice, ChainCeiling } from '../game/types.js';
 
 // One mining group row on the Farm tab: name, chain/pool, rack share, advice.
 // Extracted from a v-for body so rename state can be plain refs per group.
 const props = defineProps({
   gr: { type: Object as PropType<Group>, required: true },
-  advice: { type: Object, default: null },   // {alt, mult}: a chain paying more per MH
-  ceiling: { type: Object, default: null },  // {share, grossCap}: past the chain's emission floor
+  advice: { type: Object as PropType<GroupAdvice | null>, default: null },
+  ceiling: { type: Object as PropType<ChainCeiling | null>, default: null },
   totalSlots: { type: Number, default: 0 },  // racks across every site — this group's share denominator
 });
 

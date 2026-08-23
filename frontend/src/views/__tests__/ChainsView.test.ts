@@ -79,7 +79,7 @@ describe('ChainsView', () => {
     });
     const g = store;
     const gr = g.s.groups[0];
-    const rate = 86400 * g.groupHash(gr) / Math.max(1, g.diffOf(g.chain(gr.chain)));
+    const rate = 86400 * g.groupHash(gr) / Math.max(1, g.diffOf(g.chain(gr.chain)!));
     const text = wrapper.find('.svp')!.text();
     // Printed once per side, and the multiple is exactly one.
     expect(text.split(rate.toFixed(2)).length - 1).toBe(2);
@@ -111,7 +111,7 @@ describe('ChainsView', () => {
     await wrapper.vm.$nextTick();
 
     const mine = g.s.rigs.reduce((a, r) => a + g.rigHash(r), 0);
-    const once = 86400 * mine / Math.max(1, g.diffOf(g.chain(chain)));
+    const once = 86400 * mine / Math.max(1, g.diffOf(g.chain(chain)!));
     const text = wrapper.find('.svp')!.text();
     // Counting the pool per group would have doubled the pool side.
     expect(text.split(once.toFixed(2)).length - 1).toBe(2);

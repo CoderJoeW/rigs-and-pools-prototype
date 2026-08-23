@@ -72,7 +72,7 @@ export function useChainCards(g: Store) {
       join.set(p, (join.get(p) || 0) + (gr.pool === p.id ? 0 : h));
     }
     for (const [p, extra] of join)
-      pooled += 86400 * (g.poolHash(p) + extra) / Math.max(1, g.diffOf(g.chain(p.chain)));
+      pooled += 86400 * (g.poolHash(p) + extra) / Math.max(1, g.diffOf(g.chain(p.chain)!));
     return { solo, pooled, mult: solo > 0 ? pooled / solo : 0 };
   });
 

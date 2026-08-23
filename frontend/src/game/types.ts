@@ -112,6 +112,13 @@ export interface RigState {
   sub: string;
 }
 
+// dispatch.ts's groupAdvice(group): a chain paying more per MH than the
+// group's current one, worth the switch.
+export interface GroupAdvice { share: number; alt: string; mult: number }
+// dispatch.ts's chainCeiling(chain, extraMh?): how much of a chain's
+// emission the player would own past its floor.
+export interface ChainCeiling { share: number; grossCap: number; over: number }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -294,10 +301,10 @@ export interface GameExports {
   siteRigs(site: Site): Rig[];
   siteDemand(site: Site): number;
   siteTemp(site: Site): number;
-  siteCostPerHour: any;
+  siteCostPerHour(site: Site): number;
   rigLive(rig: Rig): boolean;
   rigHash(rig: Rig): number;
-  rigWallW: any;
+  rigWallW(rig: Rig): number;
   rigNet(rig: Rig): number;
   rigState(rig: Rig): RigState;
   rigWear(rig: Rig): number;
@@ -316,7 +323,7 @@ export interface GameExports {
   lifetimeNet: any;
   poolEarned: any;
   myHash: any;
-  diffOf: any;
+  diffOf(chain: ChainState): number;
   mttb: any;
   dp: any;
   checks: any;
@@ -329,22 +336,22 @@ export interface GameExports {
   maxBuildQty: any;
   blockValue: any;
   bondReq: any;
-  poolTrust: any;
+  poolTrust(pool: Pool): number;
   TRUST_RAMP: any;
   poolCapLimit: any;
-  poolHash: any;
+  poolHash(pool: Pool): number;
   poolProfit: any;
   withdrawProfit: any;
   battFirm(site: Site): number;
   flowOf: any;
-  chainHash: any;
-  easeOf: any;
-  blockETA: any;
-  blockProg: any;
-  winChance: any;
-  fundOf: any;
-  groupAdvice: any;
-  chainCeiling: any;
+  chainHash(chain: ChainState): number;
+  easeOf(chain: ChainState): number;
+  blockETA(chain: ChainState): number;
+  blockProg(chain: ChainState): number;
+  winChance(chain: ChainState): number;
+  fundOf(chain: ChainState): number;
+  groupAdvice(group: Group): GroupAdvice | null;
+  chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
   idleCashAdvice: any;
   draftGroup: any;
   battAdvice: any;
@@ -380,7 +387,7 @@ export interface GameExports {
   setRigGroup: any;
   groupOf(rig: Rig): Group;
   groupHash(group: Group): number;
-  groupRigs: any;
+  groupRigs(group: Group): Rig[];
   setGroupChain: any;
   setGroupPool: any;
   addGroup: any;
@@ -463,5 +470,19 @@ export interface Game {
   rig(id: number): Rig | undefined;
   poolOf(id: string): Pool | null;
   evMult(p: { fee: number; scheme: string } | null): number;
+  rigWallW(rig: Rig): number;
+  siteCostPerHour(site: Site): number;
+  groupRigs(group: Group): Rig[];
+  chainHash(chain: ChainState): number;
+  diffOf(chain: ChainState): number;
+  easeOf(chain: ChainState): number;
+  blockETA(chain: ChainState): number;
+  blockProg(chain: ChainState): number;
+  winChance(chain: ChainState): number;
+  fundOf(chain: ChainState): number;
+  poolHash(pool: Pool): number;
+  poolTrust(pool: Pool): number;
+  groupAdvice(group: Group): GroupAdvice | null;
+  chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
   [key: string]: any;
 }

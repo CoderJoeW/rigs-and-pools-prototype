@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, type PropType } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainMark from './ChainMark.vue';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import type { Pool } from '../game/types.js';
 
 /* One pool you own, on the Chains tab: capacity and bond, the members you can
    point at it, the fee dial and its projection, and the close/top-up controls.
@@ -13,7 +14,7 @@ import { useInlineRename } from '../composables/useInlineRename.js';
    keyed by pool id — feeDraft[p.id], poolRenameOpen[p.id], poolRenameDraft[p.id].
    One card per component means those are just refs, and the keying disappears. */
 const props = defineProps({
-  pool: { type: Object, required: true },
+  pool: { type: Object as PropType<Pool>, required: true },
   open: { type: Boolean, default: false },
 });
 const emit = defineEmits(['toggle']);
@@ -163,12 +164,12 @@ const bondSteps = computed(() => {
       <div v-if="(pool.hist||[]).length>2">
         <svg viewBox="0 0 100 34" preserveAspectRatio="none"
              style="width:100%;height:40px;display:block;margin-top:6px" aria-hidden="true">
-          <path :d="spark(pool.hist)" fill="none" style="stroke:var(--green)" stroke-width="1.5"
+          <path :d="spark(pool.hist!)" fill="none" style="stroke:var(--green)" stroke-width="1.5"
                 vector-effect="non-scaling-stroke"/></svg>
         <div class="track-cap"><span>Members, last seven days</span>
-          <b :class="pool.hist[pool.hist.length-1]>=pool.hist[0]?'pos':'neg'">{{
-            pool.hist[pool.hist.length-1]>=pool.hist[0]?'+':'' }}{{
-            fmt.hash(pool.hist[pool.hist.length-1]-pool.hist[0]) }}</b></div>
+          <b :class="pool.hist![pool.hist!.length-1]>=pool.hist![0]?'pos':'neg'">{{
+            pool.hist![pool.hist!.length-1]>=pool.hist![0]?'+':'' }}{{
+            fmt.hash(pool.hist![pool.hist!.length-1]-pool.hist![0]) }}</b></div>
       </div>
       <div class="totals" style="margin-top:8px">
         <div><div class="k">Fee income</div>
