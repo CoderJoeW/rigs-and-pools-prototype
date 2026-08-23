@@ -20,7 +20,7 @@ export function installSites(G: Game): void {
     const f = { id:G.s.nextSite++, name:sh.name+' '+(G.s.sites.length+1), shell:'bedroom', fab:null,
       sources:[], plants:[{p:'p-open',n:1}], queue:[] as Job[], wind:0.5 };
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
-    G.s.sites.push(f as any); G.s.activeSite = f.id;
+    G.s.sites.push(f); G.s.activeSite = f.id;
     G.say('site', 'Broke ground on ' + sh.name + ' — ' + sh.hours + ' h', '-' + fmt.usd(sh.price), undefined, undefined, -sh.price);
   }
   function addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void {

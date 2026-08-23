@@ -41,10 +41,13 @@ export interface Site {
   fab: string | null;
   sources: SiteSource[];
   plants: SitePlant[];
-  storage: SiteStorage[];
-  batt: number;
-  gridCharge: boolean;
-  disAny: boolean;
+  // A freshly-built site (sites.ts's newSite) doesn't set these four —
+  // they're read with `|| 0`/`|| []`/falsy-undefined fallbacks everywhere
+  // (dispatch.ts, siteConstruction.ts) and lazily assigned on first real use.
+  storage?: SiteStorage[];
+  batt?: number;
+  gridCharge?: boolean;
+  disAny?: boolean;
   queue: import('../data/site-parts.js').Job[];
   wind: number;
   bill?: { day: number; off: number; sh: number; peak: number; cool: number; saved: number };
