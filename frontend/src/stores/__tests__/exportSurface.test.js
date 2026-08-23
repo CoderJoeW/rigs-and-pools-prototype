@@ -46,8 +46,27 @@ const INTERNAL = new Set([
   // --- buildDraft.js ---
   'openBuildCost',
   // --- tick.js ---
-  'addTo', 'armBlock', 'awardBlock', 'drawWinner', 'flatDrip', 'forfeitGroup',
-  'netIfOn', 'runBlockWindow',
+  'crossedInterval',
+  // --- siteConstruction.js ---
+  'addTo', 'advanceSiteQueues', 'driftSiteWindAndBattery', 'finishRigBuilds',
+  // --- blockMining.js ---
+  'armBlock', 'awardBlock', 'drawWinner', 'flatDrip', 'runBlockWindow',
+  // --- milestoneTracker.js ---
+  'checkMilestones',
+  // --- chainEconomy.js ---
+  'advanceChains',
+  // --- groups.js ---
+  'forfeitGroup', 'netIfOn',
+  // --- cardWear.js ---
+  'wearCardsAndWarnOnHeat',
+  // --- powerBilling.js ---
+  'billPower',
+  // --- autopilot.js ---
+  'applyAutoFixPolicy', 'applyAutoOffPolicy', 'fireDueDrips', 'shedAndRestoreOverCapacityRigs',
+  // --- historySampling.js ---
+  'sampleHistorySeries', 'samplePoolHashHistory',
+  // --- poolBonds.js ---
+  'settleYourPoolBonds',
   // --- insolvency.js ---
   'FLOOR_COST', 'FLOOR_RIG', 'insolvency', 'rigSalvage',
   // --- actions.js ---
