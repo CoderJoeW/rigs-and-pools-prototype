@@ -1,7 +1,7 @@
 import { C } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
 import { trimName } from './state.js';
-import type { Game, ChainState } from './types.js';
+import type { Game, ChainState, Pool } from './types.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
@@ -24,12 +24,12 @@ export function installPools(G: Game): void {
     if (!G.simsOn(chainId))
       G.say('bad', 'No other miners work ' + chain.name + ' — this pool can only ever hold your own rigs');
   }
-  function renamePool(pool: any, name: string): void {
+  function renamePool(pool: Pool, name: string): void {
     if (pool.owner !== 'you') return;               // a rival's pool is not yours to rename
     const trimmedName = trimName(name);
     if (trimmedName) pool.name = trimmedName;
   }
-  function setPoolFee(pool: any, fee: number): void {
+  function setPoolFee(pool: Pool, fee: number): void {
     if (Math.abs(fee - pool.fee) > 0.0005) pool.feeMoved = G.s.t;
     pool.fee = Math.max(0, Math.min(0.15, fee));
     G.s.shakeAt = G.s.t + 300;      // word gets around in five minutes; debounces a slider drag
@@ -44,30 +44,30 @@ export function installPools(G: Game): void {
   /* What the bond may not go below: on PPS, cover for the members you already
      have. Without this you could pull your capital the moment a dry spell
      started and leave members underwritten by nothing. */
-  const bondFloor = (pool: any) => Math.max(
+  const bondFloor = (pool: Pool) => Math.max(
     G.bondReq(G.chain(pool.chain), pool.scheme),        // never below the entry stake
     G.bondFor(pool, G.poolHash(pool)));                 // nor below cover for current members
-  function addBond(pool: any, amount: number): void {
+  function addBond(pool: Pool, amount: number): void {
     amount = Math.min(Math.round(amount), Math.floor(G.s.cash)); if (amount <= 0) return;
     G.s.cash -= amount; pool.bond += amount; pool.bond0 = Math.max(pool.bond0, pool.bond);
     G.say('sys', 'Added ' + fmt.usd(amount) + ' to ' + pool.name + "'s bond", '-' + fmt.usd(amount), undefined, undefined, -amount);
   }
-  function releaseBond(pool: any, amount: number): void {
+  function releaseBond(pool: Pool, amount: number): void {
     const room = Math.max(0, pool.bond - bondFloor(pool));
     amount = Math.min(Math.round(amount), Math.floor(room)); if (amount <= 0) return;
     pool.bond -= amount; G.s.cash += amount;
     pool.bond0 = pool.bond;      // a deliberate downsize is an announcement, not a default:
     G.say('sys', 'Released ' + fmt.usd(amount) + ' from ' + pool.name + "'s bond", '+' + fmt.usd(amount), undefined, undefined, amount);
   }                      // losses still push bond below bond0 and cost you trust
-  function topUpBond(pool: any, amount: number): void { addBond(pool, amount); }
-  const poolProfit = (pool: any) => Math.max(0, pool.bond - pool.bond0);
-  function withdrawProfit(pool: any): void {
+  function topUpBond(pool: Pool, amount: number): void { addBond(pool, amount); }
+  const poolProfit = (pool: Pool) => Math.max(0, pool.bond - pool.bond0);
+  function withdrawProfit(pool: Pool): void {
     const amount = Math.round(poolProfit(pool));
     if (amount <= 0) return;
     pool.bond -= amount; G.s.cash += amount; G.s.poolTake = (G.s.poolTake || 0) + amount;
     G.say('sys', 'Withdrew profit from ' + pool.name, '+' + fmt.usd(amount), undefined, undefined, amount);
   }
-  function closePool(pool: any): void {
+  function closePool(pool: Pool): void {
     const back = Math.round(pool.bond);
     G.s.cash += back;
     /* Through the shared closing path, which releases the pool's simulated
@@ -135,7 +135,13 @@ export function installPools(G: Game): void {
     }
     return worst;
   };
-  const setDrip = (key: 'on' | 'frac' | 'hours', value: any) => { (G.s.drip as any)[key] = value; G.s.dripAt = G.s.t + G.s.drip.hours * 3600; };
+  // 'on' takes a boolean, 'frac'/'hours' take a number — one signature per
+  // key would be truer, but the three UI callers already pass the right
+  // shape for their own key, so this just needs to stay out of `any`.
+  const setDrip = (key: 'on' | 'frac' | 'hours', value: boolean | number) => {
+    (G.s.drip as unknown as Record<'on' | 'frac' | 'hours', boolean | number>)[key] = value;
+    G.s.dripAt = G.s.t + G.s.drip.hours * 3600;
+  };
   const toggleHold = (chainId: string) => { G.s.hold = G.s.hold || {}; G.s.hold[chainId] = !G.s.hold[chainId]; };
 
   Object.assign(G, { addBond, bondFloor, buy, closePool, doBuy, doSell, dripCost, dripWorst, fireDrip, foundPool, poolProfit, releaseBond, renamePool, sell, setDrip, setPoolFee, toggleHold, topUpBond, withdrawProfit });
