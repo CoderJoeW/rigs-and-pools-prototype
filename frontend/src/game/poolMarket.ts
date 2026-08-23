@@ -2,7 +2,11 @@ import { computed } from 'vue';
 import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_FEE_MIN, SIM_FEE_MAX } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
 import { cue } from '../services/audio.js';
-import type { Game, ChainState, Pool, Sim, FeedItem } from './types.js';
+import type { Game, ChainState, Pool, Sim, FeedItem, PoolPnl } from './types.js';
+
+// A chain's live pools scored for one sim's join/switch decision:
+// chainPoolTable's row shape, reused by pickPool so it isn't recomputed.
+interface PoolTableRow { p: Pool; cap: number; mine: number; base: number }
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPoolMarket(G: Game): void {
@@ -61,13 +65,13 @@ export function installPoolMarket(G: Game): void {
   const scoreJitter = () => 0.97 + Math.random() * 0.06;   // +-3% so near-ties split rather than winner-take-all
   const poolScore = (p: Pool) => poolScoreBase(p) * scoreJitter();
   // chainPoolTable perf rationale: docs/implementation-notes.md.
-  function chainPoolTable(chainId: string) {
+  function chainPoolTable(chainId: string): PoolTableRow[] {
     const playerIn = new Map<string, number>();
     for (const gr of G.s.groups) {
       if (!gr.pool || gr.pool === 'solo') continue;
       playerIn.set(gr.pool, (playerIn.get(gr.pool) || 0) + G.groupHash(gr));
     }
-    const out: { p: Pool; cap: number; mine: number; base: number }[] = [];
+    const out: PoolTableRow[] = [];
     for (const p of G.s.pools) {
       if (!p.live || p.chain !== chainId) continue;
       out.push({ p, cap: poolCapLimit(p), mine: playerIn.get(p.id) || 0, base: poolScoreBase(p) });
@@ -76,7 +80,7 @@ export function installPoolMarket(G: Game): void {
   }
   // simIn rationale: docs/implementation-notes.md.
   const simIn = (p: Pool) => G.simPoolHashOf ? G.simPoolHashOf(p) : 0;
-  function pickPool(m: Sim, table?: { p: Pool; cap: number; mine: number; base: number }[]): void {
+  function pickPool(m: Sim, table?: PoolTableRow[]): void {
     const opts = table || chainPoolTable(m.chain);
     let bp: Pool | null = null, bs = -1;
     for (const e of opts) {
@@ -189,7 +193,7 @@ export function installPoolMarket(G: Game): void {
     Math.ceil(bondFor(p, poolDemand(p)) - p.bond));
   /* The operator's book: what the fee actually earns against the capital it
      ties up, so running a pool can be compared with just mining instead. */
-  function poolPnl(p: Pool) {
+  function poolPnl(p: Pool): PoolPnl {
     const c = G.chain(p.chain)!;   // a pool's chain always resolves
     const gross = G.poolHash(p) * G.revPerMh(c);            // what members produce daily
     const income = gross * p.fee + (p.scheme === 'PPS' ? gross * TX_FEES * 0.5 : 0);
