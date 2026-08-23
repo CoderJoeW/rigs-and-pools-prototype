@@ -1,9 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import type { DraftCheck } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // The Build view's verdict panel: the checks gating canBuild, plus the two
 // advisory notes and the aria-live build-status line. Rationale for the

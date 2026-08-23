@@ -1,9 +1,7 @@
 import { computed, ref } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { sparkPath } from '../utils/spark.js';
 import type { ChainState } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // The "Market" tab's pool field, and the founding-form projections for the
 // "Your pools" tab's new-pool sheet.

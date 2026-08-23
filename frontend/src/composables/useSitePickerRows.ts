@@ -1,11 +1,9 @@
 import { computed, type ComputedRef } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import type { Site } from '../game/types.js';
 import type { Source, Storage, Plant, Shell } from '../data/site-parts.js';
 import type { Fab } from '../data/fab.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // The "install a ___" picker sheets on SitesView all reduce a catalogue to
 // {id, name, sub, value, valueSub, locked?} rows for the Compare component,
@@ -63,12 +61,15 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
     });
   });
 
-  const chooseSrc = (id: string) => { g.addSitePart(f.value.id, id, 'source'); g.s.sitePicker = null; };
-  const choosePlant = (id: string) => { g.addSitePart(f.value.id, id, 'plant'); g.s.sitePicker = null; };
-  const chooseStorage = (id: string) => { g.addSitePart(f.value.id, id, 'storage'); g.s.sitePicker = null; };
-  const chooseShell = (id: string) => { g.newSite(id); g.s.sitePicker = null; };
-  const chooseFabPick = (id: string) => { g.chooseFab(f.value.id, id); g.s.sitePicker = null; };
-  const chooseExpand = (id: string) => { g.upgradeShell(f.value.id, id); g.s.sitePicker = null; };
+  // Every picker sheet installs its choice, then closes itself the same way —
+  // only the install call varies, so that part is factored out once.
+  const closeAfter = (action: (id: string) => void) => (id: string) => { action(id); g.s.sitePicker = null; };
+  const chooseSrc = closeAfter(id => g.addSitePart(f.value.id, id, 'source'));
+  const choosePlant = closeAfter(id => g.addSitePart(f.value.id, id, 'plant'));
+  const chooseStorage = closeAfter(id => g.addSitePart(f.value.id, id, 'storage'));
+  const chooseShell = closeAfter(id => g.newSite(id));
+  const chooseFabPick = closeAfter(id => g.chooseFab(f.value.id, id));
+  const chooseExpand = closeAfter(id => g.upgradeShell(f.value.id, id));
 
   return {
     mix, sourceRows, storageRows, plantRows, shellRows, expandRows, fabRows,

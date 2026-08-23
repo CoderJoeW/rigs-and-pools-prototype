@@ -21,9 +21,9 @@ const g = useGameStore();
 
 const field = computed(() => props.fields.find(f => f.k === g.s.picker) || null);
 
-const optionsFor = (k: string): DesignBase[] => {
+const optionsFor = (k: DesignKind): DesignBase[] => {
   const base: DesignBase[] = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:props.units;
-  return base.concat(g.s.customParts.filter(p => p.kind === k as DesignKind) as unknown as DesignBase[]);
+  return base.concat(g.s.customParts.filter(p => p.kind === k) as unknown as DesignBase[]);
 };
 
 const pickerRows = computed(() => {

@@ -1,9 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import type { Site } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 const FLOW_C: Record<string, string> = { solar: 'var(--gold)', battery: 'var(--blue)', grid: 'var(--ink-3)',
   rigs: 'var(--green)', cooling: 'var(--blue)', charging: 'var(--gold)', unserved: 'var(--red)' };

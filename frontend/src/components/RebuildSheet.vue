@@ -51,7 +51,8 @@ const rbPickerRows=computed(()=>{
   // The concat mixes SLOT_OPTS's catalogue shapes with a fab-designed
   // CustomPart, so — same duck-typed-union rationale as PART/SITEPART — the
   // map below reads fields by slot without a runtime discriminant check.
-  return ((g.SLOT_OPTS as unknown as Record<string, any[]>)[slot]).concat(g.s.customParts.filter(p=>p.kind===slot)).map((p: any)=>{
+  const opts: any[] = g.SLOT_OPTS[slot];
+  return opts.concat(g.s.customParts.filter(p=>p.kind===slot)).map((p: any)=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }

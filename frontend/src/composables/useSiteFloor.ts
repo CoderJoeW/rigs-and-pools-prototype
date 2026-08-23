@@ -1,9 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
-import { useGameStore } from '../stores/game.js';
-import { CHAIN_HUE } from '../data/chains.js';
 import type { Site, Rig } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import { type Store, rigChainHue } from './gameStore.js';
 
 const MAX_TILES = 60, MAX_EMPTY = 12, FLOOR_COLS = 3;
 const DOT_LABEL: Record<string, string> = { run: 'Running', build: 'Building', warn: 'Warning', bad: 'Bad', off: 'Off' };
@@ -27,8 +24,7 @@ export function useSiteFloor(g: Store, f: ComputedRef<Site>) {
   });
   const siteHash = computed(() => rigsHere.value.reduce((a: number, r: Rig) => a + g.rigHash(r), 0));
   const siteStatus = computed(() => {
-    const t = floorTemp.value;
-    if (t >= 70) return { label: 'HOT', tone: 'hot' };
+    if (floorAmbient.value === 'hot') return { label: 'HOT', tone: 'hot' };
     if (rigsHere.value.some((r: Rig) => g.rigLive(r))) return { label: 'ONLINE', tone: 'online' };
     return { label: 'IDLE', tone: 'idle' };
   });
@@ -42,7 +38,7 @@ export function useSiteFloor(g: Store, f: ComputedRef<Site>) {
       if (st.dot === 'run') running++;
       const gr = g.groupOf(r), chain = gr ? gr.chain : null, cards = r.units ? r.units.length : 0;
       const code = posCode(cells.length);
-      cells.push({ key: 'r' + r.id, id: r.id, dot: st.dot, code, chain, hue: chain != null ? CHAIN_HUE[chain] : undefined, cards,
+      cells.push({ key: 'r' + r.id, id: r.id, dot: st.dot, code, chain, hue: rigChainHue(g, r), cards,
         label: 'Position ' + code + ' — ' + r.name + ', ' + st.label + (st.sub ? ' (' + st.sub + ')' : '') });
     }
     const empties = Math.min(MAX_EMPTY, MAX_TILES - cells.length, slots - rigs.length);
@@ -51,6 +47,9 @@ export function useSiteFloor(g: Store, f: ComputedRef<Site>) {
       temp: floorTemp.value, ambient: floorAmbient.value };
   });
 
+  // Tallies every rig at the site, not just floor.value.cells — cells is
+  // capped at MAX_TILES, but the legend has to describe the whole site even
+  // when the floor itself stops rendering past that cap.
   const legend = computed(() => {
     const n: Record<string, number> = {};
     for (const r of rigsHere.value) { const d = g.rigState(r).dot; n[d] = (n[d] || 0) + 1; }

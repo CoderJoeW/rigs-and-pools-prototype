@@ -103,7 +103,7 @@ export interface CustomPart {
 // BuildView's FIELDS rows, read by PartPickerSheet. `part`/`sub`'s parameter
 // are duck-typed like PART/SITEPART below — g.PART(x.unit) is one of five
 // unrelated shapes, read here without a runtime discriminant check.
-export interface PickerField { k: string; label: string; job: string; qty: number; part: any; sub: (p: any) => string }
+export interface PickerField { k: DesignKind; label: string; job: string; qty: number; part: DesignBase; sub: (p: DesignBase) => string }
 export interface CardLimit { n: number; by: string; frame: number; mobo: number }
 
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
@@ -304,7 +304,7 @@ export interface GameState {
   today: DayTotals;
   yday: YdayTotals | null;
   unlocked: Record<string, boolean>;
-  picker: string | null;
+  picker: DesignKind | null;
   sitePicker: unknown;
   rebuild: RebuildInProgress | null;
   focusRig: number | null;

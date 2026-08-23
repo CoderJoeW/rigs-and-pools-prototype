@@ -96,7 +96,7 @@ const siteAfter=computed(()=>{
 // here, not in the picker: needs cardLimit AFTER the draft changes, and a
 // prop the child received is a render old by then.
 const choose=(id: string)=>{
-  (g.s.draft as unknown as Record<string, string>)[g.s.picker!]=id;
+  g.s.draft[g.s.picker!]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };

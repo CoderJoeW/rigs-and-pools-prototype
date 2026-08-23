@@ -25,7 +25,7 @@ const { stateOf, avgWear, chassisOf, FILTERS, SORTS, filt, counts, sortBy, sortD
 const openRig=ref<number | null>(null);
 const { picking, chosen, chosenIds, chooseAll, stopPicking, scopeId, scopeLabel,
   swipeVerb, sw, SW_FIRE, onSwipeDown, onSwipeMove, onSwipeUp, onSwipeCancel,
-  fireSwipe, resetSwipe, rowClick } = useRigSelection(g, shown, f, openRig);
+  fireSwipe, resetSwipe, rowClick } = useRigSelection(g, shown, siteRigs, f, openRig);
 watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 
 const rig=computed(()=> openRig.value==null ? null

@@ -1,15 +1,13 @@
 import { computed, reactive, ref, type ComputedRef, type Ref } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { useSwipeAction } from './useSwipeAction.js';
 import type { Rig, Site } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // Multi-select ("picking") and swipe-to-power-toggle for RigsView's rig
 // list, plus the tap handler that arbitrates between them. The pointer
 // mechanics live in useSwipeAction, which knows nothing about rigs; this is
 // the domain half — which rows may be swiped, and what a tap or swipe does.
-export function useRigSelection(g: Store, shown: ComputedRef<Rig[]>, f: ComputedRef<Site>, openRig: Ref<number | null>) {
+export function useRigSelection(g: Store, shown: ComputedRef<Rig[]>, siteRigs: ComputedRef<Rig[]>, f: ComputedRef<Site>, openRig: Ref<number | null>) {
   const picking = ref(false);
   const chosen = reactive<Record<number, boolean>>({});
   const chosenIds = computed(() => shown.value.filter((r: Rig) => chosen[r.id]).map((r: Rig) => r.id));
@@ -19,10 +17,13 @@ export function useRigSelection(g: Store, shown: ComputedRef<Rig[]>, f: Computed
     for (const r of shown.value) chosen[r.id] = !all;
   };
   const stopPicking = () => { picking.value = false; for (const k in chosen) delete chosen[Number(k)]; };
+  // Nothing picked falls back to the WHOLE site (f.value.id), not just the
+  // filtered/shown rows, so the label must count siteRigs here too — using
+  // shown.value.length understated the true scope of a filtered list.
   const scopeId = computed(() => (picking.value && chosenIds.value.length ? chosenIds.value : (f.value ? f.value.id : null)));
   const scopeLabel = computed(() => (picking.value && chosenIds.value.length
     ? chosenIds.value.length + ' selected'
-    : (f.value ? 'all ' + shown.value.length + ' at ' + f.value.name : '')));
+    : (f.value ? 'all ' + siteRigs.value.length + ' at ' + f.value.name : '')));
 
   const canSwipe = (r: Rig | undefined) => !!r && !picking.value && g.rigState(r).k !== 'build';
   const swipeVerb = (r: Rig) => (r.on ? 'Power off' : 'Power on');

@@ -1,9 +1,7 @@
 import { computed } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { CHAIN_HUE } from '../data/chains.js';
 import type { ChainState, Pool } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // Difficulty is a raw magnitude, not a hashrate, so it takes its own compact
 // formatter rather than fmt.hash's MH/GH/TH ladder.
@@ -38,14 +36,16 @@ export function useChainCards(g: Store) {
 
   const cards = computed(() => g.s.chains.map(c => {
     const groups = g.s.groups.filter(x => x.chain === c.id);
-    const ease = g.easeOf(c);
+    // mine/net computed once and reused below — myHash/chainHash are each
+    // an O(groups×rigs) scan, and winChance/easeOf/chainHash all recompute
+    // them internally, so calling those directly here would redo that scan
+    // up to 5x per card instead of once.
+    const mine = g.myHash(c), net = g.chainHash(c);
+    const ease = net < 1 ? 1 : Math.max(c.floor, c.obs) / net;
     return {
       c, groups,
-      // winChance IS this share — mine over the chain's total. Reaching for
-      // the store's own version rather than restating the division here.
-      share: g.winChance(c),
-      mine: g.myHash(c),
-      net: g.chainHash(c),
+      share: net > 0 ? mine / net : 0,   // winChance IS this share — mine over the chain's total
+      mine, net,
       diff: g.diffOf(c),
       emission: 86400 / c.target * c.reward,   // chain's own daily payout, not your share of it
       rate: g.revPerMh(c),   // realized rate, not `mult` — chains.ts: the two diverge ~17% once price clamps

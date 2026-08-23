@@ -1,15 +1,11 @@
 import { computed } from 'vue';
-import { useGameStore } from '../stores/game.js';
-import { CHAIN_HUE } from '../data/chains.js';
-import type { Site, Rig } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Rig } from '../game/types.js';
+import { type Store, rigChainHue } from './gameStore.js';
 
 // Dominant chassis state for a site row hero — prefer attention states, then
 // running, then build, else off. Same vocabulary the Rigs list and Sites
 // floor already use.
-function siteChassisState(g: Store, f: Site): string {
-  const rigs: Rig[] = g.siteRigs(f);
+function siteChassisState(g: Store, rigs: Rig[]): string {
   if (!rigs.length) return 'off';
   let hasBad = false, hasWarn = false, hasBuild = false, hasRun = false;
   for (const r of rigs) {
@@ -43,12 +39,12 @@ export function useFarmRows(g: Store) {
     let chainHue;
     for (const r of rigs) {
       const gr = g.groupOf(r);
-      if (gr && gr.chain != null) { chainHue = CHAIN_HUE[gr.chain]; break; }
+      if (gr && gr.chain != null) { chainHue = rigChainHue(g, r); break; }
     }
     return {
       f, ambient, temp, hash, demand, capacity, util, status, statusTone,
       costDay: g.siteCostPerHour(f) * 24,
-      chassisState: siteChassisState(g, f),
+      chassisState: siteChassisState(g, rigs),
       chainHue,
       rigCount: rigs.length,
       slots,

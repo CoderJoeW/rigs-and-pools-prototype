@@ -1,20 +1,13 @@
 import { computed, reactive, ref, type ComputedRef } from 'vue';
-import { useGameStore } from '../stores/game.js';
-import { CHAIN_HUE } from '../data/chains.js';
 import type { Rig } from '../game/types.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import { type Store, rigChainHue } from './gameStore.js';
 
 // Filter chips: design-spec.md §6n.
 export function useRigFilterSort(g: Store, siteRigs: ComputedRef<Rig[]>) {
   const stateOf = (r: Rig) => g.rigState(r);
   const avgWear = (r: Rig) => g.rigWear(r);
   const needsEye = (r: Rig) => ['off', 'worn', 'losing', 'wearing'].includes(stateOf(r).k);
-  const chainHueOf = (r: Rig) => {
-    const gr = g.groupOf(r);
-    const chain = gr ? gr.chain : null;
-    return chain != null ? CHAIN_HUE[chain] : undefined;
-  };
+  const chainHueOf = (r: Rig) => rigChainHue(g, r);
   const chassisOf = (r: Rig) => {
     const n = r.units ? r.units.length : 0;
     return { state: stateOf(r).dot, size: n >= 9 ? 'lg' : n >= 5 ? 'md' : 'sm',

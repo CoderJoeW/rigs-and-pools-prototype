@@ -1,8 +1,6 @@
 import { computed } from 'vue';
-import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
-
-type Store = ReturnType<typeof useGameStore>;
+import type { Store } from './gameStore.js';
 
 // The overview stat cards and deltas at the top of FarmView.
 export function useFarmStats(g: Store) {

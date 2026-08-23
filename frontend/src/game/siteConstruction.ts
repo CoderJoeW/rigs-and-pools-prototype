@@ -47,10 +47,15 @@ export function installSiteConstruction(G: Game): void {
         return name;
       }
       case 'mfg': {
-        G.s.customParts.push(job.part as CustomPart);
-        PART_MAP.set(job.part!.id, job.part as unknown as Part);
-        G.say('site', job.part!.name + ' finished manufacturing at ' + site.name);
-        return job.part!.name;
+        // job.part is one object viewed two ways: fab.ts builds it by
+        // spreading a real Frame/Mobo/Psu/Cooler/Card's stats (see its own
+        // comment), so it's simultaneously a CustomPart for the save/filter
+        // list and a Part for PART_MAP's catalogue lookups.
+        const part = job.part as CustomPart;
+        G.s.customParts.push(part);
+        PART_MAP.set(part.id, part as unknown as Part);
+        G.say('site', part.name + ' finished manufacturing at ' + site.name);
+        return part.name;
       }
       default:
         return commissionSitePartInto(site, site.plants, job.p!);
