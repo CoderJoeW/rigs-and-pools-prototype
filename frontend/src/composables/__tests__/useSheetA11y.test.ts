@@ -6,7 +6,7 @@ import { useSheetA11y } from '../useSheetA11y.js';
 /* A minimal stand-in for one of the app's real ".sheet" panels: a trigger
    button outside it, and two focusable buttons inside — enough to exercise
    open-focus, Tab-trap and Escape without dragging in a whole view. */
-function makeHarness(closeSpy, { startOpen = false } = {}) {
+function makeHarness(closeSpy: () => void, { startOpen = false } = {}) {
   return defineComponent({
     setup() {
       const open = ref(startOpen);
@@ -31,7 +31,7 @@ function makeHarness(closeSpy, { startOpen = false } = {}) {
 describe('useSheetA11y', () => {
   it('moves focus into the panel when it opens, and back to the trigger when it closes', async () => {
     const wrapper = mount(makeHarness(() => {}), { attachTo: document.body });
-    const trigger = wrapper.find('#trigger').element;
+    const trigger = wrapper.find('#trigger').element as HTMLElement;
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
 
@@ -64,8 +64,8 @@ describe('useSheetA11y', () => {
     await nextTick();
     await nextTick();
 
-    const last = wrapper.find('#last').element;
-    const first = wrapper.find('#first').element;
+    const last = wrapper.find('#last').element as HTMLElement;
+    const first = wrapper.find('#first').element as HTMLElement;
     last.focus();
     expect(document.activeElement).toBe(last);
 

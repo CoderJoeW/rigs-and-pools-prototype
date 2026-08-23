@@ -6,9 +6,9 @@ import { useTweenedNumber } from '../useTweenedNumber.js';
    which a test should wait on for real. Both are replaced with one hand-cranked
    clock: advance(ms) moves time forward and runs whatever frames were pending,
    handing them the same timestamp the composable's own now() would read. */
-let clock, pending, nextHandle;
+let clock: number, pending: Map<number, (ts: number) => void>, nextHandle: number;
 
-function advance(ms){
+function advance(ms: number){
   clock += ms;
   const due = [...pending.values()];
   pending.clear();
@@ -17,8 +17,8 @@ function advance(ms){
 
 beforeEach(() => {
   clock = 0; pending = new Map(); nextHandle = 0;
-  vi.stubGlobal('requestAnimationFrame', cb => { pending.set(++nextHandle, cb); return nextHandle; });
-  vi.stubGlobal('cancelAnimationFrame', h => { pending.delete(h); });
+  vi.stubGlobal('requestAnimationFrame', (cb: (ts: number) => void) => { pending.set(++nextHandle, cb); return nextHandle; });
+  vi.stubGlobal('cancelAnimationFrame', (h: number) => { pending.delete(h); });
   vi.spyOn(performance, 'now').mockImplementation(() => clock);
 });
 
@@ -29,9 +29,9 @@ afterEach(() => {
 
 /* The composable registers an onScopeDispose, so it needs an owning scope
    the same way a component would give it one. */
-function run(fn){
+function run<T extends object>(fn: () => T){
   const scope = effectScope();
-  const out = scope.run(fn);
+  const out = scope.run(fn)!;
   return { ...out, dispose: () => scope.stop() };
 }
 

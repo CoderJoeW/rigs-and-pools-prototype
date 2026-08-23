@@ -3,13 +3,15 @@ import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useSwipeAction } from '../useSwipeAction.js';
 
+type Id = number | string;
+
 /* The composable takes a document listener out in onMounted and puts it back in
    onBeforeUnmount, so it is exercised through a real (empty) component rather
    than a bare effect scope — that way the listener is genuinely installed and
    `stop()` genuinely tests the teardown. */
-function build(opts = {}){
-  const fired = [];
-  let api;
+function build(opts: { can?: (id: Id) => boolean } = {}){
+  const fired: Id[] = [];
+  let api!: ReturnType<typeof useSwipeAction>;
   const wrapper = mount(defineComponent({
     setup(){
       api = useSwipeAction({
@@ -24,12 +26,12 @@ function build(opts = {}){
 }
 
 /* A pointer event is only ever read for these five fields. */
-const ev = (x, y = 0, extra = {}) =>
+const ev = (x: number, y = 0, extra: Record<string, unknown> = {}) =>
   ({ clientX:x, clientY:y, pointerId:1, pointerType:'touch', currentTarget:null, ...extra });
 
 /* Drag row `id` left by `dist` px and release. Leftward travel is a DECREASING
    clientX, which is the easiest thing to get backwards when reading the source. */
-function swipe(api, id, dist){
+function swipe(api: ReturnType<typeof build>, id: Id, dist: number){
   api.onDown(ev(500), id);
   api.onMove(ev(500 - dist), id);
   api.onUp(ev(500 - dist), id);
