@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -24,11 +24,11 @@ const g = useGameStore();
    four in-game hours, so this only draws once a pool has been running a while —
    which is why the extraction lost it silently: a freshly founded pool has an
    empty hist and never reaches the branch. */
-const spark = hist => sparkPath(hist, 32, 26);
+const spark = (hist: number[]) => sparkPath(hist, 32, 26);
 
 /* An unset fee draft means "showing the live fee" — the projection and the
    Move/Cancel pair only appear once the player has actually moved the slider. */
-const feeDraft = ref(undefined);
+const feeDraft = ref<number | undefined>(undefined);
 const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
   useInlineRename(() => props.pool.name, name => g.renamePool(props.pool, name));
 
@@ -202,7 +202,7 @@ const bondSteps = computed(() => {
       <div class="dl"><dt>Fee</dt><dd>{{ fmt.pct(pool.fee) }}
         <span class="sb"> · holding {{ fmt.hash(g.poolHash(pool)) }}</span></dd></div>
       <input type="range" min="0" max="0.10" step="0.0025" :value="feeDraft!==undefined?feeDraft:pool.fee"
-             :aria-label="'Fee for '+pool.name" @input="feeDraft=parseFloat($event.target.value)">
+             :aria-label="'Fee for '+pool.name" @input="feeDraft=parseFloat(($event.target as HTMLInputElement).value)">
       <div v-if="feeDraft!==undefined&&Math.abs(feeDraft-pool.fee)>0.0005"
            class="warnbox" style="margin-top:6px">
         <b>{{ (feeDraft*100).toFixed(2) }}% would settle at

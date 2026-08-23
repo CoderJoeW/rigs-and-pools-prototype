@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';

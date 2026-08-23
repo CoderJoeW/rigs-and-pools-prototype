@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { sitePlate } from '../utils/siteArt.js';
 
@@ -20,7 +20,7 @@ import { sitePlate } from '../utils/siteArt.js';
    carry. */
 const props = defineProps({
   shell: { type: String, default: 'bedroom' },
-  phase: { type: String, default: 'day' },
+  phase: { type: String as () => 'day' | 'night', default: 'day' },
   state: { type: String, default: 'off' },
   label: { type: String, default: '' },
 });

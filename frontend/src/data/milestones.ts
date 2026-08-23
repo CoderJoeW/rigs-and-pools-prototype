@@ -1,4 +1,4 @@
-import type { Game } from '../game/types.js';
+import type { GameExports } from '../game/types.js';
 
 // Career board, not a quest log — no cash, no perks: design-spec.md §8.
 export const RANKS: [number, string][] = [[0,'Hobbyist'],[4,'Tinkerer'],[8,'Operator'],[12,'Engineer'],[16,'Mogul'],[20,'Magnate']];
@@ -8,7 +8,7 @@ export interface Milestone {
   track: string;
   name: string;
   desc: string;
-  check(g: Game): boolean;
+  check(g: GameExports): boolean;
 }
 
 export const MILESTONES: Milestone[] = [

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -54,7 +54,7 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
           <span class="gsel-cv" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="m6 9 6 6 6-6"/></svg></span>
           <select class="gsel-native" :value="gr.chain" :aria-label="'Chain for '+gr.name"
-                  @change="g.setGroupChain(gr,$event.target.value)">
+                  @change="g.setGroupChain(gr,($event.target as HTMLSelectElement).value)">
             <option v-for="c in g.s.chains" :key="c.id" :value="c.id">
               {{ c.name }} — {{ c.target<60?c.target+'s':(c.target/60)+' min' }} blocks</option>
           </select>
@@ -69,7 +69,7 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
           <span class="gsel-cv" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="m6 9 6 6 6-6"/></svg></span>
           <select class="gsel-native" :value="gr.pool" :aria-label="'Pool for '+gr.name"
-                  @change="g.setGroupPool(gr,$event.target.value)">
+                  @change="g.setGroupPool(gr,($event.target as HTMLSelectElement).value)">
             <option value="solo">Solo — whole reward</option>
             <optgroup label="Rival pools">
               <option v-for="p in g.s.pools.filter(x=>x.live&&x.chain===gr.chain&&x.owner!=='you')"

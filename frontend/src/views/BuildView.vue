@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
@@ -23,7 +23,7 @@ const qty=ref(1);
 const maxQty=computed(()=> g.maxBuildQty());
 watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
 const orderCost=computed(()=> g.dp.cost*Math.min(qty.value, Math.max(1,maxQty.value||1)));
-function setMode(m){
+function setMode(m: string){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
@@ -57,15 +57,15 @@ const FIELDS=computed(()=>{
   const x=g.s.draft, n=x.n;
   return [
     {k:'unit',label:'Cards',job:'the hashrate', qty:n,
-      part:g.PART(x.unit), sub:p=>p.mh+' MH · '+p.w+'W · '+(p.mh/p.w).toFixed(2)+' MH/W'},
+      part:g.PART(x.unit), sub:(p:any)=>p.mh+' MH · '+p.w+'W · '+(p.mh/p.w).toFixed(2)+' MH/W'},
     {k:'frame',label:'Frame',job:'holds the cards, and decides how well they breathe', qty:1,
-      part:g.PART(x.frame), sub:p=>partSub('frame',p)},
+      part:g.PART(x.frame), sub:(p:any)=>partSub('frame',p)},
     {k:'mobo',label:'Board',job:'drives the cards, and burns power doing nothing', qty:1,
-      part:g.PART(x.mobo), sub:p=>partSub('mobo',p)},
+      part:g.PART(x.mobo), sub:(p:any)=>partSub('mobo',p)},
     {k:'cool',label:'Cooling',job:'trades watts for card life', qty:1,
-      part:g.PART(x.cool), sub:p=>partSub('cool',p)},
+      part:g.PART(x.cool), sub:(p:any)=>partSub('cool',p)},
     {k:'psu',label:'Supply',job:'watts and connectors', qty:1,
-      part:g.PART(x.psu), sub:p=>partSub('psu',p)},
+      part:g.PART(x.psu), sub:(p:any)=>partSub('psu',p)},
   ];
 });
 // Hero photo tracks the draft's frame (always the 'run' state — a preview
@@ -93,8 +93,8 @@ const siteAfter=computed(()=>{
 // leaving canBuild false with no way out but tapping "-" repeatedly. Stays
 // here, not in the picker: needs cardLimit AFTER the draft changes, and a
 // prop the child received is a render old by then.
-const choose=id=>{
-  g.s.draft[g.s.picker]=id;
+const choose=(id: string)=>{
+  (g.s.draft as any)[g.s.picker!]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };
@@ -103,9 +103,9 @@ const choose=id=>{
 // signal, deliberately kept out of canBuild's gate — see docs/implementation-notes.md.
 const ceilingNote=computed(()=>{
   const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
-  const ceil=g.chainCeiling(c, g.dp.mh);
+  const ceil=g.chainCeiling(c as any, g.dp.mh);
   if(!ceil) return null;
-  const already=g.chainHash(c)>c.floor;   // "is at" only when true today, not just projected — issue #25
+  const already=g.chainHash(c!)>c!.floor;   // "is at" only when true today, not just projected — issue #25
   return { tone:'warn',
     label: already
       ? c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours'
@@ -128,7 +128,7 @@ const subsidyNote=computed(()=>{
 // aria-live announcement snapshotting (why draftKey AND gateKey, not a
 // naive computed): docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const draftKey=computed(()=> JSON.stringify(g.s.draft));
-const gateKey=computed(()=> g.checks.map(c=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
+const gateKey=computed(()=> g.checks.map((c:any)=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
 const buildStatus=ref('');
 watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
   const n=Math.min(qty.value, Math.max(1,maxQty.value||1));
@@ -136,16 +136,16 @@ watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
     ? (n>1
         ? 'Ready to order '+n+' rigs for '+fmt.usd(g.dp.cost*n)+'.'
         : 'Ready to order for '+fmt.usd(g.dp.cost)+'.')
-    : 'Cannot build yet: '+g.checks.filter(c=>!c.ok).map(c=>c.label).join('; ')+'.';
+    : 'Cannot build yet: '+g.checks.filter((c:any)=>!c.ok).map((c:any)=>c.label).join('; ')+'.';
 }, { immediate:true });
 // Quick pick's condensed-not-silent checks: docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const verdict=computed(()=>{
   const c=g.checks;
   const gr=g.draftGroup();
-  const notes=[ceilingNote.value,subsidyNote.value].filter(Boolean);
+  const notes=[ceilingNote.value,subsidyNote.value].filter((x): x is NonNullable<typeof x> => !!x);
   // Cost/hashrate/draw live on the hero; this is what's left — notes in
   // both modes, second-order figures only in Customise.
-  if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter(x=>!x.ok), notes } ];
+  if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter((x:any)=>!x.ok), notes } ];
   return [
     { t:'Cost & payback', rows:[], checks:[c[5]], notes },
     { t:'Hashrate & MH/W', rows:[ {k:'MH/W', v:effShown.value.toFixed(3)} ],
@@ -317,7 +317,7 @@ const verdict=computed(()=>{
 
     <div class="sec"><span class="eyebrow">Pre-build checks</span>
       <span class="eyebrow" :class="g.canBuild?'okc':'noc'">{{ g.canBuild
-        ? 'all '+g.checks.length+' pass' : g.checks.filter(c=>!c.ok).length+' to fix' }}</span></div>
+        ? 'all '+g.checks.length+' pass' : g.checks.filter((c: any)=>!c.ok).length+' to fix' }}</span></div>
     <div class="card checkcard">
       <div v-for="vg in verdict" :key="vg.t" class="vgroup">
         <div v-if="vg.t" class="vgroup-hd"><span class="t">{{ vg.t }}</span></div>

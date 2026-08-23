@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import run from '../assets/chassis/run.png';
 import warn from '../assets/chassis/warn.png';
@@ -14,7 +14,7 @@ const props = defineProps({
   label: { type: String, default: '' },
 });
 
-const SPRITES = { run, warn, build, bad, off };
+const SPRITES: Record<string, string> = { run, warn, build, bad, off };
 
 const src = computed(() => SPRITES[props.state] || SPRITES.off);
 

@@ -1,12 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 
 const g = useGameStore();
 const filt = ref('all');
-const GROUPS = { blocks:['block','pool','jackpot'], money:['pay','sys','big'], problems:['bad'] };
+const GROUPS: Record<string, string[]> = { blocks:['block','pool','jackpot'], money:['pay','sys','big'], problems:['bad'] };
 const shown = computed(()=> filt.value==='all' ? g.s.feed
-  : g.s.feed.filter(e=>GROUPS[filt.value].includes(e.kind)));
+  : g.s.feed.filter(e=>GROUPS[filt.value]!.includes(e.kind)));
 </script>
 
 <template>

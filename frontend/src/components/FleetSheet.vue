@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -28,9 +28,9 @@ const specInfo = computed(() => g.fleetSpecInfo(g.draftSpec(), scope.value));
 const wornInfo = computed(() => g.fleetWorn(REPAIR_AT, scope.value));
 const moveInfo = computed(() => g.fleetMoveInfo(fleetGroup.value, scope.value));
 const refitInfo = computed(() => g.fleetRefitInfo(fleetCard.value, scope.value));
-const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter(p => p.kind === 'unit')));
+const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter((p: any) => p.kind === 'unit')));
 
-const fleetSheetEl = ref(null);
+const fleetSheetEl = ref<HTMLElement | null>(null);
 useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open', false));
 </script>
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import keyArt from '../assets/key/hero.webp';
@@ -17,12 +17,13 @@ const displaySlide = computed(()=>{
 });
 
 // Spotlight tracking (box-shadow dimming, retry/settle, alive flag): docs/implementation-notes.md#tour-spotlight-tracking-srccomponentswelcometourvue.
-const spot = ref(null); // {top,left,width,height} in viewport px, or null
+interface Spot { top: number; left: number; width: number; height: number }
+const spot = ref<Spot | null>(null); // {top,left,width,height} in viewport px, or null
 const PAD = 6;
 let alive = true;
-const currentTarget = () =>
-  slide.value && slide.value.target && document.querySelector(slide.value.target);
-function readRect(el){
+const currentTarget = (): Element | null =>
+  slide.value && slide.value.target ? document.querySelector(slide.value.target) : null;
+function readRect(el: Element){
   const r = el.getBoundingClientRect();
   spot.value = { top:r.top-PAD, left:r.left-PAD, width:r.width+PAD*2, height:r.height+PAD*2 };
 }
@@ -52,7 +53,7 @@ const onResize = () => { if(g.showTour) retrack(); };
 // scrolling flag suppresses .tour-spot's transition during an active
 // scroll: docs/implementation-notes.md#tour-spotlight-tracking-srccomponentswelcometourvue.
 const scrolling = ref(false);
-let scrollSettleTimer = null;
+let scrollSettleTimer: ReturnType<typeof setTimeout> | undefined;
 const onScroll = () => {
   if(!g.showTour) return;
   scrolling.value = true;
@@ -64,20 +65,20 @@ const onScroll = () => {
 // Resets to slide 0 on hidden->shown transition, registered before the
 // tab-sync watcher below: docs/implementation-notes.md#tour-spotlight-tracking-srccomponentswelcometourvue.
 let tourWasShown = false;
-watch(() => g.showTour, shown => {
+watch(() => g.showTour, (shown: boolean) => {
   if(shown && !tourWasShown) step.value = 0;
   tourWasShown = shown;
 }, { immediate:true });
 
 // Drives the tab to match the current slide; runs immediately so slide 1
 // is positioned correctly even though 'farm' is already the default tab.
-watch(() => g.showTour && slide.value, s => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
+watch(() => g.showTour && slide.value, (s: any) => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
 
 // The reverse direction — some spotlighted targets are themselves buttons
 // that jump tabs, so this resyncs the slide to match: docs/implementation-notes.md#tour-spotlight-tracking-srccomponentswelcometourvue.
-watch(() => g.s.tab, tab => {
+watch(() => g.s.tab, (tab: string) => {
   if(!g.showTour) return;
-  const idx = g.TOUR_SLIDES.findIndex(s => s.tab === tab);
+  const idx = g.TOUR_SLIDES.findIndex((s: any) => s.tab === tab);
   if(idx !== -1 && idx !== step.value) step.value = idx;
 });
 

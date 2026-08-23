@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import { fmt } from './utils/format.js';

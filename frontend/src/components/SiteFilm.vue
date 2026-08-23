@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import { sitePlate, siteFilm } from '../utils/siteArt.js';
 
@@ -8,7 +8,7 @@ import { sitePlate, siteFilm } from '../utils/siteArt.js';
 // handling): docs/implementation-notes.md#site-hero-backdrop-srccomponentssitefilmvue.
 const props = defineProps({
   shell: { type: String, required: true },
-  phase: { type: String, default: 'day' },   // 'day' | 'night'
+  phase: { type: String as () => 'day' | 'night', default: 'day' },
   motion: { type: Boolean, default: true },
 });
 
@@ -21,7 +21,7 @@ const allowed = ref(false);
 onMounted(() => {
   const mq = typeof matchMedia === 'function'
     ? matchMedia('(prefers-reduced-motion: reduce)') : null;
-  const conn = typeof navigator !== 'undefined' ? navigator.connection : null;
+  const conn = typeof navigator !== 'undefined' ? (navigator as Navigator & { connection?: { saveData?: boolean } }).connection : null;
   allowed.value = !(mq && mq.matches) && !(conn && conn.saveData);
 });
 
@@ -37,7 +37,7 @@ const showFilm = computed(() =>
    a battery-saver mode) and must not surface as an unhandled rejection. When
    it is refused the poster stays up, which is the night plate, which is what
    the card would have shown anyway. */
-const filmEl = ref(null);
+const filmEl = ref<HTMLVideoElement | null>(null);
 // Watches film as well as showFilm — see docs/implementation-notes.md.
 watch([showFilm, film], async ([on]) => {
   if (!on) return;
@@ -47,7 +47,7 @@ watch([showFilm, film], async ([on]) => {
   try {
     const r = v.play();
     if (r && r.catch) r.catch(() => {});
-  } catch (e) { /* poster stays up, which is the night plate */ }
+  } catch { /* poster stays up, which is the night plate */ }
 }, { immediate: true });
 </script>
 
@@ -64,8 +64,8 @@ watch([showFilm, film], async ([on]) => {
          site's loop playing over the new site's plate. -->
     <video v-if="showFilm" :key="shell" ref="filmEl" class="sf-film" :poster="nightPlate"
            muted loop playsinline autoplay preload="auto" tabindex="-1">
-      <source v-if="film.webm" :src="film.webm" type="video/webm" />
-      <source v-if="film.mp4" :src="film.mp4" type="video/mp4" />
+      <source v-if="film?.webm" :src="film.webm" type="video/webm" />
+      <source v-if="film?.mp4" :src="film.mp4" type="video/mp4" />
     </video>
   </span>
 </template>

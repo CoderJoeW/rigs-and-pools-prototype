@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { onErrorCaptured } from 'vue';
 import { useGameStore } from '../stores/game.js';

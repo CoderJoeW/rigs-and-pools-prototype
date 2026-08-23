@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 
 /* The component thumbnail beside each row of the Build tab's parts list, and
@@ -37,7 +37,7 @@ const props = defineProps({
 /* Eager glob rather than forty-three import lines: the set is exactly the
    contents of the directory, and a part added to the catalogue needs only its
    tile dropped in beside the others. */
-const TILES = import.meta.glob('../assets/part/*.webp', { eager: true, import: 'default' });
+const TILES = import.meta.glob<string>('../assets/part/*.webp', { eager: true, import: 'default' });
 
 /* The catalogue is not fixed. Two kinds of part are minted at runtime and can
    never have a tile of their own:
@@ -53,15 +53,15 @@ const TILES = import.meta.glob('../assets/part/*.webp', { eager: true, import: '
    a next-generation card looks like. Falling back keeps the column of tiles
    full instead of putting an empty square against the best hardware in the
    game from in-game day 14 onward. */
-const TOP_OF_FAMILY = { unit: 'c12', psu: 'p7500', frame: 'f16', mobo: 'm16', cool: 'x6' };
+const TOP_OF_FAMILY: Record<string, string> = { unit: 'c12', psu: 'p7500', frame: 'f16', mobo: 'm16', cool: 'x6' };
 const KIND_RE = /^custom-([a-z]+)-/;
 
-function tileFor(id) {
+function tileFor(id: string): string | undefined {
   if (!id) return undefined;
   const own = TILES[`../assets/part/${id}.webp`];
   if (own) return own;
   const custom = KIND_RE.exec(id);
-  const family = custom ? TOP_OF_FAMILY[custom[1]]
+  const family = custom ? TOP_OF_FAMILY[custom[1]!]
     : /^g\d+[ab]$/.test(id) ? TOP_OF_FAMILY.unit
     : /^gp\d+$/.test(id) ? TOP_OF_FAMILY.psu
     : null;

@@ -76,6 +76,11 @@ export interface DayTotals { day: number; earned: number; power: number; blocks:
 
 export interface ToastState { n: number; text: string; amount: string; cls: string }
 
+export interface FeedItem {
+  id: number; t: string; kind: string; text: string; amount: string;
+  num?: number; usd?: number; n: number;
+}
+
 export interface MilestoneState { done: Record<string, number>; rank: number }
 
 export interface DesignInProgress { fid: number; kind: import('../data/customParts.js').DesignKind; picks: Record<string, number> }
@@ -152,7 +157,7 @@ export interface GameState {
   today: DayTotals;
   yday: DayTotals | null;
   unlocked: Record<string, boolean>;
-  picker: unknown;
+  picker: string | null;
   sitePicker: unknown;
   rebuild: RebuildInProgress | null;
   focusRig: unknown;
@@ -167,7 +172,7 @@ export interface GameState {
   chainsNudgeDismissed: boolean;
   tourDismissed: boolean;
   tourReplay: boolean;
-  feed: unknown[];
+  feed: FeedItem[];
   feedId: number;
   toast: ToastState;
   tab: string;
@@ -177,9 +182,201 @@ export interface GameState {
 // The assembled game context. Every game/*.js installer still contributes
 // through the index signature until it converts; a converted installer
 // adds its real members here instead.
+// The flat, hand-maintained surface persistence.ts publishes to components
+// via Pinia (`G.__exports`, returned verbatim as the store's setup-store
+// body). Named here — even though every member is still `any` — purely so
+// Pinia's defineStore can infer a real object type for the store: an
+// index-signature-only type collapses to `any` as a whole and every
+// `g.xxx` access in a component would fail to resolve at all. `s` gets the
+// one member precise enough to be cheap and worth it; the rest stay `any`
+// until it's worth naming their real types too.
+export interface GameExports {
+  s: GameState;
+  C: any;
+  SHELLS: any;
+  SOURCES: any;
+  PLANTS: any;
+  STORAGE: any;
+  FABS: any;
+  FAB: any;
+  PSUS: any;
+  DESIGN_AXES: any;
+  MAX_AXIS_POINTS: any;
+  designTotals: any;
+  designStats: any;
+  designCost: any;
+  openDesign: any;
+  closeDesign: any;
+  bumpDesignPick: any;
+  manufacturePart: any;
+  liveTopOf: any;
+  RISER: any;
+  PART: any;
+  SITEPART: any;
+  jobPart: any;
+  chain: any;
+  poolOf: any;
+  active: any;
+  price: any;
+  revPerMh: any;
+  solarFactor: any;
+  ambient: any;
+  band: any;
+  cards: any;
+  battKwh: any;
+  battKw: any;
+  sitePlan: any;
+  srcOut: any;
+  siteCapacity: any;
+  siteCooling: any;
+  sitePlantW: any;
+  siteHeat: any;
+  throttleOf: any;
+  siteSlots: any;
+  siteRigs: any;
+  siteDemand: any;
+  siteTemp: any;
+  siteCostPerHour: any;
+  rigLive: any;
+  rigHash: any;
+  rigWallW: any;
+  rigNet: any;
+  rigState: any;
+  rigWear: any;
+  totalHash: any;
+  totalCapacity: any;
+  headroom: any;
+  binding: any;
+  effMhw: any;
+  revenueDay: any;
+  powerDay: any;
+  netDay: any;
+  dayDelta: any;
+  dayPaceDelta: any;
+  walletUsd: any;
+  runway: any;
+  lifetimeNet: any;
+  poolEarned: any;
+  myHash: any;
+  diffOf: any;
+  mttb: any;
+  dp: any;
+  checks: any;
+  canBuild: any;
+  draftEff: any;
+  buildTime: any;
+  unitEcon: any;
+  draftExpected: any;
+  generatePreset: any;
+  maxBuildQty: any;
+  blockValue: any;
+  bondReq: any;
+  poolTrust: any;
+  TRUST_RAMP: any;
+  poolCapLimit: any;
+  poolHash: any;
+  poolProfit: any;
+  withdrawProfit: any;
+  battFirm: any;
+  flowOf: any;
+  chainHash: any;
+  easeOf: any;
+  blockETA: any;
+  blockProg: any;
+  winChance: any;
+  fundOf: any;
+  groupAdvice: any;
+  chainCeiling: any;
+  idleCashAdvice: any;
+  draftGroup: any;
+  battAdvice: any;
+  myPools: any;
+  foundPool: any;
+  setPoolFee: any;
+  renamePool: any;
+  simsOn: any;
+  poolRep: any;
+  repParts: any;
+  rivalPools: any;
+  poolDemand: any;
+  poolProj: any;
+  nextTierBond: any;
+  poolPnl: any;
+  addBond: any;
+  releaseBond: any;
+  capBinding: any;
+  bondFloor: any;
+  topUpBond: any;
+  closePool: any;
+  stepTick: any;
+  build: any;
+  scrapRig: any;
+  swapWorn: any;
+  expectedDay: any;
+  powerRateDay: any;
+  SLOT_OPTS: any;
+  rebuildInfo: any;
+  startRebuild: any;
+  applyRebuild: any;
+  toggleRig: any;
+  setRigGroup: any;
+  groupOf: any;
+  groupHash: any;
+  groupRigs: any;
+  setGroupChain: any;
+  setGroupPool: any;
+  addGroup: any;
+  dropGroup: any;
+  renameGroup: any;
+  newSite: any;
+  addSitePart: any;
+  chooseFab: any;
+  rush: any;
+  rushCost: any;
+  rushRig: any;
+  rushRigCost: any;
+  upgradeShell: any;
+  renameSite: any;
+  renameRig: any;
+  decommissionSite: any;
+  sell: any;
+  buy: any;
+  fleetMove: any;
+  fleetMoveInfo: any;
+  draftSpec: any;
+  fleetSpecInfo: any;
+  fleetToSpec: any;
+  dripCost: any;
+  dripWorst: any;
+  setDrip: any;
+  toggleHold: any;
+  MILESTONES: any;
+  RANKS: any;
+  fleetWorn: any;
+  rigWorn: any;
+  fleetRepair: any;
+  fleetRefitInfo: any;
+  fleetRefit: any;
+  onboardingStep: any;
+  dismissOnboarding: any;
+  showChainsNudge: any;
+  dismissChainsNudge: any;
+  TOUR_SLIDES: any;
+  showTour: any;
+  dismissTour: any;
+  restartTour: any;
+  saveNow: any;
+  loadSave: any;
+  wipeSave: any;
+  exportSave: any;
+  importSave: any;
+  creditAway: any;
+}
+
 export interface Game {
   s: GameState;
   freshState(): GameState;
   spend(amount: number): void;
+  __exports: GameExports;
   [key: string]: any;
 }
