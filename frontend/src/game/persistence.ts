@@ -10,9 +10,17 @@ import { allUnlocked } from './state.js';
 import { nextRivalName } from './rivals.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
-import type { Game } from './types.js';
+import type { Game, Sim, Pool, Rig, Group } from './types.js';
+import type { Part } from '../data/hardware.js';
 
 interface SaveFile { ver: number; savedAt: number; state: unknown }
+
+// A save can predate any field on Rig/GameState — that's what migration
+// exists to fix — so this code works with "might have anything, or
+// nothing" shapes rather than the current, fully-populated ones.
+type LegacyRig = Partial<Rig> & { chain?: string; pool?: string; pending?: number };
+// 'server'-owned pools predate the current owner union (now 'you'|'sim'|'rival').
+type LegacyPool = Omit<Pool, 'owner'> & { owner: string };
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPersistence(G: Game): void {
@@ -87,12 +95,12 @@ export function installPersistence(G: Game): void {
     G.s.picker = null; G.s.sitePicker = null; G.s.design = null;
     G.s.rebuild = null; G.s.focusRig = null; G.s.speed = 1; G.s.wipeArm = false;
     if (!Array.isArray(G.s.customParts)) G.s.customParts = [];
-    for (const p of G.s.customParts as any[]) PART_MAP.set(p.id, p);
+    for (const p of G.s.customParts as { id: string; name: string; price: number }[]) PART_MAP.set(p.id, p as Part);
     G.s.unlocked = allUnlocked();
     const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
-      || G.s.sims.some((m: any) => m.cash === undefined || m.style === undefined);
+      || G.s.sims.some((m: Partial<Sim>) => m.cash === undefined || m.style === undefined);
     if (needsSimReseed && G.seedSims) {
-      G.s.pools = (G.s.pools || []).filter((p: any) => p.owner === 'you');
+      G.s.pools = (G.s.pools || []).filter((p: Pool) => p.owner === 'you');
       G.seedSims(G.s.t || 0);
       for (const c of G.s.chains) {
         const start = G.simHashOf(c);
@@ -108,28 +116,29 @@ export function installPersistence(G: Game): void {
       G.reindexSims();
     }
 
-    const legacy = G.s.rigs.some((r: any) => !r.group || ('chain' in r) || ('pool' in r));
+    const legacyRigs = G.s.rigs as LegacyRig[];
+    const legacy = legacyRigs.some(r => !r.group || ('chain' in r) || ('pool' in r));
     if (legacy || !G.s.groups || !G.s.groups.length) {
       G.s.groups = []; G.s.nextGroup = 1;
-      const combos = new Map<string, any>();
-      for (const r of G.s.rigs as any[]) {
+      const combos = new Map<string, Group>();
+      for (const r of legacyRigs) {
         const key = (r.chain || 'tessera') + '|' + (r.pool || 'solo');
         if (!combos.has(key)) {
-          const gr = { id: G.s.nextGroup++, name: G.s.groups.length ? 'Group ' + G.s.nextGroup : 'Main',
+          const gr: Group = { id: G.s.nextGroup++, name: G.s.groups.length ? 'Group ' + G.s.nextGroup : 'Main',
             chain: r.chain || 'tessera', pool: r.pool || 'solo', pending: 0 };
           G.s.groups.push(gr); combos.set(key, gr);
         }
-        const gr = combos.get(key);
+        const gr = combos.get(key)!;
         gr.pending += (r.pending || 0);
         r.group = gr.id; delete r.chain; delete r.pool; delete r.pending;
       }
       if (!G.s.groups.length) G.s.groups.push({ id: G.s.nextGroup++, name: 'Main',
         chain: 'tessera', pool: 'solo', pending: 0 });
     }
-    for (const r of G.s.rigs as any[]) if (!r.group) r.group = G.s.groups[0]!.id;
+    for (const r of legacyRigs) if (!r.group) r.group = G.s.groups[0]!.id;
     if ('autoSell' in G.s) {
-      G.s.drip = { on: !!(G.s as any).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
-      delete (G.s as any).autoSell;
+      G.s.drip = { on: !!(G.s as unknown as { autoSell?: boolean }).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
+      delete (G.s as unknown as { autoSell?: boolean }).autoSell;
     }
     if (!G.s.drip) G.s.drip = { on: false, frac: 0.25, hours: 6 };
     if (!G.s.hold) G.s.hold = {};
@@ -150,8 +159,8 @@ export function installPersistence(G: Game): void {
       // Rescale to what the CURRENT model says the chain carries (population
       // arrived), not the old growth-rate model design-spec.md §6o replaced —
       // that model's answer would have multiplied every Obelisk miner ~130x.
-      const mine = G.s.sims.filter((m: any) => m.chain === c.id);
-      const have = mine.reduce((a: number, m: any) => a + m.hash, 0);
+      const mine = G.s.sims.filter((m: Sim) => m.chain === c.id);
+      const have = mine.reduce((a: number, m: Sim) => a + m.hash, 0);
       const want = G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO * base.floor;
       /* Through setSimHash, not `m.hash *= k`: the running totals sims.ts
          keeps (_simChainHash and the solo/pool splits) are maintained
@@ -165,13 +174,14 @@ export function installPersistence(G: Game): void {
       }
       c.obs = Math.max(c.floor, want);
     }
-    if (G.s.pools.some((p: any) => p.owner === 'server')) {
-      const dead = new Set(G.s.pools.filter((p: any) => p.owner === 'server').map((p: any) => p.id));
-      G.s.pools = G.s.pools.filter((p: any) => p.owner !== 'server');
+    const legacyPools = G.s.pools as LegacyPool[];
+    if (legacyPools.some(p => p.owner === 'server')) {
+      const dead = new Set(legacyPools.filter(p => p.owner === 'server').map(p => p.id));
+      G.s.pools = legacyPools.filter(p => p.owner !== 'server') as Pool[];
       // Through setSimPool for the same reason the rescale above goes through
       // setSimHash: a bare assignment strands the miner's hashrate in
       // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
-      for (const m of G.s.sims as any[]) if (dead.has(m.pool)) {
+      for (const m of G.s.sims) if (dead.has(m.pool)) {
         if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
       }
       for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
@@ -196,7 +206,11 @@ export function installPersistence(G: Game): void {
   }
   function resetState(): void {
     const fresh = G.freshState();
-    for (const k of Object.keys(G.s)) delete (G.s as any)[k];
+    // Every GameState field is required, so this is transiently invalid by
+    // the type's own contract — repopulated on the very next line. Clearing
+    // in place (not replacing G.s) keeps Vue's reactive() proxy identity,
+    // so every existing computed/watcher stays wired to the same object.
+    for (const k of Object.keys(G.s)) delete (G.s as unknown as Record<string, unknown>)[k];
     Object.assign(G.s, fresh);
     G.liveCards.length = 0; G.liveCards.push(...CARDS);
     G.livePsus.length = 0; G.livePsus.push(...PSUS);
