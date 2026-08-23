@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from './Compare.vue';
+import type { Card } from '../data/hardware.js';
 
 /* The rig rebuild planner. Everything it needs already lives in the store as
    g.s.rebuild — which rig, the draft, and which slot's picker is open — so it
@@ -37,7 +38,7 @@ const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
   const slot=g.s.rebuild!.picker as string;
   if(slot==='unit'){
-    return g.cards().concat(g.s.customParts.filter((p: any)=>p.kind==='unit')).map((c: any)=>({ id:c.id, name:c.name,
+    return g.cards().concat(g.s.customParts.filter((p: any)=>p.kind==='unit') as Card[]).map((c: any)=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }

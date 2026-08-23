@@ -13,10 +13,10 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
   // Verdict panel ranking: design-spec.md §6i. ceilingNote is thread 32's
   // signal, deliberately kept out of canBuild's gate.
   const ceilingNote=computed(()=>{
-    const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
-    const ceil=g.chainCeiling(c as any, g.dp.mh);
-    if(!ceil) return null;
-    const already=g.chainHash(c!)>c!.floor;   // "is at" only when true today, not just projected — issue #25
+    const gr=g.draftGroup(), c=g.chain(gr.chain);
+    const ceil=g.chainCeiling(c, g.dp.mh);
+    if(!ceil || !c) return null;
+    const already=g.chainHash(c)>c.floor;   // "is at" only when true today, not just projected — issue #25
     return { tone:'warn',
       label: already
         ? c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours'
@@ -28,7 +28,7 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
   });
   // Issue #6 — new-miner subsidy context, coexists with ceilingNote by design.
   const subsidyNote=computed(()=>{
-    const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
+    const gr=g.draftGroup(), c=g.chain(gr.chain);
     if(!c || c.obs>c.floor) return null;
     return { tone:'good', label:c.name+' is paying a new-miner premium',
       fix:'Below its floor, '+c.name+' pays every miner the same rate regardless '

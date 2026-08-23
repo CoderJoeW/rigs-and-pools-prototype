@@ -6,6 +6,7 @@
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
 import type { ComputedRef } from 'vue';
+import type { Card } from '../data/hardware.js';
 
 export interface WeatherState { day: number; now: DayWeather; next: DayWeather }
 
@@ -118,6 +119,12 @@ export interface GroupAdvice { share: number; alt: string; mult: number }
 // dispatch.ts's chainCeiling(chain, extraMh?): how much of a chain's
 // emission the player would own past its floor.
 export interface ChainCeiling { share: number; grossCap: number; over: number }
+
+// poolMarket.ts's repParts(pool): the four factors poolRep's trust score
+// weights and averages.
+export interface RepParts { solvency: number; age: number; luck: number; feeStab: number }
+// poolMarket.ts's poolPnl(pool): the operator's-eye view of running a pool.
+export interface PoolPnl { income: number; capital: number; roi: number; payback: number }
 
 export interface Rig {
   id: number;
@@ -287,16 +294,16 @@ export interface GameExports {
   solarFactor: any;
   ambient: any;
   band: any;
-  cards: any;
+  cards(): Card[];
   battKwh: any;
   battKw: any;
   sitePlan: any;
   srcOut: any;
   siteCapacity(site: Site): number;
-  siteCooling: any;
-  sitePlantW: any;
-  siteHeat: any;
-  throttleOf: any;
+  siteCooling(site: Site): number;
+  sitePlantW(site: Site, extraHeat?: number): number;
+  siteHeat(site: Site): number;
+  throttleOf(site: Site): number;
   siteSlots(site: Site): number;
   siteRigs(site: Site): Rig[];
   siteDemand(site: Site): number;
@@ -338,9 +345,9 @@ export interface GameExports {
   bondReq: any;
   poolTrust(pool: Pool): number;
   TRUST_RAMP: any;
-  poolCapLimit: any;
+  poolCapLimit(pool: Pool): number;
   poolHash(pool: Pool): number;
-  poolProfit: any;
+  poolProfit(pool: Pool): number;
   withdrawProfit: any;
   battFirm(site: Site): number;
   flowOf: any;
@@ -353,20 +360,20 @@ export interface GameExports {
   groupAdvice(group: Group): GroupAdvice | null;
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
   idleCashAdvice: any;
-  draftGroup: any;
+  draftGroup(): Group;
   battAdvice: any;
   myPools: any;
   foundPool: any;
   setPoolFee: any;
   renamePool: any;
-  simsOn: any;
-  poolRep: any;
-  repParts: any;
+  simsOn(chainId: string): number;
+  poolRep(pool: Pool): number;
+  repParts(pool: Pool): RepParts;
   rivalPools: any;
   poolDemand: any;
   poolProj: any;
   nextTierBond: any;
-  poolPnl: any;
+  poolPnl(pool: Pool): PoolPnl;
   addBond: any;
   releaseBond: any;
   capBinding: any;
@@ -484,5 +491,26 @@ export interface Game {
   poolTrust(pool: Pool): number;
   groupAdvice(group: Group): GroupAdvice | null;
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
+  // PART/SITEPART/FAB return discriminated unions (Part = Frame|Mobo|Psu|
+  // Cooler|Card, SitePart = Shell|Source|Storage|Plant) accessed duck-typed
+  // by every caller, exactly like dispatch.ts's SP/P — narrowing the return
+  // type would mean threading a type guard through dozens of call sites for
+  // no caught bug, since a field that doesn't exist on the wrong variant
+  // already fails loudly at runtime.
+  PART: any;
+  SITEPART: any;
+  FAB: any;
+  siteHeat(site: Site): number;
+  sitePlantW(site: Site, extraHeat?: number): number;
+  siteCooling(site: Site): number;
+  throttleOf(site: Site): number;
+  draftGroup(): Group;
+  poolCapLimit(pool: Pool): number;
+  poolPnl(pool: Pool): PoolPnl;
+  poolProfit(pool: Pool): number;
+  repParts(pool: Pool): RepParts;
+  poolRep(pool: Pool): number;
+  simsOn(chainId: string): number;
+  cards(): Card[];
   [key: string]: any;
 }

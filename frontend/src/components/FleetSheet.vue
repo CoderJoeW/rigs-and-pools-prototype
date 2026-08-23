@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import type { Card } from '../data/hardware.js';
 
 /* The fleet actions sheet — repair, move, refit, rebuild-to-spec, each applied
    to a scope rather than one rig. Unlike the rebuild sheet this cannot be
@@ -28,7 +29,10 @@ const specInfo = computed(() => g.fleetSpecInfo(g.draftSpec(), scope.value));
 const wornInfo = computed(() => g.fleetWorn(REPAIR_AT, scope.value));
 const moveInfo = computed(() => g.fleetMoveInfo(fleetGroup.value, scope.value));
 const refitInfo = computed(() => g.fleetRefitInfo(fleetCard.value, scope.value));
-const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter((p: any) => p.kind === 'unit')));
+// A manufactured 'unit'-kind custom part is Card-shaped at runtime
+// (customParts.ts's designStats), just not statically typed as one —
+// customParts stays a loose bag since it holds every design kind.
+const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter((p: any) => p.kind === 'unit') as Card[]));
 
 const fleetSheetEl = ref<HTMLElement | null>(null);
 useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open', false));
