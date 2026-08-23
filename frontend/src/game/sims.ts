@@ -279,7 +279,7 @@ export function installSims(G: Game): void {
   }
 
   const simHashOf = (chain: ChainState) => G._simChainHash[chain.id] || 0;
-  const simPoolHashOf = (pool: any) => G._simPoolHash[pool.id] || 0;
+  const simPoolHashOf = (pool: Pool) => G._simPoolHash[pool.id] || 0;
   const simSoloHashOf = (chainId: string) => G._simSoloHash[chainId] || 0;
 
   function drawSimWinner(chain: ChainState, budget: number): { pool: string; mine: boolean; sim?: Sim } {
@@ -319,7 +319,7 @@ export function installSims(G: Game): void {
     if (!sim) return;
     sim.coins = (sim.coins || 0) + usd;
   }
-  function creditSimPoolShare(pool: any, fullCoin: number, price: number): void {
+  function creditSimPoolShare(pool: Pool, fullCoin: number, price: number): void {
     if (!pool || !pool.live) return;
     const poolHashAmount = (G._simPoolHash[pool.id] || 0);
     if (poolHashAmount <= 0) return;
@@ -435,13 +435,13 @@ export function installSims(G: Game): void {
   }
 
   function pickSimPool(sim: Sim): void {
-    const poolOptions = G.s.pools.filter((pool: any) => pool.live && pool.chain === sim.chain &&
+    const poolOptions = G.s.pools.filter((pool: Pool) => pool.live && pool.chain === sim.chain &&
       (G.poolCapLimit ? (G._simPoolHash[pool.id] || 0) + sim.hash <= G.poolCapLimit(pool) * 1.02 : true));
     if (!poolOptions.length) { setSimPool(sim, 'solo'); return; }
     // Scores through poolMarket's own poolScore(), not a third hand-rolled
     // copy of the formula — a pool's worth must mean the same thing
     // regardless of which rule moved a miner.
-    let best: any = null, bestScore = -1;
+    let best: Pool | null = null, bestScore = -1;
     for (const pool of poolOptions) {
       const score = G.poolScore(pool);
       if (score > bestScore) { bestScore = score; best = pool; }
@@ -454,7 +454,7 @@ export function installSims(G: Game): void {
   function tryFoundPool(sim: Sim): void {
     const chain = G.chain(sim.chain);
     if (!chain || chain.id === 'tessera') return;
-    const liveCount = G.s.pools.filter((pool: any) => pool.live && pool.chain === sim.chain).length;
+    const liveCount = G.s.pools.filter((pool: Pool) => pool.live && pool.chain === sim.chain).length;
     if (liveCount > 14) return;
     const scheme: 'PPS' | 'PPLNS' = sim.style > 0.75 && sim.cash > 2000 ? (Math.random() < 0.45 ? 'PPS' : 'PPLNS') : 'PPLNS';
     const fee = scheme === 'PPS' ? 0.018 + Math.random() * 0.04 : 0.004 + Math.random() * 0.025;
@@ -475,7 +475,7 @@ export function installSims(G: Game): void {
   // G.setPoolFee (pools.ts) isn't installed yet when a test drives installSims
   // on its own, so this falls back to a bare assignment — same clamped value
   // either way, just without the trust-affecting side effects setPoolFee has.
-  function adjustPoolFee(pool: any, newFee: number): void {
+  function adjustPoolFee(pool: Pool, newFee: number): void {
     if (G.setPoolFee) G.setPoolFee(pool, newFee);
     else pool.fee = newFee;
   }
@@ -511,7 +511,7 @@ export function installSims(G: Game): void {
   }
 
   // Consolidates 5 previously-separate, drifted closure paths: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-  function closeSimPool(pool: any, why: string): void {
+  function closeSimPool(pool: Pool, why: string): void {
     pool.live = false;
     for (const sim of G.s.sims as Sim[]) if (sim.pool === pool.id) setSimPool(sim, 'solo');
     for (const group of G.s.groups) if (group.pool === pool.id) {

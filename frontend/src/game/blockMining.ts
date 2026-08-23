@@ -1,8 +1,8 @@
 import { C, TX_FEES, CONN_Q, BLOCK_K, RETARGET } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
-import type { Game, ChainState } from './types.js';
+import type { Game, ChainState, Group, Sim, Pool } from './types.js';
 
-interface Winner { pool: string; mine: boolean; group?: any; sim?: any }
+interface Winner { pool: string; mine: boolean; group?: Group; sim?: Sim }
 
 export function installBlockMining(G: Game): void {
   function runBlockWindow(chain: ChainState, dt: number): void {
@@ -50,7 +50,7 @@ export function installBlockMining(G: Game): void {
     return { pool: 'solo', mine: false };
   }
 
-  function baselineKey(chain: ChainState, pool: any): string {
+  function baselineKey(chain: ChainState, pool: Pool): string {
     return pool ? chain.id + '|' + pool.id : chain.id;
   }
 
@@ -73,7 +73,6 @@ export function installBlockMining(G: Game): void {
     const fullRewardUsd = fullReward * G.price(chain);
     const pool = (!winner.pool || winner.pool === 'solo') ? null : G.poolOf(winner.pool);
     if (pool) pool.found = (pool.found || 0) + 1;
-    if (winner.group) winner.group.found = (winner.group.found || 0) + 1;
 
     if (!pool) {
       awardSoloBlock(chain, winner, fullReward);
@@ -118,7 +117,7 @@ export function installBlockMining(G: Game): void {
     trackBlockUsd(chain.id, usd);
   }
 
-  function awardPooledBlock(chain: ChainState, winner: Winner, pool: any, fullReward: number, fullRewardUsd: number): void {
+  function awardPooledBlock(chain: ChainState, winner: Winner, pool: Pool, fullReward: number, fullRewardUsd: number): void {
     if (winner.mine) G.s.blocksSolved++;
     // pool.found is counted ONCE, at the top of awardBlock. It used to be
     // counted again here — every pooled block twice — which saturated
@@ -146,7 +145,7 @@ export function installBlockMining(G: Game): void {
     }
   }
 
-  function awardPplnsShare(chain: ChainState, winner: Winner, pool: any, fullReward: number): void {
+  function awardPplnsShare(chain: ChainState, winner: Winner, pool: Pool, fullReward: number): void {
     const poolHashTotal = G.poolHash(pool);
     const miningGroups = G.s.groups.filter(group => group.pool === pool.id && G.groupHash(group) > 0);
     const miningHash = miningGroups.reduce((sum, group) => sum + G.groupHash(group), 0);
@@ -170,15 +169,16 @@ export function installBlockMining(G: Game): void {
     const key = baselineKey(chain, pool);
     const baseline = blockBaseline(key);
     if (winner.mine) {
+      const group = winner.group!;   // drawWinner only ever sets mine:true alongside group
       const jackpot = baseline && usd >= baseline * C.JACKPOT_MULT;
       if (jackpot) {
-        G.say('jackpot', winner.group.name + ' solved the ' + chain.name + ' pool block — '
+        G.say('jackpot', group.name + ' solved the ' + chain.name + ' pool block — '
           + (usd / baseline!).toFixed(1) + 'x your usual', '+' + fmt.c(share), share, chain.tick);
         G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
           'jackpot', { always: true });
       } else {
-        G.say('block', winner.group.name + ' solved the ' + chain.name + ' pool block', '+' + fmt.c(share), share, chain.tick);
-        G.pop(winner.group.name + ' found it', '+' + fmt.c(share) + ' ' + chain.tick, '', { kind: 'block' });
+        G.say('block', group.name + ' solved the ' + chain.name + ' pool block', '+' + fmt.c(share), share, chain.tick);
+        G.pop(group.name + ' found it', '+' + fmt.c(share) + ' ' + chain.tick, '', { kind: 'block' });
       }
     } else {
       G.say('pay', pool.name + ' found a block', '+' + fmt.c(share), share, chain.tick);
