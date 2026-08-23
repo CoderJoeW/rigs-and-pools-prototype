@@ -880,6 +880,23 @@ that can take it.
 but an unknown shell id must not blank the hero, so `sitePlate` falls
 back to `bedroom` — the one every run starts in.
 
+### Farm-row thumbnail (`src/components/SiteShot.vue`)
+
+Replaces `RackShot`, which showed the same studio photograph of a rack
+for every site whatever it was: a spare bedroom and a warehouse bay were
+the same picture, and the picture was of neither. This shows the shell,
+in the light the simulation says it is — the same plates the Sites hero
+uses, so tapping a row takes you to a bigger version of what you just
+tapped rather than to somewhere you have not seen.
+
+No film here, deliberately. The Farm lists every site at once, and three
+or four videos decoding behind a scrolling dashboard buys nothing at
+104px — motion belongs on the one site you have actually opened.
+
+Still per-state at the border, as before: the render is of a place, and
+whether that place is running, hot or dark is state the photograph
+cannot carry.
+
 ## Build draft search (`src/game/buildDraft.ts`)
 
 `candidateBuilds` is the one search both `generatePreset` and
@@ -905,3 +922,185 @@ was. `persistence.js`'s sim-reseed/reset/retune paths overwrite
 `chain.anchor` directly without touching `anchor0`, so a mid-decay save
 that goes through one of those keeps its original maturity floor instead
 of resetting it.
+
+## Single-series stat chart (`src/components/StatChart.vue`)
+
+One measure, one hue, over the ~80 days of samples the simulation keeps.
+Three of these sit on the Stats tab (one per measure) rather than sharing
+an axis — efficiency, hashrate and money have nothing in common to put on
+one scale, and two y-axes on one frame is the one thing a chart must never
+do.
+
+One series means no legend: the title names it. What replaces a legend is
+the direct label at the live end — one value, on the last point, rather
+than a number on every point.
+
+There is deliberately no "sum these for me" mode. A cumulative chart has
+to be fed a cumulative series: the per-day series here are snapshots of
+counters that reset at midnight, so adding them up produces a number with
+no meaning. The caller passes the series that already means what the
+chart claims. `avg` is opt-in for the same reason — an average is
+meaningful for a level sampled at an instant (hashrate, MH/W, cash) and
+misleading for one of those resetting counters, where it reports roughly
+half the real daily figure.
+
+Interaction is a scrub rather than a hover crosshair: this is a 440px
+touch layout, so the pointer that reads a chart here is a finger already
+resting on it — dragging moves a marker and swaps the direct label for
+the value under it. Releasing returns the label to the live end.
+
+## Part catalogue tiles (`src/components/PartTile.vue`)
+
+The component thumbnail beside each row of the Build tab's parts list, and
+beside every option inside the pickers those rows open. Keyed by part, not
+by slot — it used to take a slot name ('unit', 'frame', 'psu') and hand
+back one of five pictures, so all twelve cards shared a photograph and so
+did all ten power supplies. The Build tab is a shop, and every ladder in
+`data/hardware.ts` is monotonic: a dearer part is better on every axis
+that matters. None of that was visible with one photo per slot. Now every
+catalogue id has its own tile, and opening a picker shows the ladder as
+objects rather than as a column of identical squares over changing text.
+
+**How they were shot.** Five contact sheets, one per family, every member
+of a family in a single frame on one seamless studio floor under one soft
+key from upper left, then cut apart on a shared square box. That is what
+makes a column of five read as one set: the objects differ, the framing
+and the light do not. It is also why this cost five generations rather
+than forty-three — and why a sixth family could be added the same way.
+
+The warm studio ground is deliberate and is the one place the app's art
+departs from the near-black used for installed hardware (RigShot,
+RackTile, Chassis). Those show machines in a room; these show goods on a
+shelf. The tile's own background is set to match the sheets' floor so the
+crop sits on it rather than fighting a dark frame.
+
+The tile itself is decorative (`aria-hidden` unless a caller passes
+`label`) — every row and every option already names its own part in text
+beside the tile.
+
+**Runtime fallback for minted parts.** The catalogue is not fixed. Two
+kinds of part are minted at runtime and can never have a tile of their
+own: `hardware.ts` grows the ladder every `GEN_DAYS` with `g<n>a`/`g<n>b`
+cards and a matching `gp<n>` supply — an endless series, so shipping art
+for it is not a thing that can be finished — and the fab mints
+`custom-<kind>-<stamp>` parts a player designed themselves. Both sit above
+the top of the ladder they extend, so the honest picture for either is the
+top static part of that family — a top-end card really is what a
+next-generation card looks like. `tileFor()` falls back to
+`TOP_OF_FAMILY[kind]`'s tile, keeping the column of tiles full instead of
+putting an empty square against the best hardware in the game from
+in-game day 14 onward.
+
+`TILES` is an eager `import.meta.glob` over `../assets/part/*.webp` rather
+than forty-three import lines: the set is exactly the contents of the
+directory, and a part added to the catalogue needs only its tile dropped
+in beside the others.
+
+## Rig hero shot (`src/components/RigShot.vue`)
+
+The wide hardware shot that fronts every row of the Rigs list. Its own set
+of renders, and the reason it is not one of the app's other hardware
+visuals: `Chassis` is a 36–44px square badge that sits inside a line of
+text, and `RackTile` is a macro crop of a rack's mesh with no cabinet
+outline left in frame. This one is a 16:9 studio shot of a single rig with
+the whole enclosure in frame, because the Rigs row is the one place in the
+app that shows one machine at a size where the machine itself is the
+subject rather than a marker for it.
+
+**Two axes, not one.** Until this shot existed, every rig in the fleet —
+a two-card milk crate and a sixteen-slot rack shelf alike — shared one
+photograph, so the single most legible decision the Build tab offers was
+invisible everywhere it mattered. The frame is now the second axis;
+`utils/rigArt.ts` owns which of the three art classes a frame id wears,
+and why there are three.
+
+No chain LED, unlike `RackTile`'s version of this idea: a tile on the
+floor plan is wordless and needs the bar to say which chain it points at,
+where this row names the chain in text two lines down, with its
+`ChainMark` beside it. Painted here as well it was pure duplication — and
+a bright bar laid over a photograph whose own LEDs are the subject read as
+a fault in the picture rather than as a label.
+
+## Chain emblem (`src/components/ChainGem.vue`)
+
+A chain's emblem — the faceted stone that fronts its card on the Chains
+tab. One cut, five colours, and that is the whole idea: a chain's identity
+in this app has always been its OKLCH hue (`chains.ts`, `ChainMark`), so
+five different stones would have introduced a second, competing identity
+system for the same five things. Rendered once and recoloured per chain,
+they read as one set of five rather than five unrelated ornaments, and the
+hue in the render is the hue on the mark beside it.
+
+All five share one 1740px crop box measured on the base render, so the
+stone holds its exact size and position from card to card — only the
+colour moves, the same rule the rack, floor and rig sets follow.
+
+Decorative by default (the name is right beside it on a chain card); a
+caller with no such text passes `label` and gets a described image back.
+Falls back to the flat `--chain-h` swatch for any chain id without a
+render, so adding a chain to the catalogue cannot break this tab before
+its art exists.
+
+## Career-rank medallion (`src/components/RankBadge.vue`)
+
+One badge, six metals, climbing: copper, brass, gunmetal, silver, gold,
+platinum. The form never changes — same hexagonal frame, same pickaxe
+over a gearwheel, same crop box measured on the copper render — so the
+ladder reads as one object being upgraded rather than six unrelated
+awards, and the only thing that moves between ranks is what it is made
+of. The same rule the rack, rig and gem sets follow.
+
+Keyed by index into `RANKS` rather than by name: the ladder is ordered
+and what a rank is called is a label on it, so renaming one in
+`milestones.ts` cannot silently unhook its art. An index past the art
+falls back to the last badge rather than rendering nothing — a seventh
+rank added to the catalogue should look unfinished, not broken.
+
+The dark tile it sits on (in its `<style>`) is the same one every other
+generated asset in the app wears — `RigShot`, `ChainGem` and `PartTile`
+all frame their render rather than trying to knock its ground out.
+Blending it away was the first attempt and it does not survive both
+themes: the render's ground is near-black but not black, so `screen` left
+a grey plate on the dark card and would have blown the badge out on the
+light one. A framed tile is what the rest of the app already looks like,
+and it reads as deliberate in both.
+
+## Owned pool card (`src/components/MyPoolCard.vue`)
+
+One pool you own, on the Chains tab: capacity and bond, the members you
+can point at it, the fee dial and its projection, and the close/top-up
+controls. In the view this used to be a `v-for` body whose every piece of
+local state was a map keyed by pool id — `feeDraft[p.id]`,
+`poolRenameOpen[p.id]`, `poolRenameDraft[p.id]`. One card per component
+means those are just refs, and the keying disappears.
+
+**Hashrate sparkline.** `tick.ts` appends a `poolHash` sample to
+`pool.hist` every four in-game hours, so it only draws once a pool has
+been running a while — which is why an earlier extraction lost it
+silently: a freshly founded pool has an empty `hist` and never reaches
+the branch.
+
+**Fee draft.** An unset fee draft means "showing the live fee" — the
+projection and the Move/Cancel pair only appear once the player has
+actually moved the slider.
+
+**Why `demand`/`tierBond` are memoised and `poolHash`/`poolPnl` are not.**
+`demand` and `tierBond` scan every miner on the pool's chain — tens of
+thousands of them once the network has filled — and the template asks
+for them a dozen times per render between the "Turning away" line, the
+top-up button's four states and the fee projection. Through `computed()`
+each is one call per render, which measured as the difference between
+~90ms and ~15ms for an open card; the fee slider re-renders on every
+input event, so that is a live cost. They are cacheable because they walk
+`G.s.sims`, which *is* reactive: a miner's hashrate or chain moving
+invalidates them.
+
+`poolHash` and `poolPnl` look like the same kind of thing but are
+deliberately not memoised. `poolHash` reads the sim half of a pool's book
+out of `G._simPoolHash` — a plain object `sims.ts` keeps off Vue's
+reactivity on purpose (see that file's header) — so a `computed()` over
+it caches a value nothing will ever invalidate. Memoised, a card whose
+members were all simulated rendered a frozen "holding 0 MH/s", and with
+it a frozen FULL badge, capacity bar, blocks-a-day and projection delta.
+They are cheap anyway: a walk of the player's own groups and rigs, not of
+the network.

@@ -2,22 +2,8 @@
 import { computed } from 'vue';
 import { sitePlate } from '../utils/siteArt.js';
 
-/* The thumbnail on each site row of the Farm dashboard.
-
-   Replaces RackShot, which showed the same studio photograph of a rack for
-   every site whatever it was: a spare bedroom and a warehouse bay were the
-   same picture, and the picture was of neither. This shows the shell, in the
-   light the simulation says it is — the same plates the Sites hero uses, so
-   tapping a row takes you to a bigger version of what you just tapped rather
-   than to somewhere you have not seen.
-
-   No film here, deliberately. The Farm lists every site at once, and three
-   or four videos decoding behind a scrolling dashboard buys nothing at
-   104px — motion belongs on the one site you have actually opened.
-
-   Still per-state at the border, as before: the render is of a place, and
-   whether that place is running, hot or dark is state the photograph cannot
-   carry. */
+// Farm-row thumbnail architecture (vs RackShot, no film, per-state border):
+// docs/implementation-notes.md#farm-row-thumbnail-srccomponentssiteshotvue.
 const props = defineProps({
   shell: { type: String, default: 'bedroom' },
   phase: { type: String as () => 'day' | 'night', default: 'day' },

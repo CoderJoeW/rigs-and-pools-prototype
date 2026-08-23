@@ -6,25 +6,8 @@ import halcyon from '../assets/chain/halcyon.webp';
 import nova from '../assets/chain/nova.webp';
 import obelisk from '../assets/chain/obelisk.webp';
 
-/* A chain's emblem — the faceted stone that fronts its card on the Chains tab.
-
-   One cut, five colours, and that is the whole idea: a chain's identity in this
-   app has always been its OKLCH hue (see chains.ts and ChainMark), so five
-   different stones would have introduced a second, competing identity system
-   for the same five things. Rendered once and recoloured per chain, they read
-   as one set of five rather than five unrelated ornaments, and the hue in the
-   render is the hue on the mark beside it.
-
-   All five share one 1740px crop box measured on the base render, so the stone
-   holds its exact size and position from card to card — only the colour moves,
-   the same rule the rack, floor and rig sets follow.
-
-   Decorative by default: on a chain card the name is right beside it. A caller
-   with no such text passes a `label` and gets a described image back.
-
-   Falls back to the flat --chain-h swatch for any chain id without a render,
-   so adding a chain to the catalog cannot break this tab before its art
-   exists. */
+// Chain gem architecture (one cut/five recoloured hues, shared crop box,
+// swatch fallback): docs/implementation-notes.md#chain-emblem-srccomponentschaingemvue.
 const props = defineProps({
   chain: { type: String, required: true },
   hue: { type: [Number, String], default: undefined },

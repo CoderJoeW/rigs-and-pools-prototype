@@ -7,12 +7,8 @@ import ChainMark from './ChainMark.vue';
 import { useInlineRename } from '../composables/useInlineRename.js';
 import type { Pool } from '../game/types.js';
 
-/* One pool you own, on the Chains tab: capacity and bond, the members you can
-   point at it, the fee dial and its projection, and the close/top-up controls.
-
-   In the view this was a v-for body whose every piece of local state was a map
-   keyed by pool id — feeDraft[p.id], poolRenameOpen[p.id], poolRenameDraft[p.id].
-   One card per component means those are just refs, and the keying disappears. */
+// Owned pool card architecture (per-card state, sparkline, fee draft,
+// memoisation split): docs/implementation-notes.md#owned-pool-card-srccomponentsmypoolcardvue.
 const props = defineProps({
   pool: { type: Object as PropType<Pool>, required: true },
   open: { type: Boolean, default: false },
@@ -21,36 +17,12 @@ const emit = defineEmits(['toggle']);
 
 const g = useGameStore();
 
-/* The hashrate sparkline. tick.ts appends a poolHash sample to pool.hist every
-   four in-game hours, so this only draws once a pool has been running a while —
-   which is why the extraction lost it silently: a freshly founded pool has an
-   empty hist and never reaches the branch. */
 const spark = (hist: number[]) => sparkPath(hist, 32, 26);
 
-/* An unset fee draft means "showing the live fee" — the projection and the
-   Move/Cancel pair only appear once the player has actually moved the slider. */
 const feeDraft = ref<number | undefined>(undefined);
 const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
   useInlineRename(() => props.pool.name, name => g.renamePool(props.pool, name));
 
-/* These scan every miner on the pool's chain — tens of thousands of them once
-   the network has filled — and the template asked for them a dozen times per
-   render between the "Turning away" line, the top-up button's four states and
-   the fee projection. Through computed() each is one call per render, which
-   measured as the difference between ~90 ms and ~15 ms for an open card; the
-   fee slider re-renders on every input event, so that is a live cost.
-
-   They are cacheable because they walk G.s.sims, which IS reactive: a miner's
-   hashrate or chain moving invalidates them.
-
-   poolHash and poolPnl are deliberately NOT memoised here, though they look
-   like the same kind of thing. poolHash reads the sim half of a pool's book
-   out of G._simPoolHash — a plain object sims.ts keeps off Vue's reactivity
-   on purpose (see its header) — so a computed over it caches a value nothing
-   will ever invalidate. Memoised, a card whose members were all simulated
-   rendered a frozen "holding 0 MH/s", and with it a frozen FULL badge,
-   capacity bar, blocks-a-day and projection delta. They are cheap anyway:
-   a walk of the player's own groups and rigs, not of the network. */
 const demand = computed(() => g.poolDemand(props.pool));
 const tierBond = computed(() => g.nextTierBond(props.pool));
 const feeProj = computed(() => feeDraft.value === undefined

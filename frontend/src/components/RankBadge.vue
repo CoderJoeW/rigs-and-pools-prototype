@@ -7,20 +7,8 @@ import engineer from '../assets/rank/engineer.webp';
 import mogul from '../assets/rank/mogul.webp';
 import magnate from '../assets/rank/magnate.webp';
 
-/* The career-rank medallion.
-
-   One badge, six metals, climbing: copper, brass, gunmetal, silver, gold,
-   platinum. The form never changes — same hexagonal frame, same pickaxe over
-   a gearwheel, same crop box measured on the copper render — so the ladder
-   reads as one object being upgraded rather than six unrelated awards, and
-   the only thing that moves between ranks is what it is made of. The same
-   rule the rack, rig and gem sets follow.
-
-   Keyed by INDEX into RANKS rather than by name: the ladder is ordered and
-   what a rank is called is a label on it, so renaming one in milestones.ts
-   cannot silently unhook its art. An index past the art falls back to the
-   last badge rather than rendering nothing — a seventh rank added to the
-   catalog should look unfinished, not broken. */
+// Rank badge architecture (one form/six metals, keyed by index, art
+// fallback): docs/implementation-notes.md#career-rank-medallion-srccomponentsrankbadgevue.
 const props = defineProps({
   rank: { type: Number, default: 0 },
   label: { type: String, default: '' },
@@ -40,13 +28,7 @@ const src = computed(() =>
 </template>
 
 <style scoped>
-/* The same dark tile every other generated asset in this app wears —
-   RigShot, ChainGem and PartTile all frame their render rather than trying
-   to knock its ground out. Blending it away was the first attempt and it
-   does not survive both themes: the render's ground is near-black but not
-   black, so `screen` left a grey plate on the dark card and would have
-   blown the badge out on the light one. A framed tile is what the rest of
-   the app already looks like, and it reads as deliberate in both. */
+/* Dark tile rationale: docs/implementation-notes.md#career-rank-medallion-srccomponentsrankbadgevue. */
 .rankbadge {
   flex: none;
   position: relative;

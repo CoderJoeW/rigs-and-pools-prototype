@@ -3,33 +3,8 @@ import { computed, ref } from 'vue';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 
-/* A single-series time chart: one measure, one hue, over the ~80 days of
-   samples the simulation keeps.
-
-   Three of these sit on the Stats tab, one per measure, rather than any of
-   them sharing an axis — efficiency, hashrate and money have nothing in
-   common to put on one scale, and two y-axes on one frame is the one thing
-   a chart must never do.
-
-   One series means no legend: the title names it. What replaces a legend is
-   the direct label at the live end — one value, on the last point, rather
-   than a number on every point.
-
-   There is deliberately no "sum these for me" mode. A cumulative chart has to
-   be fed a cumulative SERIES: the per-day series here are snapshots of
-   counters that reset at midnight, so adding them up produces a number with
-   no meaning. The caller passes the series that already means what the chart
-   claims.
-
-   `avg` is opt-in for the same reason. An average is meaningful for a level
-   sampled at an instant (hashrate, MH/W, cash) and misleading for one of
-   those resetting counters, where it reports roughly half the real daily
-   figure.
-
-   Interaction: a scrub rather than a hover crosshair. This is a 440px touch
-   layout, so the pointer that reads a chart here is a finger already resting
-   on it — dragging moves a marker and swaps the direct label for the value
-   under it. Releasing returns the label to the live end. */
+// Single-series time chart architecture (axis-per-measure, no legend, no
+// summing, scrub interaction): docs/implementation-notes.md#single-series-stat-chart-srccomponentsstatchartvue.
 const p = defineProps({
   title: { type: String, default: '' },
   data: { type: Array as () => number[], default: () => [] },
