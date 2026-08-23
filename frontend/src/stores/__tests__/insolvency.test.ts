@@ -19,8 +19,8 @@ import { PART, RISER } from '../../data/hardware.js';
    store-level tests here still enforce that the module is wired into
    createGame, so the bare-context read is not a blind spot. */
 
-function addRig(g, overrides = {}) {
-  const rig = { id: g.s.nextId++, kind: 'gpu', frame: 'f2', mobo: 'm2', psu: 'p450', cool: 'x0',
+function addRig(g: any, overrides: Record<string, any> = {}) {
+  const rig: any = { id: g.s.nextId++, kind: 'gpu', frame: 'f2', mobo: 'm2', psu: 'p450', cool: 'x0',
     ctrl: 'k3', units: [{ p: 'c1', w: 0 }], risers: 1, refurb: 0,
     site: g.s.sites[0].id, group: g.s.groups[0].id, on: true, building: 0,
     open: false, name: 'Rig ' + g.s.nextId, ...overrides };
@@ -47,13 +47,13 @@ describe('the floor rig', () => {
      it untestable through the store, and it is exactly why the old literal
      could drift to $95 unnoticed. Install the module against a bare context to
      read it directly, rather than publishing it just to be testable. */
-  const spec = () => { const G = {}; installInsolvency(G); return G; };
+  const spec = () => { const G: any = {}; installInsolvency(G); return G; };
 
   it('prices the floor rig with the Build tab’s formula', () => {
     const { FLOOR_COST, FLOOR_RIG } = spec();
     expect(FLOOR_COST).toBe(
-      PART(FLOOR_RIG.frame).price + PART(FLOOR_RIG.mobo).price + PART(FLOOR_RIG.psu).price
-      + PART(FLOOR_RIG.cool).price + FLOOR_RIG.n * (PART(FLOOR_RIG.unit).price + RISER.price));
+      PART(FLOOR_RIG.frame)!.price + PART(FLOOR_RIG.mobo)!.price + PART(FLOOR_RIG.psu)!.price
+      + PART(FLOOR_RIG.cool)!.price + FLOOR_RIG.n * (PART(FLOOR_RIG.unit)!.price + RISER.price));
     expect(FLOOR_COST).toBe(60);
     expect(FLOOR_COST).not.toBe(95);   // the sum that had drifted
   });
@@ -101,7 +101,7 @@ describe('the floor rig', () => {
     // rig quietly becoming an RTX A5000 — the price would follow the spec and
     // stay self-consistent while the bailout turned into a $290 gift.
     const cards = g.cards();
-    const cheapestCard = cards.reduce((a, c) => c.price < a.price ? c : a);
+    const cheapestCard = cards.reduce((a: any, c: any) => c.price < a.price ? c : a);
     expect(rig.units[0].p).toBe(cheapestCard.id);
     expect(rig.units).toHaveLength(1);
     expect(g.PART(rig.cool).price).toBe(0);   // no cooler, the free option

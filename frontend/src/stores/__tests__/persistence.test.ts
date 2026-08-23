@@ -55,7 +55,7 @@ describe('saveNow / loadSave round trip', () => {
   it('a save from before today.blocks existed is migrated, not left broken', async () => {
     const g1 = freshStore();
     await g1.saveNow();
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     delete raw.state.today.blocks; // the pre-fix shape
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -76,7 +76,7 @@ describe('saveNow / loadSave round trip', () => {
   it('a save from before the fab feature existed gets fab:null, not left undefined', async () => {
     const g1 = freshStore();
     await g1.saveNow();
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     delete raw.state.sites[0].fab; // the pre-fab shape
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -100,7 +100,7 @@ describe('saveNow / loadSave round trip', () => {
     g1.bumpDesignPick('fac', 1);
     g1.manufacturePart();
     f.queue[0].left = 0.0001; g1.stepTick(1);
-    const part = g1.s.customParts[0];
+    const part: any = g1.s.customParts[0];
     await g1.saveNow();
 
     // PART_MAP is a page-load-scoped singleton (data/hardware.js) — deleting
@@ -129,7 +129,7 @@ describe('saveNow / loadSave round trip', () => {
     // array), not one flat array — see tick.js's derivation comment.
     const g1 = freshStore();
     await g1.saveNow();
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.state.recentBlockUsd = null; // present, but not a plain object
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -162,7 +162,7 @@ describe('save invalidation across the onboarding-system update', () => {
     // simulate a save left over from before this update: same shape, one
     // version behind current — loadSave must treat it as unreadable rather
     // than hydrating a coach step / nudge flag it never had a chance to set
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.ver = g1.C.SAVE_VER - 1;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -230,7 +230,7 @@ describe('a corrupted save', () => {
     g1.build();
     for (let i = 0; i < 60; i++) g1.stepTick(60);
     await g1.saveNow();
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 3600 * 1000; // >60s away, so advance() actually runs
     raw.state.rigs[0].units = null;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
@@ -287,7 +287,7 @@ describe('offline catch-up', () => {
     await g1.saveNow();
 
     // back-date the save as if the tab had been closed for 2 hours
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 2 * 3600 * 1000;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -311,7 +311,7 @@ describe('offline catch-up', () => {
     for (let i = 0; i < 60; i++) g1.stepTick(60);
     await g1.saveNow();
 
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     const tBefore = raw.state.t;
     raw.savedAt = Date.now() - 30 * 24 * 3600 * 1000; // a month ago
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
@@ -348,7 +348,7 @@ describe('offline catch-up', () => {
     for (let i = 0; i < 60; i++) g1.stepTick(60);
     await g1.saveNow();
 
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 24 * 3600 * 1000;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -368,7 +368,7 @@ describe('offline catch-up', () => {
     for (let i = 0; i < 60; i++) g1.stepTick(60);
     await g1.saveNow();
 
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 24 * 3600 * 1000;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -380,7 +380,7 @@ describe('offline catch-up', () => {
     // appears after only a few microtask ticks — poll rather than assume an
     // exact count, but bounded, so a real regression still fails loudly
     // instead of hanging
-    let seen = null;
+    let seen: any = null;
     for (let i = 0; i < 50 && !seen; i++) {
       if (g2.s.catchUp) seen = { ...g2.s.catchUp };
       else await Promise.resolve();
@@ -413,7 +413,7 @@ describe('offline catch-up', () => {
     for (let i = 0; i < 60; i++) g1.stepTick(60);
     await g1.saveNow();
 
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 24 * 3600 * 1000;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -436,7 +436,7 @@ describe('offline catch-up', () => {
     g1.build();
     await g1.saveNow();
 
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     const tBefore = raw.state.t;
     raw.savedAt = Date.now() - 5000; // 5 seconds ago
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));

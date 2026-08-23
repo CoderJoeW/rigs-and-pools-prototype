@@ -21,14 +21,14 @@ import { SIM_MIN_HASH, SIM_SEATS_MIN, SIM_SOFT_CAP, SIM_START } from '../../game
    Pinia — createGame is plain Vue — and nothing here shares a G. */
 const freshStore = () => createGame();
 
-const chainOf = (g, id) => g.s.chains.find(c => c.id === id)!;
-const simsOn = (g, id) => g.s.sims.filter(m => m.chain === id);
+const chainOf = (g: any, id: any) => g.s.chains.find((c: any) => c.id === id)!;
+const simsOn = (g: any, id: any) => g.s.sims.filter((m: any) => m.chain === id);
 
 /* Run the whole tick loop, not just simPulse: block awards, prices, pool
    payouts and the sims' own decisions all feed each other, and it was the
    feedback between them (hashrate lifting price lifting revenue) that carried
    the old runaway past the floor. */
-function runDays(g, days, step = 1800) {
+function runDays(g: any, days: number, step = 1800) {
   const steps = Math.round((days * 86400) / step);
   for (let i = 0; i < steps; i++) g.stepTick(step);
 }
@@ -174,12 +174,12 @@ describe('the network as it grows', () => {
        simPulse moves every other miner too, so only "the totals still
        describe the sims" is a stable claim — and it is exactly the one the
        double-subtract broke. */
-    const sum = (arr) => arr.reduce((a, x) => a + x.hash, 0);
+    const sum = (arr: any[]) => arr.reduce((a: number, x: any) => a + x.hash, 0);
     for (const c of SIM_CHAINS) {
       const here = simsOn(g, c);
       expect(g._simChainHash[c]).toBeCloseTo(sum(here), 6);
       expect(g._simSoloHash[c]).toBeCloseTo(
-        sum(here.filter(x => !x.pool || x.pool === 'solo')), 6);
+        sum(here.filter((x: any) => !x.pool || x.pool === 'solo')), 6);
     }
     for (const p of g.s.pools) {
       if (!p.live) continue;
@@ -255,15 +255,15 @@ describe('the network as it grows', () => {
     expect(pool.live).toBe(false);
     expect(g._simPoolHash[pool.id] || 0).toBe(0);
     expect(m.pool).toBe('solo');
-    const solo = simsOn(g, cid).filter(x => !x.pool || x.pool === 'solo');
-    expect(g._simSoloHash[cid]).toBeCloseTo(solo.reduce((a, x) => a + x.hash, 0), 6);
+    const solo = simsOn(g, cid).filter((x: any) => !x.pool || x.pool === 'solo');
+    expect(g._simSoloHash[cid]).toBeCloseTo(solo.reduce((a: number, x: any) => a + x.hash, 0), 6);
   });
 
   it('holds the running hashrate totals to what the sims actually own', () => {
     const g = freshStore();
     runDays(g, 8);
     for (const cid of SIM_CHAINS) {
-      const owned = simsOn(g, cid).reduce((a, m) => a + m.hash, 0);
+      const owned = simsOn(g, cid).reduce((a: number, m: any) => a + m.hash, 0);
       expect(g._simChainHash[cid]).toBeCloseTo(owned, 4);
     }
   });
