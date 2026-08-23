@@ -107,11 +107,11 @@ const ladder=computed(()=>g.RANKS.map(([need,name]: [number,string],i: number)=>
           <div class="rc-n">Rank <b>{{ rankIdx+1 }}</b> of {{ g.RANKS.length }}</div>
           <div class="rc-bar" role="img"
                :aria-label="rankProg.top ? 'Top rank reached'
-                 : rankProg.done+' of '+rankProg.need+' milestones toward '+nextRank[1]">
+                 : rankProg.done+' of '+rankProg.need+' milestones toward '+nextRank![1]">
             <i :style="{width:(rankProg.frac*100).toFixed(1)+'%'}"></i></div>
           <div class="rc-cap">
             <span v-if="rankProg.top">Top rank &mdash; {{ doneN }} of {{ g.MILESTONES.length }} milestones</span>
-            <span v-else>{{ rankProg.done }} / {{ rankProg.need }} toward {{ nextRank[1] }}</span>
+            <span v-else>{{ rankProg.done }} / {{ rankProg.need }} toward {{ nextRank![1] }}</span>
             <b>{{ fmt.pct(rankProg.frac,0) }}</b></div>
         </div>
       </div>

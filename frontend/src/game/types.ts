@@ -6,9 +6,11 @@
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
 import type { ComputedRef } from 'vue';
-import type { Card } from '../data/hardware.js';
-import type { Job } from '../data/site-parts.js';
-import type { DesignKind, DesignPicks } from '../data/customParts.js';
+import type { Card, Psu } from '../data/hardware.js';
+import type { Job, Shell, Source, Storage, Plant } from '../data/site-parts.js';
+import type { DesignKind, DesignPicks, DesignAxis } from '../data/customParts.js';
+import type { Fab } from '../data/fab.js';
+import type { Milestone } from '../data/milestones.js';
 
 export interface WeatherState { day: number; now: DayWeather; next: DayWeather }
 
@@ -150,6 +152,9 @@ export interface WornInfo { n: number; cost: number }
 // customParts.ts's designTotals(kind, picks): a design's running cost so far.
 export interface DesignTotals { budget: number; cash: number; points: number }
 
+// onboarding.ts's TOUR_SLIDES: the scripted walkthrough's script.
+export interface TourSlide { tab: string; target: string; title: string; body: string }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -287,15 +292,15 @@ export interface GameState {
 export interface GameExports {
   s: GameState;
   C: any;
-  SHELLS: any;
-  SOURCES: any;
-  PLANTS: any;
-  STORAGE: any;
-  FABS: any;
+  SHELLS: Shell[];
+  SOURCES: Source[];
+  PLANTS: Plant[];
+  STORAGE: Storage[];
+  FABS: Fab[];
   FAB: any;
-  PSUS: any;
-  DESIGN_AXES: any;
-  MAX_AXIS_POINTS: any;
+  PSUS: Psu[];
+  DESIGN_AXES: Record<DesignKind, DesignAxis[]>;
+  MAX_AXIS_POINTS: number;
   designTotals(kind: DesignKind, picks: DesignPicks): DesignTotals;
   designStats: any;
   designCost: any;
@@ -304,7 +309,7 @@ export interface GameExports {
   bumpDesignPick(axisKey: string, delta: number): void;
   manufacturePart: any;
   liveTopOf: any;
-  RISER: any;
+  RISER: { name: string; w: number; price: number };
   PART: any;
   SITEPART: any;
   jobPart: any;
@@ -446,8 +451,8 @@ export interface GameExports {
   dripWorst(): DripWorst | null;
   setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
   toggleHold(chainId: string): void;
-  MILESTONES: any;
-  RANKS: any;
+  MILESTONES: Milestone[];
+  RANKS: [number, string][];
   fleetWorn: any;
   rigWorn(rig: Rig, threshold: number): WornInfo;
   fleetRepair: any;
@@ -457,7 +462,7 @@ export interface GameExports {
   dismissOnboarding: any;
   showChainsNudge: any;
   dismissChainsNudge: any;
-  TOUR_SLIDES: any;
+  TOUR_SLIDES: TourSlide[];
   showTour: any;
   dismissTour(): void;
   restartTour(): void;
@@ -580,5 +585,17 @@ export interface Game {
   rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
   setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
   designTotals(kind: DesignKind, picks: DesignPicks): DesignTotals;
+  SHELLS: Shell[];
+  SOURCES: Source[];
+  PLANTS: Plant[];
+  STORAGE: Storage[];
+  FABS: Fab[];
+  PSUS: Psu[];
+  DESIGN_AXES: Record<DesignKind, DesignAxis[]>;
+  MAX_AXIS_POINTS: number;
+  RISER: { name: string; w: number; price: number };
+  MILESTONES: Milestone[];
+  RANKS: [number, string][];
+  TOUR_SLIDES: TourSlide[];
   [key: string]: any;
 }
