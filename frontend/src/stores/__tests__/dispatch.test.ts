@@ -155,7 +155,7 @@ describe('idleCashAdvice', () => {
   it('returns null on a fresh game — starting cash is not 2x what a real build costs', () => {
     const g = freshStore();
     g.s.cash = 1e6; // learn the real, cash-independent cost first
-    const cost = g.idleCashAdvice.cost;
+    const cost = g.idleCashAdvice!.cost;
     g.s.cash = 500; // the actual starting balance
     expect(500).toBeLessThan(cost * 2);
     expect(g.idleCashAdvice).toBeNull();
@@ -197,25 +197,25 @@ describe('idleCashAdvice', () => {
     expect(g.canBuild).toBe(false);
     const advice = g.idleCashAdvice;
     expect(advice).not.toBeNull();
-    expect(advice.cost).toBeGreaterThan(0);
+    expect(advice!.cost).toBeGreaterThan(0);
   });
 
   it('fires once cash sits at least 2x what a real build costs, with room to build it', () => {
     const g = freshStore();
     g.s.cash = 1e6; // learn the real, cash-independent cost first
-    const cost = g.idleCashAdvice.cost;
+    const cost = g.idleCashAdvice!.cost;
     g.s.cash = cost * 2; // exactly at the line — inclusive
     const advice = g.idleCashAdvice;
     expect(advice).not.toBeNull();
-    expect(advice.cost).toBe(cost); // stable — unaffected by the cash change
-    expect(advice.open).toBe(g.siteSlots(g.active)); // nothing built yet
-    expect(advice.site.id).toBe(g.active.id);
+    expect(advice!.cost).toBe(cost); // stable — unaffected by the cash change
+    expect(advice!.open).toBe(g.siteSlots(g.active)); // nothing built yet
+    expect(advice!.site.id).toBe(g.active.id);
   });
 
   it('falls just short of the line at 2x minus a cent', () => {
     const g = freshStore();
     g.s.cash = 1e6;
-    const cost = g.idleCashAdvice.cost;
+    const cost = g.idleCashAdvice!.cost;
     g.s.cash = cost * 2 - 0.01;
     expect(g.idleCashAdvice).toBeNull();
   });

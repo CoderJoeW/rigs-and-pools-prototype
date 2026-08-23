@@ -203,7 +203,6 @@ export function installDispatch(G: Game): void {
   }
   const idleCashAdvice = computed(() => {
     const site = G.active.value;
-    if (!site) return null;
     const cost = G.openBuildCost(site);
     if (cost === null || G.s.cash < cost * C.IDLE_CASH_MULT) return null;
     return { site, cost, open: siteSlots(site) - siteRigs(site).length };

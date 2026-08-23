@@ -172,6 +172,14 @@ export interface DraftExpected { rev: number; pow: number; net: number; payback:
 // onboarding.ts's STEPS: the reactive coach's script, one entry per nudge.
 export interface OnboardingStep { id: string; done: (G: Game) => boolean; text: string }
 
+// dispatch.ts's flowOf(site): the power-flow bars SitesView draws.
+export interface FlowInfo {
+  load: number; rigs: number; cool: number; inRenew: number; inBatt: number;
+  inPaid: number; charge: number; spare: number; unserved: number; cap: number;
+}
+// dispatch.ts's idleCashAdvice: "you can afford another rig" nudge, or null.
+export interface IdleCashAdvice { site: Site; cost: number; open: number }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -337,12 +345,12 @@ export interface GameExports {
                                 // refs/computeds for the store consumer
   price(c: ChainState): number;
   revPerMh(chain: ChainState): number;
-  solarFactor: any;
-  ambient: any;
-  band: any;
+  solarFactor: ComputedRef<number>;
+  ambient: ComputedRef<number>;
+  band: ComputedRef<'off' | 'peak' | 'shoulder'>;
   cards(): Card[];
-  battKwh: any;
-  battKw: any;
+  battKwh(site: Site): number;
+  battKw(site: Site): number;
   sitePlan(site: Site): SitePlan;
   srcOut(site: Site, src: { p: string; n: number }): number;
   siteCapacity(site: Site): number;
@@ -362,10 +370,10 @@ export interface GameExports {
   rigState(rig: Rig): RigState;
   rigWear(rig: Rig): number;
   totalHash: ComputedRef<number>;
-  totalCapacity: any;
-  headroom: any;
-  binding: any;
-  effMhw: any;
+  totalCapacity: ComputedRef<number>;
+  headroom: ComputedRef<number>;
+  binding: ComputedRef<'power' | 'cash'>;
+  effMhw: ComputedRef<number>;
   revenueDay: ComputedRef<number>;
   powerDay: ComputedRef<number>;
   netDay: ComputedRef<number>;
@@ -396,7 +404,7 @@ export interface GameExports {
   poolProfit(pool: Pool): number;
   withdrawProfit(pool: Pool): void;
   battFirm(site: Site): number;
-  flowOf: any;
+  flowOf(site: Site): FlowInfo;
   chainHash(chain: ChainState): number;
   easeOf(chain: ChainState): number;
   blockETA(chain: ChainState): number;
@@ -405,7 +413,7 @@ export interface GameExports {
   fundOf(chain: ChainState): number;
   groupAdvice(group: Group): GroupAdvice | null;
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
-  idleCashAdvice: any;
+  idleCashAdvice: ComputedRef<IdleCashAdvice | null>;
   draftGroup(): Group;
   battAdvice(site: Site): BattAdvice | null;
   myPools: ComputedRef<Pool[]>;
@@ -678,5 +686,16 @@ export interface Game {
   loadSave(): Promise<boolean>;
   importSave(text: string): Promise<boolean>;
   creditAway(away: number): Promise<number>;
+  band: ComputedRef<'off' | 'peak' | 'shoulder'>;
+  solarFactor: ComputedRef<number>;
+  ambient: ComputedRef<number>;
+  battKwh(site: Site): number;
+  battKw(site: Site): number;
+  totalCapacity: ComputedRef<number>;
+  headroom: ComputedRef<number>;
+  binding: ComputedRef<'power' | 'cash'>;
+  effMhw: ComputedRef<number>;
+  flowOf(site: Site): FlowInfo;
+  idleCashAdvice: ComputedRef<IdleCashAdvice | null>;
   [key: string]: any;
 }

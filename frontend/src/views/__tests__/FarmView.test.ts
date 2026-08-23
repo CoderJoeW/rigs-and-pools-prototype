@@ -73,7 +73,7 @@ describe('FarmView', () => {
         g.build();
         for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
         g.s.cash = 1e6;
-        const cost = g.idleCashAdvice.cost;
+        const cost = g.idleCashAdvice!.cost;
         g.s.cash = cost * 2;
       },
     });
