@@ -1,120 +1,32 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
-import { useSwipeAction } from '../composables/useSwipeAction.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import { useRigFilterSort } from '../composables/useRigFilterSort.js';
+import { useRigSelection } from '../composables/useRigSelection.js';
 import RebuildSheet from '../components/RebuildSheet.vue';
 import FleetSheet from '../components/FleetSheet.vue';
 import ChainMark from '../components/ChainMark.vue';
 import Chassis from '../components/Chassis.vue';
 import RigShot from '../components/RigShot.vue';
-import { CHAIN_HUE } from '../data/chains.js';
 import { sitePlate, sitePhase } from '../utils/siteArt.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
-
-const avgWear=(r: any)=>g.rigWear(r);
-const stateOf=(r: any)=>g.rigState(r);
-const needsEye=(r: any)=>['off','worn','losing','wearing'].includes(stateOf(r).k);
-const chainHueOf=(r: any)=>{
-  const gr=g.groupOf(r);
-  const chain=gr?gr.chain:null;
-  return chain!=null?CHAIN_HUE[chain]:undefined;
-};
-const chassisOf=(r: any)=>{
-  const n=r.units?r.units.length:0;
-  return {
-    state:stateOf(r).dot,
-    size:n>=9?'lg':n>=5?'md':'sm',
-    chainHue:chainHueOf(r),
-    label:stateOf(r).label,
-  };
-};
 const siteRigs=computed(()=>g.siteRigs(f.value));
-// Filter chips: design-spec.md §6n.
-const FILTERS=[
-  {k:'all',     label:'All',      test:()=>true,  mark:'layers'},
-  {k:'attention',label:'Needs attention', test:needsEye, alert:true, mark:'warn'},
-  {k:'run',     label:'Running',  test:(r: any)=>stateOf(r).k==='run',  mark:'dot', dot:'run'},
-  {k:'off',     label:'Off',      test:(r: any)=>stateOf(r).k==='off',  mark:'dot', dot:'off'},
-  {k:'worn',    label:'Worn',     test:(r: any)=>['worn','wearing'].includes(stateOf(r).k),
-                                  mark:'dot', dot:'warn'},
-];
-const filt=ref('all');
-const counts=computed(()=>{
-  const o: Record<string, number>={}; for(const x of FILTERS) o[x.k]=siteRigs.value.filter(x.test).length;
-  return o;
-});
-// Each sort names its own direction (e.g. "Net/day (high -> low)"); cmp is
-// always written ascending and reversed when flipped.
-const SORTS=[
-  {k:'name', label:'Name',
-   // By name, not id, since rigs are renameable here; numeric collation so
-   // "Rig 2" precedes "Rig 10", id breaks a tie.
-   cmp:(a: any,b: any)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
-   ends:['A–Z','Z–A']},
-  {k:'net',  label:'Net/day', cmp:(a: any,b: any)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
-  {k:'hash', label:'Hashrate',cmp:(a: any,b: any)=>g.rigHash(a)-g.rigHash(b), ends:['low → high','high → low'], desc:true},
-  {k:'wear', label:'Wear',    cmp:(a: any,b: any)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
-];
-const sortBy=ref('name');
-// Direction held per column so switching sorts doesn't leak one's flip into another.
-const sortDesc=reactive(Object.fromEntries(SORTS.map(x=>[x.k,!!x.desc])));
-const sortOpen=ref(false);
-const sortOf=(k: string)=>SORTS.find(x=>x.k===k)!;
-const sortEnd=(k: string)=>sortOf(k).ends[sortDesc[k]?1:0];
-const sortLabel=computed(()=>sortOf(sortBy.value).label+' ('+sortEnd(sortBy.value)+')');
-const flipSort=()=>{ sortDesc[sortBy.value]=!sortDesc[sortBy.value]; };
-const pickSort=(k: string)=>{
-  if(k===sortBy.value) flipSort(); else sortBy.value=k;
-  sortOpen.value=false;
-};
-const shown=computed(()=>{
-  const test=FILTERS.find(x=>x.k===filt.value)!.test;
-  const s=sortOf(sortBy.value), dir=sortDesc[sortBy.value]?-1:1;
-  return siteRigs.value.filter(test).sort((a: any,b: any)=>s.cmp(a,b)*dir);
-});
 
-const picking=ref(false);
-const chosen=reactive<Record<number, boolean>>({});
-const chosenIds=computed(()=>shown.value.filter((r: any)=>chosen[r.id]).map((r: any)=>r.id));
-const toggleChoose=(r: any)=>{ chosen[r.id]=!chosen[r.id]; };
-const chooseAll=()=>{ const all=chosenIds.value.length===shown.value.length;
-  for(const r of shown.value) chosen[(r as any).id]=!all; };
-const stopPicking=()=>{ picking.value=false; for(const k in chosen) delete chosen[k as any]; };
-const scopeId=computed(()=> picking.value && chosenIds.value.length
-  ? chosenIds.value : (f.value?f.value.id:null));
-const scopeLabel=computed(()=> picking.value && chosenIds.value.length
-  ? chosenIds.value.length+' selected'
-  : (f.value?'all '+siteRigs.value.length+' at '+f.value.name:''));
-
-/* Swipe-a-row-to-power-it: the pointer mechanics live in the composable, which
-   knows nothing about rigs. What stays here is the domain half — which rows may
-   be swiped, and what the swipe does. */
-const canSwipe=(r: any)=>!!r && !picking.value && stateOf(r).k!=='build';
-const swipeVerb=(r: any)=>r.on?'Power off':'Power on';
-const rigById=(id: number)=>g.s.rigs.find((r: any)=>r.id===id);
-
-const { sw, SW_FIRE, onDown:onSwipeDown, onMove:onSwipeMove, onUp:onSwipeUp,
-  onCancel:onSwipeCancel, fire:fireSwipe, close:closeSwipe, reset:resetSwipe,
-  takeClick, isOpen:swipeOpen } = useSwipeAction({
-    can: (id: any) => canSwipe(rigById(id)),
-    fire: (id: any) => g.toggleRig(id),
-    within: '.rigswipe',
-  });
-
-const rowClick=(r: any)=>{
-  if(takeClick()) return;                      // this click is the tail of a drag
-  if(swipeOpen(r.id)){ closeSwipe(); return; } // an open row closes before it opens
-  if(picking.value) toggleChoose(r); else openRig.value=r.id;
-};
-watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
+const { stateOf, avgWear, chassisOf, FILTERS, SORTS, filt, counts, sortBy, sortDesc,
+  sortOpen, sortLabel, sortEnd, flipSort, pickSort, shown } = useRigFilterSort(g, siteRigs);
 
 const openRig=ref<number | null>(null);
+const { picking, chosen, chosenIds, chooseAll, stopPicking, scopeId, scopeLabel,
+  swipeVerb, sw, SW_FIRE, onSwipeDown, onSwipeMove, onSwipeUp, onSwipeCancel,
+  fireSwipe, resetSwipe, rowClick } = useRigSelection(g, shown, f, openRig);
+watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
+
 const rig=computed(()=> openRig.value==null ? null
   : g.s.rigs.find((r: any)=>r.id===openRig.value) || null);
 const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
