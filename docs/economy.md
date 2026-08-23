@@ -169,6 +169,96 @@ Reinvesting on `net > 0` alone has no stopping point otherwise (see
 a room, so `SIM_EXPAND_MAX_DAY` caps the pace, with a card a day as the
 floor for the small miners the cap would otherwise pin at zero.
 
+## Chain ladder derivation (`src/data/chains.ts`)
+
+Every chain is mined by graphics cards at full rate — no algorithms, no
+hardware classes. Chains differ only along pay rate, block time, book
+depth, price volatility and floor; that's deliberately four axes, not
+five.
+
+**Block timing.** `target:20` means the network's mean block interval is
+exactly 20s once hashrate sits at the floor: `diffOf = max(floor,obs) *
+target`, `T = diff/net * (K+1)/K`, so mean = target. Below the floor,
+`net < floor`, so the same formula makes every block take longer — "below
+floor takes longer" falls out of the formula, it isn't a special case.
+
+**Tessera** is the newcomer refuge: 20s blocks, a $3 prize (`reward:125`,
+solved from `reward = mult*PAY*floor*target/(86400*price)` so `revPerMh`
+still equals `PAY*mult` at the floor). Floor (350) sits just above one
+starter rig (~192 MH) so the first build gets a genuine below-floor
+period, and is crossed by a second rig's worth. `depth` (1.2e7) is scaled
+down in the same ratio as the lower emission so a solo starter doesn't pin
+price at the global $0.02 floor.
+
+**The Ferro → Obelisk ladder** (2026-08-21 rebalance, superseding the
+v40 numbers in design-spec.md §2a): `mult` now climbs every rung — Ferro
+1.00 (the `PAY` reference) < Halcyon 1.35 < Nova 1.75 < Obelisk 2.20 — so
+`revPerMh` at the floor, and the full block's dollar value, both increase
+monotonically all the way up. (Tessera stays outside this ladder on
+purpose — it's priced to be worthless at scale, not a rung to graduate
+through.) Floor now steps 10x into Halcyon and 8x a rung above that
+(6,000 → 60,000 → 480,000 → 3,840,000) instead of the old flat ~7x, so a
+farm sized for one rung is a rounding error on the next until it has
+genuinely grown into it. Steeper than 8x starts starving `sims.ts`'s
+population model (which seats each chain's miners by floor *share* of the
+four-chain total — see "Simulated miner population model" above, and
+`stores/__tests__/simGrowth.test.ts`'s "seats the chains by floor weight"
+case, the actual ceiling this ladder is tuned against). Nova's block
+target also moved 60s → 150s so cadence climbs the ladder too
+(20 < 30 < 90 < 150 < 600) instead of dipping between Halcyon and Obelisk.
+
+`depth` is carried by the same ratio as the chain's daily coin emission
+(`86400/target*reward`), old to new, so slippage-per-dollar-mined is
+unchanged and only the absolute numbers grew: Halcyon x1.161, Nova
+x2.917, Obelisk x3.339.
+
+| Chain   | reward (old→new)  | block $ (old→new)      | note |
+|---------|--------------------|--------------------------|------|
+| Halcyon | 99.4 → 115.44      | $305 → $354 (+35%/MH)   | thinnest book, most violent price |
+| Nova    | 71.12 → 518.66     | $840 → $6,126 (+75%/MH) | no longer the worst-paying rung |
+| Obelisk | 8144.8 → 27192     | $73,792 → $246,360 (+120%/MH) | biggest prize on the network |
+
+## Chain hue assignment (`CHAIN_HUE` in `chains.ts`)
+
+`hue` is an OKLCH hue angle and *only* the hue — lightness/chroma come
+from `--chain-l`/`--chain-c` in `main.css`, set per theme — so a chain
+stays at constant perceived lightness against whichever card it sits on
+instead of five hex colours drifting differently when the theme flips.
+
+The five angles aren't free choices: `main.css` already spends four hues
+on status meaning (red 28 bad, gold 78 warning, green 162 good, blue 250
+info in the same OKLCH space), and a chain landing on one of those would
+read as a status rather than a name. Every chain hue sits at least 33°
+off all four status hues and at least 35° off every other chain, putting
+the closest pair (Nova/Obelisk) about 0.08 apart in OKLab in both
+themes — several times a just-noticeable difference. Chain marks are also
+rounded squares, not the circles `.dot` uses for status, so shape backs
+up the distinction too.
+
+Where there was room left, hue went to character: Tessera 200 (teal,
+mosaic glass — the newcomer's refuge), Ferro 128 (moss — the grounded
+workhorse), Halcyon 355 (rose — thin book, violent price, hot without
+being red), Nova 285 (indigo — the calm blue chip), Obelisk 320 (purple —
+monolithic, imperial, pays the most of any real chain).
+
+`CHAIN_HUE` is exported as its own static map rather than read off
+`g.chain(id).hue` because save state is rehydrated with
+`Object.assign(G.s, data.state)` — `s.chains` is whatever the save file
+held, so a world created before a chain gained an updated hue would carry
+the old value, while the static map is always current.
+
+## Anchor decay (`ANCHOR_DECAY` in `chains.ts`)
+
+`fundOf`'s ratio term is `chainHash/floor/anchor`, so shrinking `anchor`
+over game-time raises the fundamental price even at flat hashrate — a
+slow structural drift layered under the hashrate- and trade-driven moves
+`tick.ts` already models. `half` is the game-days half-life of the
+relaxation; `floor` is where anchor asymptotes, as a fraction of its
+start-of-save value (`installTick` lazily captures that as `c.anchor0`).
+Values are ordered to match each chain's blurb: Tessera, the newcomer
+refuge, matures fastest and furthest; Nova, the calm blue chip, barely
+moves.
+
 ## Generation card pricing exponent (`genCardsFor` in `hardware.js`)
 
 Price tracks hashrate's growth exponent (1.22), not a steeper curve. At

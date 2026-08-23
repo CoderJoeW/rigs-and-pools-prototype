@@ -775,6 +775,90 @@ Four of the sampled series look like they could collapse into fewer:
   `lifetimeNet` is the cumulative figure itself, so the series records
   that directly.
 
+## Tweened display numbers (`useTweenedNumber.ts`)
+
+Every figure in the UI is a plain interpolation of a store value, so a
+block landing and paying out $40 renders exactly like a page reload — one
+string on one frame, a different string on the next. `useTweenedNumber`
+eases the *displayed* number toward the real one over a short window so
+the change is visible without staring at the pixel (issue #43).
+Presentation only: the source of truth is never touched. Only a
+deliberately short list of figures opts in — TopBar's cash and the Farm's
+"Net today" hero (ambient: they move continuously in the background),
+and Build's verdict panel (discrete: it only moves because the player
+just acted, so the same easing reads as feedback on that action).
+Formatting stays the caller's job — pass the returned ref through the
+same `fmt.*` helper the raw value used.
+
+**Retargeting.** The simulation ticks 10x/second, so a new target usually
+arrives mid-flight. Each change re-aims from wherever the display
+currently sits rather than restarting from the old target, so the number
+never jumps backwards and only one flight is ever in progress. With
+ease-out, ~100ms into a 320ms window the display has already covered two
+thirds of the gap, so under a continuous stream of ticks it trails the
+true value by a fraction of one tick's delta — at any speed multiplier,
+since `SPEEDS` scales simulated dt, not the real-time tick rate. The
+window is wall-clock, so a bigger per-tick jump is covered faster rather
+than crawling.
+
+**`snapRatio`/`snapFloor` (discontinuity).** A change larger than
+`snapRatio` times the value's own magnitude isn't the simulation moving,
+it's the ground shifting under it (a save loading over a fresh store) —
+counting through it would be noise, so it snaps instead. The multiple is
+deliberately generous: spending most of your cash on a rig is a change
+worth watching, and still tweens. `snapFloor` is the scale below which
+nothing counts as a discontinuity, so a figure near zero — "Net today"
+just after the day rolls over — still animates its first real move
+instead of snapping it.
+
+**`epsilon`.** A live rig moves cash and the day's net by a tiny fraction
+of a cent on every tick from power accruing. Animating a change no
+formatter could render would re-render the component for nothing and
+keep the RAF loop alive permanently, so anything under epsilon is applied
+outright and exactly. It's compared against the *displayed* value, so a
+small tick arriving mid-animation doesn't cut that animation short.
+
+**Reduced motion.** `main.css`'s blanket rule only flattens CSS
+transition/animation durations; a JS tween is invisible to it, so the
+media query is checked here directly and re-read on every change, so
+toggling the OS setting takes effect without a reload.
+
+## Site photography (`utils/siteArt.ts`)
+
+The old scheme dealt three plates by `(site.id - 1) % 3`, so the picture
+had no relationship to the place it labelled — a spare bedroom and a
+warehouse bay were equally likely to show any of them — and all three
+were photographs of an open-pit *ore* mine, a different industry from the
+one this game is about. Every shell in `data/site-parts.ts` now has its
+own interior, shot to the same direction: real light, mid-tones held up
+so the top third of the frame stays calm under the status pill and name,
+and enough recognisable kit in frame (a breaker panel, ducting, a battery
+on the wall) that the picture says which tier you're on before you read
+a word.
+
+**Day/night.** Each shell was shot twice, the night plate produced as an
+edit of the day one so room, layout and camera are identical and only
+the light differs — which is what lets the two cross-fade rather than
+cut. `sitePhase`'s threshold is the solar elevation crossing zero (06:00/
+18:00 on the `DAY_HOURS` cycle), exactly where the day and night plates
+were lit to meet; it restates `timeOfDay.ts`'s internal `hourOf()` logic
+the same way `App.vue` does for the ambient layer, so the photograph
+always agrees with the sky and tariff.
+
+**Film.** The three biggest shells also have a five-second silent loop
+cut from their night plate — only those three, since they're the tiers a
+player spends real time looking at, and a loop costs about six stills in
+bytes. `siteFilm` returns null for the rest and `SiteFilm.vue` shows the
+still instead. Each loop ships as both WebM (VP9) and MP4 (H.264): H.264
+is the format every browser takes, Safari included, but it's
+patent-encumbered and a Chromium built without it treats the element as
+undecodable rather than falling back, so WebM is listed first for those
+that can take it.
+
+**Fallback.** A save written before a shell existed can still name it,
+but an unknown shell id must not blank the hero, so `sitePlate` falls
+back to `bedroom` — the one every run starts in.
+
 ## Chain anchor decay (`advanceChainAnchor` in `chainEconomy.js`)
 
 `chain.anchor0` freezes the save's *starting* anchor so decay always
