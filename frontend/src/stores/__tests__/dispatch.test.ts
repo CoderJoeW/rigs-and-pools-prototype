@@ -15,16 +15,16 @@ describe('rigHash wear decay', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
     const rig = g.s.rigs[0];
 
-    rig.units.forEach(u => u.w = 0.999999);
+    rig.units.forEach((u: any) => u.w = 0.999999);
     const justBelow = g.rigHash(rig);
-    rig.units.forEach(u => u.w = 1);
+    rig.units.forEach((u: any) => u.w = 1);
     const atCeiling = g.rigHash(rig);
 
     // continuous — no discontinuous drop crossing w=1, unlike the old
     // WORN_OUT=0.25 special case (a 0.6->0.25 cliff)
     expect(atCeiling).toBeCloseTo(justBelow, 2);
     // bounded at the spec's ~60% floor (design-spec.md §3), not below it
-    rig.units.forEach(u => u.w = 0);
+    rig.units.forEach((u: any) => u.w = 0);
     const unworn = g.rigHash(rig);
     expect(atCeiling / unworn).toBeCloseTo(0.6, 2);
   });

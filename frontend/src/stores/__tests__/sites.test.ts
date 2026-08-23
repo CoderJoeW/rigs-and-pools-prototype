@@ -40,10 +40,10 @@ describe('addSitePart', () => {
 
     expect(g.s.cash).toBeCloseTo(cashBefore - 120, 5);
     expect(f.queue).toHaveLength(1);
-    expect(f.sources.some(x => x.p === 's-30')).toBe(false);
+    expect(f.sources.some((x: any) => x.p === 's-30')).toBe(false);
 
     for (let i = 0; i < 20; i++) g.stepTick(3600);
-    expect(f.sources.some(x => x.p === 's-30')).toBe(true);
+    expect(f.sources.some((x: any) => x.p === 's-30')).toBe(true);
     expect(f.queue).toHaveLength(0);
   });
 
@@ -74,7 +74,7 @@ describe('rush', () => {
     expect(job.left).toBeLessThan(0.001);
 
     g.stepTick(1); // now finishes almost immediately
-    expect(f.sources.some(x => x.p === 's-30')).toBe(true);
+    expect(f.sources.some((x: any) => x.p === 's-30')).toBe(true);
   });
 
   it('does nothing when cash cannot cover the rush', () => {

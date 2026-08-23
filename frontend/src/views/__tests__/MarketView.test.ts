@@ -10,12 +10,12 @@ import path from 'node:path';
    pin a cascade fix in the source rather than hope a runtime that does not
    apply CSS would have caught it. */
 const sfcCss = fs.readFileSync(path.resolve(import.meta.dirname, '../MarketView.vue'), 'utf8');
-const scopedRule = sel =>
+const scopedRule = (sel: string) =>
   sfcCss.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w-])\\{([^}]*)\\}'))?.[1] || '';
 
 /* Four segments now, so anything below prices has to be switched to first. */
-const seg = (wrapper, label) =>
-  wrapper.findAll('.segtab').find(t => t.text().includes(label))!.trigger('click');
+const seg = (wrapper: any, label: string) =>
+  wrapper.findAll('.segtab').find((t: any) => t.text().includes(label))!.trigger('click');
 
 describe('MarketView', () => {
   it('shows the auto-sell drip controls and an empty ledger', () => {

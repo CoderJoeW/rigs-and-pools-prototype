@@ -64,7 +64,7 @@ describe('RigsView', () => {
      as props, so these pin the seam: the sheet has to open, read the scope the
      view computed, and quote a job against exactly that scope. */
   describe('the fleet actions sheet', () => {
-    const twoRigs = h => {
+    const twoRigs = (h: any) => {
       h.generatePreset();
       h.s.cash = 100000;          // the second rig has to be affordable
       // the first rig draws power the instant it's built now, so the site
@@ -74,8 +74,8 @@ describe('RigsView', () => {
       h.build(); h.build();
       for (const r of h.s.rigs) r.building = 0;
     };
-    const openFleet = async wrapper => {
-      const btn = wrapper.findAll('button').find(b => b.text() === 'Fleet')!;
+    const openFleet = async (wrapper: any) => {
+      const btn = wrapper.findAll('button').find((b: any) => b.text() === 'Fleet')!;
       await btn.trigger('click');
       return wrapper;
     };
@@ -153,7 +153,7 @@ describe('RigsView', () => {
     });
     const pills = wrapper.findAll('.rigfilters .pill');
     expect(pills.length).toBe(5);
-    const byLabel = l => pills.find(p => p.text().includes(l))!;
+    const byLabel = (l: string) => pills.find((p: any) => p.text().includes(l))!;
     expect(byLabel('Running').attributes('disabled')).toBeUndefined();
     expect(byLabel('Off').attributes('disabled')).toBeDefined();
     // The count the chip no longer prints is still readable to a screen reader.

@@ -26,8 +26,8 @@ describe('Compare', () => {
   });
 
   it('calls pick with the row id on click, but never for a locked row', async () => {
-    const picked = [];
-    const wrapper = mount(Compare, { props: { rows, pick: id => picked.push(id) } });
+    const picked: string[] = [];
+    const wrapper = mount(Compare, { props: { rows, pick: (id: string) => picked.push(id) } });
     const buttons = wrapper.findAll('button.cmp-r');
 
     await buttons[1].trigger('click'); // locked row
@@ -38,7 +38,7 @@ describe('Compare', () => {
   });
 
   it('staggers each row’s reveal by 22ms, capped past the 9th row', () => {
-    const longList = Array.from({ length: 12 }, (_, i) => ({ id: 'p' + i, name: 'Part ' + i }));
+    const longList: any[] = Array.from({ length: 12 }, (_, i) => ({ id: 'p' + i, name: 'Part ' + i }));
     const wrapper = mount(Compare, { props: { rows: longList } });
     const cells = wrapper.findAll('.cmp-r');
     expect(cells[0].attributes('style')).toContain('animation-delay: 0ms');

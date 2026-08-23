@@ -4,8 +4,8 @@ import ChainsView from '../ChainsView.vue';
 
 /* The tab is split across three segments now, so anything below the chains
    themselves has to be switched to first — the same click a player makes. */
-const seg = (wrapper, label) =>
-  wrapper.findAll('.segtab').find(t => t.text().includes(label))!.trigger('click');
+const seg = (wrapper: any, label: string) =>
+  wrapper.findAll('.segtab').find((t: any) => t.text().includes(label))!.trigger('click');
 
 describe('ChainsView', () => {
   it('lists all five chains as cards, with the other segments a click away', async () => {
@@ -124,7 +124,7 @@ describe('ChainsView', () => {
     });
     const m = wrapper.find('.svp')!.text().match(/([\d.]+)× as often/);
     expect(m).toBeTruthy();
-    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(1);
+    expect(parseFloat(m![1]!)).toBeGreaterThanOrEqual(1);
   });
 
   it('the segmented control is a real tablist — panels, and arrow keys', async () => {
