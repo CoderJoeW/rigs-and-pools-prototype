@@ -90,7 +90,8 @@ export function installDispatch(G: Game): void {
     }
     const batteryLevel = site.batt || 0, kw = battKw(site), cap = battKwh(site);
     const firm = battFirm(site), paidCap = paid.reduce((sum, entry) => sum + entry.out, 0);
-    let deficit = Math.max(0, load - renew), surplus = Math.max(0, renew - load);
+    let deficit = Math.max(0, load - renew);
+    const surplus = Math.max(0, renew - load);
     let chW = 0, disW = 0, gridChW = 0;
     if (surplus > 0 && cap > 0 && batteryLevel < cap) chW = Math.min(surplus, kw);
     const shortfall = Math.max(0, deficit - paidCap);

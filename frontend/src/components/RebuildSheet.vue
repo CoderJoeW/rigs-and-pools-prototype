@@ -62,7 +62,7 @@ const rbChoose=(id: string)=>{
 
 const rebuildSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
-  ()=>{ if(g.s.rebuild) g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null; });
+  ()=>{ if(!g.s.rebuild) return; if(g.s.rebuild.picker) g.s.rebuild.picker=null; else g.s.rebuild=null; });
 </script>
 
 <template>

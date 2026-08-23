@@ -177,7 +177,7 @@ describe('FarmView', () => {
         g.generatePreset(); g.build();
         g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 };  // net 60
         g.s.t = 86400 * 1.5;                                        // half of day 1
-        g.revenueDay;                                               // rolls the day over
+        void g.revenueDay;                                          // rolls the day over
         g.s.today.earned = 55; g.s.today.power = 50;                // net 5, pace 10 vs 60
       },
     });
@@ -199,7 +199,7 @@ describe('FarmView', () => {
         g.generatePreset(); g.build();
         g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 };
         g.s.t = 86400 * 1.25;
-        g.revenueDay;
+        void g.revenueDay;
         g.s.today.earned = 25; g.s.today.power = 10;   // exactly a quarter of yesterday
       },
     });
@@ -216,7 +216,7 @@ describe('FarmView', () => {
         for (let i = 0; i < 5; i++) g.stepTick(60);   // finish assembly, so the
         g.s.today = { day: 0, earned: 100, power: 40, blocks: 1 }; // closing
         g.s.t = 86400 + 60;   // one minute into the new day        // hash is real
-        g.revenueDay;
+        void g.revenueDay;
         g.s.today.earned = 1; g.s.today.power = 1;
       },
     });
@@ -247,7 +247,7 @@ describe('FarmView', () => {
         // close a day with real figures on it, then step into the next one
         g.s.today = { day: 0, earned: 100, power: 40, blocks: 2 };
         g.s.t = 86400 * 1.5;   // past the floor the pace projection needs
-        g.revenueDay; // reading the day rolls it over and stashes yesterday
+        void g.revenueDay; // reading the day rolls it over and stashes yesterday
         g.s.today.earned = 150; g.s.today.power = 30;
       },
     });

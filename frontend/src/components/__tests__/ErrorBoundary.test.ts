@@ -5,6 +5,7 @@ import ErrorBoundary from '../ErrorBoundary.vue';
 
 const Boom = defineComponent({
   name: 'Boom',
+  // eslint-disable-next-line vue/require-render-return -- always throws by design; there is no return path to test
   render(){ throw new Error('kaboom'); },
 });
 const Fine = defineComponent({

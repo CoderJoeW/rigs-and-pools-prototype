@@ -15,6 +15,7 @@ class FakeCtx {
   state = 'running';
   currentTime = 0;
   destination = {};
+  // eslint-disable-next-line @typescript-eslint/no-this-alias -- capturing the instance for the test to inspect, not a scoping workaround
   constructor(){ live = this; }
   createGain(){ nodes.gain++; return { gain:param(), connect(){} }; }
   createOscillator(){ nodes.osc++; return { type:'', frequency:param(),
