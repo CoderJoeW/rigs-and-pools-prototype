@@ -662,6 +662,26 @@ louder → muted. A separate slider would have to fit into a top bar
 already full at 320px, and a game with three cues doesn't need continuous
 gain — it needs "off," "on," and "on, I am across the room."
 
+## Sites view hero scrim (`src/views/SitesView.vue`)
+
+The site hero's render is a backdrop, not a picture: it sits under a scrim
+heavy enough that the name and the three readings clear contrast on it
+whatever the shot is doing, and the card keeps its own border so it still
+reads as a card.
+
+The scrim is lighter overall than it used to be. The old plates were
+bright skies over a quarry and needed holding down; the current plates
+are interiors already shot with their mid-tones up and their top third
+kept calm, so the same strength scrim buried the room the card exists to
+show.
+
+Two layers rather than one, because the two jobs are different. `::after`
+is the overall wash, now gentle at the top. `::before` is a short band
+behind the status pill alone — 9.5px uppercase, no plate of its own, and
+the one piece of type here that the lighter wash left short of 4.5:1. It
+decays inside 74px, so it buys that row its contrast without touching the
+room below.
+
 ## Rigs view (`src/views/RigsView.vue`)
 
 The Rigs tab's own chrome. Everything shared with the rest of the app —
