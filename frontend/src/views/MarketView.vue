@@ -8,8 +8,8 @@ import { CHAIN_HUE } from '../data/chains.js';
 import { useSegTabs } from '../composables/useSegTabs.js';
 
 const g = useGameStore();
-const open=reactive({});
-const slip=(c,f)=>Math.min(0.5,0.5*(g.s.wallet[c.id]*f)/c.depth);
+const open=reactive<Record<string, boolean>>({});
+const slip=(c: any,f: number)=>Math.min(0.5,0.5*(g.s.wallet[c.id]!*f)/c.depth);
 
 // Segmented layout, same real-tablist pattern as ChainsView: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
@@ -27,14 +27,14 @@ const { seg, segEl, segKey } = useSegTabs(SEGS, 'prices');
 // pushes one every 0.75 sim-days), not against the live price — a live
 // comparison would relabel a 0-18h window as if it were always the same measurement.
 const WINDOW='18h';
-const coinUsd=p=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);   // sub-dollar coins get extra digits so a day's move isn't rounded away
+const coinUsd=(p: number)=> p>=1 ? fmt.usd2(p) : '$'+p.toFixed(4);   // sub-dollar coins get extra digits so a day's move isn't rounded away
 // "Thin" measured against the shallowest book actually in the catalog, not
 // a fixed number — a fixed depth<=400 threshold never fired (shallowest is 2470).
 const thinnest=computed(()=>Math.min(...g.s.chains.map(c=>c.depth)));
 const coins=computed(()=>g.s.chains.map(c=>{
   const h=c.hist||[], n=h.length;
-  const prev=n>=2?h[n-2]:null;
-  const chg = prev>0 ? (h[n-1]-prev)/prev : null;
+  const prev=n>=2?h[n-2]!:null;
+  const chg = (prev!=null && prev>0) ? (h[n-1]!-prev)/prev : null;
   const held=g.s.wallet[c.id]||0;
   return { c, price:g.price(c), chg, held, value:held*g.price(c),
            hue:CHAIN_HUE[c.id], spark:sparkPath(h, 26, 22),
@@ -44,7 +44,7 @@ const walletTotal=computed(()=>coins.value.reduce((a,x)=>a+x.value,0));
 /* Each coin's share of what the wallet is worth — the bar the mockup draws
    beside a holding. A wallet worth nothing has no shares to draw rather
    than five zero-width bars claiming a division that did not happen. */
-const shareOf=x=>walletTotal.value>0 ? x.value/walletTotal.value : 0;
+const shareOf=(x: { value: number })=>walletTotal.value>0 ? x.value/walletTotal.value : 0;
 
 function downloadBackup(){
   const blob=new Blob([g.exportSave()],{type:'application/json'});
@@ -55,16 +55,17 @@ function downloadBackup(){
   URL.revokeObjectURL(url);
 }
 
-const fileInput=ref(null);
+const fileInput=ref<HTMLInputElement | null>(null);
 const importArm=ref(false);
 const importMsg=ref('');
 function pickBackup(){
   if(!importArm.value){ importArm.value=true; return; }
-  fileInput.value.click();
+  fileInput.value?.click();
 }
-async function onBackupFile(e){
-  const file=e.target.files[0];
-  e.target.value='';       // lets the same file be picked again
+async function onBackupFile(e: Event){
+  const target = e.target as HTMLInputElement;
+  const file=target.files?.[0];
+  target.value='';       // lets the same file be picked again
   importArm.value=false;
   if(!file) return;
   const ok=await g.importSave(await file.text());
@@ -83,7 +84,7 @@ async function onBackupFile(e){
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'mkseg-'+x.k" :aria-controls="'mkpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="el=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>
@@ -245,7 +246,7 @@ async function onBackupFile(e){
           <div class="btn-row" style="margin-top:0">
             <button v-for="t in ['auto','light','dark']" :key="t" class="btn btn-sm"
                     :class="g.s.theme===t?'btn-pri':''" @click="g.s.theme=t">
-              {{ t[0].toUpperCase()+t.slice(1) }}</button>
+              {{ t[0]!.toUpperCase()+t.slice(1) }}</button>
           </div>
           <p v-if="g.s.help" class="hint">Auto follows your device's setting.</p>
         </div></div>

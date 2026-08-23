@@ -12,12 +12,12 @@ import { useSegTabs } from '../composables/useSegTabs.js';
    the set shares its lighting. Each is composed with its subject on the left
    and its right two-thirds falling to black, which is what lets it sit behind
    the card's own header without competing with the figures printed over it. */
-const PLATES = import.meta.glob('../assets/chain/*-plate.webp', { eager: true, import: 'default' });
-const plateOf = id => PLATES[`../assets/chain/${id}-plate.webp`];
+const PLATES = import.meta.glob<string>('../assets/chain/*-plate.webp', { eager: true, import: 'default' });
+const plateOf = (id: string) => PLATES[`../assets/chain/${id}-plate.webp`];
 import { CHAIN_HUE } from '../data/chains.js';
 
 const g = useGameStore();
-const open=reactive({});
+const open=reactive<Record<string, boolean>>({});
 
 // Segmented layout rationale: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
@@ -34,17 +34,17 @@ const chainsInfo=ref(false);
 
 // cards computed once per chain, not from the template — perf rationale:
 // docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
-const hueOf=c=>CHAIN_HUE[c.id];
+const hueOf=(c: any)=>CHAIN_HUE[c.id];
 /* Difficulty is a raw magnitude, not a hashrate, so it takes its own compact
    formatter rather than fmt.hash's MH/GH/TH ladder. */
-const big=x=>!isFinite(x)?'—'
+const big=(x: number)=>!isFinite(x)?'—'
   :x>=1e12?(x/1e12).toFixed(2)+' T':x>=1e9?(x/1e9).toFixed(2)+' G'
   :x>=1e6?(x/1e6).toFixed(2)+' M':x>=1e3?(x/1e3).toFixed(2)+' K':x.toFixed(2);
-const coins=x=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const coins=(x: number)=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 /* The verdict word, in the vocabulary this tab already used as RUNNING EASY /
    RUNNING HARD tags: difficulty is retargeted from what was last seen, so a
    chain gaining hashrate runs easy until it catches up. */
-const easeWord=e=> e>1.02?{k:'easy',label:'Running easy'}
+const easeWord=(e: number)=> e>1.02?{k:'easy',label:'Running easy'}
                  : e<0.98?{k:'hard',label:'Running hard'}
                  : {k:'steady',label:'Steady'};
 const cards=computed(()=>g.s.chains.map(c=>{
@@ -70,8 +70,8 @@ const cards=computed(()=>g.s.chains.map(c=>{
 }));
 
 // Solo-vs-pool comparison rationale (frequency not money): docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
-const bestPoolOn=c=>{
-  let best=null, bestH=-1;
+const bestPoolOn=(c: any)=>{
+  let best: any=null, bestH=-1;
   for(const p of g.s.pools){
     if(!p.live||p.chain!==c.id) continue;
     const h=g.poolHash(p);
@@ -94,7 +94,7 @@ const payouts=computed(()=>{
     pooled+=86400*(g.poolHash(p)+extra)/Math.max(1,g.diffOf(g.chain(p.chain)));
   return { solo, pooled, mult: solo>0?pooled/solo:0 };
 });
-const spark=x=> sparkPath(Array.isArray(x)?x:x.hist, 32, 26);
+const spark=(x: any)=> sparkPath(Array.isArray(x)?x:x.hist, 32, 26);
 const fieldMine=ref(true);
 const field=computed(()=>{
   const mine=new Set(g.s.groups.map(x=>x.chain));
@@ -130,7 +130,7 @@ const projMargin=computed(()=>{
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'chseg-'+x.k" :aria-controls="'chpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="el=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>
