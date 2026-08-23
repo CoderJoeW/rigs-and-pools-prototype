@@ -520,9 +520,7 @@ export function installSims(G: Game): void {
     }
   }
 
-  function simPulse(): void {
-    const now = G.s.t;
-    const sims: Sim[] = G.s.sims;
+  function decideBudgetedSims(sims: Sim[], now: number): void {
     let budget = SIM_DECIDE_BUDGET;
     const start = Math.floor(Math.random() * Math.max(1, sims.length));
     for (let k = 0; k < sims.length && budget > 0; k++) {
@@ -532,47 +530,57 @@ export function installSims(G: Game): void {
       decide(sim);
       budget--;
     }
-
+  }
+  function spawnNewcomers(sims: Sim[], now: number): void {
     const population = sims.length;
-    if (population < SIM_SOFT_CAP) {
-      const sat = 1 - population / SIM_SOFT_CAP;
-      const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * population) * sat / 24;
-      let spawn = Math.floor(expect);
-      if (Math.random() < expect - spawn) spawn++;
-      for (let spawnIndex = 0; spawnIndex < spawn; spawnIndex++) {
-        const newSim = mkSim({
-          chain: pickJoinChain(sims.length),
-          hash: newcomerHash(),
-          cash: 60 + Math.random() * 280,
-          time: now,
-        });
-        sims.push(newSim);
-        bumpChainCount(newSim.chain, 1);
-        addHash(newSim, newSim.hash);
-        G._membersDirty = true;
+    if (population >= SIM_SOFT_CAP) return;
+    const sat = 1 - population / SIM_SOFT_CAP;
+    const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * population) * sat / 24;
+    let spawn = Math.floor(expect);
+    if (Math.random() < expect - spawn) spawn++;
+    for (let spawnIndex = 0; spawnIndex < spawn; spawnIndex++) {
+      const newSim = mkSim({
+        chain: pickJoinChain(sims.length),
+        hash: newcomerHash(),
+        cash: 60 + Math.random() * 280,
+        time: now,
+      });
+      sims.push(newSim);
+      bumpChainCount(newSim.chain, 1);
+      addHash(newSim, newSim.hash);
+      G._membersDirty = true;
+    }
+  }
+  function retireSim(sims: Sim[], index: number): void {
+    const sim = sims[index]!;
+    // Zero hashrate through setSimHash before releasing pools: docs/implementation-notes.md.
+    setSimHash(sim, 0);
+    for (const pool of G.s.pools) {
+      if (pool.owner === 'sim' && pool.ownerSim === sim.id && pool.live) {
+        closeSimPool(pool, 'when ' + pool.name + ' shut down');
+        if (G.say) G.say('pool', pool.name + ' has closed — its operator has left mining');
       }
     }
-
-    // Departure sampling scaled to population: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+    sims.splice(index, 1);
+    bumpChainCount(sim.chain, -1);
+    G._membersDirty = true;
+  }
+  // Departure sampling scaled to population: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+  function sampleDepartures(sims: Sim[]): void {
     const looks = Math.max(1, Math.round(sims.length / SIM_START));
     for (let k = 0; k < looks; k++) {
       if (sims.length <= SIM_START || Math.random() >= 0.08) continue;
       const index = Math.floor(Math.random() * sims.length);
       const sim = sims[index]!;
-      if (sim.cash < 15 && sim.hash < 20 && sim.coins < 10) {
-        // Zero hashrate through setSimHash before releasing pools: docs/implementation-notes.md.
-        setSimHash(sim, 0);
-        for (const pool of G.s.pools) {
-          if (pool.owner === 'sim' && pool.ownerSim === sim.id && pool.live) {
-            closeSimPool(pool, 'when ' + pool.name + ' shut down');
-            if (G.say) G.say('pool', pool.name + ' has closed — its operator has left mining');
-          }
-        }
-        sims.splice(index, 1);
-        bumpChainCount(sim.chain, -1);
-        G._membersDirty = true;
-      }
+      if (sim.cash < 15 && sim.hash < 20 && sim.coins < 10) retireSim(sims, index);
     }
+  }
+  function simPulse(): void {
+    const now = G.s.t;
+    const sims: Sim[] = G.s.sims;
+    decideBudgetedSims(sims, now);
+    spawnNewcomers(sims, now);
+    sampleDepartures(sims);
   }
 
   function simFlatDrip(chain: ChainState, dt: number): void {
