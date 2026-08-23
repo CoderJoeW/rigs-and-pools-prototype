@@ -8,6 +8,7 @@ import type { DayWeather } from '../services/weatherService.js';
 import type { ComputedRef } from 'vue';
 import type { Card } from '../data/hardware.js';
 import type { Job } from '../data/site-parts.js';
+import type { DesignKind, DesignPicks } from '../data/customParts.js';
 
 export interface WeatherState { day: number; now: DayWeather; next: DayWeather }
 
@@ -136,6 +137,18 @@ export interface DripWorst { c: ChainState; cost: number; at25: number }
 // buildDraft.ts's unitEcon(unit): one card's own economics, isolated from
 // the rest of the draft.
 export interface UnitEcon { net: number; wall: number; payback: number; perKw: number; mhw: number }
+
+// dispatch.ts's sitePlan(site): how this tick's demand is met — renewables,
+// battery, grid — before it's turned into a bill or a flow chart.
+export interface SitePlan {
+  load: number; renew: number; chW: number; disW: number; gridChW: number;
+  paidW: number; cost: number; unserved: number; firm: number;
+}
+// fleetActions.ts's rigWorn(rig, threshold)/pools.ts's fleetWorn: how many
+// cards are past a wear threshold, and what replacing them costs.
+export interface WornInfo { n: number; cost: number }
+// customParts.ts's designTotals(kind, picks): a design's running cost so far.
+export interface DesignTotals { budget: number; cash: number; points: number }
 
 export interface Rig {
   id: number;
@@ -283,7 +296,7 @@ export interface GameExports {
   PSUS: any;
   DESIGN_AXES: any;
   MAX_AXIS_POINTS: any;
-  designTotals: any;
+  designTotals(kind: DesignKind, picks: DesignPicks): DesignTotals;
   designStats: any;
   designCost: any;
   openDesign: any;
@@ -308,8 +321,8 @@ export interface GameExports {
   cards(): Card[];
   battKwh: any;
   battKw: any;
-  sitePlan: any;
-  srcOut: any;
+  sitePlan(site: Site): SitePlan;
+  srcOut(site: Site, src: { p: string; n: number }): number;
   siteCapacity(site: Site): number;
   siteCooling(site: Site): number;
   sitePlantW(site: Site, extraHeat?: number): number;
@@ -359,7 +372,7 @@ export interface GameExports {
   poolCapLimit(pool: Pool): number;
   poolHash(pool: Pool): number;
   poolProfit(pool: Pool): number;
-  withdrawProfit: any;
+  withdrawProfit(pool: Pool): void;
   battFirm(site: Site): number;
   flowOf: any;
   chainHash(chain: ChainState): number;
@@ -375,8 +388,8 @@ export interface GameExports {
   battAdvice(site: Site): BattAdvice | null;
   myPools: any;
   foundPool: any;
-  setPoolFee: any;
-  renamePool: any;
+  setPoolFee(pool: Pool, fee: number): void;
+  renamePool(pool: Pool, name: string): void;
   simsOn(chainId: string): number;
   poolRep(pool: Pool): number;
   repParts(pool: Pool): RepParts;
@@ -386,41 +399,41 @@ export interface GameExports {
   nextTierBond: any;
   poolPnl(pool: Pool): PoolPnl;
   addBond(pool: Pool, amount: number): void;
-  releaseBond: any;
+  releaseBond(pool: Pool, amount: number): void;
   capBinding(pool: Pool): string;
   bondFloor: any;
-  topUpBond: any;
+  topUpBond(pool: Pool, amount: number): void;
   closePool: any;
   stepTick: any;
   build: any;
-  scrapRig: any;
-  swapWorn: any;
+  scrapRig(id: number): void;
+  swapWorn(id: number, th: number): void;
   expectedDay: any;
   powerRateDay: any;
   SLOT_OPTS: any;
-  rebuildInfo: any;
+  rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
   startRebuild(rig: Rig): void;
   applyRebuild: any;
   toggleRig(id: number): void;
-  setRigGroup: any;
+  setRigGroup(rig: Rig, groupId: number): void;
   groupOf(rig: Rig): Group;
   groupHash(group: Group): number;
   groupRigs(group: Group): Rig[];
-  setGroupChain: any;
+  setGroupChain(group: Group, chainId: string): void;
   setGroupPool(group: Group, poolId: string): void;
   addGroup: any;
   dropGroup: any;
-  renameGroup: any;
+  renameGroup(group: Group, name: string): void;
   newSite: any;
   addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void;
   chooseFab: any;
-  rush: any;
+  rush(fid: number, idx: number): void;
   rushCost(job: Job): number;
-  rushRig: any;
+  rushRig(id: number): void;
   rushRigCost(rig: Rig): number;
-  upgradeShell: any;
-  renameSite: any;
-  renameRig: any;
+  upgradeShell(fid: number, shellId: string): void;
+  renameSite(fid: number, name: string): void;
+  renameRig(id: number, name: string): void;
   decommissionSite: any;
   sell(chainId: string, frac: number): void;
   buy(chainId: string, frac: number): void;
@@ -431,12 +444,12 @@ export interface GameExports {
   fleetToSpec: any;
   dripCost: any;
   dripWorst(): DripWorst | null;
-  setDrip: any;
-  toggleHold: any;
+  setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
+  toggleHold(chainId: string): void;
   MILESTONES: any;
   RANKS: any;
   fleetWorn: any;
-  rigWorn: any;
+  rigWorn(rig: Rig, threshold: number): WornInfo;
   fleetRepair: any;
   fleetRefitInfo: any;
   fleetRefit: any;
@@ -447,10 +460,10 @@ export interface GameExports {
   TOUR_SLIDES: any;
   showTour: any;
   dismissTour(): void;
-  restartTour: any;
+  restartTour(): void;
   saveNow: any;
   loadSave: any;
-  wipeSave: any;
+  wipeSave(): Promise<void>;
   exportSave(): string;
   importSave: any;
   creditAway: any;
@@ -543,5 +556,29 @@ export interface Game {
   closeDesign(): void;
   bumpDesignPick(axisKey: string, delta: number): void;
   dismissTour(): void;
+  withdrawProfit(pool: Pool): void;
+  wipeSave(): Promise<void>;
+  upgradeShell(fid: number, shellId: string): void;
+  topUpBond(pool: Pool, amount: number): void;
+  toggleHold(chainId: string): void;
+  swapWorn(id: number, th: number): void;
+  srcOut(site: Site, src: { p: string; n: number }): number;
+  sitePlan(site: Site): SitePlan;
+  setRigGroup(rig: Rig, groupId: number): void;
+  setPoolFee(pool: Pool, fee: number): void;
+  setGroupChain(group: Group, chainId: string): void;
+  scrapRig(id: number): void;
+  rushRig(id: number): void;
+  rush(fid: number, idx: number): void;
+  rigWorn(rig: Rig, threshold: number): WornInfo;
+  restartTour(): void;
+  renameSite(fid: number, name: string): void;
+  renameRig(id: number, name: string): void;
+  renamePool(pool: Pool, name: string): void;
+  renameGroup(group: Group, name: string): void;
+  releaseBond(pool: Pool, amount: number): void;
+  rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
+  setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
+  designTotals(kind: DesignKind, picks: DesignPicks): DesignTotals;
   [key: string]: any;
 }

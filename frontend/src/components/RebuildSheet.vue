@@ -17,7 +17,8 @@ const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find((x: any)=>x.id===g.s.rebui
 // pending/chain live on the rig's group, not the rig itself, since the group refactor.
 const rbGroup=computed(()=> rbRig.value ? g.groupOf(rbRig.value) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
-const rbInfo=computed(()=> rbRig.value ? g.rebuildInfo(rbRig.value, rbD.value) : {checks:[],lim:1});
+const rbInfo=computed(()=> rbRig.value && rbD.value ? g.rebuildInfo(rbRig.value, rbD.value)
+  : {buy:0,credit:0,net:0,core:0,wall:0,lim:1,checks:[],time:0,ok:false,changed:false,hashNew:0});
 const rbFields=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
   const P=g.PART;
