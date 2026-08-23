@@ -2,38 +2,38 @@ import { computed } from 'vue';
 import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_FEE_MIN, SIM_FEE_MAX } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
 import { cue } from '../services/audio.js';
-import type { Game, ChainState } from './types.js';
+import type { Game, ChainState, Pool, Sim, FeedItem } from './types.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPoolMarket(G: Game): void {
   const blockValue = (c: ChainState) => c.reward * G.price(c);
   const bondReq = (c: ChainState, scheme: 'PPS' | 'PPLNS') => Math.round(blockValue(c) * BOND_MULT[scheme]);
   // Reputation formula: design-spec.md §5.
-  const repParts = (p: any) => {
+  const repParts = (p: Pool) => {
     const solvency = Math.min(1, p.bond / Math.max(1, p.bond0));
     const age = Math.min(1, (G.s.t - (p.born || 0)) / TRUST_RAMP);
     const luck = (p.found || 0) / ((p.found || 0) + 8);
     const feeStab = Math.min(1, (G.s.t - (p.feeMoved || -1e9)) / (3 * 86400));
     return { solvency, age, luck, feeStab };
   };
-  const poolRep = (p: any) => {
+  const poolRep = (p: Pool) => {
     const q = repParts(p);
     return Math.sqrt(q.solvency) * (0.40 + 0.22 * q.age + 0.22 * q.luck + 0.16 * q.feeStab);
   };
   const poolTrust = poolRep;
   // Bond formula (float + dry-spell cover, the tighter one binds): design-spec.md §5.
   const FLOAT_DAYS: Record<'PPS' | 'PPLNS', number> = { PPS: 1.0, PPLNS: PPLNS_COVER };
-  const floatPerHash = (p: any) => C.PAY * G.chain(p.chain).mult * FLOAT_DAYS[p.scheme as 'PPS' | 'PPLNS'];
-  const floatBondFor = (p: any, H: number) => H * floatPerHash(p);
-  const varBondFor = (p: any, H: number) => {
+  const floatPerHash = (p: Pool) => C.PAY * G.chain(p.chain).mult * FLOAT_DAYS[p.scheme as 'PPS' | 'PPLNS'];
+  const floatBondFor = (p: Pool, H: number) => H * floatPerHash(p);
+  const varBondFor = (p: Pool, H: number) => {
     if (p.scheme !== 'PPS') return 0;
     const c = G.chain(p.chain);
     const N = Math.max(1e-9, 86400 * COVER_DAYS * H / Math.max(1, G.diffOf(c)));
     return VAR_K * Math.sqrt(N) * blockValue(c) * (1 + TX_FEES);
   };
-  const bondFor = (p: any, H: number) => Math.max(floatBondFor(p, H), varBondFor(p, H));
+  const bondFor = (p: Pool, H: number) => Math.max(floatBondFor(p, H), varBondFor(p, H));
   // Capacity is the smaller of what each rule allows.
-  const poolCapLimit = (p: any): number => {
+  const poolCapLimit = (p: Pool): number => {
     const byFloat = p.bond / Math.max(1e-9, floatPerHash(p));
     if (p.scheme !== 'PPS') return byFloat;
     const c = G.chain(p.chain), bv = blockValue(c) * (1 + TX_FEES);
@@ -41,7 +41,7 @@ export function installPoolMarket(G: Game): void {
       * Math.max(1, G.diffOf(c)) / (86400 * COVER_DAYS);
     return Math.min(byFloat, byVar);
   };
-  const capBinding = (p: any) => {
+  const capBinding = (p: Pool) => {
     if (p.scheme !== 'PPS') return 'settlement float';
     const byFloat = p.bond / Math.max(1e-9, floatPerHash(p));
     return poolCapLimit(p) < byFloat * 0.999 ? 'dry-spell cover' : 'settlement float';
@@ -57,9 +57,9 @@ export function installPoolMarket(G: Game): void {
   // FEE_BITE tuning: docs/implementation-notes.md#pool-market-srcgamepoolmarketjs.
   const FEE_BITE = 3;
   // poolScoreBase/poolScore split rationale: docs/implementation-notes.md.
-  const poolScoreBase = (p: any) => (1 - Math.min(0.9, p.fee * FEE_BITE)) * poolTrust(p);
+  const poolScoreBase = (p: Pool) => (1 - Math.min(0.9, p.fee * FEE_BITE)) * poolTrust(p);
   const scoreJitter = () => 0.97 + Math.random() * 0.06;   // +-3% so near-ties split rather than winner-take-all
-  const poolScore = (p: any) => poolScoreBase(p) * scoreJitter();
+  const poolScore = (p: Pool) => poolScoreBase(p) * scoreJitter();
   // chainPoolTable perf rationale: docs/implementation-notes.md.
   function chainPoolTable(chainId: string) {
     const playerIn = new Map<string, number>();
@@ -67,7 +67,7 @@ export function installPoolMarket(G: Game): void {
       if (!gr.pool || gr.pool === 'solo') continue;
       playerIn.set(gr.pool, (playerIn.get(gr.pool) || 0) + G.groupHash(gr));
     }
-    const out: { p: any; cap: number; mine: number; base: number }[] = [];
+    const out: { p: Pool; cap: number; mine: number; base: number }[] = [];
     for (const p of G.s.pools) {
       if (!p.live || p.chain !== chainId) continue;
       out.push({ p, cap: poolCapLimit(p), mine: playerIn.get(p.id) || 0, base: poolScoreBase(p) });
@@ -75,10 +75,10 @@ export function installPoolMarket(G: Game): void {
     return out;
   }
   // simIn rationale: docs/implementation-notes.md.
-  const simIn = (p: any) => G.simPoolHashOf ? G.simPoolHashOf(p) : 0;
-  function pickPool(m: any, table?: { p: any; cap: number; mine: number; base: number }[]): void {
+  const simIn = (p: Pool) => G.simPoolHashOf ? G.simPoolHashOf(p) : 0;
+  function pickPool(m: Sim, table?: { p: Pool; cap: number; mine: number; base: number }[]): void {
     const opts = table || chainPoolTable(m.chain);
-    let bp: any = null, bs = -1;
+    let bp: Pool | null = null, bs = -1;
     for (const e of opts) {
       if (simIn(e.p) + e.mine + m.hash > e.cap) continue;          // they are full
       const sc = e.base * scoreJitter();
@@ -147,17 +147,17 @@ export function installPoolMarket(G: Game): void {
   };
   // Any fee other than the current one scores fee-stability at zero — the
   // cost of changing is part of the quote: design-spec.md §5.
-  const repAt = (p: any, fee?: number) => {
+  const repAt = (p: Pool, fee?: number) => {
     if (fee === undefined || Math.abs(fee - p.fee) < 0.0005) return poolRep(p);
     const q = repParts(p);
     return Math.sqrt(q.solvency) * (0.40 + 0.22 * q.age + 0.22 * q.luck);
   };
-  const scoreAt = (p: any, fee?: number) =>
+  const scoreAt = (p: Pool, fee?: number) =>
     (1 - Math.min(0.9, (fee === undefined ? p.fee : fee) * FEE_BITE)) * repAt(p, fee);
   // Demand: hashrate that would choose this pool at a given fee, ignoring
   // its own capacity — tells you whether more bond is worth posting.
   // Perf rationale for the rival pass below: docs/implementation-notes.md.
-  function poolDemand(p: any, fee?: number): number {
+  function poolDemand(p: Pool, fee?: number): number {
     const mine = scoreAt(p, fee);
     const rivals: { score: number; room: number }[] = [];
     for (const q of G.s.pools) {
@@ -184,12 +184,12 @@ export function installPoolMarket(G: Game): void {
     for (const gr of G.s.groups) if (gr.pool === p.id) h += G.groupHash(gr);
     return h;
   }
-  const poolProj = (p: any, fee?: number) => Math.min(poolDemand(p, fee), poolCapLimit(p));
-  const nextTierBond = (p: any) => Math.max(0,
+  const poolProj = (p: Pool, fee?: number) => Math.min(poolDemand(p, fee), poolCapLimit(p));
+  const nextTierBond = (p: Pool) => Math.max(0,
     Math.ceil(bondFor(p, poolDemand(p)) - p.bond));
   /* The operator's book: what the fee actually earns against the capital it
      ties up, so running a pool can be compared with just mining instead. */
-  function poolPnl(p: any) {
+  function poolPnl(p: Pool) {
     const c = G.chain(p.chain);
     const gross = G.poolHash(p) * G.revPerMh(c);            // what members produce daily
     const income = gross * p.fee + (p.scheme === 'PPS' ? gross * TX_FEES * 0.5 : 0);
@@ -200,12 +200,12 @@ export function installPoolMarket(G: Game): void {
       payback: income > 0 ? capital / income : Infinity,
     };
   }
-  const myPools = computed(() => G.s.pools.filter((p: any) => p.owner === 'you' && p.live));
-  const rivalPools = computed(() => G.s.pools.filter((p: any) => p.live && p.owner !== 'you'));
+  const myPools = computed(() => G.s.pools.filter((p: Pool) => p.owner === 'you' && p.live));
+  const rivalPools = computed(() => G.s.pools.filter((p: Pool) => p.live && p.owner !== 'you'));
 
   // Repeat-accumulation rules (num vs usd vs neither): docs/implementation-notes.md#activity-feed-say-in-poolmarketjs.
   function say(kind: string, text: string, amount?: string, num?: number, unit?: string, usd?: number): void {
-    const top = G.s.feed[0] as any;
+    const top: FeedItem | undefined = G.s.feed[0];
     if (top && top.kind === kind && top.text === text) {
       if (num !== undefined && top.num !== undefined) {
         top.n = (top.n || 1) + 1; top.num += num; top.t = fmt.hm(G.s.t);
