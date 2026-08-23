@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import type { DesignKind } from '../data/customParts.js';
 import { useSitePickerRows } from '../composables/useSitePickerRows.js';
 import { useSitePower } from '../composables/useSitePower.js';
 import { useSiteFloor } from '../composables/useSiteFloor.js';
@@ -59,7 +60,7 @@ const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', uni
 const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
-const openDesignKind=(kind: string)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
+const openDesignKind=(kind: DesignKind)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
 const pickerSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
@@ -340,7 +341,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <div v-for="(j,i) in f.queue" :key="i" class="qrow">
           <span class="qslot" aria-hidden="true">{{ (JOB_LABEL as any)[j.kind] || 'Build' }}</span>
           <span class="qmain">
-            <span class="qhd"><span class="nm">{{ g.jobPart(j).name }}</span></span>
+            <span class="qhd"><span class="nm">{{ g.jobPart(j)!.name }}</span></span>
             <span class="qbar">
               <span class="track" style="margin:0;flex:1">
                 <i class="b" :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></span>
