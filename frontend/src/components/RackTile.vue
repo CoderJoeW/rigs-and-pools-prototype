@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import run from '../assets/floor/run.webp';
 import warn from '../assets/floor/warn.webp';
@@ -26,7 +26,7 @@ const props = defineProps({
   label: { type: String, default: '' },
 });
 
-const SHOTS = { run, warn, build, bad, off };
+const SHOTS: Record<string, string> = { run, warn, build, bad, off };
 const src = computed(() => SHOTS[props.state] || SHOTS.off);
 const hasChain = computed(() => props.chainHue !== undefined && props.chainHue !== null);
 </script>

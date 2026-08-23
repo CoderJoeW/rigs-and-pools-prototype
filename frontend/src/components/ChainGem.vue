@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import tessera from '../assets/chain/tessera.webp';
 import ferro from '../assets/chain/ferro.webp';
@@ -31,7 +31,7 @@ const props = defineProps({
   label: { type: String, default: '' },
 });
 
-const GEMS = { tessera, ferro, halcyon, nova, obelisk };
+const GEMS: Record<string, string> = { tessera, ferro, halcyon, nova, obelisk };
 const src = computed(() => GEMS[props.chain]);
 const hasHue = computed(() => props.hue !== undefined && props.hue !== null);
 </script>

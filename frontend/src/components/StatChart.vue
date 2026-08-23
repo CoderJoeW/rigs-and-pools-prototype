@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
@@ -31,8 +31,8 @@ import { sparkPath } from '../utils/spark.js';
    on it — dragging moves a marker and swaps the direct label for the value
    under it. Releasing returns the label to the live end. */
 const p = defineProps({
-  title: String,
-  data: Array,
+  title: { type: String, default: '' },
+  data: { type: Array as () => number[], default: () => [] },
   color: { type: String, default: 'var(--green)' },
   money: Boolean,
   unit: { type: String, default: '' },
@@ -53,11 +53,11 @@ const area = computed(() => ready.value ? path.value + ' L100 ' + H + ' L0 ' + H
 
 const lo = computed(() => ready.value ? Math.min(...series.value) : 0);
 const hi = computed(() => ready.value ? Math.max(...series.value) : 0);
-const last = computed(() => series.value.length ? series.value[series.value.length - 1] : 0);
+const last = computed(() => series.value.length ? series.value[series.value.length - 1]! : 0);
 const mean = computed(() => ready.value
   ? series.value.reduce((a, v) => a + v, 0) / series.value.length : 0);
 
-const show = v => p.money ? fmt.usd2(v) : (p.unit ? v.toFixed(p.digits) + ' ' + p.unit : fmt.hash(v));
+const show = (v: number) => p.money ? fmt.usd2(v) : (p.unit ? v.toFixed(p.digits) + ' ' + p.unit : fmt.hash(v));
 
 /* Samples land every 0.75 sim-days. The axis counts BACK from now rather
    than forward from a day zero: these are 110-entry ring buffers, so once a
@@ -73,9 +73,9 @@ const ticks = computed(() => {
     label: f === 1 ? 'now' : Math.round(d * (1 - f)) + 'D' }));
 });
 
-const at = ref(null);                  // the scrubbed index, or null for "live"
+const at = ref<number | null>(null);                  // the scrubbed index, or null for "live"
 const marked = computed(() => at.value === null ? series.value.length - 1 : at.value);
-const value = computed(() => series.value.length ? series.value[marked.value] : 0);
+const value = computed(() => series.value.length ? series.value[marked.value]! : 0);
 const markX = computed(() => series.value.length < 2 ? 100
   : marked.value / (series.value.length - 1) * 100);
 const markY = computed(() => {
@@ -85,8 +85,8 @@ const markY = computed(() => {
 const markAgo = computed(() =>
   Math.round((series.value.length - 1 - marked.value) * DAYS_PER_SAMPLE));
 
-const plot = ref(null);
-const scrub = e => {
+const plot = ref<HTMLElement | null>(null);
+const scrub = (e: PointerEvent) => {
   const el = plot.value;
   if (!el || series.value.length < 2) return;
   const b = el.getBoundingClientRect();
@@ -94,20 +94,20 @@ const scrub = e => {
   const f = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
   at.value = Math.round(f * (series.value.length - 1));
 };
-const onDown = e => {
+const onDown = (e: PointerEvent) => {
   if (e.pointerType === 'mouse' && e.button) return;
-  const el = e.currentTarget;
-  if (el && el.setPointerCapture) { try { el.setPointerCapture(e.pointerId); } catch (_) {} }
+  const el = e.currentTarget as (Element & { setPointerCapture?: (id: number) => void }) | null;
+  if (el && el.setPointerCapture) { try { el.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
   scrub(e);
 };
-const onMove = e => { if (at.value !== null) scrub(e); };
+const onMove = (e: PointerEvent) => { if (at.value !== null) scrub(e); };
 const release = () => { at.value = null; };
 
 /* What a screen reader gets instead of the picture: the shape stated in
    words. The scrub gives a sighted reader the same figures point by point. */
 const summary = computed(() => !ready.value
   ? p.title + ': not enough history yet'
-  : p.title + ': ' + show(series.value[0]) + ' to ' + show(last.value)
+  : p.title + ': ' + show(series.value[0]!) + ' to ' + show(last.value)
     + ' over the last ' + spanDays.value + ' days, low ' + show(lo.value)
     + ', high ' + show(hi.value));
 </script>

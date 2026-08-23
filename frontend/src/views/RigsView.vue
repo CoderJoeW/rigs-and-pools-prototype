@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -17,15 +17,15 @@ import { sitePlate, sitePhase } from '../utils/siteArt.js';
 const g = useGameStore();
 const f=computed(()=>g.active);
 
-const avgWear=r=>g.rigWear(r);
-const stateOf=r=>g.rigState(r);
-const needsEye=r=>['off','worn','losing','wearing'].includes(stateOf(r).k);
-const chainHueOf=r=>{
+const avgWear=(r: any)=>g.rigWear(r);
+const stateOf=(r: any)=>g.rigState(r);
+const needsEye=(r: any)=>['off','worn','losing','wearing'].includes(stateOf(r).k);
+const chainHueOf=(r: any)=>{
   const gr=g.groupOf(r);
   const chain=gr?gr.chain:null;
   return chain!=null?CHAIN_HUE[chain]:undefined;
 };
-const chassisOf=r=>{
+const chassisOf=(r: any)=>{
   const n=r.units?r.units.length:0;
   return {
     state:stateOf(r).dot,
@@ -39,14 +39,14 @@ const siteRigs=computed(()=>g.siteRigs(f.value));
 const FILTERS=[
   {k:'all',     label:'All',      test:()=>true,  mark:'layers'},
   {k:'attention',label:'Needs attention', test:needsEye, alert:true, mark:'warn'},
-  {k:'run',     label:'Running',  test:r=>stateOf(r).k==='run',  mark:'dot', dot:'run'},
-  {k:'off',     label:'Off',      test:r=>stateOf(r).k==='off',  mark:'dot', dot:'off'},
-  {k:'worn',    label:'Worn',     test:r=>['worn','wearing'].includes(stateOf(r).k),
+  {k:'run',     label:'Running',  test:(r: any)=>stateOf(r).k==='run',  mark:'dot', dot:'run'},
+  {k:'off',     label:'Off',      test:(r: any)=>stateOf(r).k==='off',  mark:'dot', dot:'off'},
+  {k:'worn',    label:'Worn',     test:(r: any)=>['worn','wearing'].includes(stateOf(r).k),
                                   mark:'dot', dot:'warn'},
 ];
 const filt=ref('all');
 const counts=computed(()=>{
-  const o={}; for(const x of FILTERS) o[x.k]=siteRigs.value.filter(x.test).length;
+  const o: Record<string, number>={}; for(const x of FILTERS) o[x.k]=siteRigs.value.filter(x.test).length;
   return o;
 });
 // Each sort names its own direction (e.g. "Net/day (high -> low)"); cmp is
@@ -55,37 +55,37 @@ const SORTS=[
   {k:'name', label:'Name',
    // By name, not id, since rigs are renameable here; numeric collation so
    // "Rig 2" precedes "Rig 10", id breaks a tie.
-   cmp:(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
+   cmp:(a: any,b: any)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
    ends:['A–Z','Z–A']},
-  {k:'net',  label:'Net/day', cmp:(a,b)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
-  {k:'hash', label:'Hashrate',cmp:(a,b)=>g.rigHash(a)-g.rigHash(b), ends:['low → high','high → low'], desc:true},
-  {k:'wear', label:'Wear',    cmp:(a,b)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
+  {k:'net',  label:'Net/day', cmp:(a: any,b: any)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
+  {k:'hash', label:'Hashrate',cmp:(a: any,b: any)=>g.rigHash(a)-g.rigHash(b), ends:['low → high','high → low'], desc:true},
+  {k:'wear', label:'Wear',    cmp:(a: any,b: any)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
 ];
 const sortBy=ref('name');
 // Direction held per column so switching sorts doesn't leak one's flip into another.
 const sortDesc=reactive(Object.fromEntries(SORTS.map(x=>[x.k,!!x.desc])));
 const sortOpen=ref(false);
-const sortOf=k=>SORTS.find(x=>x.k===k);
-const sortEnd=k=>sortOf(k).ends[sortDesc[k]?1:0];
+const sortOf=(k: string)=>SORTS.find(x=>x.k===k)!;
+const sortEnd=(k: string)=>sortOf(k).ends[sortDesc[k]?1:0];
 const sortLabel=computed(()=>sortOf(sortBy.value).label+' ('+sortEnd(sortBy.value)+')');
 const flipSort=()=>{ sortDesc[sortBy.value]=!sortDesc[sortBy.value]; };
-const pickSort=k=>{
+const pickSort=(k: string)=>{
   if(k===sortBy.value) flipSort(); else sortBy.value=k;
   sortOpen.value=false;
 };
 const shown=computed(()=>{
-  const test=FILTERS.find(x=>x.k===filt.value).test;
+  const test=FILTERS.find(x=>x.k===filt.value)!.test;
   const s=sortOf(sortBy.value), dir=sortDesc[sortBy.value]?-1:1;
-  return siteRigs.value.filter(test).sort((a,b)=>s.cmp(a,b)*dir);
+  return siteRigs.value.filter(test).sort((a: any,b: any)=>s.cmp(a,b)*dir);
 });
 
 const picking=ref(false);
-const chosen=reactive({});
-const chosenIds=computed(()=>shown.value.filter(r=>chosen[r.id]).map(r=>r.id));
-const toggleChoose=r=>{ chosen[r.id]=!chosen[r.id]; };
+const chosen=reactive<Record<number, boolean>>({});
+const chosenIds=computed(()=>shown.value.filter((r: any)=>chosen[r.id]).map((r: any)=>r.id));
+const toggleChoose=(r: any)=>{ chosen[r.id]=!chosen[r.id]; };
 const chooseAll=()=>{ const all=chosenIds.value.length===shown.value.length;
-  for(const r of shown.value) chosen[r.id]=!all; };
-const stopPicking=()=>{ picking.value=false; for(const k in chosen) delete chosen[k]; };
+  for(const r of shown.value) chosen[(r as any).id]=!all; };
+const stopPicking=()=>{ picking.value=false; for(const k in chosen) delete chosen[k as any]; };
 const scopeId=computed(()=> picking.value && chosenIds.value.length
   ? chosenIds.value : (f.value?f.value.id:null));
 const scopeLabel=computed(()=> picking.value && chosenIds.value.length
@@ -95,30 +95,30 @@ const scopeLabel=computed(()=> picking.value && chosenIds.value.length
 /* Swipe-a-row-to-power-it: the pointer mechanics live in the composable, which
    knows nothing about rigs. What stays here is the domain half — which rows may
    be swiped, and what the swipe does. */
-const canSwipe=r=>!!r && !picking.value && stateOf(r).k!=='build';
-const swipeVerb=r=>r.on?'Power off':'Power on';
-const rigById=id=>g.s.rigs.find(r=>r.id===id);
+const canSwipe=(r: any)=>!!r && !picking.value && stateOf(r).k!=='build';
+const swipeVerb=(r: any)=>r.on?'Power off':'Power on';
+const rigById=(id: number)=>g.s.rigs.find((r: any)=>r.id===id);
 
 const { sw, SW_FIRE, onDown:onSwipeDown, onMove:onSwipeMove, onUp:onSwipeUp,
   onCancel:onSwipeCancel, fire:fireSwipe, close:closeSwipe, reset:resetSwipe,
   takeClick, isOpen:swipeOpen } = useSwipeAction({
-    can: id => canSwipe(rigById(id)),
-    fire: id => g.toggleRig(id),
+    can: (id: any) => canSwipe(rigById(id)),
+    fire: (id: any) => g.toggleRig(id),
     within: '.rigswipe',
   });
 
-const rowClick=r=>{
+const rowClick=(r: any)=>{
   if(takeClick()) return;                      // this click is the tail of a drag
   if(swipeOpen(r.id)){ closeSwipe(); return; } // an open row closes before it opens
   if(picking.value) toggleChoose(r); else openRig.value=r.id;
 };
 watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 
-const openRig=ref(null);
+const openRig=ref<number | null>(null);
 const rig=computed(()=> openRig.value==null ? null
-  : g.s.rigs.find(r=>r.id===openRig.value) || null);
+  : g.s.rigs.find((r: any)=>r.id===openRig.value) || null);
 const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
-  useInlineRename(()=>rig.value.name, name=>g.renameRig(rig.value.id,name));
+  useInlineRename(()=>rig.value.name, (name: string)=>g.renameRig(rig.value.id,name));
 watch(openRig, ()=>{ renameOpen.value=false; resetSwipe(); });
 const fleetOpen=ref(false);
 const REPAIR_AT=C.REPAIR_AT;
@@ -126,16 +126,16 @@ const REPAIR_AT=C.REPAIR_AT;
 /* Same worn-card definition the fleet sweep uses, asked of the open rig only. */
 const rigWorn=computed(()=> rig.value ? g.rigWorn(rig.value,REPAIR_AT) : {n:0,cost:0});
 
-const siteHash=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigHash(r),0));
-const siteNet=computed(()=>siteRigs.value.reduce((a,r)=>a+g.rigNet(r),0));
-const siteLive=computed(()=>siteRigs.value.filter(r=>g.rigLive(r)).length);
+const siteHash=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
+const siteNet=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigNet(r),0));
+const siteLive=computed(()=>siteRigs.value.filter((r: any)=>g.rigLive(r)).length);
 const siteSlots=computed(()=>g.siteSlots(f.value));
 // Hero wears the site's own shell (same plate as Sites/Farm), not a fixed rig photo.
 const heroShot=computed(()=>sitePlate(f.value.shell, sitePhase(g.s.t)));
 // Same dot vocabulary the rows use, not a fourth "site" colour.
 const siteStatus=computed(()=>{
   if(siteLive.value) return {dot:'run', label:'Active'};
-  if(siteRigs.value.some(r=>r.building>0)) return {dot:'build', label:'Building'};
+  if(siteRigs.value.some((r: any)=>r.building>0)) return {dot:'build', label:'Building'};
   if(siteRigs.value.length) return {dot:'off', label:'Idle'};
   return {dot:'off', label:'Empty'};
 });
@@ -145,13 +145,13 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
 const takeFocusRig=()=>{
   const id=g.s.focusRig; if(id==null) return;
   g.s.focusRig=null;
-  const r=g.s.rigs.find(x=>x.id===id);
+  const r=g.s.rigs.find((x: any)=>x.id===id);
   if(r && r.site===g.s.activeSite) openRig.value=id;
 };
 onMounted(takeFocusRig);
 watch(()=>g.s.focusRig, takeFocusRig);
 
-const rigSheetEl=ref(null);
+const rigSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; });
 </script>
 
@@ -187,7 +187,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
       </div>
       <div v-if="g.s.sites.length>1" class="pills">
         <button v-for="st in g.s.sites" :key="st.id" class="pill"
-                :class="{on:st.id===g.s.activeSite}" :aria-current="st.id===g.s.activeSite?'true':null"
+                :class="{on:st.id===g.s.activeSite}" :aria-current="st.id===g.s.activeSite?'true':undefined"
                 @click="g.s.activeSite=st.id">
           {{ st.name }} <span class="n">{{ g.siteRigs(st).length }}</span></button>
       </div>
@@ -196,7 +196,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
     <template v-if="siteRigs.length">
       <div class="pills rigfilters">
         <button v-for="x in FILTERS" :key="x.k" class="pill"
-                :class="{on:filt===x.k, alert:x.alert&&counts[x.k]>0}"
+                :class="{on:filt===x.k, alert:x.alert&&(counts[x.k]||0)>0}"
                 :disabled="!counts[x.k] && filt!==x.k"
                 :aria-label="x.label+' — '+counts[x.k]+' rig'+(counts[x.k]===1?'':'s')"
                 @click="filt=x.k">
@@ -304,7 +304,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 
     <div class="card" v-if="!shown.length"><div class="empty">
       <p v-if="!siteRigs.length">No rigs at {{ f.name }} yet.</p>
-      <p v-else>No rigs match &ldquo;{{ FILTERS.find(x=>x.k===filt).label }}&rdquo;.</p>
+      <p v-else>No rigs match &ldquo;{{ FILTERS.find(x=>x.k===filt)!.label }}&rdquo;.</p>
       <button v-if="!siteRigs.length" class="btn btn-pri" @click="g.s.tab='build'">Build one</button>
       <button v-else class="btn btn-ghost" @click="filt='all'">Show all {{ siteRigs.length }}</button>
     </div></div>
@@ -369,7 +369,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
           </div>
           <div class="rigfld"><label for="rig-group-select">Mining group — chain and pool live on the group</label>
             <select id="rig-group-select" :value="rig.group"
-                    @change="g.setRigGroup(rig,parseInt($event.target.value))">
+                    @change="g.setRigGroup(rig,parseInt(($event.target as HTMLSelectElement).value))">
               <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
                 {{ gr.name }} — {{ g.chain(gr.chain).name }}</option>
             </select>
@@ -377,7 +377,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
               the group. Manage groups on the Farm tab.</p></div>
           <div class="rigfld"><label for="rig-tune-range">Tune — quiet to pushed</label>
             <input id="rig-tune-range" type="range" min="-0.15" max="0.15" step="0.01" :value="rig.tune||0"
-                   @input="rig.tune=parseFloat($event.target.value)">
+                   @input="rig.tune=parseFloat(($event.target as HTMLInputElement).value)">
             <div class="track-cap">
               <span>{{ ((rig.tune||0)*100).toFixed(0) }}% hash ·
                 {{ ((rig.tune||0)*190).toFixed(0) }}% power</span>

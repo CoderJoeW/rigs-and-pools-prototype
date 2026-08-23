@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import hobbyist from '../assets/rank/hobbyist.webp';
 import tinkerer from '../assets/rank/tinkerer.webp';

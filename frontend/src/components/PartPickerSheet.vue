@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -17,18 +17,18 @@ const emit = defineEmits(['pick']);
 
 const g = useGameStore();
 
-const field = computed(() => props.fields.find(f => f.k === g.s.picker) || null);
+const field = computed(() => (props.fields as any[]).find(f => f.k === g.s.picker) || null);
 
-const optionsFor = k => {
-  const base = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:props.units;
-  return base.concat(g.s.customParts.filter(p => p.kind === k));
+const optionsFor = (k: string) => {
+  const base: any[] = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:(props.units as any[]);
+  return base.concat(g.s.customParts.filter((p: any) => p.kind === k));
 };
 
 const pickerRows = computed(() => {
   const k = g.s.picker; if(!k) return [];
-  const cur = g.s.draft[k], fld = field.value;
-  const lim = props.cardLimit;
-  return optionsFor(k).map(p => {
+  const cur = (g.s.draft as any)[k], fld = field.value;
+  const lim = props.cardLimit as any;
+  return optionsFor(k).map((p: any) => {
     const e = k==='unit' ? g.unitEcon(p) : null;
     let note='';
     if(k==='frame'){ const would=Math.min(p.slots,lim.mobo);
@@ -50,7 +50,7 @@ const pickerRows = computed(() => {
   });
 });
 
-const pickerSheetEl = ref(null);
+const pickerSheetEl = ref<HTMLElement | null>(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; });
 </script>
 
@@ -63,7 +63,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.picker), ()=>{ g.s.picker=null; }
         {{ field.job }}</span></div>
     <div class="sheet-bd">
       <Compare title="Cheapest first — more expensive is always better" metric="cost"
-               :rows="pickerRows" :pick="id => emit('pick', id)" />
+               :rows="pickerRows" :pick="(id: string) => emit('pick', id)" />
       <p class="hint" style="padding:0 2px">Every ladder is monotonic: a more expensive part is better on
         every axis. What changes is value — dollars per MH worsen as you climb, so cheap parts
         win while cash is short and efficient parts win once watts are.</p>

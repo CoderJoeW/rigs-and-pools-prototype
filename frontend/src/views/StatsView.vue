@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
@@ -24,8 +24,8 @@ const { seg, segEl, segKey } = useSegTabs(SEGS, 'stats');
 
 // One emblem per milestone, six per-track contact sheets cut into four;
 // lit when earned, near-monochrome when not.
-const EMBLEMS = import.meta.glob('../assets/mile/*.webp', { eager: true, import: 'default' });
-const emblemOf = id => EMBLEMS[`../assets/mile/${id}.webp`];
+const EMBLEMS = import.meta.glob<string>('../assets/mile/*.webp', { eager: true, import: 'default' });
+const emblemOf = (id: string) => EMBLEMS[`../assets/mile/${id}.webp`];
 
 const doneN=computed(()=>Object.keys((g.s.mile&&g.s.mile.done)||{}).length);
 // Clamped with Number.isFinite, not ||0 (issue #14): this indexes g.RANKS,
@@ -33,7 +33,7 @@ const doneN=computed(()=>Object.keys((g.s.mile&&g.s.mile.done)||{}).length);
 // non-numeric value (e.g. a stringified rank from a bad save) is truthy
 // and would sail through ||0 straight into an array index.
 const rankIdx=computed(()=>Number.isFinite(g.s.mile&&g.s.mile.rank) ? g.s.mile.rank : 0);
-const rank=computed(()=>g.RANKS[rankIdx.value][1]);
+const rank=computed(()=>g.RANKS[rankIdx.value][1] as string);
 const nextRank=computed(()=>{
   const i=rankIdx.value+1;
   return i<g.RANKS.length ? g.RANKS[i] : null;
@@ -41,7 +41,7 @@ const nextRank=computed(()=>{
 // Progress measured between the two rank thresholds, not from zero, so it
 // reports progress through the CURRENT rank rather than the whole climb.
 const rankProg=computed(()=>{
-  const from=g.RANKS[rankIdx.value][0];
+  const from=g.RANKS[rankIdx.value][0] as number;
   const to=nextRank.value?nextRank.value[0]:null;
   if(to===null) return { done:doneN.value, need:doneN.value, frac:1, top:true };
   const span=Math.max(1,to-from);
@@ -64,19 +64,19 @@ const tiles=computed(()=>[
 ]);
 
 const tracks=computed(()=>{
-  const by={};
+  const by: Record<string, any[]>={};
   for(const m of g.MILESTONES){
     (by[m.track]=by[m.track]||[]).push({ ...m,
       done:!!(g.s.mile&&g.s.mile.done[m.id]),
-      day:g.s.mile&&g.s.mile.done[m.id]?Math.floor(g.s.mile.done[m.id]/86400)+1:0 });
+      day:g.s.mile&&g.s.mile.done[m.id]?Math.floor(g.s.mile.done[m.id]!/86400)+1:0 });
   }
   return Object.entries(by).map(([name,items])=>({name,items,
-    n:items.filter(x=>x.done).length}));
+    n:items.filter((x: any)=>x.done).length}));
 });
 /* The whole climb as a shape (issue #51): past ranks filled, the current one
    marked, ranks not yet reached left empty — the same .track vocabulary the
    app uses for capacity, wear and reputation. */
-const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
+const ladder=computed(()=>g.RANKS.map(([need,name]: [number,string],i: number)=>({ name, need, i,
   cls: i<rankIdx.value ? 'g' : i===rankIdx.value ? 'b' : '' })));
 </script>
 
@@ -91,7 +91,7 @@ const ladder=computed(()=>g.RANKS.map(([need,name],i)=>({ name, need, i,
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'stseg-'+x.k" :aria-controls="'stpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="el=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>

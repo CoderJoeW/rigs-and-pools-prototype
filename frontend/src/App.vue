@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useGameStore } from './stores/game.js';
 import { fmt } from './utils/format.js';
@@ -19,7 +19,7 @@ const g = useGameStore();
 // Theme sync (meta theme-color, system-preference tracking): docs/implementation-notes.md#app-shell-srcappvue.
 const LIGHT_BG='#F7F6F1', DARK_BG='#0A0D0A';
 const darkMedia = typeof matchMedia==='function' ? matchMedia('(prefers-color-scheme: dark)') : null;
-function applyTheme(theme){
+function applyTheme(theme: string){
   if(theme==='light'||theme==='dark') document.documentElement.dataset.theme=theme;
   else delete document.documentElement.dataset.theme;
   const isDark = theme==='dark' || (theme==='auto' && !!(darkMedia&&darkMedia.matches));
@@ -31,7 +31,7 @@ const onSystemThemeChange=()=>{ if(g.s.theme==='auto') applyTheme('auto'); };
 if(darkMedia) darkMedia.addEventListener('change',onSystemThemeChange);
 
 // Ambient atmosphere factors, published to documentElement style: docs/implementation-notes.md#app-shell-srcappvue.
-const clamp01 = v => v<0 ? 0 : v>1 ? 1 : v;
+const clamp01 = (v: number) => v<0 ? 0 : v>1 ? 1 : v;
 const CYCLE_S = g.C.DAY_HOURS*3600;
 const atmosphere = computed(()=>{
   const h = (((g.s.t%CYCLE_S)+CYCLE_S)%CYCLE_S)/CYCLE_S*24;
@@ -48,8 +48,8 @@ const atmosphere = computed(()=>{
     '--amb-haze': cloud.toFixed(3),
   };
 });
-const AMB_KEYS=['--amb-lum','--amb-warm','--amb-cool','--amb-haze'];
-const ambApplied={};
+const AMB_KEYS=['--amb-lum','--amb-warm','--amb-cool','--amb-haze'] as const;
+const ambApplied: Record<string, string>={};
 watch(atmosphere, vals=>{
   const st=document.documentElement.style;
   for(const k of AMB_KEYS) if(ambApplied[k]!==vals[k]){ ambApplied[k]=vals[k]; st.setProperty(k,vals[k]); }
@@ -57,14 +57,15 @@ watch(atmosphere, vals=>{
 // Rank-up screen flash (issue #47): docs/implementation-notes.md#app-shell-srcappvue.
 const FLASH_MS=900;
 const rankFlash=ref(0);
-let flashTimer=null;
+let flashTimer: ReturnType<typeof setTimeout> | null=null;
 watch(()=>g.s.toast.n, ()=>{
   if(g.s.toast.cls!=='rankup') return;
   rankFlash.value++;
-  clearTimeout(flashTimer);
+  if(flashTimer) clearTimeout(flashTimer);
   flashTimer=setTimeout(()=>{ rankFlash.value=0; }, FLASH_MS);
 });
-let timer=null, saver=null, lastTickAt=null;
+let timer: ReturnType<typeof setInterval> | null=null, saver: ReturnType<typeof setInterval> | null=null,
+  lastTickAt: number | null=null;
 /* Credits time lost to setInterval throttling or an outright stall, from
    either of two triggers — a backgrounded tab (onVisibility) or a stall
    visibilitychange never reports at all, like an OS sleep/lid-close that
@@ -111,12 +112,12 @@ onMounted(async ()=>{
     document.addEventListener('visibilitychange',onVisibility);
   }
 });
-onUnmounted(()=>{ clearInterval(timer); clearInterval(saver); clearTimeout(flashTimer);
+onUnmounted(()=>{ if(timer) clearInterval(timer); if(saver) clearInterval(saver); if(flashTimer) clearTimeout(flashTimer);
   window.removeEventListener('pagehide',onLeave);
   document.removeEventListener('visibilitychange',onVisibility);
   for(const k of AMB_KEYS) document.documentElement.style.removeProperty(k);
   if(darkMedia) darkMedia.removeEventListener('change',onSystemThemeChange); });
-const views={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
+const views: Record<string, unknown>={farm:FarmView,sites:SitesView,rigs:RigsView,build:BuildView,
              chains:ChainsView,market:MarketView,stats:StatsView};
 const allTabs=[
   {id:'farm',  label:'Farm',  icon:'M3 12h3.5l2.5-7 4 14 2.5-7H21'},
@@ -162,7 +163,7 @@ const allTabs=[
     </ErrorBoundary>
   </main>
   <nav class="tabs"><button v-for="t in allTabs" :key="t.id" class="tab" :class="{on:g.s.tab===t.id}"
-      @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':null">
+      @click="g.s.tab=t.id" :aria-current="g.s.tab===t.id?'page':undefined">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="t.icon"/></svg>{{ t.label }}</button></nav>
   <div v-if="rankFlash" class="rankflash" :key="'rf'+rankFlash" aria-hidden="true"></div>
   <div v-if="g.s.toast.n" class="toast" :class="g.s.toast.cls" :key="g.s.toast.n"

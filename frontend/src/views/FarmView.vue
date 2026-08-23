@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import GroupCard from '../components/GroupCard.vue';
@@ -18,7 +18,7 @@ const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
 const heroPhase=computed(()=>sitePhase(g.s.t));
 const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
 const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
-  const a=h[h.length-6], b=h[h.length-1];
+  const a=h[h.length-6]!, b=h[h.length-1]!;
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
 const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
@@ -31,12 +31,12 @@ const totalDemand=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteDemand(f),0));
 const hashDelta=computed(()=>g.dayDelta('hash', g.totalHash));
 const netDelta=computed(()=>g.dayPaceDelta('net', g.netDay));
 const costDelta=computed(()=>g.dayPaceDelta('power', g.powerDay));
-const deltaText=d=>(d>=0?'▲ ':'▼ ')+fmt.pct(Math.abs(d),2);
+const deltaText=(d: number)=>(d>=0?'▲ ':'▼ ')+fmt.pct(Math.abs(d),2);
 
 /* Dominant chassis state for a site row hero — prefer attention states, then
    running, then build, else off. Same vocabulary the Rigs list and Sites floor
    already use. */
-const siteChassisState=f=>{
+const siteChassisState=(f: any)=>{
   const rigs=g.siteRigs(f);
   if(!rigs.length) return 'off';
   let hasBad=false, hasWarn=false, hasBuild=false, hasRun=false;
@@ -62,8 +62,8 @@ const siteRows=computed(()=>g.s.sites.map(f=>{
   const demand=g.siteDemand(f);
   const capacity=g.siteCapacity(f)+g.battFirm(f);
   const util=capacity>0?Math.min(1,demand/capacity):0;
-  const hash=rigs.reduce((a,r)=>a+g.rigHash(r),0);
-  const online=rigs.some(r=>g.rigLive(r));
+  const hash=rigs.reduce((a: number,r: any)=>a+g.rigHash(r),0);
+  const online=rigs.some((r: any)=>g.rigLive(r));
   const status=ambient==='hot'?'HOT':online?'ONLINE':'IDLE';
   const statusTone=ambient==='hot'?'hot':online?'online':'idle';
   let chainHue;
@@ -96,7 +96,7 @@ const payoutDay=computed(()=>g.expectedDay-g.powerRateDay);
 /* "Payout progress" is the current block window on the chain the biggest group
    points at — the farm's main earner, and the one whose next block matters. */
 const mainGroup=computed(()=>g.s.groups.reduce(
-  (a,gr)=>!a||g.groupHash(gr)>g.groupHash(a)?gr:a, null));
+  (a,gr)=>!a||g.groupHash(gr)>g.groupHash(a)?gr:a, null as (typeof g.s.groups)[number] | null));
 const payoutProg=computed(()=>{
   const gr=mainGroup.value, c=gr&&g.chain(gr.chain);
   return c?g.blockProg(c):0;

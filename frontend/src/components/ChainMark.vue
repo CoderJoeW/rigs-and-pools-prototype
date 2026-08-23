@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /* The colour half of a chain's name. Renders nothing on its own account — it
    always sits immediately before the text it belongs to, so the name is what a
    screen reader reads and the mark is what the eye catches. Hence aria-hidden

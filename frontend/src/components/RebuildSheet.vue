@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
@@ -12,11 +12,11 @@ import Compare from './Compare.vue';
    the fleet sheet needs the view's selection passed in. */
 const g = useGameStore();
 
-const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find(x=>x.id===g.s.rebuild.rig) : null);
+const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find((x: any)=>x.id===g.s.rebuild!.rig) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
 const rbInfo=computed(()=> rbRig.value ? g.rebuildInfo(rbRig.value, rbD.value) : {checks:[],lim:1});
 const rbFields=computed(()=>{
-  const r=rbRig.value, d=rbD.value; if(!r) return [];
+  const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
   const P=g.PART;
   return [
     { slot:'unit', label:'Cards', name:P(d.unit).name, changed:d.unit!==r.units[0].p,
@@ -32,34 +32,35 @@ const rbFields=computed(()=>{
   ];
 });
 const rbPickerRows=computed(()=>{
-  const r=rbRig.value, d=rbD.value; if(!r) return [];
-  const slot=g.s.rebuild.picker;
+  const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
+  const slot=g.s.rebuild!.picker as string;
   if(slot==='unit'){
-    return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit')).map(c=>({ id:c.id, name:c.name,
+    return g.cards().concat(g.s.customParts.filter((p: any)=>p.kind==='unit')).map((c: any)=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }
   const lim=rbInfo.value.lim;
-  return g.SLOT_OPTS[slot].concat(g.s.customParts.filter(p=>p.kind===slot)).map(p=>{
+  return (g.SLOT_OPTS[slot] as any[]).concat(g.s.customParts.filter((p: any)=>p.kind===slot)).map((p: any)=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }
     if(slot==='mobo'){ const would=Math.min(g.PART(d.frame).slots,p.pcie);
       note=would!==lim?' · limit → '+would:''; }
-    const eff=partSub(slot,p);
+    const eff=partSub(slot as any,p);
     return { id:p.id, name:p.name, sub:eff+note,
       value:p.price?fmt.usd(p.price):'free', valueSub:'',
-      current:p.id===d[slot] };
+      current:p.id===(d as any)[slot] };
   });
 });
-const rbChoose=id=>{
-  const d=rbD.value; d[g.s.rebuild.picker]=id;
+const rbChoose=(id: string)=>{
+  const d=rbD.value; if(!d||!g.s.rebuild) return;
+  (d as any)[g.s.rebuild.picker!]=id;
   const lim=Math.min(g.PART(d.frame).slots,g.PART(d.mobo).pcie);
   if(d.n>lim) d.n=lim;
   g.s.rebuild.picker=null;
 };
 
-const rebuildSheetEl=ref(null);
+const rebuildSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
   ()=>{ if(g.s.rebuild) g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null; });
 </script>
@@ -69,35 +70,35 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
        aria-labelledby="rebuild-sheet-title">
     <div class="sheet-hd">
       <button class="btn btn-sm btn-ghost"
-              @click="g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null">
-        &lsaquo; {{ g.s.rebuild.picker ? 'Back' : 'Cancel' }}</button>
-      <span class="t" id="rebuild-sheet-title">{{ g.s.rebuild.picker
-        ? {unit:'Cards',frame:'Frame',mobo:'Board',cool:'Cooling',psu:'Supply'}[g.s.rebuild.picker]
+              @click="g.s.rebuild!.picker ? g.s.rebuild!.picker=null : g.s.rebuild=null">
+        &lsaquo; {{ g.s.rebuild!.picker ? 'Back' : 'Cancel' }}</button>
+      <span class="t" id="rebuild-sheet-title">{{ g.s.rebuild!.picker
+        ? {unit:'Cards',frame:'Frame',mobo:'Board',cool:'Cooling',psu:'Supply'}[g.s.rebuild!.picker]
         : 'Rebuild '+rbRig.name }}</span></div>
     <div class="sheet-bd">
-      <template v-if="g.s.rebuild.picker">
+      <template v-if="g.s.rebuild!.picker">
         <Compare title="Cheapest first" metric="price" :rows="rbPickerRows" :pick="rbChoose" />
       </template>
       <template v-else>
         <div class="card"><div class="list">
           <button v-for="fl in rbFields" :key="fl.slot" class="pickrow"
-                  @click="g.s.rebuild.picker=fl.slot">
+                  @click="g.s.rebuild!.picker=fl.slot">
             <span class="lab">{{ fl.label }}</span>
             <span class="val"><div class="n">{{ fl.name }}
               <span v-if="fl.changed" class="tag b" style="margin-left:5px">CHANGED</span></div>
               <div class="s">{{ fl.sub }}</div></span>
             <span class="ch">&rsaquo;</span></button>
           <div class="pickrow"><span class="lab">Count</span>
-            <span class="val"><div class="n">{{ rbD.n }} × {{ g.PART(rbD.unit).name }}
-              <span v-if="rbD.n!==rbRig.units.length" class="tag b" style="margin-left:5px">
-                {{ rbD.n>rbRig.units.length?'+':'' }}{{ rbD.n-rbRig.units.length }}</span></div>
+            <span class="val"><div class="n">{{ rbD!.n }} × {{ g.PART(rbD!.unit).name }}
+              <span v-if="rbD!.n!==rbRig.units.length" class="tag b" style="margin-left:5px">
+                {{ rbD!.n>rbRig.units.length?'+':'' }}{{ rbD!.n-rbRig.units.length }}</span></div>
               <div class="s">Limit {{ rbInfo.lim }} — worn cards are traded first when reducing</div></span>
             <span class="stepper">
-              <button aria-label="Decrease card count" :disabled="rbD.n<=1"
-                      @click="rbD.n=Math.max(1,rbD.n-1)">&minus;</button>
-              <span class="num">{{ rbD.n }}</span>
-              <button aria-label="Increase card count" :disabled="rbD.n>=rbInfo.lim"
-                      @click="rbD.n=Math.min(rbInfo.lim,rbD.n+1)">+</button></span></div>
+              <button aria-label="Decrease card count" :disabled="rbD!.n<=1"
+                      @click="rbD!.n=Math.max(1,rbD!.n-1)">&minus;</button>
+              <span class="num">{{ rbD!.n }}</span>
+              <button aria-label="Increase card count" :disabled="rbD!.n>=rbInfo.lim"
+                      @click="rbD!.n=Math.min(rbInfo.lim,rbD!.n+1)">+</button></span></div>
         </div></div>
 
         <div class="totals">
