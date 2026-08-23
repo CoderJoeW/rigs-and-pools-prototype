@@ -7,6 +7,7 @@ import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
 import type { ComputedRef } from 'vue';
 import type { Card } from '../data/hardware.js';
+import type { Job } from '../data/site-parts.js';
 
 export interface WeatherState { day: number; now: DayWeather; next: DayWeather }
 
@@ -125,6 +126,16 @@ export interface ChainCeiling { share: number; grossCap: number; over: number }
 export interface RepParts { solvency: number; age: number; luck: number; feeStab: number }
 // poolMarket.ts's poolPnl(pool): the operator's-eye view of running a pool.
 export interface PoolPnl { income: number; capital: number; roi: number; payback: number }
+
+// dispatch.ts's battAdvice(site): a one-line verdict on whether the
+// battery is sized right for the load.
+export interface BattAdvice { warn: boolean; text: string }
+// pools.ts's dripWorst(): the coin the current drip setting slips worst,
+// worth naming in the UI.
+export interface DripWorst { c: ChainState; cost: number; at25: number }
+// buildDraft.ts's unitEcon(unit): one card's own economics, isolated from
+// the rest of the draft.
+export interface UnitEcon { net: number; wall: number; payback: number; perKw: number; mhw: number }
 
 export interface Rig {
   id: number;
@@ -276,8 +287,8 @@ export interface GameExports {
   designStats: any;
   designCost: any;
   openDesign: any;
-  closeDesign: any;
-  bumpDesignPick: any;
+  closeDesign(): void;
+  bumpDesignPick(axisKey: string, delta: number): void;
   manufacturePart: any;
   liveTopOf: any;
   RISER: any;
@@ -323,8 +334,8 @@ export interface GameExports {
   revenueDay: any;
   powerDay: any;
   netDay: any;
-  dayDelta: any;
-  dayPaceDelta: any;
+  dayDelta(key: string, now: number): number | null;
+  dayPaceDelta(key: string, now: number): number | null;
   walletUsd: any;
   runway: any;
   lifetimeNet: any;
@@ -337,7 +348,7 @@ export interface GameExports {
   canBuild: any;
   draftEff: any;
   buildTime: any;
-  unitEcon: any;
+  unitEcon(unit: Card): UnitEcon;
   draftExpected: any;
   generatePreset: any;
   maxBuildQty: any;
@@ -361,7 +372,7 @@ export interface GameExports {
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
   idleCashAdvice: any;
   draftGroup(): Group;
-  battAdvice: any;
+  battAdvice(site: Site): BattAdvice | null;
   myPools: any;
   foundPool: any;
   setPoolFee: any;
@@ -374,9 +385,9 @@ export interface GameExports {
   poolProj: any;
   nextTierBond: any;
   poolPnl(pool: Pool): PoolPnl;
-  addBond: any;
+  addBond(pool: Pool, amount: number): void;
   releaseBond: any;
-  capBinding: any;
+  capBinding(pool: Pool): string;
   bondFloor: any;
   topUpBond: any;
   closePool: any;
@@ -388,38 +399,38 @@ export interface GameExports {
   powerRateDay: any;
   SLOT_OPTS: any;
   rebuildInfo: any;
-  startRebuild: any;
+  startRebuild(rig: Rig): void;
   applyRebuild: any;
-  toggleRig: any;
+  toggleRig(id: number): void;
   setRigGroup: any;
   groupOf(rig: Rig): Group;
   groupHash(group: Group): number;
   groupRigs(group: Group): Rig[];
   setGroupChain: any;
-  setGroupPool: any;
+  setGroupPool(group: Group, poolId: string): void;
   addGroup: any;
   dropGroup: any;
   renameGroup: any;
   newSite: any;
-  addSitePart: any;
+  addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void;
   chooseFab: any;
   rush: any;
-  rushCost: any;
+  rushCost(job: Job): number;
   rushRig: any;
-  rushRigCost: any;
+  rushRigCost(rig: Rig): number;
   upgradeShell: any;
   renameSite: any;
   renameRig: any;
   decommissionSite: any;
-  sell: any;
-  buy: any;
+  sell(chainId: string, frac: number): void;
+  buy(chainId: string, frac: number): void;
   fleetMove: any;
   fleetMoveInfo: any;
-  draftSpec: any;
+  draftSpec(): RebuildDraft;
   fleetSpecInfo: any;
   fleetToSpec: any;
   dripCost: any;
-  dripWorst: any;
+  dripWorst(): DripWorst | null;
   setDrip: any;
   toggleHold: any;
   MILESTONES: any;
@@ -435,12 +446,12 @@ export interface GameExports {
   dismissChainsNudge: any;
   TOUR_SLIDES: any;
   showTour: any;
-  dismissTour: any;
+  dismissTour(): void;
   restartTour: any;
   saveNow: any;
   loadSave: any;
   wipeSave: any;
-  exportSave: any;
+  exportSave(): string;
   importSave: any;
   creditAway: any;
 }
@@ -512,5 +523,25 @@ export interface Game {
   poolRep(pool: Pool): number;
   simsOn(chainId: string): number;
   cards(): Card[];
+  battAdvice(site: Site): BattAdvice | null;
+  dripWorst(): DripWorst | null;
+  unitEcon(unit: Card): UnitEcon;
+  sell(chainId: string, frac: number): void;
+  buy(chainId: string, frac: number): void;
+  toggleRig(id: number): void;
+  startRebuild(rig: Rig): void;
+  setGroupPool(group: Group, poolId: string): void;
+  addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void;
+  addBond(pool: Pool, amount: number): void;
+  rushCost(job: Job): number;
+  rushRigCost(rig: Rig): number;
+  capBinding(pool: Pool): string;
+  dayDelta(key: string, now: number): number | null;
+  dayPaceDelta(key: string, now: number): number | null;
+  draftSpec(): RebuildDraft;
+  exportSave(): string;
+  closeDesign(): void;
+  bumpDesignPick(axisKey: string, delta: number): void;
+  dismissTour(): void;
   [key: string]: any;
 }

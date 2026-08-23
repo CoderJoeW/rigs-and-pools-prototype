@@ -265,7 +265,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
                       aria-label="grid charge" :aria-pressed="!!f.gridCharge"><i></i></button>
               <span class="swk">Grid charge</span>
             </div>
-            <p v-if="g.battAdvice(f)" class="hint" :style="g.battAdvice(f).warn?'color:var(--amber)':''">{{ g.battAdvice(f).text }}</p>
+            <p v-if="g.battAdvice(f)" class="hint" :style="g.battAdvice(f)!.warn?'color:var(--amber)':''">{{ g.battAdvice(f)!.text }}</p>
             <p v-if="g.s.help" class="hint">Soaks free solar surplus, and can buy cheap off-peak grid to spend during the 17:00&ndash;21:00 peak. While charged it also counts toward capacity, carrying a renewable site through the night.</p>
           </template>
           <p v-else class="note">No battery installed. One soaks solar surplus, arbitrages the tariff, and keeps rigs alive after dark.</p>

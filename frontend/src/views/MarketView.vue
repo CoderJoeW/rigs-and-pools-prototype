@@ -193,9 +193,9 @@ async function onBackupFile(e: Event){
             {{ g.s.drip.hours===1?'each hour':g.s.drip.hours===6?'four times a day':'once a day' }}<span
               v-if="g.s.drip.frac<1">, so a stack decays rather than exits</span>.</p>
           <p v-if="g.dripWorst()" class="hint" style="color:var(--amber);margin-top:4px">
-            Slippage bites hardest on {{ g.dripWorst().c.name }}: this order would lose
-            {{ fmt.pct(g.dripWorst().cost) }}<span v-if="g.s.drip.frac>0.25">
-              — a 25% order would cost {{ fmt.pct(g.dripWorst().at25) }}</span>.</p>
+            Slippage bites hardest on {{ g.dripWorst()!.c.name }}: this order would lose
+            {{ fmt.pct(g.dripWorst()!.cost) }}<span v-if="g.s.drip.frac>0.25">
+              — a 25% order would cost {{ fmt.pct(g.dripWorst()!.at25) }}</span>.</p>
           <input type="range" min="0" max="14" step="0.25" v-model.number="g.s.minSell"
                  aria-label="Hold below price floor">
           <div class="track-cap"><span>Hold below</span>
