@@ -1,9 +1,9 @@
 import { SITEPART } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
-import { PART_MAP } from '../data/hardware.js';
+import { PART_MAP, type Part } from '../data/hardware.js';
 import { gauss } from '../utils/random.js';
 import { addTo } from '../utils/collections.js';
-import type { Game, Site } from './types.js';
+import type { Game, Site, CustomPart } from './types.js';
 import type { Job } from '../data/site-parts.js';
 
 export function installSiteConstruction(G: Game): void {
@@ -47,8 +47,8 @@ export function installSiteConstruction(G: Game): void {
         return name;
       }
       case 'mfg': {
-        G.s.customParts.push(job.part);
-        PART_MAP.set(job.part!.id, job.part as any);
+        G.s.customParts.push(job.part as CustomPart);
+        PART_MAP.set(job.part!.id, job.part as unknown as Part);
         G.say('site', job.part!.name + ' finished manufacturing at ' + site.name);
         return job.part!.name;
       }

@@ -95,7 +95,7 @@ export function installPersistence(G: Game): void {
     G.s.picker = null; G.s.sitePicker = null; G.s.design = null;
     G.s.rebuild = null; G.s.focusRig = null; G.s.speed = 1; G.s.wipeArm = false;
     if (!Array.isArray(G.s.customParts)) G.s.customParts = [];
-    for (const p of G.s.customParts as { id: string; name: string; price: number }[]) PART_MAP.set(p.id, p as Part);
+    for (const p of G.s.customParts) PART_MAP.set(p.id, p as unknown as Part);
     G.s.unlocked = allUnlocked();
     const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
       || G.s.sims.some((m: Partial<Sim>) => m.cash === undefined || m.style === undefined);

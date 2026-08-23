@@ -32,8 +32,8 @@ const moveInfo = computed(() => g.fleetMoveInfo(fleetGroup.value, scope.value));
 const refitInfo = computed(() => g.fleetRefitInfo(fleetCard.value, scope.value));
 // A manufactured 'unit'-kind custom part is Card-shaped at runtime
 // (customParts.ts's designStats), just not statically typed as one —
-// customParts stays a loose bag since it holds every design kind.
-const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter((p: any) => p.kind === 'unit') as Card[]));
+// CustomPart stays a loose bag since it holds every design kind.
+const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter(p => p.kind === 'unit') as unknown as Card[]));
 
 const fleetSheetEl = ref<HTMLElement | null>(null);
 useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open', false));

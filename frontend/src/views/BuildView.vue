@@ -7,7 +7,7 @@ import { useBuildVerdict } from '../composables/useBuildVerdict.js';
 import PartPickerSheet from '../components/PartPickerSheet.vue';
 import PartTile from '../components/PartTile.vue';
 import { rigShot } from '../utils/rigArt.js';
-import type { DraftCheck } from '../game/types.js';
+import type { DraftCheck, PickerField, CardLimit } from '../game/types.js';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
@@ -41,7 +41,7 @@ const effShown = useTweenedNumber(()=>g.draftEff);
 const drawShown = useTweenedNumber(()=>g.dp.wall);
 
 // Frame and board both cap the card count: design-spec.md §6i.
-const cardLimit=computed(()=>{
+const cardLimit=computed((): CardLimit=>{
   const f=g.PART(g.s.draft.frame), m=g.PART(g.s.draft.mobo);
   return { n:Math.min(f.slots,m.pcie),
            by: f.slots<m.pcie?'the frame':f.slots>m.pcie?'the motherboard':'both, equally',
@@ -55,7 +55,7 @@ const slotCells=computed(()=>{
 
 // `qty` is the count of that part in one rig — only the cards vary; a rig
 // has exactly one frame/board/cooler/supply, so no stepper on those rows.
-const FIELDS=computed(()=>{
+const FIELDS=computed((): PickerField[]=>{
   const x=g.s.draft, n=x.n;
   return [
     {k:'unit',label:'Cards',job:'the hashrate', qty:n,

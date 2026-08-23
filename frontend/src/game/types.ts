@@ -91,6 +91,21 @@ export interface MilestoneState { done: Record<string, number>; rank: number }
 
 export interface DesignInProgress { fid: number; kind: import('../data/customParts.js').DesignKind; picks: Record<string, number> }
 
+// A manufactured part (game/fab.ts's manufacturePart): stats are whatever
+// designStats(kind, picks) produced for that axis set, spread alongside the
+// shared fields below — same duck-typed-union rationale as PART/SITEPART,
+// so callers index into it dynamically rather than declaring every stat key.
+export interface CustomPart {
+  id: string; name: string; kind: DesignKind; price: number; custom: true;
+  [stat: string]: unknown;
+}
+
+// BuildView's FIELDS rows, read by PartPickerSheet. `part`/`sub`'s parameter
+// are duck-typed like PART/SITEPART below — g.PART(x.unit) is one of five
+// unrelated shapes, read here without a runtime discriminant check.
+export interface PickerField { k: string; label: string; job: string; qty: number; part: any; sub: (p: any) => string }
+export interface CardLimit { n: number; by: string; frame: number; mobo: number }
+
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
 export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
@@ -295,7 +310,7 @@ export interface GameState {
   focusRig: number | null;
   saveInfo: string;
   wipeArm: boolean;
-  customParts: unknown[];
+  customParts: CustomPart[];
   design: DesignInProgress | null;
   catchUp: { credited: number; done: number } | null;
   shakeAt: number;

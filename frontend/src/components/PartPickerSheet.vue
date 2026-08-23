@@ -1,33 +1,37 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, type PropType } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
-import { FRAMES, MOBOS, COOLERS } from '../data/hardware.js';
+import { FRAMES, MOBOS, COOLERS, type Card } from '../data/hardware.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import Compare from './Compare.vue';
+import type { PickerField, CardLimit } from '../game/types.js';
+import type { DesignBase, DesignKind } from '../data/customParts.js';
 
 // Part picker architecture (props vs store, emit-not-write, custom parts):
 // docs/implementation-notes.md#part-picker-sheet-srccomponentspartpickersheetvue.
 const props = defineProps({
-  fields: { type: Array, required: true },     // FIELDS rows: {k, label, job, sub(part)}
-  cardLimit: { type: Object, required: true }, // {n, frame, mobo}: cards this pair can wire
-  units: { type: Array, required: true },      // card options, following the generation ladder
+  fields: { type: Array as PropType<PickerField[]>, required: true },
+  cardLimit: { type: Object as PropType<CardLimit>, required: true },
+  units: { type: Array as PropType<Card[]>, required: true }, // following the generation ladder
 });
 const emit = defineEmits(['pick']);
 
 const g = useGameStore();
 
-const field = computed(() => (props.fields as any[]).find(f => f.k === g.s.picker) || null);
+const field = computed(() => props.fields.find(f => f.k === g.s.picker) || null);
 
-const optionsFor = (k: string) => {
-  const base: any[] = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:(props.units as any[]);
-  return base.concat(g.s.customParts.filter((p: any) => p.kind === k));
+const optionsFor = (k: string): DesignBase[] => {
+  const base: DesignBase[] = k==='frame'?FRAMES:k==='mobo'?MOBOS:k==='cool'?COOLERS:k==='psu'?g.PSUS:props.units;
+  return base.concat(g.s.customParts.filter(p => p.kind === k as DesignKind) as unknown as DesignBase[]);
 };
 
 const pickerRows = computed(() => {
   const k = g.s.picker; if(!k) return [];
-  const cur = (g.s.draft as any)[k], fld = field.value;
-  const lim = props.cardLimit as any;
+  const cur = (g.s.draft as unknown as Record<string, string>)[k], fld = field.value;
+  const lim = props.cardLimit;
+  // Same duck-typed-union rationale as PART/SITEPART: p is one of five
+  // unrelated part shapes, read here without a runtime discriminant check.
   return optionsFor(k).map((p: any) => {
     const e = k==='unit' ? g.unitEcon(p) : null;
     let note='';
