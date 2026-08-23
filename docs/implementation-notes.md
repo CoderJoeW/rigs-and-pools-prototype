@@ -662,7 +662,62 @@ louder → muted. A separate slider would have to fit into a top bar
 already full at 320px, and a game with three cues doesn't need continuous
 gain — it needs "off," "on," and "on, I am across the room."
 
+## Rigs view (`src/views/RigsView.vue`)
+
+The Rigs tab's own chrome. Everything shared with the rest of the app —
+the card, the pill, the `.dot` vocabulary, the swipe mechanics — still
+comes from `main.css`; what lives in this file's `<style>` is the layout
+the mockup asks for and nothing else uses: a page header, a hero that
+fronts the site with a photograph, a list of rigs as separate cards
+rather than rows of one, and the sort/select bar between them.
+
+**One card per rig, not one card of rows** (`.riglist`): at this row
+height a shared panel reads as a table, and the mockup's list reads as a
+shelf of machines. The gap is what does it, so the swipe wrapper takes
+over the card's own frame — and its overflow, which is what clips the
+action panel underneath to the same rounded corners.
+
+**The swipe-reveal panel under the row** (`.rigswact`) is filled from the
+start rather than tinted-then-filled: it sits inside the rig's own card
+with nothing else in it, so there is no neighbouring row for a pale wash
+to get confused with, and the mockup shows it solid. The label uses
+`var(--card)` rather than white for the reason `main.css` states at
+`.rigswact.arm`: the dark theme's `--red` and `--green` are light enough
+that white on them lands under 3.5:1, where the card colour clears AA
+against both — which is also why `.arm` can no longer signal by filling
+in (that is the resting state now) and instead signals with a ring in the
+label's own colour. Darkening the fill would have been the obvious
+alternative and is the one thing that cannot work: it drags the dark
+theme's near-black label back under AA.
+
+"Let go now" happens on the glyph rather than on the panel: the panel's
+edges *are* the card's edges, so anything drawn there (a ring, a heavier
+border) lands on top of the card frame and reads as trim rather than as a
+change of state. The disc is well inboard, and flipping its fill costs no
+contrast — the glyph and its ground simply swap the pair they already had.
+
+Sort/select bar controls are padded to a real target rather than left at
+the global `*{padding:0}` reset — as bare text these were ~17px tall on a
+layout that is driven by thumbs, where the `.btn-sm` they replaced was
+~28px. The negative margins keep the padding from moving the text off the
+page's own margin.
+
 ## Chains view (`src/views/ChainsView.vue`)
+
+**Chain card plate (`.cc-plate`).** The chain's own plate, bled in from
+the left and masked out before it reaches the numbers on the right. Not a
+full-bleed banner: the card's text is ink-on-card in both themes, and
+turning it light to sit on a photograph would have made these the only
+cards in the app that do.
+
+The height is an accessibility constraint, not a look. `.cc-meta` and
+`.cc-k` are 10-11px in `--ink-3`, which this project already runs at
+about 3.1:1 on a bare card; a plate behind them dragged that to 2.6:1.
+Ending at 34px keeps it above that line entirely — it sits behind the
+gem, which is opaque, and behind the name, which is 17px semibold — so
+those labels are back on plain card at exactly the contrast they had
+before. Held at `--plate-a` so it reads at the same strength on either
+ground.
 
 **Segmented layout.** This tab used to be one scroll carrying five
 unrelated sections: the chains, the pool market, the rivals in it, the
@@ -1104,3 +1159,28 @@ members were all simulated rendered a frozen "holding 0 MH/s", and with
 it a frozen FULL badge, capacity bar, blocks-a-day and projection delta.
 They are cheap anyway: a walk of the player's own groups and rigs, not of
 the network.
+
+## Floor-plan rack tile (`src/components/RackTile.vue`)
+
+One position on a site's floor plan. Its own set of renders, alongside
+`Chassis` (square 64px badges beside a single rig) and `RigShot` (the
+16:9 shot fronting a Rigs row): these are macro crops of a rack's front
+face, framed so the mesh and its LED rows fill a wide tile edge to edge
+with no cabinet outline to shrink at this size. All five states come from
+one crop box and differ only in what colour the LEDs burn, so a position
+holds its exact framing as it changes state and only the light moves.
+
+An empty position renders as a `<div>` rather than a `<button>` — there
+is nothing to open — and drops the render for a dashed outline.
+
+## Chain colour mark (`src/components/ChainMark.vue`)
+
+The colour half of a chain's name. Renders nothing on its own account —
+it always sits immediately before the text it belongs to, so the name is
+what a screen reader reads and the mark is what the eye catches. Hence
+`aria-hidden` and no title: a tooltip here would announce "Tessera" next
+to the word Tessera.
+
+The hue comes from the static `CHAIN_HUE` map rather than from the live
+chain record, so a world restored from a save made before chains had
+hues still shows its colours — see the note in `chains.ts`.

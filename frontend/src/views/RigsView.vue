@@ -331,12 +331,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 </template>
 
 <style scoped>
-/* The Rigs tab's own chrome. Everything shared with the rest of the app — the
-   card, the pill, the .dot vocabulary, the swipe mechanics — still comes from
-   main.css; what lives here is the layout the mockup asks for and nothing
-   else uses: a page header, a hero that fronts the site with a photograph,
-   a list of rigs as separate cards rather than rows of one, and the sort /
-   select bar between them. */
+/* Rigs view layout/style rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 
 .rigrush{flex:none;background:var(--amber-t);color:var(--amber);font-weight:500}
 .rigrush:active:not(:disabled){background:color-mix(in srgb,var(--amber) 25%,transparent)}
@@ -389,11 +384,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigfilters .pill.alert.on .pill-ic{color:var(--red)}
 
 /* ---- sort and select bar -------------------------------------------- */
-/* Every control here is padded to a real target rather than left at the
-   global *{padding:0} reset — as bare text these were ~17px tall on a layout
-   that is driven by thumbs, where the .btn-sm they replaced was ~28px. The
-   negative margins keep the padding from moving the text off the page's
-   own margin. */
+/* Padding-to-target rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigbar{display:flex;align-items:center;gap:4px;padding:0 2px 10px;min-height:34px}
 .rigsort{font-size:12px;color:var(--ink-3);white-space:nowrap;padding:9px 6px;margin-left:-6px}
 .rigsort b{color:var(--ink);font-weight:600}
@@ -415,11 +406,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigsorts{padding:0 12px 10px;margin:0 -12px}
 
 /* ---- the list ------------------------------------------------------- */
-/* One card per rig rather than one card of rows: at this row height a shared
-   panel reads as a table, and the mockup's list reads as a shelf of machines.
-   The gap is what does it, so the swipe wrapper takes over the card's own
-   frame — and its overflow, which is what clips the action panel underneath
-   to the same rounded corners. */
+/* One-card-per-rig rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .riglist{display:grid;gap:8px}
 .rigswipe{background:var(--card);border:1px solid var(--line);border-radius:10px;
   overflow:hidden}
@@ -450,25 +437,10 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigrow .rt .k{font-size:9px;color:var(--ink-3);margin-top:1px}
 .rigrow .ch{flex:none;color:var(--ink-3);font-size:17px;line-height:1}
 
-/* The panel under the row. Filled from the start rather than tinted-then-
-   filled: it now sits inside the rig's own card with nothing else in it, so
-   there is no neighbouring row for a pale wash to get confused with, and the
-   mockup shows it solid.
-   The label is var(--card) rather than white for the reason main.css states
-   at .rigswact.arm: the dark theme's --red and --green are light enough that
-   white on them lands under 3.5:1, where the card colour clears AA against
-   both. Which is also why .arm can no longer signal by filling in — that is
-   the resting state now — and signals with a ring in the label's own colour
-   instead. Darkening the fill would have been the obvious alternative and is
-   the one thing that cannot work: it drags the dark theme's near-black label
-   back under AA. */
+/* Swipe-panel fill/contrast rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigswact{gap:9px;padding:0 16px;background:var(--red);color:var(--card)}
 .rigswact.go{background:var(--green);color:var(--card)}
-/* "Let go now" happens on the glyph rather than on the panel: the panel's
-   edges ARE the card's edges, so anything drawn there (a ring, a heavier
-   border) lands on top of the card frame and reads as trim rather than as a
-   change of state. The disc is well inboard, and flipping its fill costs no
-   contrast — the glyph and its ground simply swap the pair they already had. */
+/* "Let go now" glyph-vs-panel rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigswact .ic{flex:none;width:26px;height:26px;display:flex;align-items:center;
   justify-content:center;border-radius:50%;
   box-shadow:inset 0 0 0 1.5px color-mix(in srgb, currentColor 42%, transparent);

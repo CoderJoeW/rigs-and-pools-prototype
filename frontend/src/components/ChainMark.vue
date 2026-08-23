@@ -1,12 +1,6 @@
 <script setup lang="ts">
-/* The colour half of a chain's name. Renders nothing on its own account — it
-   always sits immediately before the text it belongs to, so the name is what a
-   screen reader reads and the mark is what the eye catches. Hence aria-hidden
-   and no title: a tooltip here would announce "Tessera" next to the word
-   Tessera.
-   The hue comes from the static CHAIN_HUE map rather than from the live chain
-   record, so a world restored from a save made before chains had hues still
-   shows its colours — see the note in chains.ts. */
+// Chain mark architecture (renders nothing on its own account, static hue
+// map for save compatibility): docs/implementation-notes.md#chain-colour-mark-srccomponentschainmarkvue.
 import { computed } from 'vue';
 import { CHAIN_HUE } from '../data/chains.js';
 

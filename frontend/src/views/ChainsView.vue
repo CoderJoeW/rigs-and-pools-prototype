@@ -327,19 +327,7 @@ const { spark, fieldMine, field, found, fScheme, fFee, fChain, bond, projShare, 
 .chpanel:focus{outline:none}
 .chainlist{display:grid;gap:8px;margin-bottom:10px}
 .chaincard{padding:0;overflow:hidden;position:relative;isolation:isolate}
-/* The chain's own plate, bled in from the left and masked out before it
-   reaches the numbers on the right. Not a full-bleed banner: the card's text
-   is ink-on-card in both themes, and turning it light to sit on a photograph
-   would have made these the only cards in the app that do.
-
-   The height is the accessibility constraint, not a look. `.cc-meta` and
-   `.cc-k` are 10-11px in --ink-3, which this project already runs at about
-   3.1:1 on a bare card; a plate behind them dragged that to 2.6:1. Ending at
-   34px keeps it above that line entirely — it sits behind the gem, which is
-   opaque, and behind the name, which is 17px semibold — so those labels are
-   back on plain card at exactly the contrast they had before.
-
-   Held at --plate-a so it reads at the same strength on either ground. */
+/* Chain card plate rationale (height/contrast constraint): docs/implementation-notes.md#chains-view-srcviewschainsviewvue. */
 .cc-plate{position:absolute;inset:0 0 auto 0;height:34px;z-index:0;pointer-events:none;
   background-size:cover;background-position:left center;opacity:var(--plate-a);
   -webkit-mask-image:linear-gradient(100deg,#000 0%,rgba(0,0,0,.5) 40%,transparent 74%);
