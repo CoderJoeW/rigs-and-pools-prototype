@@ -165,7 +165,7 @@ export interface GameState {
   wipeArm: boolean;
   customParts: unknown[];
   design: DesignInProgress | null;
-  catchUp: unknown;
+  catchUp: { credited: number; done: number } | null;
   shakeAt: number;
   shakeOn: unknown;
   onboardingDismissed: boolean;
