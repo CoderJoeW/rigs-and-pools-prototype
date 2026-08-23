@@ -5,7 +5,7 @@ import { CHAIN_BASE } from '../data/chains.js';
 import { SHELLS, SITEPART } from '../data/site-parts.js';
 import { PART, RISER } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game, Site, ChainState, Group, Rig, Unit, Pool } from './types.js';
+import type { Game, Site, ChainState, Group, Rig, Unit, Pool, SitePlan, FlowInfo, BattAdvice, GroupAdvice, ChainCeiling } from './types.js';
 import type { Psu } from '../data/hardware.js';
 
 // SitePart/Part are discriminated unions of very different shapes (a solar
@@ -89,7 +89,7 @@ export function installDispatch(G: Game): void {
   const battKwh = (site: Site) => siteStorage(site).reduce((sum, unit) => sum + SP(unit.p).kwh * unit.n, 0);
   const battKw = (site: Site) => siteStorage(site).reduce((sum, unit) => sum + SP(unit.p).kw * unit.n, 0) * 1000;
   const battFirm = (site: Site) => Math.min(battKw(site), (site.batt || 0) / BATT_HORIZON * 1000);
-  function sitePlan(site: Site) {
+  function sitePlan(site: Site): SitePlan {
     const load = siteDemand(site);
     let renew = 0; const paid: { out: number; rate: number }[] = [];
     for (const src of site.sources) {
@@ -122,7 +122,7 @@ export function installDispatch(G: Game): void {
     return { load, renew, chW, disW, gridChW, paidW, cost, unserved, firm };
   }
   const siteCostPerHour = (site: Site) => sitePlan(site).cost;
-  function flowOf(site: Site) {
+  function flowOf(site: Site): FlowInfo {
     const plan = sitePlan(site), cool = sitePlantW(site);
     return {
       load: plan.load, rigs: Math.max(0, plan.load - cool), cool,
@@ -132,7 +132,7 @@ export function installDispatch(G: Game): void {
       unserved: plan.unserved, cap: siteCapacity(site) + battFirm(site),
     };
   }
-  function battAdvice(site: Site) {
+  function battAdvice(site: Site): BattAdvice | null {
     const kwh = battKwh(site); if (kwh <= 0) return null;
     const kw = battKw(site), demand = siteDemand(site);
     let paidCap = 0, renewPeak = 0;
@@ -176,7 +176,7 @@ export function installDispatch(G: Game): void {
   const blockETA = (chain: ChainState) => Math.max(0, chain.T - chain.elapsed);
   const blockProg = (chain: ChainState) => chain.T > 0 ? Math.min(1, chain.elapsed / chain.T) : 0;
   const winChance = (chain: ChainState) => { const networkHash = chainHash(chain); return networkHash > 0 ? myHash(chain) / networkHash : 0; };
-  function groupAdvice(group: Group) {
+  function groupAdvice(group: Group): GroupAdvice | null {
     const chain = G.chain(group.chain), groupHashAmount = groupHash(group);
     if (!chain || groupHashAmount <= 0) return null;
     const networkHash = chainHash(chain);
@@ -192,7 +192,7 @@ export function installDispatch(G: Game): void {
     if (!best || best.revPerMh < currentRevPerMh * 1.5) return null;
     return { share: groupHashAmount / networkHash, alt: best.chain.name, mult: best.revPerMh / Math.max(1e-9, currentRevPerMh) };
   }
-  function chainCeiling(chain: ChainState | undefined, extraMh?: number) {
+  function chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null {
     if (!chain) return null;
     const mineHash = myHash(chain) + (extraMh || 0), networkHash = chainHash(chain) + (extraMh || 0);
     if (networkHash <= 0) return null;
