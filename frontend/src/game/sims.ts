@@ -475,7 +475,7 @@ export function installSims(G: Game): void {
     if (G.say) G.say('pool', pool.name + ' has opened on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%');
   }
 
-  // G.setPoolFee (pools.js) isn't installed yet when a test drives installSims
+  // G.setPoolFee (pools.ts) isn't installed yet when a test drives installSims
   // on its own, so this falls back to a bare assignment — same clamped value
   // either way, just without the trust-affecting side effects setPoolFee has.
   function adjustPoolFee(pool: any, newFee: number): void {

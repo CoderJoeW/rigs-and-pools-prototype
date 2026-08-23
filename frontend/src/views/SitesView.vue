@@ -137,7 +137,7 @@ const legend=computed(()=>{ const n: Record<string, number>={}; for(const r of r
 const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
 const openTile=(id: number)=>{ g.s.focusRig=id; g.s.tab='rigs'; };
 /* The hero shows the shell you actually bought, in the light the simulation
-   says it is — see utils/siteArt.js for both, and for why the previous scheme
+   says it is — see utils/siteArt.ts for both, and for why the previous scheme
    (three quarry photographs dealt out by site id) had to go. */
 const heroPhase=computed(()=>sitePhase(g.s.t));
 const siteDot=(st: any)=>{ if(g.siteTemp(st)>=70) return 'bad';
@@ -171,7 +171,7 @@ const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.8
 const fabQueued=computed(()=>f.value.queue.find((j: any)=>j.kind==='fab'));
 const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
 /* What a queued job IS. A site queue only ever holds infrastructure — see
-   sites.js — so these are the whole vocabulary. */
+   sites.ts — so these are the whole vocabulary. */
 const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);

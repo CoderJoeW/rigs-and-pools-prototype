@@ -9,7 +9,7 @@ import { sfx, cycleVolume, volumeLabel } from '../services/audio.js';
    one strip visible from every tab, and because `help` already establishes it
    as where this app keeps its "how much does this thing tell me" preferences.
    It is NOT part of g.s: a mute is a property of this device, not of the save
-   — services/audio.js explains why that distinction matters. */
+   — services/audio.ts explains why that distinction matters. */
 const g = useGameStore();
 /* The cash figure is the most-looked-at number in the app, so it counts to
    its new value rather than swapping to it — a payout landing should look
@@ -19,7 +19,7 @@ const cashShown = useTweenedNumber(() => g.s.cash);
 
 /* This chip is the "what time is it" readout, shown right beside sun% and
    the grid band — so it has to be on the same DAY_HOURS cycle those run on
-   (timeOfDay.js's hourOf), not fmt.day/fmt.clock's real-time 86400s day.
+   (timeOfDay.ts's hourOf), not fmt.day/fmt.clock's real-time 86400s day.
    Everywhere else fmt.day/fmt.clock/fmt.hm are used — the feed log's
    timestamps — they're a record of real elapsed session time and are
    deliberately left alone. */

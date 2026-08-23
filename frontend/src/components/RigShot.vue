@@ -14,7 +14,7 @@ import { rigShot, rigClass } from '../utils/rigArt.js';
    TWO AXES, NOT ONE. Until now every rig in the fleet — a two-card milk crate
    and a sixteen-slot rack shelf alike — shared one photograph, so the single
    most legible decision the Build tab offers was invisible everywhere it
-   mattered. The frame is now the second axis; utils/rigArt.js owns which of
+   mattered. The frame is now the second axis; utils/rigArt.ts owns which of
    the three art classes a frame id wears, and why there are three.
 
    No chain LED, unlike RackTile's version of this idea: a tile on the floor
@@ -25,7 +25,7 @@ import { rigShot, rigClass } from '../utils/rigArt.js';
    picture rather than as a label. */
 const props = defineProps({
   state: { type: String, default: 'off' },
-  /* A frame id from data/hardware.js (f2 … f16). */
+  /* A frame id from data/hardware.ts (f2 … f16). */
   frame: { type: String, default: 'f4' },
   label: { type: String, default: '' },
 });

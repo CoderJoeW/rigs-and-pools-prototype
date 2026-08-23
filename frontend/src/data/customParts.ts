@@ -1,11 +1,11 @@
 import { FRAMES, MOBOS, COOLERS, PSUS, CARDS, type Frame, type Mobo, type Cooler, type Psu, type Card } from './hardware.js';
 
 // ---- fab-designed parts. Every catalogue ladder elsewhere in the game is
-// strictly monotonic and capped — the whole point of a fab (data/fab.js) is
+// strictly monotonic and capped — the whole point of a fab (data/fab.ts) is
 // a part that goes past that cap. A design starts from the TOP tier of its
 // slot's catalogue and pushes one or two stats further, paid for out of the
 // fab's `budget` (a per-design allowance, not a resource that depletes
-// across designs — see fab.js's own comment) plus real cash and build time.
+// across designs — see fab.ts's own comment) plus real cash and build time.
 //
 // Two axes per slot, never more: the tradeoff this is meant to create is
 // "which stat, and how far" within ONE shared budget, and a longer axis
@@ -50,7 +50,7 @@ const STATIC_TOP: Record<DesignKind, DesignBase> = {
   unit: CARDS[CARDS.length - 1]!,
 };
 
-// unit and psu are the two ladders generations.js keeps growing for as long
+// unit and psu are the two ladders generations.ts keeps growing for as long
 // as the game runs; frame/mobo/cool never do. A design's starting point for
 // those two MUST be the CURRENT top of the live catalogue, not this file's
 // static import — this module has no store access to ask for that, so

@@ -7,7 +7,7 @@ import type { Game } from './types.js';
 
 const P = (id: string): any => PART(id);
 
-// 09-actions.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -142,7 +142,7 @@ export function installActions(G: Game): void {
   const setRigGroup = (rig: any, groupId: number) => { rig.group = groupId; };
 
   /* Pay to finish a rig's assembly or retrofit early — the same trade the
-     site construction queue already offers (sites.js: rush/rushCost), on
+     site construction queue already offers (sites.ts: rush/rushCost), on
      the same $/hour rate. `building` is real SECONDS rather than the
      queue's hours, so the rate is applied to the hour-equivalent. Setting
      `building` to a hair above zero rather than 0 lets the next tick run its

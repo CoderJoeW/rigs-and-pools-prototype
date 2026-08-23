@@ -9,7 +9,7 @@ import obelisk from '../assets/chain/obelisk.webp';
 /* A chain's emblem — the faceted stone that fronts its card on the Chains tab.
 
    One cut, five colours, and that is the whole idea: a chain's identity in this
-   app has always been its OKLCH hue (see chains.js and ChainMark), so five
+   app has always been its OKLCH hue (see chains.ts and ChainMark), so five
    different stones would have introduced a second, competing identity system
    for the same five things. Rendered once and recoloured per chain, they read
    as one set of five rather than five unrelated ornaments, and the hue in the

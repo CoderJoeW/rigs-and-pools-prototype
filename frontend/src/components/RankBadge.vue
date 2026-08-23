@@ -17,7 +17,7 @@ import magnate from '../assets/rank/magnate.webp';
    rule the rack, rig and gem sets follow.
 
    Keyed by INDEX into RANKS rather than by name: the ladder is ordered and
-   what a rank is called is a label on it, so renaming one in milestones.js
+   what a rank is called is a label on it, so renaming one in milestones.ts
    cannot silently unhook its art. An index past the art falls back to the
    last badge rather than rendering nothing — a seventh rank added to the
    catalog should look unfinished, not broken. */

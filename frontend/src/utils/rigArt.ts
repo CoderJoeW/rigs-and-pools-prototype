@@ -1,12 +1,12 @@
 // Which photograph a rig is wearing.
 //
-// Three art classes cover the whole seven-frame ladder in data/hardware.js,
+// Three art classes cover the whole seven-frame ladder in data/hardware.ts,
 // because the silhouette is what reads at thumbnail size and the ladder has
 // exactly three silhouettes: an improvised box, an open rail frame, a rack
 // chassis. Shooting f4 and f6 apart would have spent two more renders on a
 // difference nobody can see at 104px.
 //
-// This lives in utils/ rather than in data/hardware.js because it is a fact
+// This lives in utils/ rather than in data/hardware.ts because it is a fact
 // about the ART, not about the hardware — the catalogue's job is slots,
 // airflow and price, and it should not have to know that two of its entries
 // share a photograph. It lives outside RigShot.vue because the Build tab's

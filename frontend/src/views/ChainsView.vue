@@ -59,7 +59,7 @@ const cards=computed(()=>g.s.chains.map(c=>{
     net:g.chainHash(c),
     diff:g.diffOf(c),
     emission:86400/c.target*c.reward,   // chain's own daily payout, not your share of it
-    rate:g.revPerMh(c),   // realized rate, not `mult` — chains.js: the two diverge ~17% once price clamps
+    rate:g.revPerMh(c),   // realized rate, not `mult` — chains.ts: the two diverge ~17% once price clamps
     ease, easeWord:easeWord(ease),
     outgrown:groups.some(gr=>g.groupAdvice(gr)),   // Farm's advisories, restated as chain facts
     ceiling:g.chainCeiling(c),

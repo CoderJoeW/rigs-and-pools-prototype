@@ -23,7 +23,7 @@ const SEGS=[
 ];
 const { seg, segEl, segKey } = useSegTabs(SEGS, 'prices');
 
-// Change is measured between the last two SAMPLES (18h apart, tick.js
+// Change is measured between the last two SAMPLES (18h apart, tick.ts
 // pushes one every 0.75 sim-days), not against the live price — a live
 // comparison would relabel a 0-18h window as if it were always the same measurement.
 const WINDOW='18h';

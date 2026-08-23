@@ -6,7 +6,7 @@ import { trimName } from './state.js';
 import type { Game } from './types.js';
 import type { Job } from '../data/site-parts.js';
 
-// 10-site-management.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -97,7 +97,7 @@ export function installSites(G: Game): void {
     G.s.cash += back;
     G.s.sites = G.s.sites.filter(x => x.id !== fid);
     if (G.s.activeSite === fid) G.s.activeSite = G.s.sites[0]!.id;
-    // an open design (game/fab.js) points at the site it was opened on —
+    // an open design (game/fab.ts) points at the site it was opened on —
     // decommissioning that site out from under it must close the sheet,
     // not leave it rendering a fab that no longer exists
     if (G.s.design && G.s.design.fid === fid) G.s.design = null;

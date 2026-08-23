@@ -7,7 +7,7 @@ import { computed } from 'vue';
    KEYED BY PART, NOT BY SLOT. It used to take a slot name — 'unit', 'frame',
    'psu' — and hand back one of five pictures, so all twelve cards shared a
    photograph and so did all ten power supplies. The Build tab is a shop, and
-   every ladder in data/hardware.js is monotonic: a dearer part is better on
+   every ladder in data/hardware.ts is monotonic: a dearer part is better on
    every axis that matters. None of that was visible. Now every catalogue id
    has its own tile, and opening a picker shows the ladder as objects rather
    than as a column of identical squares over changing text.
@@ -28,7 +28,7 @@ import { computed } from 'vue';
    Decorative: every row and every option names its own part in text beside
    the tile. */
 const props = defineProps({
-  /* A part id from data/hardware.js — c1…c12, f2…f16, m2…m16, p450…p7500,
+  /* A part id from data/hardware.ts — c1…c12, f2…f16, m2…m16, p450…p7500,
      x0…x6. */
   part: { type: String, default: '' },
   label: { type: String, default: '' },
@@ -42,7 +42,7 @@ const TILES = import.meta.glob<string>('../assets/part/*.webp', { eager: true, i
 /* The catalogue is not fixed. Two kinds of part are minted at runtime and can
    never have a tile of their own:
 
-     hardware.js grows the ladder every GEN_DAYS with `g<n>a`/`g<n>b` cards and
+     hardware.ts grows the ladder every GEN_DAYS with `g<n>a`/`g<n>b` cards and
      a matching `gp<n>` supply — an endless series, so shipping art for it is
      not a thing that can be finished; and
 

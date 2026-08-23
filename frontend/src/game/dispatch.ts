@@ -10,7 +10,7 @@ import type { Game, Site, ChainState, Group } from './types.js';
 const SP = (id: string): any => SITEPART(id);
 const P = (id: string): any => PART(id);
 
-// 04-sites-and-rigs.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -159,7 +159,7 @@ export function installDispatch(G: Game): void {
   const groupHash = (group: Group) => G.s.rigs.reduce((sum: number, rig: any) => sum + (rig.group === group.id ? rigHash(rig) : 0), 0);
   const groupRigs = (group: Group) => G.s.rigs.filter((rig: any) => rig.group === group.id);
   const myHash = (chain: ChainState) => G.s.groups.reduce((sum, group) => sum + (group.chain === chain.id ? groupHash(group) : 0), 0);
-  /* O(1) via running totals maintained by sims.js — never scan the agent array. */
+  /* O(1) via running totals maintained by sims.ts — never scan the agent array. */
   const simHash = (chain: ChainState) => G.simHashOf ? G.simHashOf(chain) : 0;
   const chainHash = (chain: ChainState) => simHash(chain) + myHash(chain);
   const diffOf = (chain: ChainState) => Math.max(chain.floor, chain.obs) * chain.target;
@@ -231,7 +231,7 @@ export function installDispatch(G: Game): void {
     : rigWear(rig)>0.6 ? {k:'wearing', dot:'warn', label:'Wearing', sub:'cards past 60%'}
     : {k:'run', dot:'run', label:'Running', sub:''};
 
-  const DEFAULT_ELEC = 15.00; // matches SOURCES' flat grid baseline — see site-parts.js
+  const DEFAULT_ELEC = 15.00; // matches SOURCES' flat grid baseline — see site-parts.ts
   const margRate = (site: Site) => {
     const demand = siteDemand(site);
     return demand > 0 ? siteCostPerHour(site) / demand * 1000 : DEFAULT_ELEC;

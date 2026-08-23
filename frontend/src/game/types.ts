@@ -1,14 +1,14 @@
 // Shared shape of the game's reactive state (`G.s`) and its assembled
-// runtime context (`G`), which stores/game.js's `createGame` builds by
-// running every game/*.js installer over one object in sequence.
+// runtime context (`G`), which stores/game.ts's `createGame` builds by
+// running every game/*.ts installer over one object in sequence.
 //
-// `G` is intentionally an evolving, partly-loose type: the installers each
-// contribute fields/methods to the same object (see stores/game.js's own
-// comment on install order), so this file grows a real, named member for
-// each piece as its owning installer is converted to TypeScript, while an
-// index signature covers whatever the remaining .js installers still add.
-// That mirrors the object's own assembly — nothing here claims a precision
-// the untyped half of the codebase can't back up yet.
+// `G` is intentionally a partly-loose type: the installers each contribute
+// fields/methods to the same object (see stores/game.ts's own comment on
+// install order), and a real, named member is added here as each piece is
+// typed precisely; an index signature covers whatever installer output
+// isn't worth naming yet. That mirrors the object's own assembly — nothing
+// here claims a precision the loosely-typed half of the codebase can't
+// back up.
 
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
@@ -89,7 +89,7 @@ export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: 
 export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
 // Rigs and pools are assembled across several not-fully-typed installers
-// (buildDraft.js, pools.js, poolMarket.js); their shapes stay loose until
+// (buildDraft.ts, pools.ts, poolMarket.ts); their shapes stay loose until
 // those call sites are worth tightening together.
 export type Rig = any;
 export type Pool = any;
@@ -179,9 +179,9 @@ export interface GameState {
   brokeNote?: number;
 }
 
-// The assembled game context. Every game/*.js installer still contributes
-// through the index signature until it converts; a converted installer
-// adds its real members here instead.
+// The assembled game context. An installer whose output isn't typed yet
+// still contributes through the index signature; a typed one adds its
+// real members here instead.
 // The flat, hand-maintained surface persistence.ts publishes to components
 // via Pinia (`G.__exports`, returned verbatim as the store's setup-store
 // body). Named here — even though every member is still `any` — purely so

@@ -20,7 +20,7 @@ const emit = defineEmits(['toggle']);
 
 const g = useGameStore();
 
-/* The hashrate sparkline. tick.js appends a poolHash sample to pool.hist every
+/* The hashrate sparkline. tick.ts appends a poolHash sample to pool.hist every
    four in-game hours, so this only draws once a pool has been running a while —
    which is why the extraction lost it silently: a freshly founded pool has an
    empty hist and never reaches the branch. */
@@ -44,7 +44,7 @@ const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename
 
    poolHash and poolPnl are deliberately NOT memoised here, though they look
    like the same kind of thing. poolHash reads the sim half of a pool's book
-   out of G._simPoolHash — a plain object sims.js keeps off Vue's reactivity
+   out of G._simPoolHash — a plain object sims.ts keeps off Vue's reactivity
    on purpose (see its header) — so a computed over it caches a value nothing
    will ever invalidate. Memoised, a card whose members were all simulated
    rendered a frozen "holding 0 MH/s", and with it a frozen FULL badge,

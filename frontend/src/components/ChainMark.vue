@@ -6,7 +6,7 @@
    Tessera.
    The hue comes from the static CHAIN_HUE map rather than from the live chain
    record, so a world restored from a save made before chains had hues still
-   shows its colours — see the note in chains.js. */
+   shows its colours — see the note in chains.ts. */
 import { computed } from 'vue';
 import { CHAIN_HUE } from '../data/chains.js';
 

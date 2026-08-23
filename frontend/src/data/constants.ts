@@ -4,7 +4,7 @@ export const C = {
   // Tuning derivation: docs/economy.md#base_wear-005. Design rationale: design-spec.md §3.
   BASE_WEAR:0.05,
   // Manual repair line (RigsView's "worn past X%") — separate knob from
-  // state.js's fixAt (auto-replace's own threshold, defaulted higher at 0.45).
+  // state.ts's fixAt (auto-replace's own threshold, defaulted higher at 0.45).
   REPAIR_AT:0.35,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
@@ -40,8 +40,8 @@ export const TX_FEES = 0.06;
 
 // Pool founding: design-spec.md §5 / §5a.
 export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's value
-// Clamp on a simulated pool operator's fee — rival (poolMarket.js) and
-// sim-owned (sims.js) pools both nudge their fee up when full, down when
+// Clamp on a simulated pool operator's fee — rival (poolMarket.ts) and
+// sim-owned (sims.ts) pools both nudge their fee up when full, down when
 // starved, and both stop at these same two bounds.
 export const SIM_FEE_MIN = 0.002;
 export const SIM_FEE_MAX = 0.09;

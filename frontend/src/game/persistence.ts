@@ -158,7 +158,7 @@ export function installPersistence(G: Game): void {
       const mine = G.s.sims.filter((m: any) => m.chain === c.id);
       const have = mine.reduce((a: number, m: any) => a + m.hash, 0);
       const want = G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO * base.floor;
-      /* Through setSimHash, not `m.hash *= k`: the running totals sims.js
+      /* Through setSimHash, not `m.hash *= k`: the running totals sims.ts
          keeps (_simChainHash and the solo/pool splits) are maintained
          incrementally, and reindexSims has already run by here — so a bare
          assignment would leave every one of them stale for the session. */
@@ -246,7 +246,7 @@ export function installPersistence(G: Game): void {
   /* The flat surface components read. This list is hand-maintained: anything an
      install* module puts on G has to be repeated here or it never reaches the
      Pinia store, and reading it gives undefined rather than an error.
-     src/stores/__tests__/exportSurface.test.js makes that loud — it fails if a
+     src/stores/__tests__/exportSurface.test.ts makes that loud — it fails if a
      key on G is neither published here nor declared private there. */
   G.__exports = {
     s: G.s,

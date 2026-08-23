@@ -25,7 +25,7 @@ export function createWeatherService(): WeatherService {
     return Promise.resolve(cache.get(day)!);
   }
   // A fresh game (or a wipe) must not see a previous run's weather bleed
-  // through just because both start at day 0 — see weather.js's ensureWeather.
+  // through just because both start at day 0 — see weather.ts's ensureWeather.
   function reset(): void { cache = new Map(); }
   return { peek, ensure, reset };
 }

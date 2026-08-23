@@ -3,7 +3,7 @@ import { CHAINS } from '../data/chains.js';
 import { C } from '../data/constants.js';
 import type { Game, GameState, ChainState } from './types.js';
 
-// 00-state.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Every feature flag reads true — the progression gates this prototype once
 // had are all open, and the Proxy keeps that true for names nobody has
 // thought of yet.

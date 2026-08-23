@@ -6,18 +6,18 @@ import type { Game } from './types.js';
 const PART_NAME: Record<DesignKind, string> = { frame:'Custom frame', mobo:'Custom board', cool:'Custom cooler',
   psu:'Custom supply', unit:'Custom card' };
 
-// unit and psu are the two ladders that keep growing (generations.js); a
+// unit and psu are the two ladders that keep growing (generations.ts); a
 // design has to start from whatever's CURRENTLY on top of those, not the
-// frozen catalogue customParts.js imports — see its own comment on why
+// frozen catalogue customParts.ts imports — see its own comment on why
 const liveTopOf = (G: Game, kind: DesignKind) => kind === 'unit' ? G.cards()[G.cards().length - 1]
   : kind === 'psu' ? G.livePsus[G.livePsus.length - 1] : undefined;
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
-// A fab bay (game/sites.js's chooseFab) unlocks which slot types can be
+// A fab bay (game/sites.ts's chooseFab) unlocks which slot types can be
 // designed and how big a budget a design may spend; G.s.design holds the
 // in-progress design (same open/edit/close-or-commit lifecycle as
 // G.s.picker), and manufacturing queues a real construction job through
-// the same queue/completion path (tick.js) every other site part uses.
+// the same queue/completion path (tick.ts) every other site part uses.
 export function installFab(G: Game): void {
   function openDesign(fid: number, kind: DesignKind): void {
     const f = G.site(fid), fb = f && f.fab && FAB(f.fab);
@@ -46,7 +46,7 @@ export function installFab(G: Game): void {
     if (G.s.cash < buildCash) return;
     G.spend(buildCash);
     const stats = designStats(d.kind, d.picks, liveTop);
-    // timestamp+random, not a saved counter: PART_MAP (data/hardware.js) is a
+    // timestamp+random, not a saved counter: PART_MAP (data/hardware.ts) is a
     // page-load-scoped singleton, so a persisted counter would collide across
     // multiple freshStore() instances sharing that module graph (e.g. tests).
     const id = 'custom-' + d.kind + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

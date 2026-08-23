@@ -179,7 +179,7 @@ export function volumeLabel(): string {
   return sfx.volume >= VOLUMES[2]! ? 'sound +' : 'sound';
 }
 
-/* Armed once from main.js: a returning player already has sound on, but the
+/* Armed once from main.ts: a returning player already has sound on, but the
    context still cannot exist until they touch something. */
 export function armUnlock(): void {
   if (typeof document === 'undefined') return;

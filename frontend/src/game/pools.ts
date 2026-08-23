@@ -3,7 +3,7 @@ import { fmt } from '../utils/format.js';
 import { trimName } from './state.js';
 import type { Game, ChainState } from './types.js';
 
-// 11-your-pool.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -96,7 +96,7 @@ export function installPools(G: Game): void {
      the same way — just signed the other direction. Selling pushes impact
      positive (price sags below ref); buying pushes it negative (price runs
      above ref). Both decay back toward 0 via the same per-tick relaxation
-     in chainEconomy.js, so a premium fades exactly as a discount does. This is
+     in chainEconomy.ts, so a premium fades exactly as a discount does. This is
      what completes the buy side the design spec's v33 fundamentals never
      shipped — no new price model, just the existing one used both ways. */
   function doBuy(chain: ChainState, usd: number): void {
