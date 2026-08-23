@@ -88,6 +88,12 @@ export interface DesignInProgress { fid: number; kind: import('../data/customPar
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
 export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
+export interface RebuildCheck { ok: boolean; label: string; fix: string }
+export interface RebuildInfo {
+  buy: number; credit: number; net: number; core: number; wall: number; lim: number;
+  checks: RebuildCheck[]; time: number; ok: boolean; changed: boolean; hashNew: number;
+}
+
 export interface Unit {
   p: string;    // card/part id
   w: number;    // wear fraction, 0-1; 1 = dead
