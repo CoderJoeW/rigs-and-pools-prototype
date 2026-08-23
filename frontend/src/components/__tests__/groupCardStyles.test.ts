@@ -64,8 +64,8 @@ describe('GroupCard stylesheet structure', () => {
     // gap goes at 380 with the icons; the right margin only at 339 when the
     // strip folds. Collapsing these into one breakpoint is a real regression.
     const gsel = groupCard.filter(r => r.sel === '.gsel');
-    expect(gsel.find(r => r.body.includes('gap:0')).media).toBe('(max-width:380px)');
-    expect(gsel.find(r => r.body.includes('margin-right:0')).media).toBe('(max-width:339px)');
+    expect(gsel.find(r => r.body.includes('gap:0'))!.media).toBe('(max-width:380px)');
+    expect(gsel.find(r => r.body.includes('margin-right:0'))!.media).toBe('(max-width:339px)');
   });
 
   it('owns every group-family rule except the parent’s own help line', () => {

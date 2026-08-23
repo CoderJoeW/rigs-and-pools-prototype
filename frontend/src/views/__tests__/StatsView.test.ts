@@ -6,7 +6,7 @@ import StatsView from '../StatsView.vue';
 
 /* Three segments now — anything below the summary has to be switched to. */
 const seg = (wrapper, label) =>
-  wrapper.findAll('.segtab').find(t => t.text().includes(label)).trigger('click');
+  wrapper.findAll('.segtab').find(t => t.text().includes(label))!.trigger('click');
 
 describe('StatsView', () => {
   it('shows the starting rank and milestone tracks', () => {
@@ -65,14 +65,14 @@ describe('StatsView', () => {
 
   it('the rank card carries its medallion, the rank number and progress into the next', () => {
     const { wrapper, store } = mountWithStore(StatsView);
-    const badge = wrapper.find('.rankbadge');
+    const badge = wrapper.find('.rankbadge')!;
     expect(badge.exists()).toBe(true);
-    expect(badge.find('img').exists()).toBe(true);
+    expect(badge.find('img')!.exists()).toBe(true);
     // Decorative — the rank is named in text right beside it.
     expect(badge.attributes('aria-hidden')).toBe('true');
-    expect(wrapper.find('.rc-name').text()).toBe(store.RANKS[0][1]);
-    expect(wrapper.find('.rc-n').text()).toContain('Rank 1 of ' + store.RANKS.length);
-    expect(wrapper.find('.rc-bar').attributes('aria-label')).toContain(store.RANKS[1][1]);
+    expect(wrapper.find('.rc-name')!.text()).toBe(store.RANKS[0][1]);
+    expect(wrapper.find('.rc-n')!.text()).toContain('Rank 1 of ' + store.RANKS.length);
+    expect(wrapper.find('.rc-bar')!.attributes('aria-label')).toContain(store.RANKS[1][1]);
   });
 
   it('the rank bar measures the rung you are on, not the whole climb', async () => {
@@ -81,16 +81,16 @@ describe('StatsView', () => {
     // two-twentieths of the ladder.
     store.s.mile.done = { a: 1, b: 2 };
     await nextTick();
-    expect(wrapper.find('.rc-cap').text()).toContain('2 / 4');
-    expect(wrapper.find('.rc-cap').text()).toContain('50%');
+    expect(wrapper.find('.rc-cap')!.text()).toContain('2 / 4');
+    expect(wrapper.find('.rc-cap')!.text()).toContain('50%');
   });
 
   it('the top rank is complete rather than dividing by a rung above it', async () => {
     const { wrapper, store } = mountWithStore(StatsView);
     store.s.mile.rank = store.RANKS.length - 1;
     await nextTick();
-    expect(wrapper.find('.rc-cap').text()).toContain('Top rank');
-    expect(wrapper.find('.rc-cap').text()).toContain('100%');
+    expect(wrapper.find('.rc-cap')!.text()).toContain('Top rank');
+    expect(wrapper.find('.rc-cap')!.text()).toContain('100%');
   });
 
   it('three headline tiles, and Best block reads empty before one lands', async () => {
@@ -109,13 +109,13 @@ describe('StatsView', () => {
       .map(p => !(p.attributes('style') || '').includes('display: none'));
     expect(vis()).toEqual([true, false, false]);
     // The three charts the mockup puts on the summary.
-    expect(wrapper.find('#stpan-stats').findAll('.statchart').length).toBe(3);
+    expect(wrapper.find('#stpan-stats')!.findAll('.statchart').length).toBe(3);
     await seg(wrapper, 'History');
     expect(vis()).toEqual([false, true, false]);
-    expect(wrapper.find('#stpan-history').text()).toContain('Coin prices');
+    expect(wrapper.find('#stpan-history')!.text()).toContain('Coin prices');
     await seg(wrapper, 'Achievements');
     expect(vis()).toEqual([false, false, true]);
-    expect(wrapper.find('#stpan-awards').text()).toContain('The ladder');
+    expect(wrapper.find('#stpan-awards')!.text()).toContain('The ladder');
   });
 
   it('net to date reads the cumulative series, not a sum of daily snapshots', () => {
@@ -125,9 +125,9 @@ describe('StatsView', () => {
     const { wrapper } = mountWithStore(StatsView, {
       seed: g => { g.s.netHist = [10, 10, 10]; g.s.netCumHist = [100, 400, 900]; },
     });
-    const chart = wrapper.find('#stpan-stats').findAll('.statchart')
-      .find(c => c.text().includes('Net to date'));
-    expect(chart.find('.sc-chip').text()).toContain('$900.00');
+    const chart = wrapper.find('#stpan-stats')!.findAll('.statchart')
+      .find(c => c.text().includes('Net to date'))!;
+    expect(chart.find('.sc-chip')!.text()).toContain('$900.00');
   });
 
   it('a per-day series states what a point is instead of averaging it', async () => {
@@ -135,13 +135,13 @@ describe('StatsView', () => {
       seed: g => { g.s.netHist = [10, 30]; g.s.hashHist = [10, 30]; },
     });
     await seg(wrapper, 'History');
-    const perDay = wrapper.find('#stpan-history').findAll('.statchart')
-      .find(c => c.text().includes('Net per day'));
+    const perDay = wrapper.find('#stpan-history')!.findAll('.statchart')
+      .find(c => c.text().includes('Net per day'))!;
     expect(perDay.text()).toContain('So far that day');
     expect(perDay.text()).not.toContain('Average');
     // A level sampled at an instant keeps its average.
-    const hash = wrapper.find('#stpan-stats').findAll('.statchart')
-      .find(c => c.text().includes('Hashrate'));
+    const hash = wrapper.find('#stpan-stats')!.findAll('.statchart')
+      .find(c => c.text().includes('Hashrate'))!;
     expect(hash.text()).toContain('Average');
   });
 
@@ -152,7 +152,7 @@ describe('StatsView', () => {
     await nextTick();
     // The top rank lands at 20 of the catalog's 24 — "all 20" would have been
     // a lie the Achievements segment contradicts on the same tab.
-    expect(wrapper.find('.rc-cap').text())
+    expect(wrapper.find('.rc-cap')!.text())
       .toContain('20 of ' + store.MILESTONES.length + ' milestones');
   });
 
@@ -161,7 +161,7 @@ describe('StatsView', () => {
       seed: g => { g.s.effHist = [0.4, 0.6, 0.842]; },
     });
     const eff = wrapper.findAll('.statchart').find(c => c.text().includes('EFFICIENCY')
-      || c.text().includes('Efficiency'));
-    expect(eff.find('.sc-chip').text()).toContain('0.842 MH/W');
+      || c.text().includes('Efficiency'))!;
+    expect(eff.find('.sc-chip')!.text()).toContain('0.842 MH/W');
   });
 });

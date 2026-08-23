@@ -6,7 +6,7 @@ import { CHAINS, CHAIN_HUE } from '../../data/chains.js';
 describe('ChainMark', () => {
   it('paints the chain hue and stays out of the accessibility tree', () => {
     const wrapper = mount(ChainMark, { props: { chain: 'tessera' } });
-    const mark = wrapper.find('i.cmk');
+    const mark = wrapper.find('i.cmk')!;
     expect(mark.exists()).toBe(true);
     expect(mark.attributes('style')).toContain('--chain-h: ' + CHAIN_HUE.tessera);
     // the chain's name is always rendered next to the mark, so announcing it
@@ -36,12 +36,12 @@ describe('ChainMark', () => {
   });
 
   it('takes the larger form only when asked', () => {
-    expect(mount(ChainMark, { props: { chain: 'nova' } }).find('.cmk.lg').exists()).toBe(false);
-    expect(mount(ChainMark, { props: { chain: 'nova', lg: true } }).find('.cmk.lg').exists()).toBe(true);
+    expect(mount(ChainMark, { props: { chain: 'nova' } }).find('.cmk.lg')!.exists()).toBe(false);
+    expect(mount(ChainMark, { props: { chain: 'nova', lg: true } }).find('.cmk.lg')!.exists()).toBe(true);
   });
 
   it('renders nothing rather than a colourless mark for an unknown chain', () => {
     // a save can name a chain this build no longer ships
-    expect(mount(ChainMark, { props: { chain: 'no-such-chain' } }).find('i').exists()).toBe(false);
+    expect(mount(ChainMark, { props: { chain: 'no-such-chain' } }).find('i')!.exists()).toBe(false);
   });
 });

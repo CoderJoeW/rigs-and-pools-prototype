@@ -15,7 +15,7 @@ describe('BuildView', () => {
 
   it('switching to Customise shows the individual part pickers', async () => {
     const { wrapper } = mountWithStore(BuildView);
-    const customiseBtn = wrapper.findAll('button').find(b => b.text() === 'Customise');
+    const customiseBtn = wrapper.findAll('button').find(b => b.text() === 'Customise')!;
     await customiseBtn.trigger('click');
     expect(wrapper.text()).toContain('Frame');
     expect(wrapper.text()).toContain('Board');
@@ -27,17 +27,17 @@ describe('BuildView', () => {
     // parts list, the count in its own card — but they are still two
     // controls over the same word, so they still have to be told apart.
     const { wrapper } = mountWithStore(BuildView);
-    await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-    const modelRow = wrapper.findAll('.partrow').find(r => r.text().includes('MH/W'));
-    expect(modelRow.find('.lab').text()).toBe('Cards');
-    const count = wrapper.findAll('.bcount').find(c => c.find('.stepper').exists());
-    expect(count.find('.bc-k').text()).toContain('Count');
-    expect(count.find('.stepper').exists()).toBe(true);
+    await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+    const modelRow = wrapper.findAll('.partrow').find(r => r.text().includes('MH/W'))!;
+    expect(modelRow.find('.lab')!.text()).toBe('Cards');
+    const count = wrapper.findAll('.bcount').find(c => c.find('.stepper').exists())!;
+    expect(count.find('.bc-k')!.text()).toContain('Count');
+    expect(count.find('.stepper')!.exists()).toBe(true);
   });
 
   it('marks each part-picker row as opening a dialog, for assistive tech that announces it before activation', async () => {
     const { wrapper } = mountWithStore(BuildView);
-    await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
     // .pickrow also matches the Count stepper row, a plain (non-button)
     // div that doesn't open anything — scope to the actual picker buttons
     const pickrows = wrapper.findAll('button.pickrow');
@@ -45,17 +45,17 @@ describe('BuildView', () => {
     for (const row of pickrows) expect(row.attributes('aria-haspopup')).toBe('dialog');
     // and the thing it actually opens really is one, so the announcement isn't a lie
     await pickrows[0].trigger('click');
-    expect(wrapper.find('.sheet').attributes('role')).toBe('dialog');
+    expect(wrapper.find('.sheet')!.attributes('role')).toBe('dialog');
   });
 
   describe('the Quick pick / Customise segmented control', () => {
     it('slides its thumb to the active segment instead of just repainting it', async () => {
       const { wrapper } = mountWithStore(BuildView);
-      const seg = wrapper.find('.seg2');
+      const seg = wrapper.find('.seg2')!;
       expect(seg.classes()).not.toContain('custom'); // preset first, always
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       expect(seg.classes()).toContain('custom');
-      await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Quick pick')!.trigger('click');
       expect(seg.classes()).not.toContain('custom');
     });
 
@@ -83,10 +83,10 @@ describe('BuildView', () => {
       // the pair also needs its own accessible name — without it, a screen
       // reader announces two anonymous toggle buttons with no indication of
       // what they're toggling
-      expect(wrapper.find('.seg2').attributes('role')).toBe('group');
-      expect(wrapper.find('.seg2').attributes('aria-label')).toBe('Build mode');
-      const quick = () => wrapper.findAll('button').find(b => b.text() === 'Quick pick');
-      const custom = () => wrapper.findAll('button').find(b => b.text() === 'Customise');
+      expect(wrapper.find('.seg2')!.attributes('role')).toBe('group');
+      expect(wrapper.find('.seg2')!.attributes('aria-label')).toBe('Build mode');
+      const quick = () => wrapper.findAll('button').find(b => b.text() === 'Quick pick')!;
+      const custom = () => wrapper.findAll('button').find(b => b.text() === 'Customise')!;
       expect(quick().attributes('aria-pressed')).toBe('true');
       expect(custom().attributes('aria-pressed')).toBe('false');
       await custom().trigger('click');
@@ -123,16 +123,16 @@ describe('BuildView', () => {
 
   it('opening a part picker shows the Compare list', async () => {
     const { wrapper } = mountWithStore(BuildView);
-    await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-    const frameRow = wrapper.findAll('.pickrow').find(r => r.text().includes('Frame'));
+    await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+    const frameRow = wrapper.findAll('.pickrow').find(r => r.text().includes('Frame'))!;
     await frameRow.trigger('click');
-    expect(wrapper.find('.sheet').exists()).toBe(true);
-    expect(wrapper.find('.cmp').exists()).toBe(true);
+    expect(wrapper.find('.sheet')!.exists()).toBe(true);
+    expect(wrapper.find('.cmp')!.exists()).toBe(true);
   });
 
   it('ordering parts builds a rig and switches tabs', async () => {
     const { wrapper, store } = mountWithStore(BuildView);
-    const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'));
+    const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'))!;
     await orderBtn.trigger('click');
     expect(store.s.rigs).toHaveLength(1);
     expect(store.s.tab).toBe('rigs');
@@ -144,7 +144,7 @@ describe('BuildView', () => {
     // payback worth several times the $500 starting cash is real, but reads
     // as broken without this note (issue #6).
     const { wrapper, store } = mountWithStore(BuildView);
-    const tessera = store.s.chains.find(c => c.id === 'tessera');
+    const tessera = store.s.chains.find(c => c.id === 'tessera')!;
     expect(tessera.obs).toBeLessThanOrEqual(tessera.floor);
     expect(wrapper.text()).toContain('new-miner premium');
   });
@@ -160,7 +160,7 @@ describe('BuildView', () => {
     // chainHash or floor, isolates that this note tracks the right
     // variable.
     const { wrapper, store } = mountWithStore(BuildView);
-    const tessera = store.s.chains.find(c => c.id === 'tessera');
+    const tessera = store.s.chains.find(c => c.id === 'tessera')!;
     tessera.obs = tessera.floor * 10;
     await nextTick();
     expect(wrapper.text()).not.toContain('new-miner premium');
@@ -181,7 +181,7 @@ describe('BuildView', () => {
     store.build();
     for (let i = 0; i < 5; i++) store.stepTick(60); // finish assembly
     await nextTick();
-    const tessera = store.s.chains.find(c => c.id === 'tessera');
+    const tessera = store.s.chains.find(c => c.id === 'tessera')!;
     expect(tessera.obs).toBeLessThanOrEqual(tessera.floor); // still the flat rate
     expect(wrapper.text()).toContain('new-miner premium');
     expect(wrapper.text()).toContain('at its ceiling');
@@ -220,10 +220,10 @@ describe('BuildView', () => {
 
     it('disables "-" at 1 card rather than silently clamping', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       store.s.draft.n = 1;
       await nextTick();
-      const minus = wrapper.find('.stepper button[aria-label="Decrease card count"]');
+      const minus = wrapper.find('.stepper button[aria-label="Decrease card count"]')!;
       expect(minus.attributes('disabled')).toBeDefined();
       await minus.trigger('click'); // inert past the floor — same pin as the "+" test below
       expect(store.s.draft.n).toBe(1);
@@ -231,10 +231,10 @@ describe('BuildView', () => {
 
     it('disables "+" once the card limit (frame vs. board, whichever binds) is reached', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       store.s.draft.n = 1;   // start below the limit so the loop below genuinely climbs
       await nextTick();
-      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]')!;
       const nBefore = store.s.draft.n;
       await plus().trigger('click');
       expect(store.s.draft.n).toBe(nBefore + 1);   // a click in the enabled range actually acts
@@ -252,7 +252,7 @@ describe('BuildView', () => {
       // slots filled", canBuild goes false, and "+" is disabled — so the only
       // way back to a legal draft is tapping "-" until it is one
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       const { FRAMES } = await import('../../data/hardware.js');
       const roomiest = FRAMES.reduce((a, b) => b.slots > a.slots ? b : a);
       const smallest = FRAMES.reduce((a, b) => b.slots < a.slots ? b : a);
@@ -261,21 +261,21 @@ describe('BuildView', () => {
       await nextTick();
 
       // pick the smallest frame through the real picker, as a player would
-      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Frame')).trigger('click');
-      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes(smallest.name));
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Frame'))!.trigger('click');
+      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes(smallest.name))!;
       await row.trigger('click');
       await nextTick();
 
       expect(store.s.draft.frame).toBe(smallest.id);
       expect(store.s.draft.n).toBeLessThanOrEqual(
         Math.min(smallest.slots, store.PART(store.s.draft.mobo).pcie));
-      expect(store.checks.find(c => c.label.includes('slots')).ok).toBe(true);
+      expect(store.checks.find(c => c.label.includes('slots'))!.ok).toBe(true);
     });
 
     it('re-enables "+" after switching to a frame/board pair with more room', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]')!;
       for (let i = 0; i < 24 && plus().attributes('disabled') === undefined; i++) {
         await plus().trigger('click');
       }
@@ -303,7 +303,7 @@ describe('BuildView', () => {
       // itself were still wrong.
       const { wrapper, store } = mountWithStore(BuildView);
       // The headline figures live in the hero's stat strip now.
-      const stat = k => wrapper.find('[data-stat="' + k + '"]').text();
+      const stat = k => wrapper.find('[data-stat="' + k + '"]')!.text();
       expect(stat('cost')).toBe(fmt.usd(store.dp.cost));
       expect(stat('hash')).toBe(fmt.hash(store.dp.mh));
       expect(stat('draw')).toBe(fmt.w(store.dp.wall));
@@ -311,7 +311,7 @@ describe('BuildView', () => {
 
     it('eases toward the new numbers instead of swapping instantly when the draft changes', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
 
       const costBefore = store.dp.cost;
       // switching to the smallest frame in the catalogue changes the whole
@@ -346,7 +346,7 @@ describe('BuildView', () => {
 
     it('in Customise, shows every check — the itemized view a player troubleshooting a bad combo actually needs', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(store.checks.length);
       expect(wrapper.text()).toContain('MH/W');
       expect(wrapper.text()).toContain('Site impact');
@@ -365,9 +365,9 @@ describe('BuildView', () => {
     it('switching modes swaps the verdict shape live, without a remount', async () => {
       const { wrapper } = mountWithStore(BuildView);
       expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       expect(wrapper.findAll('.chk.ok, .chk.no').length).toBeGreaterThan(0);
-      await wrapper.findAll('button').find(b => b.text() === 'Quick pick').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Quick pick')!.trigger('click');
       expect(wrapper.findAll('.chk.ok, .chk.no')).toHaveLength(0);
     });
 
@@ -398,11 +398,11 @@ describe('BuildView', () => {
   describe('the rebuilt surface', () => {
     it('the hero fronts the draft with a photograph, its free positions and three stats', () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      expect(wrapper.find('.bhero .bh-shot').exists()).toBe(true);
+      expect(wrapper.find('.bhero .bh-shot')!.exists()).toBe(true);
       const free = store.siteSlots(store.active) - store.siteRigs(store.active).length;
-      expect(wrapper.find('.bh-free').text()).toContain(free + ' free position');
+      expect(wrapper.find('.bh-free')!.text()).toContain(free + ' free position');
       expect(wrapper.findAll('.bh-stats .s').length).toBe(3);
-      expect(wrapper.find('.bh-exp').text()).toContain('Expected');
+      expect(wrapper.find('.bh-exp')!.text()).toContain('Expected');
     });
 
     it('every part gets a row with its own component tile, in both modes', async () => {
@@ -410,18 +410,18 @@ describe('BuildView', () => {
       const rows = () => wrapper.findAll('.partrow');
       expect(rows().length).toBe(5);
       // Cards first — the rig is for them, and every other slot carries them.
-      expect(rows()[0].find('.lab').text()).toBe('Cards');
-      expect(rows().every(r => r.find('.parttile img').exists())).toBe(true);
+      expect(rows()[0].find('.lab')!.text()).toBe('Cards');
+      expect(rows().every(r => r.find('.parttile img')!.exists())).toBe(true);
       // Quick pick reports; only Customise invites.
       expect(rows().every(r => r.element.tagName === 'DIV')).toBe(true);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       expect(rows().every(r => r.element.tagName === 'BUTTON')).toBe(true);
     });
 
     it('states each part\'s per-rig count, and only the cards can change it', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-      const qty = wrapper.findAll('.partrow').map(r => r.find('.qty').text());
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+      const qty = wrapper.findAll('.partrow').map(r => r.find('.qty')!.text());
       expect(qty[0]).toBe('×' + store.s.draft.n);
       expect(qty.slice(1)).toEqual(['×1', '×1', '×1', '×1']);
       // No stepper on any row — the one that exists is the Count card's.
@@ -430,18 +430,18 @@ describe('BuildView', () => {
 
     it('the count stepper is inert in Quick pick, since the preset chose it', async () => {
       const { wrapper } = mountWithStore(BuildView);
-      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]');
-      const minus = () => wrapper.find('.stepper button[aria-label="Decrease card count"]');
+      const plus = () => wrapper.find('.stepper button[aria-label="Increase card count"]')!;
+      const minus = () => wrapper.find('.stepper button[aria-label="Decrease card count"]')!;
       expect(plus().attributes('disabled')).toBeDefined();
       expect(minus().attributes('disabled')).toBeDefined();
-      expect(wrapper.find('.bc-lock').exists()).toBe(true);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-      expect(wrapper.find('.bc-lock').exists()).toBe(false);
+      expect(wrapper.find('.bc-lock')!.exists()).toBe(true);
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+      expect(wrapper.find('.bc-lock')!.exists()).toBe(false);
     });
 
     it('order quantity is a select, capped at what the site can take', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      const sel = wrapper.find('#build-qty');
+      const sel = wrapper.find('#build-qty')!;
       expect(sel.exists()).toBe(true);
       expect(sel.findAll('option').length).toBe(Math.max(1, store.maxBuildQty()));
       expect(wrapper.text()).toContain('Max ' + store.maxBuildQty());
@@ -449,26 +449,26 @@ describe('BuildView', () => {
 
     it('each check states its claim and its evidence in separate columns', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       const rows = wrapper.findAll('.chkrow');
       expect(rows.length).toBe(store.checks.length);
       for (const [i, r] of rows.entries()) {
         // A short title on the left, the figures the check gates on at right.
-        expect(r.find('.ct').text().length).toBeGreaterThan(0);
-        expect(r.find('.cd').text()).toBe(store.checks.find(c => c.title === r.find('.ct').text()
-          || c.label === r.find('.cd').text()).label);
+        expect(r.find('.ct')!.text().length).toBeGreaterThan(0);
+        expect(r.find('.cd')!.text()).toBe(store.checks.find(c => c.title === r.find('.ct').text()
+          || c.label === r.find('.cd').text())!.label);
       }
-      expect(rows.some(r => r.find('.ct').text() === 'Power budget within limit')).toBe(true);
+      expect(rows.some(r => r.find('.ct')!.text() === 'Power budget within limit')).toBe(true);
     });
   });
 
   describe('the review fixes', () => {
     it('the draw stat reports where the SITE lands, so it colours when the check fails', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      const sub = () => wrapper.findAll('.bh-stats .s')[1].find('.u');
+      const sub = () => wrapper.findAll('.bh-stats .s')[1].find('.u')!;
       expect(sub().text()).toMatch(/^site at \d+% after$/);
       // Starve the site: the power check fails, and the stat has to say so.
-      const powerCheck = () => store.checks.find(c => c.title === 'Power budget within limit');
+      const powerCheck = () => store.checks.find(c => c.title === 'Power budget within limit')!;
       expect(powerCheck().ok).toBe(true);
       expect(sub().classes()).not.toContain('neg');
 
@@ -480,7 +480,7 @@ describe('BuildView', () => {
 
     it('the tour points at the Order button its own copy tells you to tap', () => {
       const { wrapper } = mountWithStore(BuildView);
-      const target = wrapper.find('[data-tour="build"]');
+      const target = wrapper.find('[data-tour="build"]')!;
       expect(target.exists()).toBe(true);
       expect(target.attributes('data-testid')).toBe('build');
       expect(target.text()).toContain('Order parts');
@@ -489,7 +489,7 @@ describe('BuildView', () => {
     it('prices the risers, which scale with the card count and are inside dp.cost', () => {
       const { wrapper, store } = mountWithStore(BuildView);
       const n = store.s.draft.n;
-      expect(wrapper.find('.bcount').text())
+      expect(wrapper.find('.bcount')!.text())
         .toContain('+' + n + ' risers ' + fmt.usd(n * store.RISER.price));
     });
   });
@@ -504,7 +504,7 @@ describe('BuildView', () => {
       // the primary-action style used everywhere else in the app.
       expect(cssRule('.btn-order.btn-pri')).toMatch(/color:\s*var\(--ink-on-accent\)/);
       const { wrapper } = mountWithStore(BuildView);
-      const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'));
+      const orderBtn = wrapper.findAll('button').find(b => b.text().includes('Order parts'))!;
       expect(orderBtn.classes()).toContain('btn-order');
       expect(orderBtn.classes()).toContain('btn-pri'); // the mounted preset is always buildable
     });
@@ -528,7 +528,7 @@ describe('BuildView', () => {
     it('tells assistive tech the draft is ready to order', () => {
       const { wrapper, store } = mountWithStore(BuildView);
       expect(store.canBuild).toBe(true); // the mounted preset always clears the gate
-      const live = wrapper.find('[aria-live="polite"].sr-only');
+      const live = wrapper.find('[aria-live="polite"].sr-only')!;
       expect(live.exists()).toBe(true);
       expect(live.text()).toBe('Ready to order for ' + fmt.usd(store.dp.cost) + '.');
     });
@@ -538,24 +538,24 @@ describe('BuildView', () => {
       // user scanning the panel, meaningless read out of context. The live
       // region carries the real check labels instead.
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       store.s.cash = 0;   // fails the "you hold $X" cash check unconditionally
       await nextTick();
       expect(store.canBuild).toBe(false);
-      const live = wrapper.find('[aria-live="polite"].sr-only');
-      const failingLabel = store.checks.find(c => !c.ok).label;
+      const live = wrapper.find('[aria-live="polite"].sr-only')!;
+      const failingLabel = store.checks.find(c => !c.ok)!.label;
       expect(live.text()).toBe('Cannot build yet: ' + failingLabel + '.');
     });
 
     it('joins multiple simultaneous failures into one announcement', async () => {
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       store.s.cash = 0;                 // fails the cash check
       store.s.draft.frame = 'f2';       // and, with the mounted preset's n, the slot check too
       await nextTick();
       const failing = store.checks.filter(c => !c.ok);
       expect(failing.length).toBeGreaterThan(1); // otherwise this isn't exercising the join at all
-      const live = wrapper.find('[aria-live="polite"].sr-only');
+      const live = wrapper.find('[aria-live="polite"].sr-only')!;
       expect(live.text()).toBe('Cannot build yet: ' + failing.map(c => c.label).join('; ') + '.');
     });
 
@@ -571,7 +571,7 @@ describe('BuildView', () => {
       // even with a tweened figure in the wrong place, since neither
       // branch's text would include a cost at all.
       const { wrapper, store } = mountWithStore(BuildView);
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       store.s.draft.n = 1;
       store.s.draft.frame = 'f2';
       await nextTick();
@@ -584,7 +584,7 @@ describe('BuildView', () => {
       expect(after).not.toBe(before);
       expect(store.canBuild).toBe(true);
 
-      const live = wrapper.find('[aria-live="polite"].sr-only');
+      const live = wrapper.find('[aria-live="polite"].sr-only')!;
       expect(live.text()).toBe('Ready to order for ' + fmt.usd(after) + '.');
 
       await new Promise(r => setTimeout(r, 400)); // well past costShown's ~320ms tween window
@@ -617,7 +617,7 @@ describe('BuildView', () => {
       for (const r of store.s.rigs) r.on = false;
       await nextTick();
       expect(store.canBuild).toBe(false);
-      const live = () => wrapper.find('[aria-live="polite"].sr-only').text();
+      const live = () => wrapper.find('[aria-live="polite"].sr-only')!.text();
       const seen = new Set([live()]);
       for (let i = 0; i < 100; i++) {
         store.s.cash = Math.max(0, store.s.cash - 0.01); // force a drift without flipping the gate
@@ -639,7 +639,7 @@ describe('BuildView', () => {
       store.s.cash = 0;
       await nextTick();
       expect(store.canBuild).toBe(false);
-      const live = () => wrapper.find('[aria-live="polite"].sr-only').text();
+      const live = () => wrapper.find('[aria-live="polite"].sr-only')!.text();
       expect(live()).toContain('Cannot build yet');
 
       store.s.cash = 100000;   // income arriving over time, not a player edit to the draft
@@ -666,17 +666,17 @@ describe('BuildView', () => {
 
     it('a manufactured part appears in its slot\'s Customise picker, past the catalogue', async () => {
       const { wrapper } = mountWithStore(BuildView, { seed: withCustomCooler });
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-      const coolRow = wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling'));
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+      const coolRow = wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling'))!;
       await coolRow.trigger('click');
       expect(wrapper.text()).toContain('Custom cooler');
     });
 
     it('picking it sets the draft to it, and its stats and price flow into the verdict', async () => {
       const { wrapper, store } = mountWithStore(BuildView, { seed: withCustomCooler });
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
-      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling')).trigger('click');
-      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Custom cooler'));
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling'))!.trigger('click');
+      const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Custom cooler'))!;
       await row.trigger('click');
 
       const part = store.s.customParts[0];
@@ -697,14 +697,14 @@ describe('BuildView', () => {
           f.queue[0].left = 0.0001; g.stepTick(1);
         },
       });
-      await wrapper.findAll('button').find(b => b.text() === 'Customise').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
 
-      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling')).trigger('click');
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Cooling'))!.trigger('click');
       expect(wrapper.text()).toContain('Custom cooler');
       expect(wrapper.text()).not.toContain('Custom supply');
-      await wrapper.find('.sheet-hd button').trigger('click'); // back
+      await wrapper.find('.sheet-hd button')!.trigger('click'); // back
 
-      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Supply')).trigger('click');
+      await wrapper.findAll('button.pickrow').find(r => r.text().includes('Supply'))!.trigger('click');
       expect(wrapper.text()).toContain('Custom supply');
       expect(wrapper.text()).not.toContain('Custom cooler');
     });

@@ -14,7 +14,7 @@ describe('SitesView', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    const powerToggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Power'));
+    const powerToggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Power'))!;
     await powerToggle.trigger('click');
     expect(wrapper.text()).toContain('Coming from');
     expect(wrapper.text()).toContain('Going to');
@@ -22,9 +22,9 @@ describe('SitesView', () => {
 
   it('opens the site picker sheet for a new site', async () => {
     const { wrapper } = mountWithStore(SitesView);
-    const newSiteBtn = wrapper.findAll('button').find(b => b.text().includes('New site'));
+    const newSiteBtn = wrapper.findAll('button').find(b => b.text().includes('New site'))!;
     await newSiteBtn.trigger('click');
-    expect(wrapper.find('.sheet').exists()).toBe(true);
+    expect(wrapper.find('.sheet')!.exists()).toBe(true);
     expect(wrapper.text()).toContain('New site');
     // the picker's v-if/else-if chain used to be split in two by a stray
     // element sitting between two branches, so an unrelated final v-else
@@ -34,11 +34,11 @@ describe('SitesView', () => {
 
   it('renaming the active site updates its displayed name', async () => {
     const { wrapper, store } = mountWithStore(SitesView);
-    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename')!;
     await renameBtn.trigger('click');
-    const input = wrapper.find('input');
+    const input = wrapper.find('input')!;
     await input.setValue('My Farm');
-    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name')!;
     await saveBtn.trigger('click');
     expect(store.s.sites[0].name).toBe('My Farm');
   });
@@ -48,7 +48,7 @@ describe('SitesView', () => {
      someone has opened the list. */
   it('names the active site in the switcher trigger, and toggles the list', async () => {
     const { wrapper, store } = mountWithStore(SitesView);
-    const trigger = wrapper.find('.sitepick-hd');
+    const trigger = wrapper.find('.sitepick-hd')!;
     expect(trigger.text()).toContain(store.s.sites[0].name);
     expect(trigger.attributes('aria-expanded')).toBe('false');
     await trigger.trigger('click');
@@ -60,16 +60,16 @@ describe('SitesView', () => {
       seed: g => { g.s.cash = 100000; g.newSite('shed'); },
     });
     const second = store.s.sites[1];
-    await wrapper.find('.sitepick-hd').trigger('click');
-    const row = wrapper.findAll('.sitepick-row').find(r => r.text().includes(second.name));
+    await wrapper.find('.sitepick-hd')!.trigger('click');
+    const row = wrapper.findAll('.sitepick-row').find(r => r.text().includes(second.name))!;
     await row.trigger('click');
     expect(store.s.activeSite).toBe(second.id);
-    expect(wrapper.find('.sitepick-hd').attributes('aria-expanded')).toBe('false');
+    expect(wrapper.find('.sitepick-hd')!.attributes('aria-expanded')).toBe('false');
   });
 
   it('marks the active site row with aria-current', () => {
     const { wrapper, store } = mountWithStore(SitesView);
-    const row = wrapper.findAll('.rowline').find(r => r.text().includes(store.s.sites[0].name));
+    const row = wrapper.findAll('.rowline').find(r => r.text().includes(store.s.sites[0].name))!;
     expect(row.attributes('aria-current')).toBe('true');
   });
 
@@ -90,15 +90,15 @@ describe('SitesView', () => {
     const { wrapper, store } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const tile = wrapper.find('button.rigtile');
+    const tile = wrapper.find('button.rigtile')!;
     expect(tile.exists()).toBe(true);
     // the same vocabulary .dot.* uses — not a parallel taxonomy
     expect(tile.classes()).toContain(store.rigState(store.s.rigs[0]).dot);
     expect(tile.attributes('aria-label')).toContain(store.s.rigs[0].name);
     // colour alone must not carry it: the legend names whatever is on screen
-    expect(wrapper.find('.riglegend .dot').classes())
+    expect(wrapper.find('.riglegend .dot')!.classes())
       .toContain(store.rigState(store.s.rigs[0]).dot);
-    expect(wrapper.find('.riglegend').text()).toMatch(/\S/);
+    expect(wrapper.find('.riglegend')!.text()).toMatch(/\S/);
   });
 
   it('a rig still under assembly reads as building, not as running', () => {
@@ -107,14 +107,14 @@ describe('SitesView', () => {
       // mid-assembly to exercise the tile's "building" rendering
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 60; },
     });
-    expect(wrapper.find('button.rigtile').classes()).toContain('build');
+    expect(wrapper.find('button.rigtile')!.classes()).toContain('build');
   });
 
   it('tapping a tile hands that rig to the Rigs tab', async () => {
     const { wrapper, store } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    await wrapper.find('button.rigtile').trigger('click');
+    await wrapper.find('button.rigtile')!.trigger('click');
     expect(store.s.focusRig).toBe(store.s.rigs[0].id);
     expect(store.s.tab).toBe('rigs');
   });
@@ -123,20 +123,20 @@ describe('SitesView', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const wrap = wrapper.find('.rigwrap');
+    const wrap = wrapper.find('.rigwrap')!;
     expect(wrap.classes().some(c => c.startsWith('ambient-'))).toBe(true);
-    expect(wrapper.find('.floor-temp').exists()).toBe(true);
-    expect(wrapper.find('.floor-temp').text()).toMatch(/\d/);
+    expect(wrapper.find('.floor-temp')!.exists()).toBe(true);
+    expect(wrapper.find('.floor-temp')!.text()).toMatch(/\d/);
   });
 
   it('occupied tile carries chain hue for the LED strip when the group has a chain', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const tile = wrapper.find('button.rigtile');
+    const tile = wrapper.find('button.rigtile')!;
     const style = tile.attributes('style') || '';
     expect(style).toMatch(/--chain-h/);
-    expect(tile.find('.rt-led').exists()).toBe(true);
+    expect(tile.find('.rt-led')!.exists()).toBe(true);
   });
 
   /* A position is addressed row-column, so the label on a tile is the label a
@@ -161,16 +161,16 @@ describe('SitesView', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    expect(wrapper.find('button.rigtile .rt-img').exists()).toBe(true);
-    expect(wrapper.find('.rigtile.empty .rt-img').exists()).toBe(false);
+    expect(wrapper.find('button.rigtile .rt-img')!.exists()).toBe(true);
+    expect(wrapper.find('.rigtile.empty .rt-img')!.exists()).toBe(false);
   });
 
   it('the legend names the empty state too, with its own swatch', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    expect(wrapper.find('.riglegend .dot.d-empty').exists()).toBe(true);
-    expect(wrapper.find('.riglegend').text()).toContain('Empty');
+    expect(wrapper.find('.riglegend .dot.d-empty')!.exists()).toBe(true);
+    expect(wrapper.find('.riglegend')!.text()).toContain('Empty');
   });
 
   it('the hero carries the site backdrop and the three headline readings', () => {
@@ -181,7 +181,7 @@ describe('SitesView', () => {
     expect(plates).toHaveLength(2);
     expect(plates[0].attributes('src')).toMatch(/bedroom-day/);
     expect(plates[1].attributes('src')).toMatch(/bedroom-night/);
-    const hero = wrapper.find('.site-hero').text();
+    const hero = wrapper.find('.site-hero')!.text();
     expect(hero).toContain('Hashrate');
     expect(hero).toContain('Power');
     expect(hero).toContain('Temp');
@@ -198,18 +198,18 @@ describe('SitesView', () => {
 
   it('the construction queue shows progress and a priced rush per job', async () => {
     const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
-    await wrapper.find('.sitepick-hd').trigger('click');
-    await wrapper.findAll('button').find(b => b.text().includes('New site')).trigger('click');
-    const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Garden shed'));
+    await wrapper.find('.sitepick-hd')!.trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('New site'))!.trigger('click');
+    const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Garden shed'))!;
     await row.trigger('click');
 
     const rows = wrapper.findAll('.qrow');
     expect(rows.length).toBeGreaterThan(0);
     // a site queue holds infrastructure, never rigs, so the badge names the
     // KIND of job — it must not borrow the floor plan's position addresses
-    expect(rows[0].find('.qslot').text()).toBe('Shell');
+    expect(rows[0].find('.qslot')!.text()).toBe('Shell');
     expect(rows[0].text()).not.toMatch(/\d\d-\d\d/);
-    const rush = rows[0].find('.qrush');
+    const rush = rows[0].find('.qrush')!;
     expect(rush.text()).toContain('Rush');
     const before = store.s.cash;
     await rush.trigger('click');
@@ -218,7 +218,7 @@ describe('SitesView', () => {
 
   describe('Fabrication', () => {
     const openFabSection = async wrapper => {
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
     };
 
@@ -232,11 +232,11 @@ describe('SitesView', () => {
       const { wrapper } = mountWithStore(SitesView);
       await openFabSection(wrapper);
       expect(wrapper.text()).toContain('single biggest bet in the game');
-      const installBtn = wrapper.findAll('button').find(b => b.text() === 'Install a fab');
+      const installBtn = wrapper.findAll('button').find(b => b.text() === 'Install a fab')!;
       expect(installBtn.exists()).toBe(true);
 
       await installBtn.trigger('click');
-      expect(wrapper.find('.sheet').exists()).toBe(true);
+      expect(wrapper.find('.sheet')!.exists()).toBe(true);
       expect(wrapper.text()).toContain('Bench fab');
       expect(wrapper.text()).toContain('Cleanroom fab');
       expect(wrapper.text()).toContain('Silicon foundry');
@@ -246,8 +246,8 @@ describe('SitesView', () => {
       const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
       const f = store.s.sites[0];
       await openFabSection(wrapper);
-      await wrapper.findAll('button').find(b => b.text() === 'Install a fab').trigger('click');
-      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'));
+      await wrapper.findAll('button').find(b => b.text() === 'Install a fab')!.trigger('click');
+      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'))!;
       await benchRow.trigger('click');
 
       expect(f.queue).toHaveLength(1);
@@ -270,14 +270,14 @@ describe('SitesView', () => {
         seed: g => { g.s.cash = 1000000; g.s.sites[0].fab = 'fab-bench'; },
       });
       await openFabSection(wrapper);
-      const upgradeBtn = wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab');
+      const upgradeBtn = wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab')!;
       expect(upgradeBtn.exists()).toBe(true);
       expect(wrapper.findAll('button').some(b => b.text() === 'Install a fab')).toBe(false);
 
       await upgradeBtn.trigger('click');
       // the fab section header legitimately still shows the current tier's
       // name behind the sheet — only the picker's own offered rows matter here
-      const sheetText = wrapper.find('.sheet').text();
+      const sheetText = wrapper.find('.sheet')!.text();
       expect(sheetText).not.toContain('Bench fab'); // the current tier isn't offered again
       expect(sheetText).toContain('Cleanroom fab');
       expect(sheetText).toContain('Silicon foundry');
@@ -289,8 +289,8 @@ describe('SitesView', () => {
       const { wrapper, store } = mountWithStore(SitesView, { seed: g => { g.s.cash = 1000000; } });
       const f = store.s.sites[0];
       await openFabSection(wrapper);
-      await wrapper.findAll('button').find(b => b.text() === 'Install a fab').trigger('click');
-      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'));
+      await wrapper.findAll('button').find(b => b.text() === 'Install a fab')!.trigger('click');
+      const benchRow = wrapper.findAll('.cmp-r').find(r => r.text().includes('Bench fab'))!;
       await benchRow.trigger('click');
       expect(f.queue).toHaveLength(1);
 
@@ -304,7 +304,7 @@ describe('SitesView', () => {
         seed: g => { g.s.cash = 1000000; g.s.sites[0].fab = 'fab-foundry'; },
       });
       await openFabSection(wrapper);
-      await wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Upgrade the fab')!.trigger('click');
 
       expect(wrapper.text()).toContain('already at the top tier');
     });
@@ -326,9 +326,9 @@ describe('SitesView', () => {
 
     it('opens a kind chooser limited to what the installed tier supports', async () => {
       const { wrapper } = mountWithStore(SitesView, { seed: withBench });
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part')!.trigger('click');
 
       expect(wrapper.text()).toContain('Cooler');
       expect(wrapper.text()).toContain('Supply');
@@ -337,17 +337,17 @@ describe('SitesView', () => {
 
     it('picking a kind opens the tuner, and bumping a stepper spends budget and improves the stat', async () => {
       const { wrapper, store } = mountWithStore(SitesView, { seed: withBench });
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
-      await wrapper.findAll('button').find(b => b.text().includes('Cooler')).trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part')!.trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Cooler'))!.trigger('click');
 
       expect(wrapper.text()).toContain('Design a Cooler');
       expect(wrapper.text()).toContain('0 / 30'); // nothing spent yet, rendered
       expect(store.designTotals('cool', store.s.design.picks).budget).toBe(0);
 
       const coolingFactorAxis = store.DESIGN_AXES.cool[0];
-      await wrapper.find(`button[aria-label="Increase ${coolingFactorAxis.label}"]`).trigger('click');
+      await wrapper.find(`button[aria-label="Increase ${coolingFactorAxis.label}"]`)!.trigger('click');
       await wrapper.vm.$nextTick();
 
       expect(store.s.design.picks[coolingFactorAxis.key]).toBe(1);
@@ -359,22 +359,22 @@ describe('SitesView', () => {
     it('manufacturing spends cash, queues a real job, and closes the sheet — completing it makes the part usable', async () => {
       const { wrapper, store } = mountWithStore(SitesView, { seed: withBench });
       const f = store.s.sites[0];
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
-      await wrapper.findAll('button').find(b => b.text().includes('Supply')).trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part')!.trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Supply'))!.trigger('click');
       const wattageAxis = store.DESIGN_AXES.psu[0];
-      await wrapper.find(`button[aria-label="Increase ${wattageAxis.label}"]`).trigger('click');
+      await wrapper.find(`button[aria-label="Increase ${wattageAxis.label}"]`)!.trigger('click');
 
       const cashBefore = store.s.cash;
-      await wrapper.find('.btn-pri').trigger('click'); // Manufacture
+      await wrapper.find('.btn-pri')!.trigger('click'); // Manufacture
 
       expect(store.s.design).toBe(null);
-      expect(wrapper.find('.sheet').exists()).toBe(false);
+      expect(wrapper.find('.sheet')!.exists()).toBe(false);
       expect(store.s.cash).toBeLessThan(cashBefore);
       expect(f.queue.some(j => j.kind === 'mfg')).toBe(true);
 
-      const job = f.queue.find(j => j.kind === 'mfg');
+      const job = f.queue.find(j => j.kind === 'mfg')!;
       job.left = 0.0001;
       store.stepTick(1);
 
@@ -395,10 +395,10 @@ describe('SitesView', () => {
         },
       });
       const liveTopMh = store.cards()[store.cards().length - 1].mh;
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
-      await wrapper.findAll('button').find(b => b.text().includes('Card')).trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part')!.trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Card'))!.trigger('click');
 
       // 0 points spent: the shown stat is the design's base, which must be
       // the LIVE top card's mh — the static top would read a smaller number
@@ -407,13 +407,13 @@ describe('SitesView', () => {
 
     it('the + stepper disables exactly where bumpDesignPick itself would start refusing', async () => {
       const { wrapper, store } = mountWithStore(SitesView, { seed: withBench });
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'));
+      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Design a part').trigger('click');
-      await wrapper.findAll('button').find(b => b.text().includes('Cooler')).trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Design a part')!.trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Cooler'))!.trigger('click');
 
       const axis = store.DESIGN_AXES.cool[0]; // fac, budgetCost 2 — 5 points costs 30, the bench's full budget
-      const plus = () => wrapper.find(`button[aria-label="Increase ${axis.label}"]`);
+      const plus = () => wrapper.find(`button[aria-label="Increase ${axis.label}"]`)!;
       for (let i = 0; i < 5; i++) {
         expect(plus().attributes('disabled')).toBeUndefined();
         await plus().trigger('click');

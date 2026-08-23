@@ -14,7 +14,7 @@ describe('RigsView', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    expect(wrapper.find('.rigrow').exists()).toBe(true);
+    expect(wrapper.find('.rigrow')!.exists()).toBe(true);
     expect(wrapper.text()).toContain('Rig 1');
     expect(wrapper.text()).toContain('Running');
   });
@@ -23,8 +23,8 @@ describe('RigsView', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    await wrapper.find('.rigrow').trigger('click');
-    const sheet = wrapper.find('.sheet');
+    await wrapper.find('.rigrow')!.trigger('click');
+    const sheet = wrapper.find('.sheet')!;
     expect(sheet.exists()).toBe(true);
     expect(sheet.attributes('role')).toBe('dialog');
     expect(sheet.attributes('aria-modal')).toBe('true');
@@ -37,8 +37,8 @@ describe('RigsView', () => {
     const { wrapper, store: g } = mountWithStore(RigsView, {
       seed: h => { h.generatePreset(); h.build(); h.s.rigs[0].building = 0; },
     });
-    await wrapper.find('.rigrow').trigger('click');
-    const repair = () => wrapper.findAll('.pickrow').find(b => b.text().includes('Repair'));
+    await wrapper.find('.rigrow')!.trigger('click');
+    const repair = () => wrapper.findAll('.pickrow').find(b => b.text().includes('Repair'))!;
 
     // Nothing worn yet: the row explains the threshold and cannot be pressed.
     expect(repair().text()).toContain('No cards worn past');
@@ -75,7 +75,7 @@ describe('RigsView', () => {
       for (const r of h.s.rigs) r.building = 0;
     };
     const openFleet = async wrapper => {
-      const btn = wrapper.findAll('button').find(b => b.text() === 'Fleet');
+      const btn = wrapper.findAll('button').find(b => b.text() === 'Fleet')!;
       await btn.trigger('click');
       return wrapper;
     };
@@ -104,9 +104,9 @@ describe('RigsView', () => {
       g.s.cash = 100000;
 
       // tick one row, then act on the selection
-      await wrapper.findAll('button').find(b => b.text().includes('Select')).trigger('click');
-      await wrapper.find('.rigrow').trigger('click');
-      await wrapper.findAll('button').find(b => b.text() === 'Act on these').trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Select'))!.trigger('click');
+      await wrapper.find('.rigrow')!.trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Act on these')!.trigger('click');
 
       expect(wrapper.text()).toContain('1 selected');
       // the scope reached the child: one rig's worth of work, not two
@@ -116,7 +116,7 @@ describe('RigsView', () => {
     it('closes back to the list', async () => {
       const { wrapper } = mountWithStore(RigsView, { seed: twoRigs });
       await openFleet(wrapper);
-      await wrapper.findAll('button').find(b => b.text().includes('Rigs')).trigger('click');
+      await wrapper.findAll('button').find(b => b.text().includes('Rigs'))!.trigger('click');
       expect(wrapper.text()).not.toContain('Fleet actions');
     });
   });
@@ -125,26 +125,26 @@ describe('RigsView', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const shot = wrapper.find('.rigshot');
+    const shot = wrapper.find('.rigshot')!;
     expect(shot.exists()).toBe(true);
-    expect(shot.find('img.rgs-img').exists()).toBe(true);
+    expect(shot.find('img.rgs-img')!.exists()).toBe(true);
     expect(shot.classes()).toContain('run');
     // Decorative: the row already says "Running" in text beside it, and the
     // chain is named there too rather than painted on the picture.
     expect(shot.attributes('aria-hidden')).toBe('true');
     expect(shot.attributes('role')).toBeUndefined();
-    expect(wrapper.find('.rigrow .st').text()).toContain('Running');
-    expect(wrapper.find('.rigrow .sb .cmk').exists()).toBe(true);
+    expect(wrapper.find('.rigrow .st')!.text()).toContain('Running');
+    expect(wrapper.find('.rigrow .sb .cmk')!.exists()).toBe(true);
   });
 
   it('the hero fronts the site with a photograph, its status and its position count', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    expect(wrapper.find('.rig-hero .rig-hero-shot').exists()).toBe(true);
-    expect(wrapper.find('.rig-hero-st .dot.run').exists()).toBe(true);
-    expect(wrapper.find('.rig-hero').text()).toContain('Active');
-    expect(wrapper.find('.rig-hero').text()).toMatch(/Positions used: 1 of \d+/);
+    expect(wrapper.find('.rig-hero .rig-hero-shot')!.exists()).toBe(true);
+    expect(wrapper.find('.rig-hero-st .dot.run')!.exists()).toBe(true);
+    expect(wrapper.find('.rig-hero')!.text()).toContain('Active');
+    expect(wrapper.find('.rig-hero')!.text()).toMatch(/Positions used: 1 of \d+/);
   });
 
   it('a filter that would empty the list is disabled rather than reachable', () => {
@@ -153,7 +153,7 @@ describe('RigsView', () => {
     });
     const pills = wrapper.findAll('.rigfilters .pill');
     expect(pills.length).toBe(5);
-    const byLabel = l => pills.find(p => p.text().includes(l));
+    const byLabel = l => pills.find(p => p.text().includes(l))!;
     expect(byLabel('Running').attributes('disabled')).toBeUndefined();
     expect(byLabel('Off').attributes('disabled')).toBeDefined();
     // The count the chip no longer prints is still readable to a screen reader.
@@ -164,11 +164,11 @@ describe('RigsView', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.build(); },
     });
-    expect(wrapper.find('.rigsort').text()).toContain('Name (A–Z)');
+    expect(wrapper.find('.rigsort')!.text()).toContain('Name (A–Z)');
     const names = () => wrapper.findAll('.rigrow .nm').map(n => n.text());
     const asc = names();
-    await wrapper.find('.rigsort-flip').trigger('click');
-    expect(wrapper.find('.rigsort').text()).toContain('Name (Z–A)');
+    await wrapper.find('.rigsort-flip')!.trigger('click');
+    expect(wrapper.find('.rigsort')!.text()).toContain('Name (Z–A)');
     expect(names()).toEqual([...asc].reverse());
   });
 
@@ -188,21 +188,21 @@ describe('RigsView', () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    await wrapper.find('.rigsel').trigger('click');
-    const bar = wrapper.find('.selbar');
+    await wrapper.find('.rigsel')!.trigger('click');
+    const bar = wrapper.find('.selbar')!;
     expect(bar.exists()).toBe(true);
-    expect(wrapper.find('.riglist .selbar').exists()).toBe(false);
+    expect(wrapper.find('.riglist .selbar')!.exists()).toBe(false);
   });
 
   it('rig detail header shows a larger chassis instead of a bare status dot', async () => {
     const { wrapper } = mountWithStore(RigsView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    await wrapper.find('button.rigrow').trigger('click');
-    const ch = wrapper.find('.sheet .chassis.lg');
+    await wrapper.find('button.rigrow')!.trigger('click');
+    const ch = wrapper.find('.sheet .chassis.lg')!;
     expect(ch.exists()).toBe(true);
-    const hasBody = ch.find('.ch-img').exists() || ch.find('.ch-led').exists();
+    const hasBody = ch.find('.ch-img')!.exists() || ch.find('.ch-led')!.exists();
     expect(hasBody).toBe(true);
-    expect(wrapper.find('.sheet').text()).toMatch(/Running|Building|Off|Worn|attention/i);
+    expect(wrapper.find('.sheet')!.text()).toMatch(/Running|Building|Off|Worn|attention/i);
   });
 });

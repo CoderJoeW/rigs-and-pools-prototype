@@ -13,8 +13,8 @@ describe('Compare', () => {
     const wrapper = mount(Compare, { props: { title: 'Cheapest first', metric: 'cost', rows } });
     expect(wrapper.text()).toContain('Cheap part');
     expect(wrapper.text()).toContain('Better part');
-    expect(wrapper.find('.cmp-r.cur').exists()).toBe(true);
-    expect(wrapper.find('.cmp-r.locked').exists()).toBe(true);
+    expect(wrapper.find('.cmp-r.cur')!.exists()).toBe(true);
+    expect(wrapper.find('.cmp-r.locked')!.exists()).toBe(true);
   });
 
   it('renders rows as buttons when a pick handler is given, divs otherwise', () => {

@@ -72,18 +72,18 @@ describe('SiteFilm', () => {
     // It was cut from the night generation; over the day plate it would put
     // two different times of day in one frame.
     const w = mountFilm({ shell: 'garage', phase: 'day' });
-    expect(w.find('video').exists()).toBe(false);
+    expect(w.find('video')!.exists()).toBe(false);
   });
 
   it('leaves the still doing the work when motion is refused', () => {
     const w = mountFilm({ shell: 'garage', phase: 'night', motion: false });
-    expect(w.find('video').exists()).toBe(false);
+    expect(w.find('video')!.exists()).toBe(false);
     expect(w.findAll('.sf-plate')).toHaveLength(2);
   });
 
   it('shows the still for a shell with no film at all', () => {
     const w = mountFilm({ shell: 'bedroom', phase: 'night' });
-    expect(w.find('video').exists()).toBe(false);
+    expect(w.find('video')!.exists()).toBe(false);
     expect(w.findAll('.sf-plate')).toHaveLength(2);
   });
 
@@ -93,18 +93,18 @@ describe('SiteFilm', () => {
     // move between two film-bearing sites at night left the previous site's
     // loop playing over the new site's plate.
     const w = await mountLive({ shell: 'garage', phase: 'night' });
-    const before = w.find('video').element;
+    const before = w.find('video')!.element;
     expect(w.findAll('video source')[0].attributes('src')).toMatch(/garage-film/);
     await w.setProps({ shell: 'warehouse' });
     expect(w.findAll('video source')[0].attributes('src')).toMatch(/warehouse-film/);
-    expect(w.find('video').element).not.toBe(before);
+    expect(w.find('video')!.element).not.toBe(before);
   });
 
   it('drops the video when moving to a shell that has no film', async () => {
     const w = await mountLive({ shell: 'garage', phase: 'night' });
-    expect(w.find('video').exists()).toBe(true);
+    expect(w.find('video')!.exists()).toBe(true);
     await w.setProps({ shell: 'shed' });
-    expect(w.find('video').exists()).toBe(false);
+    expect(w.find('video')!.exists()).toBe(false);
     expect(w.findAll('.sf-plate')[1].attributes('src')).toMatch(/shed-night/);
   });
 

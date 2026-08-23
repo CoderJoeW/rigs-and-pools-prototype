@@ -4,7 +4,7 @@ import { freshStore } from '../../test/testStore.js';
 describe('founding a pool', () => {
   it('requires the bond up front and refuses without enough cash', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const need = g.bondReq(tessera, 'PPS');
     expect(need).toBeGreaterThan(0);
 
@@ -19,7 +19,7 @@ describe('founding a pool', () => {
     const cashBefore = g.s.cash;
     g.foundPool('tessera', 'PPLNS', 0.02);
 
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     expect(pool).toBeTruthy();
     expect(pool.live).toBe(true);
     expect(pool.scheme).toBe('PPLNS');
@@ -34,7 +34,7 @@ describe('bond management', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     const bondBefore = pool.bond;
     const cashBefore = g.s.cash;
 
@@ -47,7 +47,7 @@ describe('bond management', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     const floor = g.bondFloor(pool);
 
     g.releaseBond(pool, pool.bond);
@@ -58,7 +58,7 @@ describe('bond management', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
 
     g.withdrawProfit(pool);
     expect(pool.bond).toBe(pool.bond0);
@@ -76,7 +76,7 @@ describe('renaming a pool', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
 
     g.renamePool(pool, 'Alpha');
     expect(pool.name).toBe('Alpha');
@@ -84,7 +84,7 @@ describe('renaming a pool', () => {
 
   it('refuses to rename a rival pool', () => {
     const g = freshStore();
-    const rival = g.s.pools.find(p => p.owner !== 'you');
+    const rival = g.s.pools.find(p => p.owner !== 'you')!;
     const before = rival.name;
 
     g.renamePool(rival, 'Hijacked');
@@ -95,7 +95,7 @@ describe('renaming a pool', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     const before = pool.name;
 
     g.renamePool(pool, '   ');
@@ -108,7 +108,7 @@ describe('closing a pool', () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     g.setGroupPool(g.s.groups[0], pool.id);
     expect(g.s.groups[0].pool).toBe(pool.id);
 
@@ -127,7 +127,7 @@ describe("a PPS pool's continuous liability", () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -145,7 +145,7 @@ describe("a PPS pool's continuous liability", () => {
     const g = freshStore();
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     g.setGroupPool(g.s.groups[0], pool.id);
 
     pool.bond = -1;

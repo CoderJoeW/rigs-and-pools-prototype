@@ -40,9 +40,9 @@ describe('GroupCard', () => {
 
   it('renames the group through the store', async () => {
     const { wrapper, gr } = row();
-    await wrapper.findAll('button').find(b => b.text() === 'Rename').trigger('click');
-    await wrapper.find('input.group-rename-input').setValue('Night Shift');
-    await wrapper.findAll('button').find(b => b.text() === 'Save name').trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === 'Rename')!.trigger('click');
+    await wrapper.find('input.group-rename-input')!.setValue('Night Shift');
+    await wrapper.findAll('button').find(b => b.text() === 'Save name')!.trigger('click');
     expect(gr.name).toBe('Night Shift');
     expect(wrapper.text()).toContain('Night Shift');
   });
@@ -50,11 +50,11 @@ describe('GroupCard', () => {
   it('cancelling a rename leaves the group alone', async () => {
     const { wrapper, gr } = row();
     const before = gr.name;
-    await wrapper.findAll('button').find(b => b.text() === 'Rename').trigger('click');
-    await wrapper.find('input.group-rename-input').setValue('Discarded');
-    await wrapper.findAll('button').find(b => b.text() === 'Cancel').trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === 'Rename')!.trigger('click');
+    await wrapper.find('input.group-rename-input')!.setValue('Discarded');
+    await wrapper.findAll('button').find(b => b.text() === 'Cancel')!.trigger('click');
     expect(gr.name).toBe(before);
-    expect(wrapper.find('input.group-rename-input').exists()).toBe(false);
+    expect(wrapper.find('input.group-rename-input')!.exists()).toBe(false);
   });
 
   it('shows the rack share against the farm-wide total it is given', () => {

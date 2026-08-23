@@ -11,7 +11,7 @@ describe('RigShot', () => {
     const crate = mount(RigShot, { props: { frame: 'f2', state: 'run' } });
     const frame = mount(RigShot, { props: { frame: 'f6', state: 'run' } });
     const rack = mount(RigShot, { props: { frame: 'f16', state: 'run' } });
-    const srcs = [crate, frame, rack].map(w => w.find('img').attributes('src'));
+    const srcs = [crate, frame, rack].map(w => w.find('img')!.attributes('src'));
     // The whole point of the second axis: three frames, three pictures.
     expect(new Set(srcs).size).toBe(3);
     expect(srcs[0]).toMatch(/crate-run/);
@@ -21,7 +21,7 @@ describe('RigShot', () => {
 
   it('keeps the class and changes only the light as state changes', () => {
     const seen = STATES.map(state =>
-      mount(RigShot, { props: { frame: 'f16', state } }).find('img').attributes('src')!);
+      mount(RigShot, { props: { frame: 'f16', state } }).find('img')!.attributes('src')!);
     expect(new Set(seen).size).toBe(STATES.length);
     // Every one of them is still the rack chassis, not some other machine.
     expect(seen.every(s => /rack-/.test(s))).toBe(true);
@@ -40,7 +40,7 @@ describe('RigShot', () => {
     // corrupted one: the row must still draw something.
     expect(rigClass('nonsense')).toBe('frame');
     const w = mount(RigShot, { props: { frame: 'nonsense', state: 'run' } });
-    expect(w.find('img').attributes('src')).toMatch(/frame-run/);
+    expect(w.find('img')!.attributes('src')).toMatch(/frame-run/);
   });
 
   it('falls back to off rather than blanking on an unknown state', () => {

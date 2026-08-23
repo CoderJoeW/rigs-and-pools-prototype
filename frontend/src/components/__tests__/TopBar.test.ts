@@ -22,11 +22,11 @@ describe('TopBar', () => {
   it('the help toggle flips its own label', async () => {
     // Found by its own text, not the bare .helptog class — the "tour"
     // replay pill (below) shares that class and, wherever it renders
-    // first in the DOM, .find('.helptog') would silently grab IT instead
+    // first in the DOM, .find('.helptog')! would silently grab IT instead
     // whenever both are present, rather than the help toggle this test
     // means to exercise.
     const { wrapper } = mountWithStore(TopBar);
-    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()));
+    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()))!;
     expect(toggle.text()).toBe('hide help'); // help defaults to on
     await toggle.trigger('click');
     expect(toggle.text()).toBe('help');
@@ -36,8 +36,8 @@ describe('TopBar', () => {
     const { wrapper } = mountWithStore(TopBar, {
       seed: g => { g.generatePreset(); g.build(); }, // makes the tour pill render too
     });
-    expect(wrapper.findAll('button').find(b => b.text() === 'tour')).toBeTruthy(); // sanity: both really are present
-    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()));
+    expect(wrapper.findAll('button').find(b => b.text() === 'tour')!).toBeTruthy(); // sanity: both really are present
+    const toggle = wrapper.findAll('.helptog').find(b => /help/.test(b.text()))!;
     expect(toggle.text()).toBe('hide help');
     await toggle.trigger('click');
     expect(toggle.text()).toBe('help');
@@ -45,14 +45,14 @@ describe('TopBar', () => {
 
   it('the "tour" replay pill stays hidden while the tour is already up', () => {
     const { wrapper } = mountWithStore(TopBar); // fresh store: the tour is showing by default
-    expect(wrapper.findAll('button').find(b => b.text() === 'tour')).toBeUndefined();
+    expect(wrapper.findAll('button').find(b => b.text() === 'tour')!).toBeUndefined();
   });
 
   it('the "tour" pill appears once the tour is out of the way, and restarts it on click', async () => {
     const { wrapper, store } = mountWithStore(TopBar, {
       seed: g => { g.generatePreset(); g.build(); }, // past the tour's own gate
     });
-    const tourBtn = wrapper.findAll('button').find(b => b.text() === 'tour');
+    const tourBtn = wrapper.findAll('button').find(b => b.text() === 'tour')!;
     expect(tourBtn).toBeTruthy();
 
     await tourBtn.trigger('click');
@@ -65,10 +65,10 @@ describe('TopBar', () => {
     // (main.css) — a regression here would silently undo the fix, since
     // the class names are all that ties this markup to those rules.
     const { wrapper } = mountWithStore(TopBar);
-    expect(wrapper.find('.top-left').exists()).toBe(true);
-    expect(wrapper.find('.top-right').exists()).toBe(true);
-    expect(wrapper.find('.top-left').text()).toContain('Rigs & Pools');
-    expect(wrapper.find('.top-right').text()).toContain('$500.00');
+    expect(wrapper.find('.top-left')!.exists()).toBe(true);
+    expect(wrapper.find('.top-right')!.exists()).toBe(true);
+    expect(wrapper.find('.top-left')!.text()).toContain('Rigs & Pools');
+    expect(wrapper.find('.top-right')!.text()).toContain('$500.00');
   });
 
   it('main.css lets .top-left wrap instead of pushing the cash figure off-screen on a narrow phone', () => {

@@ -32,20 +32,20 @@ describe('WelcomeTour', () => {
     const { wrapper } = mountWithStore(WelcomeTour, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
   });
 
   it('renders nothing once the tour has been skipped', () => {
     const { wrapper } = mountWithStore(WelcomeTour, {
       seed: g => g.dismissTour(),
     });
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
   });
 
   it('Next walks forward through the slides AND switches to the tab each one is about', async () => {
     const { wrapper, store } = mountWithStore(WelcomeTour);
-    const next = () => wrapper.findAll('button').find(b => b.text() === 'Next');
-    const back = () => wrapper.findAll('button').find(b => b.text() === 'Back');
+    const next = () => wrapper.findAll('button').find(b => b.text() === 'Next')!;
+    const back = () => wrapper.findAll('button').find(b => b.text() === 'Back')!;
 
     expect(back()).toBeUndefined(); // no Back on the first slide
 
@@ -72,7 +72,7 @@ describe('WelcomeTour', () => {
     expect(wrapper.text()).toContain('Market — turn coins into cash');
     expect(wrapper.text()).toContain('5 of 7');
 
-    const next = wrapper.findAll('button').find(b => b.text() === 'Next');
+    const next = wrapper.findAll('button').find(b => b.text() === 'Next')!;
     await next.trigger('click');
     expect(store.s.tab).toBe('stats'); // advances from wherever the player actually is
   });
@@ -88,7 +88,7 @@ describe('WelcomeTour', () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain('Let’s build your first rig');
     expect(wrapper.text()).toContain('7 of 7');
-    expect(wrapper.findAll('button').find(b => b.text() === "Got it — let's build")).toBeTruthy();
+    expect(wrapper.findAll('button').find(b => b.text() === "Got it — let's build")!).toBeTruthy();
   });
 
   it('walks through all seven tabs in order, ending on Build', async () => {
@@ -96,60 +96,60 @@ describe('WelcomeTour', () => {
     const order = ['farm', 'sites', 'rigs', 'chains', 'market', 'stats', 'build'];
     expect(store.s.tab).toBe(order[0]);
     for (let i = 1; i < order.length; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
       expect(store.s.tab).toBe(order[i]);
     }
     expect(wrapper.text()).toContain('7 of 7');
-    expect(wrapper.findAll('button').find(b => b.text() === 'Next')).toBeUndefined();
+    expect(wrapper.findAll('button').find(b => b.text() === 'Next')!).toBeUndefined();
   });
 
   it('the last slide swaps Next for a finishing button that dismisses the tour', async () => {
     const { wrapper, store } = mountWithStore(WelcomeTour);
     for (let i = 0; i < 6; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
     expect(store.s.tab).toBe('build');
-    const finish = wrapper.findAll('button').find(b => b.text() === "Got it — let's build");
+    const finish = wrapper.findAll('button').find(b => b.text() === "Got it — let's build")!;
     expect(finish).toBeTruthy();
 
     await finish.trigger('click');
     expect(store.s.tourDismissed).toBe(true);
     expect(store.s.tab).toBe('build'); // stays put — the tour already navigated here
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
   });
 
   it('Skip is available on every slide and dismisses without forcing any particular tab', async () => {
     const { wrapper, store } = mountWithStore(WelcomeTour);
-    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click'); // -> sites
-    const skip = wrapper.findAll('button').find(b => b.text() === 'Skip');
+    await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click'); // -> sites
+    const skip = wrapper.findAll('button').find(b => b.text() === 'Skip')!;
     await skip.trigger('click');
     expect(store.s.tourDismissed).toBe(true);
     expect(store.s.tab).toBe('sites'); // wherever the tour had them, left alone
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
   });
 
   it('building a rig mid-tour (via the real Build tab underneath) ends the tour on its own', async () => {
     const { wrapper, store } = mountWithStore(WelcomeTour);
     for (let i = 0; i < 6; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
     expect(store.s.tab).toBe('build');
     store.generatePreset();
     store.build();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour').exists()).toBe(false); // no click on the tour's own button needed
+    expect(wrapper.find('.tour')!.exists()).toBe(false); // no click on the tour's own button needed
   });
 
   it('has no spotlight yet on the frame it mounts — nothing to darken before the target is even found', () => {
     const { wrapper } = mountWithStore(WelcomeTour);
-    expect(wrapper.find('.tour-spot').exists()).toBe(false);
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(false);
   });
 
   it('spotlights the real target element once the current slide\'s selector resolves', async () => {
     const { wrapper } = mountWithTarget('farm');
     await settle();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -157,7 +157,7 @@ describe('WelcomeTour', () => {
     const { wrapper } = mountWithTarget('sites'); // slide 1 is 'farm', not 'sites'
     await settle();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot').exists()).toBe(false);
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -171,11 +171,11 @@ describe('WelcomeTour', () => {
     });
     const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
     await settle();
-    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(true);
 
-    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     await settle();
-    expect(wrapper.find('.tour-spot').exists()).toBe(true); // still lit — 'sites' target exists too
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(true); // still lit — 'sites' target exists too
     wrapper.unmount();
   });
 
@@ -194,9 +194,9 @@ describe('WelcomeTour', () => {
       ]),
     });
     const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
-    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click'); // -> sites
+    await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click'); // -> sites
     await settle();
-    expect(wrapper.find('.tour-spot').exists()).toBe(true);
+    expect(wrapper.find('.tour-spot')!.exists()).toBe(true);
 
     // jsdom has no real scrollIntoView (the component itself guards for
     // that, see WelcomeTour.vue) — stub one so it's spyable here.
@@ -212,7 +212,7 @@ describe('WelcomeTour', () => {
     await settle();
 
     expect(scrollSpy).not.toHaveBeenCalled(); // re-measured in place, not re-scrolled-to
-    const spot = wrapper.find('.tour-spot');
+    const spot = wrapper.find('.tour-spot')!;
     expect(spot.exists()).toBe(true);
     expect(parseFloat(spot.element.style.top)).toBeCloseTo(999-6); // PAD=6, and it actually followed
     wrapper.unmount();
@@ -226,19 +226,19 @@ describe('WelcomeTour', () => {
       ]),
     });
     const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
-    await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click'); // -> sites
+    await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click'); // -> sites
     await settle();
-    expect(wrapper.find('.tour-spot').element.style.transition).toBe(''); // normal (CSS-defined) by default
+    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe(''); // normal (CSS-defined) by default
 
     document.getElementById('scroll-container-2')
       .dispatchEvent(new Event('scroll', { bubbles:false }));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot').element.style.transition).toBe('none');
+    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe('none');
 
     // settles back to normal a moment after the scroll stops, not forever
     await new Promise(r => setTimeout(r, 200));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot').element.style.transition).toBe('');
+    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe('');
     wrapper.unmount();
   });
 
@@ -251,7 +251,7 @@ describe('WelcomeTour', () => {
     const { wrapper } = mountWithTarget('farm');
     await settle();
     await wrapper.vm.$nextTick();
-    const spot = wrapper.find('.tour-spot');
+    const spot = wrapper.find('.tour-spot')!;
     expect(spot.exists()).toBe(true);
     expect(spot.attributes('aria-hidden')).toBe('true');
     wrapper.unmount();
@@ -280,7 +280,7 @@ describe('WelcomeTour', () => {
     const { wrapper, store } = mountWithStore(WelcomeTour, {
       seed: g => { g.generatePreset(); g.build(); }, // past the first-session gate already
     });
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
 
     store.restartTour();
     await wrapper.vm.$nextTick();
@@ -292,10 +292,10 @@ describe('WelcomeTour', () => {
     const { wrapper, store } = mountWithStore(WelcomeTour);
     // walk to the end, then skip — same as a player who finished it once
     for (let i = 0; i < 6; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
-    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build").trigger('click');
-    expect(wrapper.find('.tour').exists()).toBe(false);
+    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build")!.trigger('click');
+    expect(wrapper.find('.tour')!.exists()).toBe(false);
 
     store.restartTour();
     await wrapper.vm.$nextTick();
@@ -309,7 +309,7 @@ describe('WelcomeTour', () => {
     // farm to build "your first rig" reads as broken, not just imprecise.
     const { wrapper } = mountWithStore(WelcomeTour); // first session: nextId===1
     for (let i = 0; i < 6; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
     expect(wrapper.text()).toContain('Let’s build your first rig');
 
@@ -318,7 +318,7 @@ describe('WelcomeTour', () => {
     });
     await replayWrapper.vm.$nextTick();
     for (let i = 0; i < 6; i++) {
-      await replayWrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await replayWrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
     expect(replayWrapper.text()).not.toContain('your first rig');
     expect(replayWrapper.text()).toContain('Build another rig');

@@ -31,14 +31,14 @@ function makeHarness(closeSpy: () => void, { startOpen = false } = {}) {
 describe('useSheetA11y', () => {
   it('moves focus into the panel when it opens, and back to the trigger when it closes', async () => {
     const wrapper = mount(makeHarness(() => {}), { attachTo: document.body });
-    const trigger = wrapper.find('#trigger').element as HTMLElement;
+    const trigger = wrapper.find('#trigger')!.element as HTMLElement;
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
 
-    await wrapper.find('#trigger').trigger('click');
+    await wrapper.find('#trigger')!.trigger('click');
     await nextTick();
     await nextTick(); // the composable's own nextTick before focusing
-    expect(document.activeElement).toBe(wrapper.find('#first').element);
+    expect(document.activeElement).toBe(wrapper.find('#first')!.element);
 
     wrapper.vm.open = false;
     await nextTick();
@@ -49,7 +49,7 @@ describe('useSheetA11y', () => {
   it('Escape calls the close handler', async () => {
     const closeSpy = vi.fn();
     const wrapper = mount(makeHarness(closeSpy), { attachTo: document.body });
-    await wrapper.find('#trigger').trigger('click');
+    await wrapper.find('#trigger')!.trigger('click');
     await nextTick();
     await nextTick();
 
@@ -60,12 +60,12 @@ describe('useSheetA11y', () => {
 
   it('Tab from the last focusable wraps to the first, trapping focus in the panel', async () => {
     const wrapper = mount(makeHarness(() => {}), { attachTo: document.body });
-    await wrapper.find('#trigger').trigger('click');
+    await wrapper.find('#trigger')!.trigger('click');
     await nextTick();
     await nextTick();
 
-    const last = wrapper.find('#last').element as HTMLElement;
-    const first = wrapper.find('#first').element as HTMLElement;
+    const last = wrapper.find('#last')!.element as HTMLElement;
+    const first = wrapper.find('#first')!.element as HTMLElement;
     last.focus();
     expect(document.activeElement).toBe(last);
 
@@ -85,7 +85,7 @@ describe('useSheetA11y', () => {
     const wrapper = mount(makeHarness(() => {}, { startOpen: true }), { attachTo: document.body });
     await nextTick();
     await nextTick(); // the composable's own nextTick before focusing
-    expect(document.activeElement).toBe(wrapper.find('#first').element);
+    expect(document.activeElement).toBe(wrapper.find('#first')!.element);
     wrapper.unmount();
   });
 

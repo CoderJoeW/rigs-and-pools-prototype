@@ -22,7 +22,7 @@ describe('sell', () => {
 
   it('a bad amount never poisons the price', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const refBefore = tessera.ref;
     g.s.wallet.tessera = NaN;
     g.sell('tessera', 1);
@@ -36,8 +36,8 @@ describe('sell', () => {
 
   it('selling into a thin book costs more slippage than a deep one', () => {
     const g = freshStore();
-    const thin = g.s.chains.find(c => c.id === 'halcyon');  // depth 2470
-    const deep = g.s.chains.find(c => c.id === 'obelisk');  // depth 222700
+    const thin = g.s.chains.find(c => c.id === 'halcyon')!;  // depth 2470
+    const deep = g.s.chains.find(c => c.id === 'obelisk')!;  // depth 222700
     g.s.wallet.halcyon = 500;
     g.s.wallet.obelisk = 500;
 
@@ -83,7 +83,7 @@ describe('buy', () => {
 
   it('pushes the price up, the mirror of how selling pushes it down', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const priceBefore = g.price(tessera);
 
     g.buy('tessera', 0.9);
@@ -94,7 +94,7 @@ describe('buy', () => {
 
   it('a buying premium fades back toward fundamental over time, same as a discount', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.buy('tessera', 0.9);
     const impactAfterBuy = tessera.impact;
     expect(impactAfterBuy).toBeLessThan(0);

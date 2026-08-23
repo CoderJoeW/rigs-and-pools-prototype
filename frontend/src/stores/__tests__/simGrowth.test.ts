@@ -21,7 +21,7 @@ import { SIM_MIN_HASH, SIM_SEATS_MIN, SIM_SOFT_CAP, SIM_START } from '../../game
    Pinia — createGame is plain Vue — and nothing here shares a G. */
 const freshStore = () => createGame();
 
-const chainOf = (g, id) => g.s.chains.find(c => c.id === id);
+const chainOf = (g, id) => g.s.chains.find(c => c.id === id)!;
 const simsOn = (g, id) => g.s.sims.filter(m => m.chain === id);
 
 /* Run the whole tick loop, not just simPulse: block awards, prices, pool
@@ -160,7 +160,7 @@ describe('the network as it grows', () => {
        subtracted from the pool twice and stranded in the solo bucket —
        which drawSimWinner reads to decide how often a solo miner wins. */
     const m = simsOn(g, cid)[0];
-    const pool = g.s.pools.find(p => p.chain === cid);
+    const pool = g.s.pools.find(p => p.chain === cid)!;
     pool.owner = 'sim'; pool.ownerSim = m.id; pool.live = true;
     g.setSimPool(m, pool.id);
 
@@ -192,7 +192,7 @@ describe('the network as it grows', () => {
     const g = freshStore();
     const cid = 'obelisk';
     const m = simsOn(g, cid)[0];
-    const pool = g.s.pools.find(p => p.chain === cid);
+    const pool = g.s.pools.find(p => p.chain === cid)!;
     pool.owner = 'sim'; pool.ownerSim = m.id; pool.live = true;
     pool.scheme = 'PPS'; pool.fee = 0.02;
     g.setSimPool(m, pool.id);

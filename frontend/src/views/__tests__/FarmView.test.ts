@@ -7,12 +7,12 @@ describe('FarmView', () => {
   it('shows the empty state before anything is built', () => {
     const { wrapper } = mountWithStore(FarmView);
     expect(wrapper.text()).toContain('Nothing installed');
-    expect(wrapper.find('button').text()).toContain('Go shopping');
+    expect(wrapper.find('button')!.text()).toContain('Go shopping');
   });
 
   it('going shopping switches to the Build tab', async () => {
     const { wrapper, store } = mountWithStore(FarmView);
-    await wrapper.find('button').trigger('click');
+    await wrapper.find('button')!.trigger('click');
     expect(store.s.tab).toBe('build');
   });
 
@@ -33,7 +33,7 @@ describe('FarmView', () => {
       seed: g => { g.generatePreset(); g.build(); },
     });
     const before = store.s.groups.length;
-    const addBtn = wrapper.findAll('button').find(b => b.text().includes('New group'));
+    const addBtn = wrapper.findAll('button').find(b => b.text().includes('New group'))!;
     await addBtn.trigger('click');
     expect(store.s.groups.length).toBe(before + 1);
   });
@@ -42,12 +42,12 @@ describe('FarmView', () => {
     const { wrapper, store } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename')!;
     await renameBtn.trigger('click');
 
-    const input = wrapper.find('input[placeholder="Group name"]');
+    const input = wrapper.find('input[placeholder="Group name"]')!;
     await input.setValue('Night Shift');
-    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name');
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save name')!;
     await saveBtn.trigger('click');
 
     expect(store.s.groups[0].name).toBe('Night Shift');
@@ -62,7 +62,7 @@ describe('FarmView', () => {
     const selects = wrapper.findAll('select');
     expect(selects.some(s => s.attributes('aria-label') === 'Chain for ' + groupName)).toBe(true);
     expect(selects.some(s => s.attributes('aria-label') === 'Pool for ' + groupName)).toBe(true);
-    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename');
+    const renameBtn = wrapper.findAll('button').find(b => b.text() === 'Rename')!;
     expect(renameBtn.attributes('aria-label')).toBe('Rename ' + groupName);
   });
 
@@ -78,7 +78,7 @@ describe('FarmView', () => {
       },
     });
     expect(wrapper.text()).toContain('sitting idle');
-    const buildBtn = wrapper.findAll('button').find(b => b.text() === 'Build one');
+    const buildBtn = wrapper.findAll('button').find(b => b.text() === 'Build one')!;
     expect(buildBtn).toBeTruthy();
     await buildBtn.trigger('click');
     expect(store.s.tab).toBe('build');
@@ -109,13 +109,13 @@ describe('FarmView', () => {
     const { wrapper } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const row = wrapper.find('button.siterow');
+    const row = wrapper.find('button.siterow')!;
     expect(row.exists()).toBe(true);
-    const shot = row.find('.siteshot');
+    const shot = row.find('.siteshot')!;
     expect(shot.exists()).toBe(true);
     // Keyed to the shell, not dealt out by site id: the starting site is a
     // spare bedroom and has to be showing the bedroom plate.
-    expect(row.find('.ss-img').attributes('src')).toMatch(/bedroom/);
+    expect(row.find('.ss-img')!.attributes('src')).toMatch(/bedroom/);
     // the shot carries the row's status, so it is not a decorative image
     expect(shot.attributes('aria-label')).toMatch(/ONLINE|IDLE|HOT/);
     expect(row.text()).toMatch(/ONLINE|IDLE|HOT/);
@@ -125,12 +125,12 @@ describe('FarmView', () => {
     const { wrapper } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); g.s.rigs[0].building = 0; },
     });
-    const row = wrapper.find('button.siterow');
+    const row = wrapper.find('button.siterow')!;
     expect(row.text()).toContain('Hash rate');
     expect(row.text()).toContain('Power');
     expect(row.text()).toContain('Temp');
     expect(row.text()).toContain('Utilization');
-    expect(row.find('.ubar i').attributes('style')).toMatch(/width:/);
+    expect(row.find('.ubar i')!.attributes('style')).toMatch(/width:/);
   });
 
   it('the day ledger reports the figures the overview cards leave out', () => {
@@ -150,11 +150,11 @@ describe('FarmView', () => {
       seed: g => { g.generatePreset(); g.build(); },
     });
     const gr = store.s.groups[0];
-    const pill = wrapper.find('.gsel');
+    const pill = wrapper.find('.gsel')!;
     expect(pill.exists()).toBe(true);
     // the visible pill mirrors the select's current value
     expect(pill.text()).toContain(store.chain(gr.chain).name);
-    const native = pill.find('select.gsel-native');
+    const native = pill.find('select.gsel-native')!;
     expect(native.exists()).toBe(true);
     expect(native.attributes('aria-label')).toBe('Chain for ' + gr.name);
   });
@@ -166,7 +166,7 @@ describe('FarmView', () => {
     // a fresh save has no closed day behind it, so there is nothing to compare
     // against and the chip must not invent a 0.0%
     expect(wrapper.text()).not.toContain('vs yesterday');
-    expect(wrapper.find('.delta').exists()).toBe(false);
+    expect(wrapper.find('.delta')!.exists()).toBe(false);
   });
 
   it('compares profit against yesterday\'s NET, not its gross revenue', () => {
@@ -185,8 +185,8 @@ describe('FarmView', () => {
     // also gets a (0%, 'up') delta chip ahead of this one in the DOM —
     // scope to the Profit/loss card specifically rather than the first
     // '.delta' on the page
-    const card = wrapper.findAll('.ovcard').find(c => c.text().includes('Profit / loss today'));
-    const chip = card.find('.delta');
+    const card = wrapper.findAll('.ovcard').find(c => c.text().includes('Profit / loss today'))!;
+    const chip = card.find('.delta')!;
     expect(chip.exists()).toBe(true);
     expect(chip.classes()).toContain('down');   // profit fell, however gross moved
   });
@@ -205,7 +205,7 @@ describe('FarmView', () => {
     });
     expect(store.dayPaceDelta('net', store.netDay)).toBeCloseTo(0, 5);
     expect(store.dayPaceDelta('power', store.powerDay)).toBeCloseTo(0, 5);
-    expect(wrapper.find('.delta').exists()).toBe(true);
+    expect(wrapper.find('.delta')!.exists()).toBe(true);
   });
 
   it('holds the pace chips back while too little of the day has run to project', () => {
@@ -234,8 +234,8 @@ describe('FarmView', () => {
         g.s.netHist = [90, 60, 30, 5];   // moving the opposite way
       },
     });
-    const costCard = wrapper.findAll('.ovcard').find(c => c.text().includes('Cost today'));
-    const d = costCard.find('.ov-spark path').attributes('d');
+    const costCard = wrapper.findAll('.ovcard').find(c => c.text().includes('Cost today'))!;
+    const d = costCard.find('.ov-spark path')!.attributes('d');
     expect(d).toBe(sparkPath(store.s.powerHist, 22, 20, 0));
     expect(d).not.toBe(sparkPath(store.s.netHist, 22, 20, 0));
   });
@@ -252,7 +252,7 @@ describe('FarmView', () => {
       },
     });
     expect(wrapper.text()).toContain('vs yesterday');
-    expect(wrapper.find('.delta').exists()).toBe(true);
+    expect(wrapper.find('.delta')!.exists()).toBe(true);
   });
 
   it('counts the automation rules that are actually switched on', async () => {
@@ -269,7 +269,7 @@ describe('FarmView', () => {
     const { wrapper, store } = mountWithStore(FarmView, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    const row = wrapper.find('button.siterow');
+    const row = wrapper.find('button.siterow')!;
     expect(row.exists()).toBe(true);
     await row.trigger('click');
     expect(store.s.tab).toBe('sites');

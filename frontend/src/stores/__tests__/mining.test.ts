@@ -10,8 +10,8 @@ import { freshStore } from '../../test/testStore.js';
 describe('Tessera balance', () => {
   it('pays a $3 block at 20s target and stays above ladder rates while under floor', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
-    const nova = g.s.chains.find(c => c.id === 'nova');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
+    const nova = g.s.chains.find(c => c.id === 'nova')!;
     expect(tessera.reward * tessera.price).toBeCloseTo(3, 1);
     expect(tessera.target).toBe(20);
     g.generatePreset();
@@ -25,7 +25,7 @@ describe('Tessera balance', () => {
 
   it('does not permanently pin at the global $0.02 price floor (issue #18)', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -37,7 +37,7 @@ describe('Tessera balance', () => {
 
   it('the floor sits within reach of a modestly grown farm, not just a single rig forever', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -78,7 +78,7 @@ describe('solo block finding', () => {
 
   it('repeated orphans collapse into one feed line instead of spamming one each', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     tessera.orphan = 2;
     g.generatePreset();
     g.build();
@@ -95,7 +95,7 @@ describe('solo block finding', () => {
 
   it('difficulty (obs) retargets away from the floor once blocks land', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     expect(tessera.obs).toBe(tessera.floor);
 
     g.generatePreset();
@@ -112,14 +112,14 @@ describe('PPLNS payouts', () => {
     const g = freshStore();
     g.s.cash = 10000; // bond scales with $3 block value
     g.foundPool('tessera', 'PPLNS', 0.02);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.setGroupPool(g.s.groups[0], pool.id);
     expect(g.poolHash(pool)).toBeGreaterThan(0);
 
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const walletBefore = g.s.wallet.tessera;
     g.s.today.blocks = 0;
 
@@ -230,7 +230,7 @@ describe('jackpot blocks', () => {
 
   it('orphaned blocks pay nothing and never count toward the baseline', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     tessera.orphan = 2;
     g.generatePreset();
     g.build();
@@ -253,7 +253,7 @@ describe('jackpot blocks', () => {
     g.s.cash = 10000; // bond scales with $3 block value
 
     g.foundPool('tessera', 'PPLNS', 0.30);
-    const pool = g.s.pools.find(p => p.owner === 'you');
+    const pool = g.s.pools.find(p => p.owner === 'you')!;
     g.setGroupPool(g.s.groups[0], pool.id);
     expect(g.poolHash(pool)).toBeGreaterThan(0);
 
@@ -267,9 +267,9 @@ describe('jackpot blocks', () => {
 
   it('tracks a PPLNS share credited to you even when your own group did not draw the winning ticket (issue #32)', () => {
     const g = freshStore();
-    const pool = g.s.pools.find(p => p.chain === 'ferro' && p.owner !== 'you');
+    const pool = g.s.pools.find(p => p.chain === 'ferro' && p.owner !== 'you')!;
     pool.scheme = 'PPLNS'; pool.fee = 0.02; pool.live = true;
-    const sim = g.s.sims.find(m => m.chain === 'ferro');
+    const sim = g.s.sims.find(m => m.chain === 'ferro')!;
     if (g.setSimHash) g.setSimHash(sim, 1e6); else sim.hash = 1e6;
     if (g.setSimPool) g.setSimPool(sim, pool.id); else { sim.pool = pool.id; if (g.reindexSims) g.reindexSims(); }
 
@@ -293,7 +293,7 @@ describe('jackpot blocks', () => {
 describe('chain price', () => {
   it('fundOf rises when a chain carries more hashrate than it did when it opened', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const parPrice = g.fundOf(tessera);
     expect(parPrice).toBeGreaterThan(0);
 
@@ -311,7 +311,7 @@ describe('chain price', () => {
       if (g.generatePreset()) g.build();
     }
 
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const refBefore = tessera.ref;
     for (let i = 0; i < 10; i++) g.stepTick(86400 / 3);
     expect(tessera.ref).not.toBe(refBefore);

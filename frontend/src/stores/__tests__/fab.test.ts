@@ -182,10 +182,10 @@ describe('manufacturePart', () => {
     expect(liveTopMh).toBeGreaterThan(staticTopMh); // sanity: the catalogue genuinely grew
 
     g.openDesign(f.id,'unit');
-    const mhAxis=g.DESIGN_AXES.unit.find(a=>a.key==='mh');
+    const mhAxis=g.DESIGN_AXES.unit.find(a=>a.key==='mh')!;
     g.bumpDesignPick('mh',1);
     g.manufacturePart();
-    const job=f.queue.find(j=>j.kind==='mfg');
+    const job=f.queue.find(j=>j.kind==='mfg')!;
     job.left=0.0001; g.stepTick(1);
 
     const part=g.s.customParts[0];

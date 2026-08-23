@@ -15,7 +15,7 @@ const scopedRule = sel =>
 
 /* Four segments now, so anything below prices has to be switched to first. */
 const seg = (wrapper, label) =>
-  wrapper.findAll('.segtab').find(t => t.text().includes(label)).trigger('click');
+  wrapper.findAll('.segtab').find(t => t.text().includes(label))!.trigger('click');
 
 describe('MarketView', () => {
   it('shows the auto-sell drip controls and an empty ledger', () => {
@@ -35,13 +35,13 @@ describe('MarketView', () => {
   it('toggling the drip switch flips it on the store', async () => {
     const { wrapper, store } = mountWithStore(MarketView);
     expect(store.s.drip.on).toBe(true);
-    await wrapper.find('.switch').trigger('click');
+    await wrapper.find('.switch')!.trigger('click');
     expect(store.s.drip.on).toBe(false);
   });
 
   it('the erase-save button requires a second tap to confirm', async () => {
     const { wrapper, store } = mountWithStore(MarketView);
-    const eraseBtn = wrapper.findAll('button').find(b => b.text().includes('Erase save'));
+    const eraseBtn = wrapper.findAll('button').find(b => b.text().includes('Erase save'))!;
     await eraseBtn.trigger('click');
     expect(store.s.wipeArm).toBe(true);
     expect(wrapper.text()).toContain('Tap again to erase everything');
@@ -50,7 +50,7 @@ describe('MarketView', () => {
   it('defaults to Auto theme and switches on click', async () => {
     const { wrapper, store } = mountWithStore(MarketView);
     expect(store.s.theme).toBe('auto');
-    const darkBtn = wrapper.findAll('button').find(b => b.text() === 'Dark');
+    const darkBtn = wrapper.findAll('button').find(b => b.text() === 'Dark')!;
     await darkBtn.trigger('click');
     expect(store.s.theme).toBe('dark');
   });
@@ -68,11 +68,11 @@ describe('MarketView', () => {
     expect(tabs.length).toBe(4);
     expect(tabs.map(t => t.attributes('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
     for (const t of tabs) {
-      const panel = wrapper.find('#' + t.attributes('aria-controls'));
+      const panel = wrapper.find('#' + t.attributes('aria-controls'))!;
       expect(panel.attributes('role')).toBe('tabpanel');
       expect(panel.attributes('aria-labelledby')).toBe(t.attributes('id'));
     }
-    await wrapper.find('.segbar').trigger('keydown', { key: 'End' });
+    await wrapper.find('.segbar')!.trigger('keydown', { key: 'End' });
     expect(wrapper.findAll('.segtab')[3].attributes('aria-selected')).toBe('true');
   });
 
@@ -82,42 +82,42 @@ describe('MarketView', () => {
     });
     const cards = wrapper.findAll('.coincard');
     expect(cards.length).toBe(5);
-    const tsr = cards.find(c => c.text().includes('TSR'));
-    expect(tsr.find('.chaingem img').exists()).toBe(true);
+    const tsr = cards.find(c => c.text().includes('TSR'))!;
+    expect(tsr.find('.chaingem img')!.exists()).toBe(true);
     expect(tsr.text()).toContain('Tessera');
-    expect(tsr.find('.cc-w').text()).toBe('18h');
-    expect(tsr.find('.cc-spark path').attributes('d')).toBeTruthy();
+    expect(tsr.find('.cc-w')!.text()).toBe('18h');
+    expect(tsr.find('.cc-spark path')!.attributes('d')).toBeTruthy();
   });
 
   it('prices a sub-dollar coin in the digits it actually moves in', () => {
     const { wrapper, store } = mountWithStore(MarketView);
-    const tsr = wrapper.findAll('.coincard').find(c => c.text().includes('TSR'));
+    const tsr = wrapper.findAll('.coincard').find(c => c.text().includes('TSR'))!;
     // Tessera trades near $0.024 — two decimals would round the day away.
-    expect(tsr.find('.cc-p').text()).toBe('$' + store.price(store.chain('tessera')).toFixed(4));
-    const nva = wrapper.findAll('.coincard').find(c => c.text().includes('NVA'));
-    expect(nva.find('.cc-p').text()).toMatch(/^\$\d+\.\d{2}$/);
+    expect(tsr.find('.cc-p')!.text()).toBe('$' + store.price(store.chain('tessera')).toFixed(4));
+    const nva = wrapper.findAll('.coincard').find(c => c.text().includes('NVA'))!;
+    expect(nva.find('.cc-p')!.text()).toMatch(/^\$\d+\.\d{2}$/);
   });
 
   it('the change is measured between two samples, and says so when there are not two', () => {
     const { wrapper } = mountWithStore(MarketView);
     // A fresh chain has one sample, so there is no closed window to report.
-    expect(wrapper.findAll('.coincard')[0].find('.cc-chg').text()).toBe('new');
+    expect(wrapper.findAll('.coincard')[0].find('.cc-chg')!.text()).toBe('new');
   });
 
   it('a holding row shows its share of what the wallet is worth', async () => {
     const { wrapper, store } = mountWithStore(MarketView, {
       seed: g => { g.s.wallet.tessera = 1000; g.s.wallet.ferro = 0; },
     });
-    const row = wrapper.findAll('.holdrow').find(r => r.text().includes('TSR'));
+    const row = wrapper.findAll('.holdrow').find(r => r.text().includes('TSR'))!;
     // The only holding, so it is the whole wallet.
-    expect(row.find('.hr-pct').text()).toBe('100%');
-    expect(row.find('.hr-usd').text())
+    expect(row.find('.hr-pct')!.text()).toBe('100%');
+    expect(row.find('.hr-usd')!.text())
       .toContain(fmt.usd2(1000 * store.price(store.chain('tessera'))));
     // An empty wallet slot has no share to claim.
-    const ferro = wrapper.findAll('.holdrow').find(r => r.text().includes('FRO'));
-    expect(ferro.find('.hr-pct').text()).toBe('—');
+    const ferro = wrapper.findAll('.holdrow').find(r => r.text().includes('FRO'))!;
+    expect(ferro.find('.hr-pct')!.text()).toBe('—');
     // The bar is decorative — the percentage above it says the same thing.
-    expect(row.find('.hr-bar').attributes('aria-hidden')).toBeUndefined();
+    expect(row.find('.hr-bar')!.attributes('aria-hidden')).toBeUndefined();
   });
 
   it('the drip settings, ledger and setup each live behind their own segment', async () => {
@@ -126,12 +126,12 @@ describe('MarketView', () => {
       .map(p => !(p.attributes('style') || '').includes('display: none'));
     expect(vis()).toEqual([true, false, false, false]);
     await seg(wrapper, 'Auto-sell');
-    expect(wrapper.find('#mkpan-drip').text()).toContain('Order size');
+    expect(wrapper.find('#mkpan-drip')!.text()).toContain('Order size');
     await seg(wrapper, 'Ledger');
-    expect(wrapper.find('#mkpan-ledger').text()).toContain('Net to date');
-    expect(wrapper.find('#mkpan-ledger').text()).toContain('Taken in');
+    expect(wrapper.find('#mkpan-ledger')!.text()).toContain('Net to date');
+    expect(wrapper.find('#mkpan-ledger')!.text()).toContain('Taken in');
     await seg(wrapper, 'Setup');
-    expect(wrapper.find('#mkpan-setup').text()).toContain('Erase save');
+    expect(wrapper.find('#mkpan-setup')!.text()).toContain('Erase save');
   });
 
   describe('the review fixes', () => {
@@ -146,7 +146,7 @@ describe('MarketView', () => {
       const { wrapper } = mountWithStore(MarketView, {
         seed: g => { for (const c of g.s.chains) c.hist.push(c.price * 1.1); },
       });
-      const chg = wrapper.findAll('.coincard')[0].find('.cc-chg');
+      const chg = wrapper.findAll('.coincard')[0].find('.cc-chg')!;
       expect(chg.classes()).toContain('pos');
     });
 
@@ -155,8 +155,8 @@ describe('MarketView', () => {
       const thinnest = store.s.chains
         .reduce((a, c) => (c.depth < a.depth ? c : a));
       const tagged = wrapper.findAll('.holdrow')
-        .filter(r => r.find('.tag.d').exists())
-        .map(r => r.find('.hr-t').text().split(/\s/)[0]);
+        .filter(r => r.find('.tag.d')!.exists())
+        .map(r => r.find('.hr-t')!.text().split(/\s/)[0]);
       expect(tagged.length).toBeGreaterThan(0);
       expect(tagged).toContain(thinnest.tick);
       // Not everything is thin, or the badge says nothing.
@@ -167,11 +167,11 @@ describe('MarketView', () => {
       const { wrapper } = mountWithStore(MarketView, {
         seed: g => { g.s.wallet.tessera = 1_250_000; },
       });
-      const row = wrapper.findAll('.holdrow').find(r => r.text().includes('TSR'));
+      const row = wrapper.findAll('.holdrow').find(r => r.text().includes('TSR'))!;
       // The count is on its own line, and the percentage moved down beside
       // the dollar value, so neither line has to hold both.
-      expect(row.find('.hr-v').text()).toBe(fmt.c(1_250_000));
-      expect(row.find('.hr-usd').text()).toContain('%');
+      expect(row.find('.hr-v')!.text()).toBe(fmt.c(1_250_000));
+      expect(row.find('.hr-usd')!.text()).toContain('%');
       expect(scopedRule('.hd-head,.holdrow')).toMatch(/minmax\(86px,\s*auto\)/);
     });
   });

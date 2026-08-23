@@ -49,16 +49,16 @@ describe('App', () => {
     const { wrapper } = mountWithStore(App);
     mounted.push(wrapper);
     // deliberately NOT flushed yet — this is the exact gap being covered
-    expect(wrapper.find('.boot').exists()).toBe(true);
-    expect(wrapper.find('nav.tabs').exists()).toBe(false); // the real shell isn't there yet either
+    expect(wrapper.find('.boot')!.exists()).toBe(true);
+    expect(wrapper.find('nav.tabs')!.exists()).toBe(false); // the real shell isn't there yet either
   });
 
   it('replaces the loading screen with the real app once loadSave resolves', async () => {
     const { wrapper } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
-    expect(wrapper.find('.boot').exists()).toBe(false);
-    expect(wrapper.find('nav.tabs').exists()).toBe(true);
+    expect(wrapper.find('.boot')!.exists()).toBe(false);
+    expect(wrapper.find('nav.tabs')!.exists()).toBe(true);
   });
 
   it('shows live catch-up progress on the loading screen during a long offline return', async () => {
@@ -81,7 +81,7 @@ describe('App', () => {
     // screen actually reflects progress rather than sitting inert
     await new Promise(r => setTimeout(r, 20));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.boot').exists()).toBe(true);
+    expect(wrapper.find('.boot')!.exists()).toBe(true);
     expect(wrapper.text()).toContain('Catching up on');
     // Not '.boot .cd-bar i': App's template has two root-level v-if blocks
     // (.boot, and the real shell), so Vue always compiles it to a Fragment.
@@ -91,14 +91,14 @@ describe('App', () => {
     // further .boot *inside* .boot. .cd-bar only ever renders inside .boot,
     // so scoping through .boot here would add nothing this check doesn't
     // already cover via the assertion just above.
-    expect(wrapper.find('.cd-bar i').exists()).toBe(true);
+    expect(wrapper.find('.cd-bar i')!.exists()).toBe(true);
 
     // let the real catch-up finish (real seconds — same cost as the
     // dedicated persistence.test.js coverage of the same 24h path) so
     // nothing is left mid-flight when afterEach unmounts
     while (store.s.catchUp) await new Promise(r => setTimeout(r, 50));
     await flushPromises();
-    expect(wrapper.find('.boot').exists()).toBe(false);
+    expect(wrapper.find('.boot')!.exists()).toBe(false);
   });
 
   it('credits real time missed while the tab was backgrounded, not just after a reload', async () => {
@@ -246,7 +246,7 @@ describe('App', () => {
     const { wrapper } = mountWithStore(App, { seed: g => g.dismissTour() });
     mounted.push(wrapper);
     await flushPromises();
-    const buildTab = wrapper.findAll('nav.tabs .tab').find(t => t.text().includes('Build'));
+    const buildTab = wrapper.findAll('nav.tabs .tab').find(t => t.text().includes('Build'))!;
     await buildTab.trigger('click');
     expect(wrapper.text()).toContain('Design a rig, then order the parts.'); // BuildView, reached from the default Farm tab
   });
@@ -257,7 +257,7 @@ describe('App', () => {
     await flushPromises();
     store.s.toast = { n: 1, text: 'Test toast', amount: '', cls: 'grn' };
     await wrapper.vm.$nextTick();
-    const toast = wrapper.find('.toast.grn');
+    const toast = wrapper.find('.toast.grn')!;
     expect(toast.exists()).toBe(true);
     expect(toast.attributes('role')).toBe('status');
     expect(toast.attributes('aria-live')).toBe('polite');
@@ -270,7 +270,7 @@ describe('App', () => {
     await flushPromises();
     store.s.toast = { n: 1, text: 'Out of cash', amount: '', cls: 'dark' };
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.toast.dark').attributes('role')).toBe('alert');
+    expect(wrapper.find('.toast.dark')!.attributes('role')).toBe('alert');
   });
 
   // Issue #40: a rank-up is rare and permanent, so it carries its own class
@@ -282,11 +282,11 @@ describe('App', () => {
     await flushPromises();
     store.s.toast = { n: 1, text: 'Rank up · 4 of 6', amount: 'Engineer', cls: 'rankup' };
     await wrapper.vm.$nextTick();
-    const toast = wrapper.find('.toast.rankup');
+    const toast = wrapper.find('.toast.rankup')!;
     expect(toast.exists()).toBe(true);
     expect(toast.attributes('role')).toBe('status'); // celebratory, not urgent
     expect(toast.attributes('aria-live')).toBe('polite');
-    expect(toast.find('.num').text()).toBe('Engineer');
+    expect(toast.find('.num')!.text()).toBe('Engineer');
     expect(toast.text()).toContain('Rank up · 4 of 6');
   });
 
@@ -297,21 +297,21 @@ describe('App', () => {
     const { wrapper, store } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
-    expect(wrapper.find('.rankflash').exists()).toBe(false);
+    expect(wrapper.find('.rankflash')!.exists()).toBe(false);
 
     store.s.toast = { n: 1, text: 'Milestone', amount: 'First block', cls: 'grn' };
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.rankflash').exists()).toBe(false);
+    expect(wrapper.find('.rankflash')!.exists()).toBe(false);
 
     store.s.toast = { n: 2, text: 'Rank up · 4 of 6', amount: 'Engineer', cls: 'rankup' };
     await wrapper.vm.$nextTick();
-    const flash = wrapper.find('.rankflash');
+    const flash = wrapper.find('.rankflash')!;
     expect(flash.exists()).toBe(true);
     // Decoration only: it must not reach a screen reader (the toast's own
     // live region already announces the moment) or swallow a tap.
     expect(flash.attributes('aria-hidden')).toBe('true');
     // ...and it must not have replaced or displaced the toast itself.
-    expect(wrapper.find('.toast.rankup').exists()).toBe(true);
+    expect(wrapper.find('.toast.rankup')!.exists()).toBe(true);
   });
 
   it('the rank-up flourish clears itself, leaving the toast on screen', async () => {
@@ -322,14 +322,14 @@ describe('App', () => {
       await flushPromises();
       store.s.toast = { n: 1, text: 'Rank up · 4 of 6', amount: 'Engineer', cls: 'rankup' };
       await wrapper.vm.$nextTick();
-      expect(wrapper.find('.rankflash').exists()).toBe(true);
+      expect(wrapper.find('.rankflash')!.exists()).toBe(true);
 
       // Well inside the toast's own 4.6s hold: the flourish is an
       // accompaniment to its arrival, not a second thing to sit through.
       vi.advanceTimersByTime(1000);
       await wrapper.vm.$nextTick();
-      expect(wrapper.find('.rankflash').exists()).toBe(false);
-      expect(wrapper.find('.toast.rankup').exists()).toBe(true);
+      expect(wrapper.find('.rankflash')!.exists()).toBe(false);
+      expect(wrapper.find('.toast.rankup')!.exists()).toBe(true);
     } finally {
       vi.useRealTimers();
     }

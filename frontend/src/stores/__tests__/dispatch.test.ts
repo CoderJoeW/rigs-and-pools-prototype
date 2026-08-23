@@ -38,7 +38,7 @@ describe('chainCeiling', () => {
 
   it('returns null before any hash is on the chain', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     expect(g.chainCeiling(tessera)).toBeNull();
   });
 
@@ -47,7 +47,7 @@ describe('chainCeiling', () => {
     // on purpose (see chains.js): the newcomer subsidy should mean something
     // before it starts fading, not vanish the instant a rig finishes.
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -64,7 +64,7 @@ describe('chainCeiling', () => {
     // starting chain is already maxed out (docs/design-spec.md §10b:
     // "Starters below the floor are never nudged").
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.generatePreset();
     expect(g.s.rigs).toHaveLength(0);
     expect(g.chainCeiling(tessera, g.dp.mh)).toBeNull();
@@ -75,7 +75,7 @@ describe('chainCeiling', () => {
     // currently tuned to — this pins the function's behavior at the
     // boundary, not a specific production balance number.
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     tessera.floor = 100;
     g.generatePreset();
     g.build();
@@ -106,7 +106,7 @@ describe('groupAdvice', () => {
 
   it('returns null for a real starter rig on Tessera, still within its below-floor period', () => {
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
@@ -129,7 +129,7 @@ describe('groupAdvice', () => {
     // balance, but it means this specific branch needs an isolated scenario
     // to reach).
     const g = freshStore();
-    const tessera = g.s.chains.find(c => c.id === 'tessera');
+    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     tessera.floor = 10;
     tessera.reward = 1;
     g.generatePreset();

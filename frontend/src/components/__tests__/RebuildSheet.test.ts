@@ -24,12 +24,12 @@ describe('RebuildSheet', () => {
     const { wrapper } = mountWithStore(RebuildSheet, {
       seed: g => { g.generatePreset(); g.build(); },
     });
-    expect(wrapper.find('.sheet').exists()).toBe(false);
+    expect(wrapper.find('.sheet')!.exists()).toBe(false);
   });
 
   it('opens on the rig being rebuilt, with dialog semantics', () => {
     const { wrapper, store: g } = open();
-    const sheet = wrapper.find('.sheet');
+    const sheet = wrapper.find('.sheet')!;
     expect(sheet.attributes('role')).toBe('dialog');
     expect(sheet.attributes('aria-modal')).toBe('true');
     expect(wrapper.text()).toContain('Rebuild ' + g.s.rigs[0].name);
@@ -43,19 +43,19 @@ describe('RebuildSheet', () => {
 
   it('opens a slot picker and comes back on Back', async () => {
     const { wrapper, store: g } = open();
-    await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame')).trigger('click');
+    await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame'))!.trigger('click');
     expect(g.s.rebuild.picker).toBe('frame');
 
-    await wrapper.findAll('button').find(b => b.text().includes('Back')).trigger('click');
+    await wrapper.findAll('button').find(b => b.text().includes('Back'))!.trigger('click');
     expect(g.s.rebuild.picker).toBe(null);
   });
 
   it('picking a part changes the draft and marks the row changed', async () => {
     const { wrapper, store: g } = open();
     const before = g.s.rebuild.draft.frame;
-    await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame')).trigger('click');
+    await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame'))!.trigger('click');
 
-    const other = wrapper.findAll('.cmp-r').find(r => !r.text().includes('Installed'));
+    const other = wrapper.findAll('.cmp-r').find(r => !r.text().includes('Installed'))!;
     await other.trigger('click');
     await nextTick();
 
@@ -65,8 +65,8 @@ describe('RebuildSheet', () => {
 
   it('the stepper moves the card count within the pair’s limit', async () => {
     const { wrapper, store: g } = open();
-    const plus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Increase card count');
-    const minus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Decrease card count');
+    const plus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Increase card count')!;
+    const minus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Decrease card count')!;
 
     const start = g.s.rebuild.draft.n;
     await minus().trigger('click');
@@ -81,7 +81,7 @@ describe('RebuildSheet', () => {
 
   it('refuses to commit a draft that changes nothing', () => {
     const { wrapper } = open();
-    const go = wrapper.findAll('button').find(b => b.classes().includes('btn-wide'));
+    const go = wrapper.findAll('button').find(b => b.classes().includes('btn-wide'))!;
     expect(go.attributes('disabled')).toBeDefined();
     expect(wrapper.text()).toContain('Nothing changed yet');
   });

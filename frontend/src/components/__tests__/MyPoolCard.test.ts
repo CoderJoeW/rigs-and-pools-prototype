@@ -55,16 +55,16 @@ describe('MyPoolCard', () => {
 
   it('asks the parent to toggle rather than owning the open state', async () => {
     const { wrapper } = card();
-    await wrapper.find('.rig-hd').trigger('click');
+    await wrapper.find('.rig-hd')!.trigger('click');
     expect(wrapper.emitted('toggle')).toHaveLength(1);
   });
 
   it('renames the pool through the store', async () => {
     const { wrapper, pool } = card();
-    await wrapper.findAll('button').find(b => b.text() === 'Rename').trigger('click');
-    const input = wrapper.find('input[maxlength="24"]');
+    await wrapper.findAll('button').find(b => b.text() === 'Rename')!.trigger('click');
+    const input = wrapper.find('input[maxlength="24"]')!;
     await input.setValue('Deep Vein');
-    await wrapper.findAll('button').find(b => b.text() === 'Save name').trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === 'Save name')!.trigger('click');
     expect(pool.name).toBe('Deep Vein');
     expect(wrapper.text()).toContain('Deep Vein');
   });
@@ -73,12 +73,12 @@ describe('MyPoolCard', () => {
     const { wrapper, pool } = card();
     expect(wrapper.text()).not.toContain('would settle at');
 
-    const slider = wrapper.find('input[type="range"]');
+    const slider = wrapper.find('input[type="range"]')!;
     await slider.setValue(0.05);
     expect(wrapper.text()).toContain('would settle at');
     expect(pool.fee).toBe(0.02);          // still a draft, not applied
 
-    await wrapper.findAll('button').find(b => b.text().startsWith('Move to')).trigger('click');
+    await wrapper.findAll('button').find(b => b.text().startsWith('Move to'))!.trigger('click');
     expect(pool.fee).toBeCloseTo(0.05, 5);
     await nextTick();
     expect(wrapper.text()).not.toContain('would settle at');
@@ -86,8 +86,8 @@ describe('MyPoolCard', () => {
 
   it('drops the fee draft on cancel, leaving the live fee alone', async () => {
     const { wrapper, pool } = card();
-    await wrapper.find('input[type="range"]').setValue(0.08);
-    await wrapper.findAll('button').find(b => b.text() === 'Cancel').trigger('click');
+    await wrapper.find('input[type="range"]')!.setValue(0.08);
+    await wrapper.findAll('button').find(b => b.text() === 'Cancel')!.trigger('click');
     expect(pool.fee).toBe(0.02);
     expect(wrapper.text()).not.toContain('would settle at');
   });
@@ -97,14 +97,14 @@ describe('MyPoolCard', () => {
      the one that broke, was never entered. These enter it. */
   it('draws the hashrate sparkline once the pool has history', () => {
     const { wrapper } = card((g, pool) => { pool.hist = [10, 20, 15, 30, 25]; });
-    const path = wrapper.find('svg path');
+    const path = wrapper.find('svg path')!;
     expect(path.exists()).toBe(true);
     expect(path.attributes('d')).toMatch(/^M/);   // a real path, not empty
   });
 
   it('holds the sparkline back until there is enough history to mean anything', () => {
     const { wrapper } = card((g, pool) => { pool.hist = [10, 20]; });
-    expect(wrapper.find('svg path').exists()).toBe(false);
+    expect(wrapper.find('svg path')!.exists()).toBe(false);
   });
 
   it('renders a PPS pool with its capacity and dry-spell risk', () => {
@@ -123,7 +123,7 @@ describe('MyPoolCard', () => {
       props: { get pool(){ return pool; }, open: true },
     });
     expect(wrapper.text()).toContain('PPS');
-    expect(wrapper.find('svg path').exists()).toBe(true);
+    expect(wrapper.find('svg path')!.exists()).toBe(true);
     // Assertions that DISCRIMINATE. "Supports" would not: the PPLNS branch
     // renders its own Supports row ("any amount — members carry their own
     // variance"), so asserting it would pass against the wrong branch — the
