@@ -86,7 +86,7 @@ export interface MilestoneState { done: Record<string, number>; rank: number }
 export interface DesignInProgress { fid: number; kind: import('../data/customParts.js').DesignKind; picks: Record<string, number> }
 
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
-export interface RebuildInProgress { rig: number; picker: unknown; draft: RebuildDraft }
+export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
 // Rigs and pools are assembled across several not-fully-typed installers
 // (buildDraft.js, pools.js, poolMarket.js); their shapes stay loose until
