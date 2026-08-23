@@ -1,16 +1,17 @@
 import { C } from '../data/constants.js';
+import type { Game } from './types.js';
 
 const SIM_PULSE_INTERVAL = 3600;
 
-export function installTick(G) {
+export function installTick(G: Game): void {
   // True on the one tick where G.s.t crosses a multiple of `interval` —
   // G.s.t advances by `dt` each call, so a plain `% interval === 0` would
   // almost always miss the exact boundary.
-  function crossedInterval(interval, dt) {
+  function crossedInterval(interval: number, dt: number): boolean {
     return G.s.t % interval < dt;
   }
 
-  function stepTick(dtOverride) {
+  function stepTick(dtOverride?: number): void {
     G.touchHeat();
     const dt = dtOverride !== undefined ? dtOverride : C.DT * G.s.speed;
     const days = dt / 86400;

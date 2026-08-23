@@ -83,12 +83,23 @@ export interface DesignInProgress { fid: number; kind: import('../data/customPar
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
 export interface RebuildInProgress { rig: number; picker: unknown; draft: RebuildDraft }
 
-// Rigs, pools and sims are still assembled by not-yet-converted installers
-// (buildDraft.js, pools.js, poolMarket.js, sims.js); their shapes will move
-// from `any` to real interfaces as those files convert.
+// Rigs and pools are assembled across several not-fully-typed installers
+// (buildDraft.js, pools.js, poolMarket.js); their shapes stay loose until
+// those call sites are worth tightening together.
 export type Rig = any;
 export type Pool = any;
-export type Sim = any;
+
+export interface Sim {
+  id: number;
+  cash: number;
+  hash: number;
+  chain: string;
+  pool: string;
+  style: number;
+  next: number;
+  coins: number;
+  _lastDecide?: number;
+}
 
 export interface GameState {
   t: number;
