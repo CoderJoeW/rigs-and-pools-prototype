@@ -17,6 +17,27 @@ still resolve at call time exactly as the closure did; declaration order,
 hoisting and intra-module references are otherwise untouched. See
 design-spec.md §13e (The closure refactor) for the full migration story.
 
+## The `Game`/`GameExports` types (`src/game/types.ts`)
+
+`G` is intentionally a partly-loose type. The installers described above
+each contribute fields/methods to the same object, so `Game` grows a real,
+named member for each piece as it's typed precisely, while an index
+signature covers whatever installer output isn't worth naming yet — that
+mirrors the object's own assembly, and claims no more precision than the
+loosely-typed half of the codebase can back up. Rigs and pools specifically
+stay `any`: they're assembled across several not-fully-typed installers
+(`buildDraft.ts`, `pools.ts`, `poolMarket.ts`), and their shapes won't be
+worth tightening until those call sites are.
+
+`GameExports` — the flat surface `persistence.ts` publishes to components
+via Pinia (`G.__exports`, returned verbatim as the store's setup-store
+body) — is named explicitly even though every member is still `any`,
+purely so Pinia's `defineStore` can infer a real object type for the
+store: an index-signature-only type collapses to `any` as a whole, and
+every `g.xxx` access in a component would fail to resolve. `s` gets the
+one member precise enough to be cheap and worth it; the rest stay `any`
+until naming their real types earns its keep.
+
 ## Weather async-readiness seam (`src/services/weatherService.js`, `src/game/weather.js`)
 
 `weatherService` exposes `peek(day)` (sync, returns cached reading or
@@ -858,6 +879,23 @@ that can take it.
 **Fallback.** A save written before a shell existed can still name it,
 but an unknown shell id must not blank the hero, so `sitePlate` falls
 back to `bedroom` — the one every run starts in.
+
+## Build draft search (`src/game/buildDraft.ts`)
+
+`candidateBuilds` is the one search both `generatePreset` and
+`openBuildCost` run over, replacing two copies that had silently diverged
+(issue #27): `generatePreset` writes the result into `G.s.draft` and runs
+the full `canBuild` gate including cash; `openBuildCost` skips the cash
+check and tests power headroom directly, read-only. The preset generator
+tries real drafts against the real `canBuild`/`checks` gate — cash-bound
+favours cheap cards, power-bound favours MH/W — rather than a separate
+heuristic; the 16x rig-positions-vs-frame-slots bug and the rejected
+cooling-escalation idea that motivated this are both in design-spec.md §6n.
+
+`openBuildCost` answers issue #7's idle-cash advisory ("is something
+buildable, and what would it cost") without depending on `G.s.draft`,
+which only refreshes on BuildView's mount and goes stale the moment site
+constraints move past it. It mirrors `generatePreset`'s search read-only.
 
 ## Chain anchor decay (`advanceChainAnchor` in `chainEconomy.js`)
 

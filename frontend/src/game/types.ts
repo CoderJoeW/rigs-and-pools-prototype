@@ -1,14 +1,7 @@
 // Shared shape of the game's reactive state (`G.s`) and its assembled
-// runtime context (`G`), which stores/game.ts's `createGame` builds by
-// running every game/*.ts installer over one object in sequence.
-//
-// `G` is intentionally a partly-loose type: the installers each contribute
-// fields/methods to the same object (see stores/game.ts's own comment on
-// install order), and a real, named member is added here as each piece is
-// typed precisely; an index signature covers whatever installer output
-// isn't worth naming yet. That mirrors the object's own assembly — nothing
-// here claims a precision the loosely-typed half of the codebase can't
-// back up.
+// runtime context (`G`), built by running every game/*.ts installer over
+// one object in sequence (stores/game.ts). Why this type is deliberately
+// partly-loose: docs/implementation-notes.md#the-gamegameexports-types-srcgametypests
 
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
@@ -88,9 +81,8 @@ export interface DesignInProgress { fid: number; kind: import('../data/customPar
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
 export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
-// Rigs and pools are assembled across several not-fully-typed installers
-// (buildDraft.ts, pools.ts, poolMarket.ts); their shapes stay loose until
-// those call sites are worth tightening together.
+// Assembled across several not-fully-typed installers; stays loose until
+// worth tightening together — docs/implementation-notes.md#the-gamegameexports-types-srcgametypests
 export type Rig = any;
 export type Pool = any;
 
@@ -179,17 +171,9 @@ export interface GameState {
   brokeNote?: number;
 }
 
-// The assembled game context. An installer whose output isn't typed yet
-// still contributes through the index signature; a typed one adds its
-// real members here instead.
-// The flat, hand-maintained surface persistence.ts publishes to components
-// via Pinia (`G.__exports`, returned verbatim as the store's setup-store
-// body). Named here — even though every member is still `any` — purely so
-// Pinia's defineStore can infer a real object type for the store: an
-// index-signature-only type collapses to `any` as a whole and every
-// `g.xxx` access in a component would fail to resolve at all. `s` gets the
-// one member precise enough to be cheap and worth it; the rest stay `any`
-// until it's worth naming their real types too.
+// The flat surface persistence.ts publishes to components via Pinia. Why
+// it's named at all despite every member staying `any`:
+// docs/implementation-notes.md#the-gamegameexports-types-srcgametypests
 export interface GameExports {
   s: GameState;
   C: any;

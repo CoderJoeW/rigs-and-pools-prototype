@@ -68,14 +68,7 @@ export function installBuildDraft(G: Game): void {
     const net = rev - pow;
     return { rev, pow, net, payback: net > 0 ? draftInfo.cost / net : Infinity };
   });
-  // Preset generator: tries real drafts against the real canBuild/checks
-  // gate (cash-bound favours cheap cards, power-bound favours MH/W) — the
-  // 16x rig-positions-vs-frame-slots bug and the rejected cooling-escalation
-  // idea are both documented in design-spec.md §6n.
-  // candidateBuilds is the one search both generatePreset and openBuildCost
-  // run, replacing two copies that had silently diverged (issue #27):
-  // generatePreset writes the draft and runs the full canBuild gate incl.
-  // cash; openBuildCost skips cash and tests power headroom directly, read-only.
+  // Shared search behind generatePreset/openBuildCost — docs/implementation-notes.md#build-draft-search-srcgamebuilddraftts
   function* candidateBuilds(site: any): Generator<{ unit: any; n: number; frame: any; mobo: any; cool: any; core: number; psu: any }> {
     const flip = G.siteDemand(site) >= G.siteCapacity(site) * C.FLIP_AT;
     const pool = G.cards();
@@ -111,12 +104,7 @@ export function installBuildDraft(G: Game): void {
     const net = unit.mh * G.draftRate() - wall / 1000 * 24 * G.margRate(site);
     return { net, wall, payback: net > 0 ? unit.price / net : Infinity, perKw: net / (wall / 1000), mhw: unit.mh / unit.w };
   };
-  // openBuildCost answers issue #7's idle-cash advisory ("is something
-  // buildable, and what would it cost") without depending on G.s.draft,
-  // which only refreshes on BuildView's mount and goes stale the moment site
-  // constraints move past it. Mirrors generatePreset()'s search read-only
-  // and skips the cash check, since the point here is a cost to compare
-  // cash against, not an affordability verdict.
+  // Why this exists separately from generatePreset: docs/implementation-notes.md#build-draft-search-srcgamebuilddraftts
   const siteRigsOpen = (site: any) => G.siteSlots(site) - G.siteRigs(site).length;
   const openBuildCost = (site: any): number | null => {
     if (siteRigsOpen(site) <= 0) return null;
