@@ -7,104 +7,20 @@ import { sparkPath } from '../utils/spark.js';
 import Feed from '../components/Feed.vue';
 import SiteShot from '../components/SiteShot.vue';
 import { sitePhase } from '../utils/siteArt.js';
-import { CHAIN_HUE } from '../data/chains.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
+import { useFarmRows } from '../composables/useFarmRows.js';
+import { useFarmStats } from '../composables/useFarmStats.js';
 
 const g = useGameStore();
 const netDayShown = useTweenedNumber(() => g.netDay);
-const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
-/* Every site row shows the same time of day, because they are all in it —
-   this is one clock, not one per site. */
+// Every site row shows the same time of day, because they are all in it —
+// this is one clock, not one per site.
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
-  const a=h[h.length-6]!, b=h[h.length-1]!;
-  return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });
 const policyOpen=ref(false);
-const hottest=computed(()=>g.s.sites.reduce((a,f)=>Math.max(a,g.siteTemp(f)),0));
-const totalDemand=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteDemand(f),0));
 
-// "vs yesterday" chips: dayDelta/dayPaceDelta return null with nothing honest
-// to compare against, rather than an invented 0.0%. Hashrate compares
-// directly; profit/cost are still-filling counters, projected to a full
-// day first via dayPaceDelta. Profit compares 'net' to match the headline above it.
-const hashDelta=computed(()=>g.dayDelta('hash', g.totalHash));
-const netDelta=computed(()=>g.dayPaceDelta('net', g.netDay));
-const costDelta=computed(()=>g.dayPaceDelta('power', g.powerDay));
-const deltaText=(d: number)=>(d>=0?'▲ ':'▼ ')+fmt.pct(Math.abs(d),2);
-
-/* Dominant chassis state for a site row hero — prefer attention states, then
-   running, then build, else off. Same vocabulary the Rigs list and Sites floor
-   already use. */
-const siteChassisState=(f: any)=>{
-  const rigs=g.siteRigs(f);
-  if(!rigs.length) return 'off';
-  let hasBad=false, hasWarn=false, hasBuild=false, hasRun=false;
-  for(const r of rigs){
-    const d=g.rigState(r).dot;
-    if(d==='bad') hasBad=true;
-    else if(d==='warn') hasWarn=true;
-    else if(d==='build') hasBuild=true;
-    else if(d==='run') hasRun=true;
-  }
-  if(hasBad) return 'bad';
-  if(hasWarn) return 'warn';
-  if(hasBuild) return 'build';
-  if(hasRun) return 'run';
-  return 'off';
-};
-
-const siteRows=computed(()=>g.s.sites.map(f=>{
-  const rigs=g.siteRigs(f);
-  const slots=g.siteSlots(f);
-  const temp=g.siteTemp(f);
-  const ambient=temp>=70?'hot':temp>=58?'warm':'cool';
-  const demand=g.siteDemand(f);
-  const capacity=g.siteCapacity(f)+g.battFirm(f);
-  const util=capacity>0?Math.min(1,demand/capacity):0;
-  const hash=rigs.reduce((a: number,r: any)=>a+g.rigHash(r),0);
-  const online=rigs.some((r: any)=>g.rigLive(r));
-  const status=ambient==='hot'?'HOT':online?'ONLINE':'IDLE';
-  const statusTone=ambient==='hot'?'hot':online?'online':'idle';
-  let chainHue;
-  for(const r of rigs){
-    const gr=g.groupOf(r);
-    if(gr&&gr.chain!=null){ chainHue=CHAIN_HUE[gr.chain]; break; }
-  }
-  return {
-    f, ambient, temp, hash, demand, capacity, util, status, statusTone,
-    costDay:g.siteCostPerHour(f)*24,
-    chassisState:siteChassisState(f),
-    chainHue,
-    rigCount:rigs.length,
-    slots,
-  };
-}));
-
-const groupRows=computed(()=>g.s.groups.map(gr=>({
-  gr, advice:g.groupAdvice(gr), ceiling:g.chainCeiling(g.chain(gr.chain))
-})));
-
-const blocksToday=computed(()=>{
-  const n=g.s.today&&g.s.today.blocks;
-  return Number.isFinite(n)?fmt.n(n):'—';
-});
-const bestBlock=computed(()=>Number.isFinite(g.s.bestBlock)?fmt.usd2(g.s.bestBlock):'—');
-const uptime=computed(()=>g.s.rigs.length?live.value/g.s.rigs.length:0);
-const margin=computed(()=>g.revenueDay>0?g.netDay/g.revenueDay:0);
-const payoutDay=computed(()=>g.expectedDay-g.powerRateDay);
-/* "Payout progress" is the current block window on the chain the biggest group
-   points at — the farm's main earner, and the one whose next block matters. */
-const mainGroup=computed(()=>g.s.groups.reduce(
-  (a,gr)=>!a||g.groupHash(gr)>g.groupHash(a)?gr:a, null as (typeof g.s.groups)[number] | null));
-const payoutProg=computed(()=>{
-  const gr=mainGroup.value, c=gr&&g.chain(gr.chain);
-  return c?g.blockProg(c):0;
-});
-const autoRules=computed(()=>(g.s.autoOff?1:0)+(g.s.autoFix?1:0));
-/* A group's capacity is read against the whole farm's positions, not one
-   site's: a group spans sites, so "how much of what I own is pointed here"
-   is the question the number answers. */
-const totalSlots=computed(()=>g.s.sites.reduce((a,f)=>a+g.siteSlots(f),0));
+const { siteRows, groupRows } = useFarmRows(g);
+const { live, trend, hottest, totalDemand, hashDelta, netDelta, costDelta, deltaText,
+  blocksToday, bestBlock, uptime, margin, payoutDay, payoutProg, autoRules, totalSlots } = useFarmStats(g);
 </script>
 
 <template>
