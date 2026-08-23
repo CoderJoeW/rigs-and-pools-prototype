@@ -37,7 +37,7 @@ describe('ErrorBoundary', () => {
     const { wrapper } = mountWithStore(ErrorBoundary, { slots: { default: Boom } });
     await nextTick();
     const reloadBtn = wrapper.findAll('button').find(b => b.text() === 'Reload');
-    await reloadBtn.trigger('click');
+    await reloadBtn!.trigger('click');
 
     expect(reloadSpy).toHaveBeenCalledOnce();
     spy.mockRestore();

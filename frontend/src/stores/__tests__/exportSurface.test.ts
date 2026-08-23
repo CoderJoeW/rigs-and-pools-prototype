@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createGame } from '../game.js';
+import type { Game } from '../../game/types.js';
 
 /* G.__exports is a hand-written list. Everything the install* modules put on G
    has to be repeated there or it never reaches components, the Pinia store, or
@@ -98,8 +99,8 @@ const ALIASES = { livePsus: 'PSUS' };
    the TICK PATH is present to be judged. A key first written by a user action
    nothing here performs is still missed; that is the accepted edge, and
    driving every action from here would make this a second integration suite. */
-let built = null;
-const ownKeys = o => Reflect.ownKeys(o).filter(k => typeof k === 'string');
+let built: Game | null = null;
+const ownKeys = (o: object) => Reflect.ownKeys(o).filter(k => typeof k === 'string') as string[];
 
 function game(){
   if(!built){
@@ -119,7 +120,7 @@ describe('the public surface of the game store', () => {
     const undeclared = ownKeys(G).filter(k =>
       k !== '__exports' &&
       !published.has(k) &&
-      !published.has(ALIASES[k]) &&
+      !published.has((ALIASES as any)[k]) &&
       !INTERNAL.has(k));
 
     expect(undeclared, 'These are installed on G but neither published in ' +
@@ -135,7 +136,7 @@ describe('the public surface of the game store', () => {
     // hasOwnProperty, not `in`: `in` walks the prototype chain, so a name
     // like 'constructor' could never be reported stale. Not `G[k] !==
     // undefined` either — `wiped` is legitimately false.
-    const own = k => Object.prototype.hasOwnProperty.call(G, k);
+    const own = (k: string) => Object.prototype.hasOwnProperty.call(G, k);
     const gone = [...INTERNAL].filter(k => !own(k));
     expect(gone, 'Listed as INTERNAL but no longer installed on G — delete ' +
       'these entries.').toEqual([]);

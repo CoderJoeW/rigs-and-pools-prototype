@@ -25,7 +25,7 @@ describe('ChainMark', () => {
     // red 28, gold 78, green 162, blue 250 in OKLCH — see the note in chains.js.
     // A chain landing on one of these would read as a status, not a name.
     const semantic = [28, 78, 162, 250];
-    const apart = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+    const apart = (a: number, b: number) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
     for (const c of CHAINS)
       for (const s of semantic)
         expect(apart(c.hue, s)).toBeGreaterThanOrEqual(30);

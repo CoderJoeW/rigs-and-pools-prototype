@@ -25,7 +25,7 @@ describe('the walkthrough tour and the reactive coach, mounted together', () => 
   it('skipping the tour hands off to the coach in the same render', async () => {
     const { wrapper } = mountWithStore(Pair);
     const skip = wrapper.findAll('button').find(b => b.text() === 'Skip');
-    await skip.trigger('click');
+    await skip!.trigger('click');
     expect(wrapper.find('.tour').exists()).toBe(false);
     expect(wrapper.text()).toContain('Build your first rig');
   });
@@ -33,10 +33,10 @@ describe('the walkthrough tour and the reactive coach, mounted together', () => 
   it('finishing the tour on its last (Build) slide hands off to the coach\'s "build" step, not "earn"', async () => {
     const { wrapper, store } = mountWithStore(Pair);
     for (let i = 0; i < 6; i++) {
-      await wrapper.findAll('button').find(b => b.text() === 'Next').trigger('click');
+      await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click');
     }
     expect(store.s.tab).toBe('build');
-    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build").trigger('click');
+    await wrapper.findAll('button').find(b => b.text() === "Got it — let's build")!.trigger('click');
     expect(wrapper.find('.tour').exists()).toBe(false);
     // the tour only navigated to Build — it never built anything itself, so
     // the coach still opens on 'build', same as any other skip.

@@ -3,7 +3,7 @@ import { freshStore } from '../../test/testStore.js';
 
 /* Build two rigs at the (only) site up front — every fleet action test
    needs a small fleet to scope its selection against. */
-function twoRigs(g) {
+function twoRigs(g: any) {
   g.s.cash = 50000;
   g.generatePreset();
   g.build();
@@ -160,7 +160,7 @@ describe('fleetMove / fleetMoveInfo', () => {
     expect(info.hash).toBeGreaterThan(0);
 
     g.fleetMove(newGroup.id, null);
-    expect(rigs.every(r => r.group === newGroup.id)).toBe(true);
+    expect(rigs.every((r: any) => r.group === newGroup.id)).toBe(true);
   });
 
   it('reports nothing to move once everything is already there', () => {
@@ -224,7 +224,7 @@ describe('fleetToSpec / fleetSpecInfo / draftSpec', () => {
     if (info.rigs > 0) {
       g.s.cash = Math.max(g.s.cash, info.cost + 100);
       g.fleetToSpec(spec, null);
-      const changedCount = rigs.filter(r =>
+      const changedCount = rigs.filter((r: any) =>
         r.frame === spec.frame && r.mobo === spec.mobo &&
         r.cool === spec.cool && r.psu === spec.psu &&
         r.units[0].p === spec.unit && r.units.length === spec.n).length;
@@ -241,13 +241,13 @@ describe('fleetToSpec / fleetSpecInfo / draftSpec', () => {
     // a free (or refunding) rebuild is meant to proceed even at $0 cash —
     // only a real, positive-cost job is what this guard exists to block
     if (info.rigs > 0 && info.cost > 0) {
-      const before = rigs.map(r => JSON.stringify(r));
+      const before = rigs.map((r: any) => JSON.stringify(r));
       g.s.cash = 0;
       g.fleetToSpec(spec, null);
       // no rig was actually rebuilt — checking fleetSpecInfo again isn't
       // safe here since dropping cash to 0 also blocks rigs it would
       // otherwise have picked up, independent of whether fleetToSpec ran
-      expect(rigs.map(r => JSON.stringify(r))).toEqual(before);
+      expect(rigs.map((r: any) => JSON.stringify(r))).toEqual(before);
     }
   });
 });

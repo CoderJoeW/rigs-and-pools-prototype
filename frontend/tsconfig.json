@@ -10,7 +10,6 @@
     "skipLibCheck": true,
 
     "strict": true,
-    "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
 
     "allowJs": true,

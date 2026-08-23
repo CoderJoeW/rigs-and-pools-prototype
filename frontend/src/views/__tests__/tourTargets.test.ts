@@ -16,7 +16,7 @@ import BuildView from '../BuildView.vue';
    This is the other half: for every TOUR_SLIDES entry, mount the ACTUAL
    view it names and confirm the slide's own selector resolves to exactly
    one element. */
-const VIEWS = {
+const VIEWS: Record<string, any> = {
   farm: FarmView, sites: SitesView, rigs: RigsView, chains: ChainsView,
   market: MarketView, stats: StatsView, build: BuildView,
 };
@@ -25,7 +25,7 @@ describe('every tour slide targets a real, resolvable element on its own view', 
   const { TOUR_SLIDES } = freshStore();
 
   it('covers exactly the app\'s seven tabs, each mapped to a real view component', () => {
-    expect(TOUR_SLIDES.map(s => s.tab).sort()).toEqual(Object.keys(VIEWS).sort());
+    expect(TOUR_SLIDES.map((s: any) => s.tab).sort()).toEqual(Object.keys(VIEWS).sort());
   });
 
   describe('under first-session conditions (a fresh store, no rigs) — the tour\'s original, automatic trigger', () => {
@@ -47,7 +47,7 @@ describe('every tour slide targets a real, resolvable element on its own view', 
      against a fresh store by construction. Seeding a built rig here is
      what actually exercises the branch a replaying player is in. */
   describe('under replay conditions (an established player with a built rig)', () => {
-    const seed = g => { g.generatePreset(); g.build(); };
+    const seed = (g: any) => { g.generatePreset(); g.build(); };
     for (const slide of TOUR_SLIDES) {
       it(`"${slide.tab}" (${slide.target})`, () => {
         const { wrapper } = mountWithStore(VIEWS[slide.tab], { seed });

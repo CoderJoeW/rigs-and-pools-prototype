@@ -21,7 +21,7 @@ describe('RigShot', () => {
 
   it('keeps the class and changes only the light as state changes', () => {
     const seen = STATES.map(state =>
-      mount(RigShot, { props: { frame: 'f16', state } }).find('img').attributes('src'));
+      mount(RigShot, { props: { frame: 'f16', state } }).find('img').attributes('src')!);
     expect(new Set(seen).size).toBe(STATES.length);
     // Every one of them is still the rack chassis, not some other machine.
     expect(seen.every(s => /rack-/.test(s))).toBe(true);

@@ -162,7 +162,7 @@ describe('the walkthrough tour', () => {
     const g = freshStore();
     const tabs = ['farm', 'sites', 'rigs', 'chains', 'market', 'stats', 'build'];
     expect(g.TOUR_SLIDES).toHaveLength(tabs.length);
-    expect(g.TOUR_SLIDES.map(s => s.tab)).toEqual(tabs);
+    expect(g.TOUR_SLIDES.map((s: any) => s.tab)).toEqual(tabs);
     expect(g.TOUR_SLIDES[0].title).toMatch(/welcome/i);
   });
 
