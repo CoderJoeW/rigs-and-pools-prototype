@@ -72,7 +72,7 @@ const bondSteps = computed(() => {
         <span class="tag b" style="margin-left:5px">{{ pool.scheme }}</span>
         <span v-if="pool.capped||g.poolHash(pool)>=g.poolCapLimit(pool)*0.95"
               class="tag" style="background:var(--amber-t);color:var(--amber);margin-left:3px">FULL</span>
-        <div class="sb"><ChainMark :chain="pool.chain" />{{ g.chain(pool.chain).name }} ·
+        <div class="sb"><ChainMark :chain="pool.chain" />{{ g.chain(pool.chain)!.name }} ·
           {{ fmt.hash(g.poolHash(pool)) }} of
           {{ fmt.hash(g.poolCapLimit(pool)) }} · {{ pool.found||0 }} blocks ·
           {{ fmt.pct(g.poolRep(pool),0) }} rep</div></span>
@@ -108,11 +108,11 @@ const bondSteps = computed(() => {
       </div>
       <div class="dl"><dt>Recruiting from</dt>
         <dd :class="g.simsOn(pool.chain)?'':'neg'">{{ g.simsOn(pool.chain)
-          ? g.simsOn(pool.chain)+' miners on '+g.chain(pool.chain).name+', '
+          ? g.simsOn(pool.chain)+' miners on '+g.chain(pool.chain)!.name+', '
             +g.s.sims.filter(m=>m.pool===pool.id).length+' with you'
-          : 'nobody mines '+g.chain(pool.chain).name }}</dd></div>
+          : 'nobody mines '+g.chain(pool.chain)!.name }}</dd></div>
       <div class="dl"><dt>Rivals</dt><dd>{{ g.s.pools.filter(x=>x.live&&x.chain===pool.chain&&x.id!==pool.id)
-        .map(x=>x.name.replace(g.chain(pool.chain).name+' ','')+' '+fmt.pct(x.fee)).join(' · ') }}</dd></div>
+        .map(x=>x.name.replace(g.chain(pool.chain)!.name+' ','')+' '+fmt.pct(x.fee)).join(' · ') }}</dd></div>
       <div v-for="gr in g.s.groups.filter(x=>x.chain===pool.chain&&x.pool!==pool.id)" :key="gr.id"
            class="dl"><dt>Your rigs</dt>
         <dd><button class="btn btn-sm" @click="g.setGroupPool(gr,pool.id)">
@@ -125,9 +125,9 @@ const bondSteps = computed(() => {
           <dd>{{ fmt.hash(g.poolCapLimit(pool)) }} of members
             <span class="sb">· limited by {{ g.capBinding(pool) }}</span></dd></div>
         <div v-if="pool.scheme==='PPS'" class="dl"><dt>Dry-spell risk</dt>
-          <dd>{{ fmt.usd(g.blockValue(g.chain(pool.chain))) }} a block, and this pool expects
-            {{ (86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)))).toFixed(
-               86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)))<10?2:0) }} a day —
+          <dd>{{ fmt.usd(g.blockValue(g.chain(pool.chain)!)) }} a block, and this pool expects
+            {{ (86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)!))).toFixed(
+               86400*g.poolHash(pool)/Math.max(1,g.diffOf(g.chain(pool.chain)!))<10?2:0) }} a day —
             {{ g.capBinding(pool)==='dry-spell cover'
                ? 'rare enough that cover is what caps you'
                : 'often enough that luck barely moves you' }}</dd></div>
@@ -155,9 +155,9 @@ const bondSteps = computed(() => {
           : 'A PPLNS bond buys no capacity — it is the buffer that keeps you solvent and trusted. Releasing it lowers what you promise.' }}</p>
       </div>
       <div class="dl"><dt>Their revenue</dt>
-        <dd>{{ fmt.usd(pool.cap*g.C.PAY*g.chain(pool.chain).mult) }}/day</dd></div>
+        <dd>{{ fmt.usd(pool.cap*g.C.PAY*g.chain(pool.chain)!.mult) }}/day</dd></div>
       <div class="dl"><dt>Your margin</dt>
-        <dd class="pos">{{ fmt.usd(pool.cap*g.C.PAY*g.chain(pool.chain).mult*
+        <dd class="pos">{{ fmt.usd(pool.cap*g.C.PAY*g.chain(pool.chain)!.mult*
           (pool.scheme==='PPS'?pool.fee+0.06:pool.fee)) }}/day</dd></div>
       <div class="dl"><dt>Blocks found</dt><dd>{{ pool.found||0 }}</dd></div>
       <div v-if="(pool.hist||[]).length>2">

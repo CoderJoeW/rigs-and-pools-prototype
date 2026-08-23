@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type PropType } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import ChainMark from './ChainMark.vue';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import type { Group } from '../game/types.js';
 
 // One mining group row on the Farm tab: name, chain/pool, rack share, advice.
 // Extracted from a v-for body so rename state can be plain refs per group.
 const props = defineProps({
-  gr: { type: Object, required: true },
+  gr: { type: Object as PropType<Group>, required: true },
   advice: { type: Object, default: null },   // {alt, mult}: a chain paying more per MH
   ceiling: { type: Object, default: null },  // {share, grossCap}: past the chain's emission floor
   totalSlots: { type: Number, default: 0 },  // racks across every site — this group's share denominator
@@ -50,7 +51,7 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
             <path d="M14 10.2a4 4 0 0 0-5.7-.4l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"/>
             </svg></span>
           <span class="gsel-txt"><span class="gsel-k">Chain</span>
-            <span class="gsel-v">{{ g.chain(gr.chain).name }}</span></span>
+            <span class="gsel-v">{{ g.chain(gr.chain)!.name }}</span></span>
           <span class="gsel-cv" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="m6 9 6 6 6-6"/></svg></span>
           <select class="gsel-native" :value="gr.chain" :aria-label="'Chain for '+gr.name"
@@ -91,7 +92,7 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
       </div>
     </template>
     <p v-if="advice" class="hint" style="margin:8px 0 0;color:var(--amber)">
-      You are {{ fmt.pct(advice.share,0) }} of {{ g.chain(gr.chain).name }} —
+      You are {{ fmt.pct(advice.share,0) }} of {{ g.chain(gr.chain)!.name }} —
       above the floor a chain pays its emission, not your hashrate.
       {{ advice.alt }} would pay about
       {{ advice.mult.toFixed(1) }}&times; per MH, even after your hash raises
@@ -99,7 +100,7 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
     <p v-else-if="ceiling" class="hint"
        style="margin:8px 0 0;color:var(--amber)">
       You are {{ fmt.pct(ceiling.share,0) }} of
-      {{ g.chain(gr.chain).name }} — above the floor a chain pays its emission, not your
+      {{ g.chain(gr.chain)!.name }} — above the floor a chain pays its emission, not your
       hashrate. It hands out about
       {{ fmt.usd(ceiling.grossCap) }}/day however much you point
       at it, so more rigs here divide the same pot. No other chain currently pays enough
@@ -107,11 +108,11 @@ const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ?
       chain, or from a pool.</p>
     <div class="track-cap grp-foot">
       <span>{{ g.groupHash(gr)>0
-        ? 'Next '+g.chain(gr.chain).name+' block: '
-          +fmt.pct(Math.min(1,g.groupHash(gr)/Math.max(1,g.chainHash(g.chain(gr.chain)))),0)+' yours'
+        ? 'Next '+g.chain(gr.chain)!.name+' block: '
+          +fmt.pct(Math.min(1,g.groupHash(gr)/Math.max(1,g.chainHash(g.chain(gr.chain)!))),0)+' yours'
         : 'No live rigs pointed here' }}</span>
       <b v-if="gr.pending>0" class="amb">{{ fmt.c(gr.pending) }}
-        {{ g.chain(gr.chain).tick }} in the window</b>
+        {{ g.chain(gr.chain)!.tick }} in the window</b>
       <button v-else-if="g.s.groups.length>1&&!g.groupRigs(gr).length"
               class="btn btn-sm btn-ghost" @click="g.dropGroup(gr)">Disband</button>
     </div>

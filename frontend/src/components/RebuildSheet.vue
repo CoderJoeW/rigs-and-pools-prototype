@@ -125,7 +125,7 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
 
         <div v-if="rbGroup && rbGroup.pending>0" class="warnbox" style="margin-bottom:8px">
           <b>Going down forfeits the PPLNS window</b> —
-          {{ fmt.c(rbGroup.pending) }} {{ g.chain(rbGroup.chain).tick }} at risk.</div>
+          {{ fmt.c(rbGroup.pending) }} {{ g.chain(rbGroup.chain)!.tick }} at risk.</div>
 
         <button class="btn btn-wide" :class="rbInfo.ok?'btn-pri':''" :disabled="!rbInfo.ok"
                 @click="g.applyRebuild()">

@@ -155,7 +155,7 @@ const { buildStatus, verdict } = useBuildVerdict(g, mode, qty, maxQty, effShown,
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 16.5 10 10l3.5 3L20 6.5"/><path d="M15 6.5h5v5"/></svg>
         Expected <b :class="netShown>=0?'pos':'neg'">{{ fmt.usd2(netShown) }}/day</b>
-        on {{ g.chain(g.draftGroup().chain).name }}
+        on {{ g.chain(g.draftGroup().chain)!.name }}
       </div>
 
       <!-- aria-pressed, not role="radio": the radio pattern's contract is a

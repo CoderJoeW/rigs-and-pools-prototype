@@ -210,7 +210,7 @@ const { spark, fieldMine, field, found, fScheme, fFee, fChain, bond, projShare, 
           <span class="nm">{{ p.name }}</span>
           <span class="tag" :class="p.owner==='you'?'b':''" style="margin-left:5px">{{ p.scheme }}</span>
           <span v-if="p.owner==='you'" class="tag b" style="margin-left:3px">YOURS</span>
-          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain).name }} ·
+          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain)!.name }} ·
             {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks</div></span>
         <span class="rt">{{ fmt.pct(p.fee) }}
@@ -239,7 +239,7 @@ const { spark, fieldMine, field, found, fScheme, fFee, fChain, bond, projShare, 
           <span class="tag" style="margin-left:5px">{{ p.scheme }}</span>
           <span v-if="g.poolHash(p)>=g.poolCapLimit(p)*0.95" class="tag b"
                 style="margin-left:4px">FULL</span>
-          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain).name }} ·
+          <div class="sb"><ChainMark :chain="p.chain" />{{ g.chain(p.chain)!.name }} ·
             {{ fmt.hash(g.poolHash(p)) }} of
             {{ fmt.hash(g.poolCapLimit(p)) }} · {{ p.found||0 }} blocks</div>
           <div v-if="open[p.id]" class="sb" style="margin-top:3px">
@@ -292,7 +292,7 @@ const { spark, fieldMine, field, found, fScheme, fFee, fChain, bond, projShare, 
           <dd :class="g.s.cash<bond?'neg':''">{{ fmt.usd(bond) }}</dd></div>
         <div class="dl"><dt>Likely share</dt><dd>{{ fmt.pct(projShare,0) }} of the pool market</dd></div>
         <div v-if="fScheme==='PPS'" class="dl"><dt>That bond supports</dt>
-          <dd>{{ fmt.hash(bond/(g.C.PAY*g.chain(fChain).mult*4)) }} of members</dd></div>
+          <dd>{{ fmt.hash(bond/(g.C.PAY*g.chain(fChain)!.mult*4)) }} of members</dd></div>
         <div class="dl"><dt>Margin once trusted</dt><dd class="pos">{{ fmt.usd(projMargin) }}/day</dd></div>
         <p v-if="g.s.help" class="hint">PPS bonds are ten times larger because you are selling
           insurance: members are paid a flat rate per share whether or not the pool finds anything,

@@ -33,7 +33,10 @@ export function installTimeOfDay(G: Game): void {
   });
 
   const site = (id: number): Site | undefined => G.s.sites.find(x => x.id === id);
-  const active = computed(() => site(G.s.activeSite) || G.s.sites[0]);
+  // G.s.sites is never empty in practice — decommissionSite refuses to drop
+  // the last one — so this asserts the real invariant rather than pushing
+  // `| undefined` through every one of active's many callers.
+  const active = computed(() => (site(G.s.activeSite) || G.s.sites[0])!);
   const chain = (id: string): ChainState | undefined => G.s.chains.find(c => c.id === id);
   const rig = (id: number) => G.s.rigs.find((x: Rig) => x.id === id);
   const poolOf = (id: string) => G.s.pools.find((p: Pool) => p.id === id) || null;

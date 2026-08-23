@@ -5,6 +5,7 @@
 
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
+import type { ComputedRef } from 'vue';
 
 export interface WeatherState { day: number; now: DayWeather; next: DayWeather }
 
@@ -100,6 +101,15 @@ export interface Unit {
   // wear-rate multiplier from wearRate(); absent on a rebuilt or floor-rescue
   // unit, read defensively as `unit.wr || 1`
   wr?: number;
+}
+
+// dispatch.ts's rigState(rig) return shape — one of six literal branches,
+// all the same shape.
+export interface RigState {
+  k: 'build' | 'off' | 'worn' | 'losing' | 'wearing' | 'run';
+  dot: 'build' | 'off' | 'bad' | 'warn' | 'run';
+  label: string;
+  sub: string;
 }
 
 export interface Rig {
@@ -260,11 +270,13 @@ export interface GameExports {
   PART: any;
   SITEPART: any;
   jobPart: any;
-  chain: any;
-  poolOf: any;
-  active: any;
-  price: any;
-  revPerMh: any;
+  chain(id: string): ChainState | undefined;
+  poolOf(id: string): Pool | null;
+  active: ComputedRef<Site>;   // GameExports is the setup-store's raw return
+                                // shape; defineStore's own typing unwraps
+                                // refs/computeds for the store consumer
+  price(c: ChainState): number;
+  revPerMh(chain: ChainState): number;
   solarFactor: any;
   ambient: any;
   band: any;
@@ -273,23 +285,23 @@ export interface GameExports {
   battKw: any;
   sitePlan: any;
   srcOut: any;
-  siteCapacity: any;
+  siteCapacity(site: Site): number;
   siteCooling: any;
   sitePlantW: any;
   siteHeat: any;
   throttleOf: any;
-  siteSlots: any;
-  siteRigs: any;
-  siteDemand: any;
-  siteTemp: any;
+  siteSlots(site: Site): number;
+  siteRigs(site: Site): Rig[];
+  siteDemand(site: Site): number;
+  siteTemp(site: Site): number;
   siteCostPerHour: any;
-  rigLive: any;
-  rigHash: any;
+  rigLive(rig: Rig): boolean;
+  rigHash(rig: Rig): number;
   rigWallW: any;
-  rigNet: any;
-  rigState: any;
-  rigWear: any;
-  totalHash: any;
+  rigNet(rig: Rig): number;
+  rigState(rig: Rig): RigState;
+  rigWear(rig: Rig): number;
+  totalHash: ComputedRef<number>;
   totalCapacity: any;
   headroom: any;
   binding: any;
@@ -323,7 +335,7 @@ export interface GameExports {
   poolHash: any;
   poolProfit: any;
   withdrawProfit: any;
-  battFirm: any;
+  battFirm(site: Site): number;
   flowOf: any;
   chainHash: any;
   easeOf: any;
@@ -366,8 +378,8 @@ export interface GameExports {
   applyRebuild: any;
   toggleRig: any;
   setRigGroup: any;
-  groupOf: any;
-  groupHash: any;
+  groupOf(rig: Rig): Group;
+  groupHash(group: Group): number;
   groupRigs: any;
   setGroupChain: any;
   setGroupPool: any;
@@ -424,5 +436,32 @@ export interface Game {
   freshState(): GameState;
   spend(amount: number): void;
   __exports: GameExports;
+  // Real signatures for the most-used members, typed from their actual
+  // definitions (dispatch.ts, timeOfDay.ts) rather than guessed. Computeds
+  // here keep .value — this is the internal, pre-Pinia-unwrap surface every
+  // game/*.ts installer reads; see GameExports below for the published,
+  // auto-unwrapped versions of the same names.
+  siteRigs(site: Site): Rig[];
+  rigHash(rig: Rig): number;
+  rigLive(rig: Rig): boolean;
+  rigWear(rig: Rig): number;
+  rigNet(rig: Rig): number;
+  rigState(rig: Rig): RigState;
+  groupOf(rig: Rig): Group;
+  groupHash(group: Group): number;
+  totalHash: ComputedRef<number>;
+  siteSlots(site: Site): number;
+  siteCapacity(site: Site): number;
+  siteDemand(site: Site): number;
+  siteTemp(site: Site): number;
+  battFirm(site: Site): number;
+  revPerMh(chain: ChainState): number;
+  chain(id: string): ChainState | undefined;
+  active: ComputedRef<Site>;
+  price(c: ChainState): number;
+  site(id: number): Site | undefined;
+  rig(id: number): Rig | undefined;
+  poolOf(id: string): Pool | null;
+  evMult(p: { fee: number; scheme: string } | null): number;
   [key: string]: any;
 }

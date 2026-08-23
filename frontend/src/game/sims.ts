@@ -421,9 +421,9 @@ export function installSims(G: Game): void {
 
   function switchToBetterChain(sim: Sim): void {
     let best = sim.chain;
-    let bestRevenue = G.revPerMh(G.chain(sim.chain)) * chainDraw(sim.chain) * SWITCH_EDGE;
+    let bestRevenue = G.revPerMh(G.chain(sim.chain)!) * chainDraw(sim.chain) * SWITCH_EDGE;
     for (const chainId of SIM_CHAINS) {
-      const chain = G.chain(chainId);
+      const chain = G.chain(chainId)!;   // chainId always a real chain, from SIM_CHAINS
       const chainSimHash = G._simChainHash[chainId] || 0;
       // Whale check measured against current hashrate, not the floor: docs/implementation-notes.md.
       if (chainId !== sim.chain && chainSimHash + sim.hash > simTargetOf(chainId) && sim.hash > 0.25 * Math.max(1, chainSimHash))

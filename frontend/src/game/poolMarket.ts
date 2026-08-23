@@ -23,11 +23,11 @@ export function installPoolMarket(G: Game): void {
   const poolTrust = poolRep;
   // Bond formula (float + dry-spell cover, the tighter one binds): design-spec.md §5.
   const FLOAT_DAYS: Record<'PPS' | 'PPLNS', number> = { PPS: 1.0, PPLNS: PPLNS_COVER };
-  const floatPerHash = (p: Pool) => C.PAY * G.chain(p.chain).mult * FLOAT_DAYS[p.scheme as 'PPS' | 'PPLNS'];
+  const floatPerHash = (p: Pool) => C.PAY * G.chain(p.chain)!.mult * FLOAT_DAYS[p.scheme as 'PPS' | 'PPLNS'];
   const floatBondFor = (p: Pool, H: number) => H * floatPerHash(p);
   const varBondFor = (p: Pool, H: number) => {
     if (p.scheme !== 'PPS') return 0;
-    const c = G.chain(p.chain);
+    const c = G.chain(p.chain)!;   // a pool's chain always resolves
     const N = Math.max(1e-9, 86400 * COVER_DAYS * H / Math.max(1, G.diffOf(c)));
     return VAR_K * Math.sqrt(N) * blockValue(c) * (1 + TX_FEES);
   };
@@ -36,7 +36,7 @@ export function installPoolMarket(G: Game): void {
   const poolCapLimit = (p: Pool): number => {
     const byFloat = p.bond / Math.max(1e-9, floatPerHash(p));
     if (p.scheme !== 'PPS') return byFloat;
-    const c = G.chain(p.chain), bv = blockValue(c) * (1 + TX_FEES);
+    const c = G.chain(p.chain)!, bv = blockValue(c) * (1 + TX_FEES);   // a pool's chain always resolves
     const byVar = Math.pow(p.bond / Math.max(1e-9, VAR_K * bv), 2)
       * Math.max(1, G.diffOf(c)) / (86400 * COVER_DAYS);
     return Math.min(byFloat, byVar);
@@ -113,7 +113,7 @@ export function installPoolMarket(G: Game): void {
   function rivalTick(): void {
     for (const p of G.s.pools) {
       if (p.owner !== 'rival' || !p.live) continue;
-      const share = G.poolHash(p) / Math.max(1, G.chainHash(G.chain(p.chain)));
+      const share = G.poolHash(p) / Math.max(1, G.chainHash(G.chain(p.chain)!));
       const full = G.poolHash(p) >= poolCapLimit(p) * 0.95;
       if (full && Math.random() < 0.30) {
         // capacity is scarce; charge for it, and put earnings into more bond
@@ -190,7 +190,7 @@ export function installPoolMarket(G: Game): void {
   /* The operator's book: what the fee actually earns against the capital it
      ties up, so running a pool can be compared with just mining instead. */
   function poolPnl(p: Pool) {
-    const c = G.chain(p.chain);
+    const c = G.chain(p.chain)!;   // a pool's chain always resolves
     const gross = G.poolHash(p) * G.revPerMh(c);            // what members produce daily
     const income = gross * p.fee + (p.scheme === 'PPS' ? gross * TX_FEES * 0.5 : 0);
     const capital = p.bond;

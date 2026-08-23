@@ -153,7 +153,7 @@ describe('FarmView', () => {
     const pill = wrapper.find('.gsel')!;
     expect(pill.exists()).toBe(true);
     // the visible pill mirrors the select's current value
-    expect(pill.text()).toContain(store.chain(gr.chain).name);
+    expect(pill.text()).toContain(store.chain(gr.chain)!.name);
     const native = pill.find('select.gsel-native')!;
     expect(native.exists()).toBe(true);
     expect(native.attributes('aria-label')).toBe('Chain for ' + gr.name);

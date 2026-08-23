@@ -11,7 +11,7 @@ import type { Game, ChainState, Pool } from './types.js';
 export function installPools(G: Game): void {
   /* ---- running a pool ---- */
   function foundPool(chainId: string, scheme: 'PPS' | 'PPLNS', fee: number): void {
-    const chain = G.chain(chainId), need = G.bondReq(chain, scheme);
+    const chain = G.chain(chainId)!, need = G.bondReq(chain, scheme);   // chainId always a real chain
     if (G.s.cash < need) return;
     G.s.cash -= need;
     G.s.pools.push({ id:'you'+Math.random().toString(36).slice(2,7), chain:chainId,
@@ -90,7 +90,7 @@ export function installPools(G: Game): void {
     if (!quiet) G.say('pay', 'Sold ' + fmt.c(amount) + ' ' + chain.tick +
       (slip > 0.005 ? ' (' + fmt.pct(slip) + ' slippage)' : ''), '+' + fmt.usd2(net));
   }
-  const sell = (chainId: string, frac: number) => doSell(G.chain(chainId), G.s.wallet[chainId]! * frac);
+  const sell = (chainId: string, frac: number) => doSell(G.chain(chainId)!, G.s.wallet[chainId]! * frac);
   /* Buying is doSell's mirror image, not a separate model: the same book
      depth sets slippage, the same exchange fee applies, and impact moves
      the same way — just signed the other direction. Selling pushes impact
@@ -112,7 +112,7 @@ export function installPools(G: Game): void {
     G.say('pay', 'Bought ' + fmt.c(filled) + ' ' + chain.tick +
       (slip > 0.005 ? ' (' + fmt.pct(slip) + ' slippage)' : ''), '-' + fmt.usd2(cost));
   }
-  const buy = (chainId: string, frac: number) => doBuy(G.chain(chainId), G.s.cash * frac);
+  const buy = (chainId: string, frac: number) => doBuy(G.chain(chainId)!, G.s.cash * frac);
   function fireDrip(): void {
     for (const chain of G.s.chains) {
       if (G.s.hold && G.s.hold[chain.id]) continue;          // exempt what you are holding

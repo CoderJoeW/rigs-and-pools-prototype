@@ -62,8 +62,8 @@ useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open',
         <div class="rigfld"><label for="fleet-group-select">Move to a group</label>
           <select id="fleet-group-select" v-model.number="fleetGroup">
             <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
-              {{ gr.name }} — {{ g.chain(gr.chain).name }}{{ gr.pool==='solo'?' · solo'
-                :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool).name:'') }}</option>
+              {{ gr.name }} — {{ g.chain(gr.chain)!.name }}{{ gr.pool==='solo'?' · solo'
+                :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool)!.name:'') }}</option>
           </select>
           <button class="btn btn-wide" style="margin-top:6px"
                   :class="moveInfo.rigs?'btn-pri':''"

@@ -48,7 +48,7 @@ export function installAutopilot(G: Game): void {
         rig.on = false;
         G.say('sys', 'Policy: ' + rig.name + ' powered down');
       } else if (!rig.on && netUsd > G.s.offThreshold * 1.2 + 0.4) {
-        const site = G.site(rig.site);
+        const site = G.site(rig.site)!;   // a rig's site FK always resolves
         if (G.siteDemand(site) + G.rigWallW({ ...rig, on: true }) < G.siteCapacity(site)) {
           rig.on = true;
           G.say('sys', 'Policy: ' + rig.name + ' back online');

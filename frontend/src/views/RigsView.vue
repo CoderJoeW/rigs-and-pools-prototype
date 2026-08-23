@@ -164,7 +164,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
               <div class="sb">{{ r.units.length }}× {{ g.PART(r.units[0].p).name }}<template
                   v-if="g.s.groups.length>1"> &middot; {{ g.groupOf(r).name }}</template>
                 &middot; <ChainMark :chain="g.groupOf(r).chain"
-                />{{ g.chain(g.groupOf(r).chain).name }}</div>
+                />{{ g.chain(g.groupOf(r).chain)!.name }}</div>
               <div class="wearline">
                 <span class="wl">Wear</span>
                 <div class="wearbar" aria-hidden="true">
@@ -283,7 +283,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
             <select id="rig-group-select" :value="rig.group"
                     @change="g.setRigGroup(rig,parseInt(($event.target as HTMLSelectElement).value))">
               <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
-                {{ gr.name }} — {{ g.chain(gr.chain).name }}</option>
+                {{ gr.name }} — {{ g.chain(gr.chain)!.name }}</option>
             </select>
             <p class="hint">Moving between groups never forfeits anything — the window belongs to
               the group. Manage groups on the Farm tab.</p></div>

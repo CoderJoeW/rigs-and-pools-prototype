@@ -90,7 +90,7 @@ export function installActions(G: Game): void {
     const net = buy - credit;
     const core = gpuCoreW(framePart, moboPart, coolPart, unitPart, draft.n);
     const wall = core / psuPart.eff;
-    const site = G.site(rig.site);
+    const site = G.site(rig.site)!;   // a rig's site FK always resolves
     const checks = [
       { ok:draft.n>=1&&draft.n<=lim, label:draft.n+' cards into a limit of '+lim,
         fix:'The smaller of the frame and the board sets it.' },
