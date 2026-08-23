@@ -157,7 +157,7 @@ describe('swapWorn (repair)', () => {
     for (let i = 0; i < 80; i++) g.stepTick(10800); // 10 sim-days, full tilt, rotating through the day
 
     const rig = g.s.rigs[0];
-    expect(rig.units.every(u => u.w > 0)).toBe(true); // wear is actually accruing
+    expect(rig.units.every((u: any) => u.w > 0)).toBe(true); // wear is actually accruing
     expect(g.fleetWorn(0.35, null).n).toBeGreaterThan(0); // and it reached the repair line
   });
 
@@ -180,9 +180,9 @@ describe('rebuild (retrofit)', () => {
     g.build();
     const rig = g.s.rigs[0];
     g.startRebuild(rig);
-    expect(g.s.rebuild.rig).toBe(rig.id);
-    expect(g.s.rebuild.draft.unit).toBe(rig.units[0].p);
-    expect(g.s.rebuild.draft.n).toBe(rig.units.length);
+    expect(g.s.rebuild!.rig).toBe(rig.id);
+    expect(g.s.rebuild!.draft.unit).toBe(rig.units[0].p);
+    expect(g.s.rebuild!.draft.n).toBe(rig.units.length);
   });
 
   it('rebuildInfo reports "changed:false" when the draft matches the rig exactly', () => {
@@ -207,8 +207,8 @@ describe('rebuild (retrofit)', () => {
     expect(rig.building).toBe(0);
 
     g.startRebuild(rig);
-    g.s.rebuild.draft.n = Math.max(1, rig.units.length - 1); // drop one card: a real, cheap change
-    const info = g.rebuildInfo(rig, g.s.rebuild.draft);
+    g.s.rebuild!.draft.n = Math.max(1, rig.units.length - 1); // drop one card: a real, cheap change
+    const info = g.rebuildInfo(rig, g.s.rebuild!.draft);
     expect(info.changed).toBe(true);
 
     if (info.ok) {
@@ -367,8 +367,8 @@ describe('rushRig', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60); // finish the initial build
 
     g.startRebuild(rig);
-    g.s.rebuild.draft.n = Math.max(1, rig.units.length - 1);
-    const info = g.rebuildInfo(rig, g.s.rebuild.draft);
+    g.s.rebuild!.draft.n = Math.max(1, rig.units.length - 1);
+    const info = g.rebuildInfo(rig, g.s.rebuild!.draft);
     if (info.ok) {
       g.applyRebuild();
       expect(rig.building).toBeGreaterThan(0);

@@ -269,7 +269,7 @@ describe('BuildView', () => {
       expect(store.s.draft.frame).toBe(smallest.id);
       expect(store.s.draft.n).toBeLessThanOrEqual(
         Math.min(smallest.slots, store.PART(store.s.draft.mobo).pcie));
-      expect(store.checks.find(c => c.label.includes('slots'))!.ok).toBe(true);
+      expect(store.checks.find((c: any) => c.label.includes('slots'))!.ok).toBe(true);
     });
 
     it('re-enables "+" after switching to a frame/board pair with more room', async () => {
@@ -303,7 +303,7 @@ describe('BuildView', () => {
       // itself were still wrong.
       const { wrapper, store } = mountWithStore(BuildView);
       // The headline figures live in the hero's stat strip now.
-      const stat = k => wrapper.find('[data-stat="' + k + '"]')!.text();
+      const stat = (k: string) => wrapper.find('[data-stat="' + k + '"]')!.text();
       expect(stat('cost')).toBe(fmt.usd(store.dp.cost));
       expect(stat('hash')).toBe(fmt.hash(store.dp.mh));
       expect(stat('draw')).toBe(fmt.w(store.dp.wall));
@@ -455,7 +455,7 @@ describe('BuildView', () => {
       for (const [i, r] of rows.entries()) {
         // A short title on the left, the figures the check gates on at right.
         expect(r.find('.ct')!.text().length).toBeGreaterThan(0);
-        expect(r.find('.cd')!.text()).toBe(store.checks.find(c => c.title === r.find('.ct').text()
+        expect(r.find('.cd')!.text()).toBe(store.checks.find((c: any) => c.title === r.find('.ct').text()
           || c.label === r.find('.cd').text())!.label);
       }
       expect(rows.some(r => r.find('.ct')!.text() === 'Power budget within limit')).toBe(true);
@@ -468,7 +468,7 @@ describe('BuildView', () => {
       const sub = () => wrapper.findAll('.bh-stats .s')[1].find('.u')!;
       expect(sub().text()).toMatch(/^site at \d+% after$/);
       // Starve the site: the power check fails, and the stat has to say so.
-      const powerCheck = () => store.checks.find(c => c.title === 'Power budget within limit')!;
+      const powerCheck = () => store.checks.find((c: any) => c.title === 'Power budget within limit')!;
       expect(powerCheck().ok).toBe(true);
       expect(sub().classes()).not.toContain('neg');
 
@@ -543,7 +543,7 @@ describe('BuildView', () => {
       await nextTick();
       expect(store.canBuild).toBe(false);
       const live = wrapper.find('[aria-live="polite"].sr-only')!;
-      const failingLabel = store.checks.find(c => !c.ok)!.label;
+      const failingLabel = store.checks.find((c: any) => !c.ok)!.label;
       expect(live.text()).toBe('Cannot build yet: ' + failingLabel + '.');
     });
 
@@ -553,10 +553,10 @@ describe('BuildView', () => {
       store.s.cash = 0;                 // fails the cash check
       store.s.draft.frame = 'f2';       // and, with the mounted preset's n, the slot check too
       await nextTick();
-      const failing = store.checks.filter(c => !c.ok);
+      const failing = store.checks.filter((c: any) => !c.ok);
       expect(failing.length).toBeGreaterThan(1); // otherwise this isn't exercising the join at all
       const live = wrapper.find('[aria-live="polite"].sr-only')!;
-      expect(live.text()).toBe('Cannot build yet: ' + failing.map(c => c.label).join('; ') + '.');
+      expect(live.text()).toBe('Cannot build yet: ' + failing.map((c: any) => c.label).join('; ') + '.');
     });
 
     it('settles on the final outcome immediately, instead of trailing the tweened numbers', async () => {
@@ -653,7 +653,7 @@ describe('BuildView', () => {
     // manufactures a custom cooler at the active site's fab, finishing
     // construction instantly (the rush-style shortcut used throughout the
     // fab test suites — real build times are hours too long to loop to)
-    const withCustomCooler = g => {
+    const withCustomCooler = (g: any) => {
       const f = g.active;
       g.s.cash = 1000000;
       g.chooseFab(f.id, 'fab-bench');
@@ -679,7 +679,7 @@ describe('BuildView', () => {
       const row = wrapper.findAll('.cmp-r').find(r => r.text().includes('Custom cooler'))!;
       await row.trigger('click');
 
-      const part = store.s.customParts[0];
+      const part: any = store.s.customParts[0];
       expect(store.s.draft.cool).toBe(part.id);
       expect(store.dp.air).toBeCloseTo(store.PART(store.s.draft.frame).air * part.fac, 5);
     });

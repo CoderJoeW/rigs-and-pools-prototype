@@ -145,7 +145,7 @@ describe('SitesView', () => {
   it('addresses positions row-column, wrapping at the grid\'s column count', () => {
     const { wrapper } = mountWithStore(SitesView, {
       seed: g => { g.s.cash = 200000; g.upgradeShell(g.active.id, 'garage');
-        g.active.queue.forEach(j => { j.left = 0.0001; }); g.stepTick(1);
+        g.active.queue.forEach((j: any) => { j.left = 0.0001; }); g.stepTick(1);
         // the first rig draws power the instant it's built now, so the
         // site needs real headroom of its own to keep fitting the rest
         g.active.sources.push({ p: 's-400', n: 1 });
@@ -217,8 +217,8 @@ describe('SitesView', () => {
   });
 
   describe('Fabrication', () => {
-    const openFabSection = async wrapper => {
-      const toggle = wrapper.findAll('button.rig-hd').find(b => b.text().includes('Fabrication'))!;
+    const openFabSection = async (wrapper: any) => {
+      const toggle = wrapper.findAll('button.rig-hd').find((b: any) => b.text().includes('Fabrication'))!;
       await toggle.trigger('click');
     };
 
@@ -311,7 +311,7 @@ describe('SitesView', () => {
   });
 
   describe('Designing a custom part', () => {
-    const withBench = g => {
+    const withBench = (g: any) => {
       const f = g.active;
       g.s.cash = 1000000;
       g.chooseFab(f.id, 'fab-bench'); // slots: cool, psu
@@ -344,14 +344,14 @@ describe('SitesView', () => {
 
       expect(wrapper.text()).toContain('Design a Cooler');
       expect(wrapper.text()).toContain('0 / 30'); // nothing spent yet, rendered
-      expect(store.designTotals('cool', store.s.design.picks).budget).toBe(0);
+      expect(store.designTotals('cool', store.s.design!.picks).budget).toBe(0);
 
       const coolingFactorAxis = store.DESIGN_AXES.cool[0];
       await wrapper.find(`button[aria-label="Increase ${coolingFactorAxis.label}"]`)!.trigger('click');
       await wrapper.vm.$nextTick();
 
-      expect(store.s.design.picks[coolingFactorAxis.key]).toBe(1);
-      expect(store.designTotals('cool', store.s.design.picks).budget).toBe(coolingFactorAxis.budgetCost);
+      expect(store.s.design!.picks[coolingFactorAxis.key]).toBe(1);
+      expect(store.designTotals('cool', store.s.design!.picks).budget).toBe(coolingFactorAxis.budgetCost);
       expect(wrapper.text()).toContain(coolingFactorAxis.budgetCost + ' / 30'); // the spend actually renders
       expect(wrapper.text()).not.toContain('0 / 30');
     });
@@ -379,8 +379,8 @@ describe('SitesView', () => {
       store.stepTick(1);
 
       expect(store.s.customParts).toHaveLength(1);
-      expect(store.s.customParts[0].kind).toBe('psu');
-      expect(store.PART(store.s.customParts[0].id)).toBe(store.s.customParts[0]);
+      expect((store.s.customParts[0] as any).kind).toBe('psu');
+      expect(store.PART((store.s.customParts[0] as any).id)).toBe(store.s.customParts[0]);
     });
 
     it('the tuner\'s live preview starts a unit design from the grown catalogue, not the frozen one, once generations have advanced', async () => {
@@ -418,11 +418,11 @@ describe('SitesView', () => {
         expect(plus().attributes('disabled')).toBeUndefined();
         await plus().trigger('click');
       }
-      expect(store.s.design.picks[axis.key]).toBe(5);
+      expect(store.s.design!.picks[axis.key]).toBe(5);
       expect(plus().attributes('disabled')).toBeDefined(); // the 6th point would cost 42, over budget
 
       await plus().trigger('click'); // inert past the cap
-      expect(store.s.design.picks[axis.key]).toBe(5);
+      expect(store.s.design!.picks[axis.key]).toBe(5);
     });
   });
 });
