@@ -1,8 +1,11 @@
 import { C, TX_FEES, CONN_Q, BLOCK_K, RETARGET } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
+import type { Game, ChainState } from './types.js';
 
-export function installBlockMining(G) {
-  function runBlockWindow(chain, dt) {
+interface Winner { pool: string; mine: boolean; group?: any; sim?: any }
+
+export function installBlockMining(G: Game): void {
+  function runBlockWindow(chain: ChainState, dt: number): void {
     const networkHash = G.chainHash(chain);
     if (networkHash <= 0) {
       chain.elapsed = 0;
@@ -29,14 +32,14 @@ export function installBlockMining(G) {
     }
   }
 
-  function armBlock(chain) {
+  function armBlock(chain: ChainState): void {
     const networkHash = Math.max(1, G.chainHash(chain));
     chain.T = (G.diffOf(chain) / networkHash) * (BLOCK_K + 1) / BLOCK_K;
     chain.due = chain.T * Math.pow(Math.random(), 1 / BLOCK_K);
     chain.elapsed = 0;
   }
 
-  function drawWinner(chain, networkHash) {
+  function drawWinner(chain: ChainState, networkHash: number): Winner {
     let remainingHash = Math.random() * networkHash;
     for (const group of G.s.groups) {
       if (group.chain !== chain.id) continue;
@@ -47,25 +50,25 @@ export function installBlockMining(G) {
     return { pool: 'solo', mine: false };
   }
 
-  function baselineKey(chain, pool) {
+  function baselineKey(chain: ChainState, pool: any): string {
     return pool ? chain.id + '|' + pool.id : chain.id;
   }
 
-  function blockBaseline(key) {
+  function blockBaseline(key: string): number | null {
     const recentValues = G.s.recentBlockUsd[key];
     if (!recentValues || recentValues.length < C.BLOCK_BASELINE_MIN) return null;
     const sorted = [...recentValues].sort((valueA, valueB) => valueA - valueB);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
   }
 
-  function trackBlockUsd(key, usd) {
+  function trackBlockUsd(key: string, usd: number): void {
     const recentValues = G.s.recentBlockUsd[key] || (G.s.recentBlockUsd[key] = []);
     recentValues.push(usd);
     while (recentValues.length > C.BLOCK_BASELINE_WINDOW) recentValues.shift();
   }
 
-  function awardBlock(chain, winner) {
+  function awardBlock(chain: ChainState, winner: Winner): void {
     const fullReward = chain.reward * (1 + TX_FEES);
     const fullRewardUsd = fullReward * G.price(chain);
     const pool = (!winner.pool || winner.pool === 'solo') ? null : G.poolOf(winner.pool);
@@ -79,7 +82,7 @@ export function installBlockMining(G) {
     awardPooledBlock(chain, winner, pool, fullReward, fullRewardUsd);
   }
 
-  function awardSoloBlock(chain, winner, fullReward) {
+  function awardSoloBlock(chain: ChainState, winner: Winner, fullReward: number): void {
     if (!winner.mine) {
       if (winner.sim && G.creditSim) G.creditSim(winner.sim, fullReward * G.price(chain));
       return;
@@ -90,7 +93,7 @@ export function installBlockMining(G) {
       G.say('bad', 'Orphaned on ' + chain.name);
       return;
     }
-    G.s.wallet[chain.id] += fullReward;
+    G.s.wallet[chain.id]! += fullReward;
     G.today().earned += fullReward * G.price(chain);
     G.today().blocks++;
     const usd = fullReward * G.price(chain);
@@ -98,7 +101,7 @@ export function installBlockMining(G) {
     const record = usd > G.s.bestBlock;
     const jackpot = !record && baseline && usd >= baseline * C.JACKPOT_MULT;
     if (jackpot) {
-      G.say('jackpot', 'Jackpot on ' + chain.name + ' — ' + (usd / baseline).toFixed(1) + 'x your usual',
+      G.say('jackpot', 'Jackpot on ' + chain.name + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
         '+' + fmt.c(fullReward), fullReward, chain.tick);
     } else {
       G.say('block', 'Block solved solo on ' + chain.name, '+' + fmt.c(fullReward), fullReward, chain.tick);
@@ -107,7 +110,7 @@ export function installBlockMining(G) {
       G.s.bestBlock = usd;
       G.pop('Biggest block yet', '+' + fmt.usd2(usd), '', { always: true, kind: 'record' });
     } else if (jackpot) {
-      G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline).toFixed(1) + 'x your usual',
+      G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
         'jackpot', { always: true });
     } else {
       G.pop('Block solved', '+' + fmt.c(fullReward) + ' ' + chain.tick, '', { kind: 'block' });
@@ -115,7 +118,7 @@ export function installBlockMining(G) {
     trackBlockUsd(chain.id, usd);
   }
 
-  function awardPooledBlock(chain, winner, pool, fullReward, fullRewardUsd) {
+  function awardPooledBlock(chain: ChainState, winner: Winner, pool: any, fullReward: number, fullRewardUsd: number): void {
     if (winner.mine) G.s.blocksSolved++;
     // pool.found is counted ONCE, at the top of awardBlock. It used to be
     // counted again here — every pooled block twice — which saturated
@@ -143,7 +146,7 @@ export function installBlockMining(G) {
     }
   }
 
-  function awardPplnsShare(chain, winner, pool, fullReward) {
+  function awardPplnsShare(chain: ChainState, winner: Winner, pool: any, fullReward: number): void {
     const poolHashTotal = G.poolHash(pool);
     const miningGroups = G.s.groups.filter(group => group.pool === pool.id && G.groupHash(group) > 0);
     const miningHash = miningGroups.reduce((sum, group) => sum + G.groupHash(group), 0);
@@ -158,7 +161,7 @@ export function installBlockMining(G) {
       group.pending -= overflow;
       paidOut += overflow;
     }
-    G.s.wallet[chain.id] += paidOut;
+    G.s.wallet[chain.id]! += paidOut;
     G.today().earned += paidOut * G.price(chain);
     if (paidOut > 0) G.today().blocks++;
 
@@ -170,8 +173,8 @@ export function installBlockMining(G) {
       const jackpot = baseline && usd >= baseline * C.JACKPOT_MULT;
       if (jackpot) {
         G.say('jackpot', winner.group.name + ' solved the ' + chain.name + ' pool block — '
-          + (usd / baseline).toFixed(1) + 'x your usual', '+' + fmt.c(share), share, chain.tick);
-        G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline).toFixed(1) + 'x your usual',
+          + (usd / baseline!).toFixed(1) + 'x your usual', '+' + fmt.c(share), share, chain.tick);
+        G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
           'jackpot', { always: true });
       } else {
         G.say('block', winner.group.name + ' solved the ' + chain.name + ' pool block', '+' + fmt.c(share), share, chain.tick);
@@ -183,7 +186,7 @@ export function installBlockMining(G) {
     trackBlockUsd(key, usd);
   }
 
-  function flatDrip(chain, dt) {
+  function flatDrip(chain: ChainState, dt: number): void {
     for (const group of G.s.groups) {
       if (group.chain !== chain.id) continue;
       // `live` as well as the scheme: a closed pool has no bond and no
@@ -193,7 +196,7 @@ export function installBlockMining(G) {
       const pool = G.poolOf(group.pool);
       if (!pool || !pool.live || pool.scheme !== 'PPS') continue;
       const drip = (dt * G.groupHash(group) / G.diffOf(chain)) * chain.reward * (1 - pool.fee) * (1 - 0.02 * (1 - CONN_Q));
-      G.s.wallet[chain.id] += drip;
+      G.s.wallet[chain.id]! += drip;
       G.today().earned += drip * G.price(chain);
     }
     if (G.simFlatDrip) G.simFlatDrip(chain, dt);

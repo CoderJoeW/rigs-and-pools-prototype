@@ -80,6 +80,9 @@ export interface MilestoneState { done: Record<string, number>; rank: number }
 
 export interface DesignInProgress { fid: number; kind: import('../data/customParts.js').DesignKind; picks: Record<string, number> }
 
+export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
+export interface RebuildInProgress { rig: number; picker: unknown; draft: RebuildDraft }
+
 // Rigs, pools and sims are still assembled by not-yet-converted installers
 // (buildDraft.js, pools.js, poolMarket.js, sims.js); their shapes will move
 // from `any` to real interfaces as those files convert.
@@ -129,7 +132,7 @@ export interface GameState {
   bestBlock: number;
   gen: number;
   weather: WeatherState | null;
-  recentBlockUsd: Record<string, number>;
+  recentBlockUsd: Record<string, number[]>;
   mile: MilestoneState;
   poolTake: number;
   repairs: number;
@@ -140,7 +143,7 @@ export interface GameState {
   unlocked: Record<string, boolean>;
   picker: unknown;
   sitePicker: unknown;
-  rebuild: unknown;
+  rebuild: RebuildInProgress | null;
   focusRig: unknown;
   saveInfo: string;
   wipeArm: boolean;
