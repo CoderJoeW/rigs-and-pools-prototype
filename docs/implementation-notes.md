@@ -662,6 +662,20 @@ louder → muted. A separate slider would have to fit into a top bar
 already full at 320px, and a game with three cues doesn't need continuous
 gain — it needs "off," "on," and "on, I am across the room."
 
+## Save migration steps (`src/game/persistence.ts`)
+
+`hydrateUnsafe` used to be one 116-line function; it is now a fixed
+sequence of named steps, each fixing exactly one gap a save can predate:
+`resetTransientUiState`, `reindexCustomParts`, the `allUnlocked()` refresh,
+`reseedOrReindexSims`, `migrateLegacyGroups`, `migrateLegacyDefaults`,
+`rebalanceChains`, `retireServerPools`. The order matters and mirrors the
+original inline sequence — later steps read state earlier ones establish
+(`migrateLegacyGroups` needs every rig to already have a resolved
+`group`-free legacy shape; `rebalanceChains` and `retireServerPools` both
+read `G.s.sims`, which `reseedOrReindexSims` must have already seeded or
+reindexed) — so don't reorder the calls in `hydrateUnsafe` without
+checking what each step assumes is already true.
+
 ## Sites view hero scrim (`src/views/SitesView.vue`)
 
 The site hero's render is a backdrop, not a picture: it sits under a scrim

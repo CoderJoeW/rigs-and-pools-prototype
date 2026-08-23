@@ -88,15 +88,20 @@ export function installPersistence(G: Game): void {
     }
     finally { hydrating = false; }
   }
-  async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
-    Object.assign(G.s, data.state);
+  // A save can predate whatever GameState field is being checked below —
+  // each migration here fixes exactly one such gap, in the order hydrateUnsafe
+  // applies them: docs/implementation-notes.md#save-migration-steps-srcgamepersistencets.
+  function resetTransientUiState(): void {
     G.s.toast = { n: 0, text: '', amount: '', cls: '' };
     G.s.catchUp = null;
     G.s.picker = null; G.s.sitePicker = null; G.s.design = null;
     G.s.rebuild = null; G.s.focusRig = null; G.s.speed = 1; G.s.wipeArm = false;
+  }
+  function reindexCustomParts(): void {
     if (!Array.isArray(G.s.customParts)) G.s.customParts = [];
     for (const p of G.s.customParts) PART_MAP.set(p.id, p as unknown as Part);
-    G.s.unlocked = allUnlocked();
+  }
+  function reseedOrReindexSims(): void {
     const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
       || G.s.sims.some((m: Partial<Sim>) => m.cash === undefined || m.style === undefined);
     if (needsSimReseed && G.seedSims) {
@@ -115,7 +120,8 @@ export function installPersistence(G: Game): void {
     } else if (G.reindexSims) {
       G.reindexSims();
     }
-
+  }
+  function migrateLegacyGroups(): void {
     const legacyRigs = G.s.rigs as LegacyRig[];
     const legacy = legacyRigs.some(r => !r.group || ('chain' in r) || ('pool' in r));
     if (legacy || !G.s.groups || !G.s.groups.length) {
@@ -136,6 +142,8 @@ export function installPersistence(G: Game): void {
         chain: 'tessera', pool: 'solo', pending: 0 });
     }
     for (const r of legacyRigs) if (!r.group) r.group = G.s.groups[0]!.id;
+  }
+  function migrateLegacyDefaults(): void {
     if ('autoSell' in G.s) {
       G.s.drip = { on: !!(G.s as unknown as { autoSell?: boolean }).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
       delete (G.s as unknown as { autoSell?: boolean }).autoSell;
@@ -146,6 +154,8 @@ export function installPersistence(G: Game): void {
     if (G.s.today && typeof G.s.today.blocks !== 'number') G.s.today.blocks = 0;
     if (typeof G.s.recentBlockUsd !== 'object' || G.s.recentBlockUsd === null || Array.isArray(G.s.recentBlockUsd))
       G.s.recentBlockUsd = {};
+  }
+  function rebalanceChains(): void {
     for (const c of G.s.chains) {
       const base = CHAINS.find(x => x.id === c.id);
       if (!base || (c.floor === base.floor && c.reward === base.reward)) continue;
@@ -174,32 +184,44 @@ export function installPersistence(G: Game): void {
       }
       c.obs = Math.max(c.floor, want);
     }
+  }
+  function retireServerPools(): void {
     const legacyPools = G.s.pools as LegacyPool[];
-    if (legacyPools.some(p => p.owner === 'server')) {
-      const dead = new Set(legacyPools.filter(p => p.owner === 'server').map(p => p.id));
-      G.s.pools = legacyPools.filter(p => p.owner !== 'server') as Pool[];
-      // Through setSimPool for the same reason the rescale above goes through
-      // setSimHash: a bare assignment strands the miner's hashrate in
-      // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
-      for (const m of G.s.sims) if (dead.has(m.pool)) {
-        if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
-      }
-      for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
-      let seq = 0;
-      for (const cid of SIM_CHAINS) {
-        const c = CHAINS.find(x => x.id === cid)!;
-        for (let i = 0; i < RIVAL_PER_CHAIN; i++) {
-          const scheme = Math.random() < 0.35 ? 'PPS' : 'PPLNS';
-          const fee = scheme === 'PPS' ? 0.015 + Math.random() * 0.045 : 0.005 + Math.random() * 0.035;
-          const per = C.PAY * c.mult * (scheme === 'PPS' ? COVER_DAYS : PPLNS_COVER);
-          const bond = Math.round(per * SIM_RATIO * c.floor * (0.12 + Math.random() * 0.45));
-          G.s.pools.push({ id: 'rm' + (++seq), chain: cid, owner: 'rival',
-            name: nextRivalName(seq), scheme, fee, bond, bond0: bond,
-            cap: 0, born: G.s.t, live: true, earned: 0, found: 0, feeMoved: -1e9, lapse: 0 });
-        }
-      }
-      G.say('pool', 'The official pools have wound up — the market is all private operators now');
+    if (!legacyPools.some(p => p.owner === 'server')) return;
+    const dead = new Set(legacyPools.filter(p => p.owner === 'server').map(p => p.id));
+    G.s.pools = legacyPools.filter(p => p.owner !== 'server') as Pool[];
+    // Through setSimPool for the same reason rebalanceChains's rescale goes
+    // through setSimHash: a bare assignment strands the miner's hashrate in
+    // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
+    for (const m of G.s.sims) if (dead.has(m.pool)) {
+      if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
     }
+    for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
+    let seq = 0;
+    for (const cid of SIM_CHAINS) {
+      const c = CHAINS.find(x => x.id === cid)!;
+      for (let i = 0; i < RIVAL_PER_CHAIN; i++) {
+        const scheme = Math.random() < 0.35 ? 'PPS' : 'PPLNS';
+        const fee = scheme === 'PPS' ? 0.015 + Math.random() * 0.045 : 0.005 + Math.random() * 0.035;
+        const per = C.PAY * c.mult * (scheme === 'PPS' ? COVER_DAYS : PPLNS_COVER);
+        const bond = Math.round(per * SIM_RATIO * c.floor * (0.12 + Math.random() * 0.45));
+        G.s.pools.push({ id: 'rm' + (++seq), chain: cid, owner: 'rival',
+          name: nextRivalName(seq), scheme, fee, bond, bond0: bond,
+          cap: 0, born: G.s.t, live: true, earned: 0, found: 0, feeMoved: -1e9, lapse: 0 });
+      }
+    }
+    G.say('pool', 'The official pools have wound up — the market is all private operators now');
+  }
+  async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
+    Object.assign(G.s, data.state);
+    resetTransientUiState();
+    reindexCustomParts();
+    G.s.unlocked = allUnlocked();
+    reseedOrReindexSims();
+    migrateLegacyGroups();
+    migrateLegacyDefaults();
+    rebalanceChains();
+    retireServerPools();
     G.ensureWeather(); G.ensureGens();
     await creditAway(Math.max(0, (Date.now() - data.savedAt) / 1000));
     return true;
