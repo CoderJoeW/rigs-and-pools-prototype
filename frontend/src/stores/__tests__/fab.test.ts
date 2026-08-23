@@ -5,7 +5,7 @@ import { CARDS } from '../../data/hardware.js';
 // installs 'fab-bench' (slots: cool, psu; budget 30) at the active site and
 // finishes construction instantly, the same rush-style shortcut sites.test.js
 // uses — a fab's real build time is hours too long to loop stepTick to
-function withBench(g){
+function withBench(g: any){
   const f=g.active;
   g.s.cash=1000000;
   g.chooseFab(f.id,'fab-bench');
@@ -48,9 +48,9 @@ describe('bumpDesignPick', () => {
     const f=withBench(g);
     g.openDesign(f.id,'cool');
     g.bumpDesignPick('fac',1);
-    expect(g.s.design.picks.fac).toBe(1);
+    expect(g.s.design!.picks.fac).toBe(1);
     g.bumpDesignPick('fac',-5);
-    expect(g.s.design.picks.fac).toBe(0);
+    expect(g.s.design!.picks.fac).toBe(0);
   });
 
   it('refuses a bump that would exceed the fab\'s design budget', () => {
@@ -59,9 +59,9 @@ describe('bumpDesignPick', () => {
     g.openDesign(f.id,'cool');
     // fac alone: n=5 costs 2*5*6/2=30 (exactly the cap), n=6 costs 2*6*7/2=42 (over)
     for(let i=0;i<5;i++) g.bumpDesignPick('fac',1);
-    expect(g.s.design.picks.fac).toBe(5);
+    expect(g.s.design!.picks.fac).toBe(5);
     g.bumpDesignPick('fac',1);
-    expect(g.s.design.picks.fac).toBe(5); // refused — stayed put
+    expect(g.s.design!.picks.fac).toBe(5); // refused — stayed put
   });
 });
 
@@ -112,7 +112,7 @@ describe('manufacturePart', () => {
 
     expect(f.queue).toHaveLength(0);
     expect(g.s.customParts).toHaveLength(1);
-    const part=g.s.customParts[0];
+    const part: any=g.s.customParts[0];
     expect(part.fac).toBeGreaterThan(2.20); // past the Immersion tank kit, the top catalogue cooler
     expect(g.PART(part.id)).toBe(part); // resolvable the same way any catalogue part is
   });
@@ -177,18 +177,18 @@ describe('manufacturePart', () => {
     // regrows the catalogue from G.s.t, not from how many ticks got there
     g.s.t=g.C.GEN_DAYS*86400*2+10;
     g.stepTick(1);
-    const staticTopMh=CARDS[CARDS.length-1].mh;
+    const staticTopMh=CARDS[CARDS.length-1]!.mh;
     const liveTopMh=g.cards()[g.cards().length-1].mh;
     expect(liveTopMh).toBeGreaterThan(staticTopMh); // sanity: the catalogue genuinely grew
 
     g.openDesign(f.id,'unit');
-    const mhAxis=g.DESIGN_AXES.unit.find(a=>a.key==='mh')!;
+    const mhAxis=g.DESIGN_AXES.unit.find((a: any)=>a.key==='mh')!;
     g.bumpDesignPick('mh',1);
     g.manufacturePart();
-    const job=f.queue.find(j=>j.kind==='mfg')!;
+    const job=f.queue.find((j: any)=>j.kind==='mfg')!;
     job.left=0.0001; g.stepTick(1);
 
-    const part=g.s.customParts[0];
+    const part: any=g.s.customParts[0];
     expect(part.mh).toBe(liveTopMh+mhAxis.step); // based on the LIVE top, not the static one
     expect(part.mh).not.toBe(staticTopMh+mhAxis.step);
   });

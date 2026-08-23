@@ -9,7 +9,7 @@ import WelcomeTour from '../WelcomeTour.vue';
 // itself. These tests supply a stand-in target, attached to the live
 // document (querySelector doesn't see a detached test tree), and give the
 // requestAnimationFrame retry chain a real tick to resolve.
-function mountWithTarget(dataTour) {
+function mountWithTarget(dataTour: string) {
   const Harness = defineComponent({
     render: () => h('div', [
       h('div', { 'data-tour': dataTour }),
@@ -200,21 +200,21 @@ describe('WelcomeTour', () => {
 
     // jsdom has no real scrollIntoView (the component itself guards for
     // that, see WelcomeTour.vue) — stub one so it's spyable here.
-    const target = document.querySelector('[data-tour="sites"]');
+    const target = document.querySelector('[data-tour="sites"]') as any;
     target.scrollIntoView = () => {};
     const scrollSpy = vi.spyOn(target, 'scrollIntoView');
     // simulate the target having actually moved, as a real scroll would
     vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(
       { top:999, left:5, width:100, height:50, bottom:1049, right:105 });
 
-    document.getElementById('scroll-container')
+    document.getElementById('scroll-container')!
       .dispatchEvent(new Event('scroll', { bubbles:false }));
     await settle();
 
     expect(scrollSpy).not.toHaveBeenCalled(); // re-measured in place, not re-scrolled-to
     const spot = wrapper.find('.tour-spot')!;
     expect(spot.exists()).toBe(true);
-    expect(parseFloat(spot.element.style.top)).toBeCloseTo(999-6); // PAD=6, and it actually followed
+    expect(parseFloat((spot.element as HTMLElement).style.top)).toBeCloseTo(999-6); // PAD=6, and it actually followed
     wrapper.unmount();
   });
 
@@ -228,17 +228,17 @@ describe('WelcomeTour', () => {
     const { wrapper } = mountWithStore(Harness, { attachTo: document.body });
     await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click'); // -> sites
     await settle();
-    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe(''); // normal (CSS-defined) by default
+    expect((wrapper.find('.tour-spot')!.element as HTMLElement).style.transition).toBe(''); // normal (CSS-defined) by default
 
-    document.getElementById('scroll-container-2')
+    document.getElementById('scroll-container-2')!
       .dispatchEvent(new Event('scroll', { bubbles:false }));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe('none');
+    expect((wrapper.find('.tour-spot')!.element as HTMLElement).style.transition).toBe('none');
 
     // settles back to normal a moment after the scroll stops, not forever
     await new Promise(r => setTimeout(r, 200));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('.tour-spot')!.element.style.transition).toBe('');
+    expect((wrapper.find('.tour-spot')!.element as HTMLElement).style.transition).toBe('');
     wrapper.unmount();
   });
 
@@ -273,7 +273,7 @@ describe('WelcomeTour', () => {
     const tour = cssRule('.tour');
     const spot = cssRule('.tour-spot');
     expect(tour).toMatch(/position:\s*relative/);
-    expect(cssNum(tour, 'z-index')).toBeGreaterThan(cssNum(spot, 'z-index'));
+    expect(cssNum(tour, 'z-index')).toBeGreaterThan(cssNum(spot, 'z-index')!);
   });
 
   it('a replay (restartTour) always starts over from slide 1, not wherever a previous run left off', async () => {
