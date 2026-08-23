@@ -354,3 +354,39 @@ a bigger chain) got the same flat toast as routine income. 3x matches the
 issue's own example ("3x your usual"); `BLOCK_BASELINE_MIN` samples of
 real baseline are required before it can fire, so the first few blocks —
 with no "usual" yet to compare against — never falsely read as a jackpot.
+
+## Fab-designed parts (`src/data/customParts.ts`)
+
+Every catalogue ladder elsewhere in the game is strictly monotonic and
+capped — the whole point of a fab (`game/fab.ts`) is a part that goes
+past that cap. A design starts from the top tier of its slot's catalogue
+and pushes one or two stats further, paid for out of the fab's `budget`
+(a per-design allowance, not a resource that depletes across designs)
+plus real cash and build time. Two axes per slot, never more: the
+tradeoff is meant to be "which stat, and how far" within one shared
+budget, and a longer axis list would mostly mean spreading thinner
+rather than choosing.
+
+**`liveTop`.** `unit` and `psu` are the two ladders `generations.ts`
+keeps growing for as long as the game runs; `frame`/`mobo`/`cool` never
+do. A design's starting point for those two must be the *current* top of
+the live catalogue, not this file's static import — this module has no
+store access to ask for that, so every caller designing a unit or psu
+has to pass `liveTop` in (the last element of `g.cards()` / `g.livePsus`).
+Skip that and a part designed early quietly falls behind the catalogue
+itself a few in-game weeks later — the opposite of "numbers nothing in
+any catalogue can match," the entire reason to pay for a fab.
+Frame/mobo/cool callers can omit it.
+
+**`pointCost`.** Triangular: the Nth point on an axis costs
+`budgetCost*N`, so reaching N points costs `budgetCost*N*(N+1)/2` —
+climbing any one axis alone gets steadily more expensive, forcing a real
+split across the two axes instead of dumping every point into whichever
+is cheaper.
+
+**`designCost`.** `buildCash` is the one-off R&D bill, paid to queue the
+manufacturing job like any other site-part purchase. `unitPrice` is what
+the finished design costs each time it's actually built, forever after —
+a modest, points-scaled premium over the catalogue's own top tier, so a
+custom part stays true to "more expensive is always better" rather than
+becoming free hashrate once the R&D is paid off.

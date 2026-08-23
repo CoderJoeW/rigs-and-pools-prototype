@@ -46,12 +46,8 @@ export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's v
 export const SIM_FEE_MIN = 0.002;
 export const SIM_FEE_MAX = 0.09;
 export const SIM_PLAYERS = 100;      // the rest of the network
-// Chain ladder rationale: design-spec.md §2a. The per-mult premiums and rung
-// spacing there predate a 2026-08-21 rebalance (now Halcyon +35%, Nova +75%,
-// Obelisk +120% vs Ferro's mult:1.00, rungs ~8-10x apart) — see docs/economy.md
-// for the current numbers until §2a's table is refreshed to match.
-// SIM_RATIO is where a chain's independent miners END UP once the network has
-// fully arrived, not where it starts — design-spec.md §6o.
+// Where a chain's independent miners end up once fully arrived, not where it
+// starts — design-spec.md §6o. Chain ladder rationale: docs/economy.md#chain-ladder-derivation-srcdatachainsts
 export const SIM_RATIO   = 0.6;
 // Block timing model (exact-arrival, not Poisson): design-spec.md §1.
 export const BLOCK_K = 3;
