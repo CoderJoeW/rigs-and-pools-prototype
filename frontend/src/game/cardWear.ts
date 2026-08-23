@@ -1,6 +1,6 @@
 import { C } from '../data/constants.js';
 import { PART } from '../data/hardware.js';
-import type { Game, Site } from './types.js';
+import type { Game, Site, Rig, Unit } from './types.js';
 
 export function installCardWear(G: Game): void {
   function wearCardsAndWarnOnHeat(days: number): void {
@@ -16,7 +16,7 @@ export function installCardWear(G: Game): void {
   }
 
   function warnIfSiteHot(site: Site, temp: number, heat: number): void {
-    const hot = temp >= 70 && G.siteRigs(site).some((rig: any) => G.rigLive(rig));
+    const hot = temp >= 70 && G.siteRigs(site).some((rig: Rig) => G.rigLive(rig));
     if (hot && !site.hotWarn) {
       site.hotWarn = true;
       G.say('bad', site.name + ' is cooking — ' + temp.toFixed(0) + '°C: throttling, and cards wearing '
@@ -27,7 +27,7 @@ export function installCardWear(G: Game): void {
     }
   }
 
-  function wearRigCards(rig: any, days: number, heat: number): void {
+  function wearRigCards(rig: Rig, days: number, heat: number): void {
     const tuneWear = 1 + Math.max(0, (rig.tune || 0)) * 3;
     for (const unit of rig.units) {
       if (unit.w >= 1) continue;
@@ -35,7 +35,7 @@ export function installCardWear(G: Game): void {
       G.touchHeat();
       if (unit.w >= 1) G.say('bad', PART(unit.p)!.name + ' in ' + rig.name + ' has worn out');
     }
-    if (!rig.deadNote && rig.units.length && rig.units.every((unit: any) => unit.w >= 1)) {
+    if (!rig.deadNote && rig.units.length && rig.units.every((unit: Unit) => unit.w >= 1)) {
       rig.deadNote = true;
       G.say('bad', rig.name + ' has no working cards left');
       G.pop(rig.name + ' is dead', 'every card worn out', 'dark', { always: true });

@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { C, TX_FEES } from '../data/constants.js';
-import type { Game, ChainState, Site } from './types.js';
+import type { Game, ChainState, Site, Rig, Pool } from './types.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
@@ -35,8 +35,8 @@ export function installTimeOfDay(G: Game): void {
   const site = (id: number): Site | undefined => G.s.sites.find(x => x.id === id);
   const active = computed(() => site(G.s.activeSite) || G.s.sites[0]);
   const chain = (id: string): ChainState | undefined => G.s.chains.find(c => c.id === id);
-  const rig = (id: number) => G.s.rigs.find((x: any) => x.id === id);
-  const poolOf = (id: string) => G.s.pools.find((p: any) => p.id === id) || null;
+  const rig = (id: number) => G.s.rigs.find((x: Rig) => x.id === id);
+  const poolOf = (id: string) => G.s.pools.find((p: Pool) => p.id === id) || null;
   const price = (c: ChainState) => Math.max(0.02, c.ref * (1 - c.impact));
   const evMult = (p: { fee: number; scheme: string } | null) => p ? (1 - p.fee) * (p.scheme === 'PPS' ? 1 : 1 + TX_FEES) : 1 + TX_FEES;
 

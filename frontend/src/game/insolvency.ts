@@ -1,15 +1,15 @@
 import { jobPart } from '../data/site-parts.js';
 import { PART, RISER } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game } from './types.js';
+import type { Game, Rig, Unit } from './types.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installInsolvency(G: Game): void {
-  function rigSalvage(r: any): number {
+  function rigSalvage(r: Rig): number {
     const ch = r.kind === 'gpu'
       ? PART(r.frame)!.price + PART(r.mobo)!.price + r.risers * RISER.price : PART(r.ctrl)!.price;
     return Math.round(ch * 0.4 + PART(r.psu)!.price * 0.5 + (r.cool ? PART(r.cool)!.price * 0.4 : 0)
-      + r.units.reduce((a: number, u: any) => a + PART(u.p)!.price * Math.max(0, 1 - u.w) * 0.6, 0));
+      + r.units.reduce((a: number, u: Unit) => a + PART(u.p)!.price * Math.max(0, 1 - u.w) * 0.6, 0));
   }
   // Floor rig spec/cost, one source of truth for both: docs/implementation-notes.md#insolvency-floor-rig-spec-srcgameinsolvencyjs.
   const FLOOR_RIG = Object.freeze({ kind:'gpu', frame:'f2', mobo:'m2', psu:'p450',
@@ -48,7 +48,7 @@ export function installInsolvency(G: Game): void {
       let worst = G.s.rigs[0];
       for (const r of G.s.rigs) if (rigSalvage(r) < rigSalvage(worst)) worst = r;
       const back = rigSalvage(worst); G.s.cash += back;
-      G.s.rigs = G.s.rigs.filter((x: any) => x.id !== worst.id);
+      G.s.rigs = G.s.rigs.filter((x: Rig) => x.id !== worst.id);
       G.say('bad', 'Sold ' + worst.name + ' to cover the bill', '+' + fmt.usd(back), undefined, undefined, back); return;
     }
     if (G.s.cash < FLOOR_COST) {
