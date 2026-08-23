@@ -263,7 +263,6 @@ describe('a corrupted save', () => {
     payload.savedAt = Date.now() - 24 * 3600 * 1000; // a big catch-up, so there's a real window to collide in
     const backdated = JSON.stringify(payload);
 
-    const cashBefore = g1.s.cash, rigsBefore = g1.s.rigs.length;
     const p1 = g1.importSave(backdated);
     await new Promise(r => setTimeout(r, 10)); // let the first one actually start its catch-up
     expect(g1.s.catchUp).not.toBe(null); // sanity: it really is mid-flight, not already done

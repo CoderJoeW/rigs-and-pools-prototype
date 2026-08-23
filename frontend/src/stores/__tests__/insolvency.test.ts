@@ -202,7 +202,7 @@ describe('insolvency escalation', () => {
 
   it('with no live rigs and nothing queued, sells the cheapest-salvage rig', () => {
     const g = freshStore();
-    const a = addRig(g, { on: false });
+    addRig(g, { on: false }); // the cheaper-to-salvage rig — sold first
     const b = addRig(g, { on: false, frame: 'f16', mobo: 'm16', psu: 'p7500' }); // pricier chassis
     g.s.cash = -1;
 

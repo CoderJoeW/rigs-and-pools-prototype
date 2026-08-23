@@ -96,14 +96,14 @@ describe('MyPoolCard', () => {
      above founds a fresh pool whose hist is empty — so the sparkline branch,
      the one that broke, was never entered. These enter it. */
   it('draws the hashrate sparkline once the pool has history', () => {
-    const { wrapper } = card((g, pool) => { pool.hist = [10, 20, 15, 30, 25]; });
+    const { wrapper } = card((_g, pool) => { pool.hist = [10, 20, 15, 30, 25]; });
     const path = wrapper.find('svg path')!;
     expect(path.exists()).toBe(true);
     expect(path.attributes('d')).toMatch(/^M/);   // a real path, not empty
   });
 
   it('holds the sparkline back until there is enough history to mean anything', () => {
-    const { wrapper } = card((g, pool) => { pool.hist = [10, 20]; });
+    const { wrapper } = card((_g, pool) => { pool.hist = [10, 20]; });
     expect(wrapper.find('svg path')!.exists()).toBe(false);
   });
 
@@ -141,7 +141,7 @@ describe('MyPoolCard', () => {
   });
 
   it('scales the bond buttons to the size of the bond', () => {
-    const { wrapper } = card((g, pool) => { pool.bond = 4000; });
+    const { wrapper } = card((_g, pool) => { pool.bond = 4000; });
     // magnitude 1000 → 100 / 1000 / 5000
     const labels = wrapper.findAll('button').map(b => b.text());
     expect(labels.some(t => t.includes('100'))).toBe(true);

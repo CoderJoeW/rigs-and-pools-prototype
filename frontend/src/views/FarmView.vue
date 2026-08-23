@@ -16,7 +16,6 @@ const live=computed(()=>g.s.rigs.filter(r=>g.rigLive(r)).length);
 /* Every site row shows the same time of day, because they are all in it —
    this is one clock, not one per site. */
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const netPath=computed(()=> sparkPath(g.s.netHist, 31, 28, 0));
 const trend=computed(()=>{ const h=g.s.netHist; if(h.length<6) return '';
   const a=h[h.length-6]!, b=h[h.length-1]!;
   return b>a*1.03?'improving':b<a*0.97?'slipping':'holding'; });

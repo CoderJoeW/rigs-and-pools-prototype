@@ -10,7 +10,7 @@ export function installCardWear(G: Game): void {
       site.temp = temp;
       warnIfSiteHot(site, temp, heat);
       for (const rig of G.siteRigs(site)) {
-        if (G.rigLive(rig)) wearRigCards(site, rig, days, heat);
+        if (G.rigLive(rig)) wearRigCards(rig, days, heat);
       }
     }
   }
@@ -27,7 +27,7 @@ export function installCardWear(G: Game): void {
     }
   }
 
-  function wearRigCards(site: Site, rig: any, days: number, heat: number): void {
+  function wearRigCards(rig: any, days: number, heat: number): void {
     const tuneWear = 1 + Math.max(0, (rig.tune || 0)) * 3;
     for (const unit of rig.units) {
       if (unit.w >= 1) continue;

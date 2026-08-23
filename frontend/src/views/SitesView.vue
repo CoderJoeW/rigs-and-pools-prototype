@@ -20,7 +20,7 @@ const f=computed(()=>g.active);
 const { mix, sourceRows, storageRows, plantRows, shellRows, expandRows, fabRows,
   chooseSrc, choosePlant, chooseStorage, chooseShell, chooseFabPick, chooseExpand } = useSitePickerRows(g, f);
 
-const { plan, flowIn, flowOut, flowInTop, flowOutTop, billToday, billCoolShare,
+const { flowIn, flowOut, flowInTop, flowOutTop, billToday, billCoolShare,
   battKwh, battPct, battMode, heatLoad, heatPath } = useSitePower(g, f);
 
 const { floor, legend, emptyDrawn, openTile, floorAmbient, siteHash, siteStatus } = useSiteFloor(g, f);

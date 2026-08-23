@@ -17,7 +17,6 @@ interface SaveFile { ver: number; savedAt: number; state: unknown }
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPersistence(G: Game): void {
   let wiped = false;
-  let restoring = false;
   let hydrating = false;
   async function saveNow(): Promise<void> {
     if (wiped) return;
@@ -27,7 +26,6 @@ export function installPersistence(G: Game): void {
   const nowMs = () => typeof performance === 'object' && performance.now ? performance.now() : Date.now();
   async function advance(seconds: number): Promise<number> {
     const credited = Math.min(seconds, C.OFFLINE_CAP);
-    restoring = true;
     sfx.busy = true;
     G.s.catchUp = { credited, done: 0 };
     const cu = G.s.catchUp as { credited: number; done: number };
@@ -44,7 +42,6 @@ export function installPersistence(G: Game): void {
       }
     } finally {
       sfx.busy = false;
-      restoring = false;
       G.s.catchUp = null;
     }
     return credited;
@@ -75,7 +72,6 @@ export function installPersistence(G: Game): void {
     hydrating = true;
     try { return await hydrateUnsafe(data); }
     catch (e) {
-      restoring = false;
       G.s.catchUp = null;
       console.warn('save failed to load, starting fresh:', e instanceof Error ? e.message : e);
       resetState();
@@ -85,7 +81,6 @@ export function installPersistence(G: Game): void {
     finally { hydrating = false; }
   }
   async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
-    restoring = true;
     Object.assign(G.s, data.state);
     G.s.toast = { n: 0, text: '', amount: '', cls: '' };
     G.s.catchUp = null;
@@ -196,7 +191,6 @@ export function installPersistence(G: Game): void {
       G.say('pool', 'The official pools have wound up — the market is all private operators now');
     }
     G.ensureWeather(); G.ensureGens();
-    restoring = false;
     await creditAway(Math.max(0, (Date.now() - data.savedAt) / 1000));
     return true;
   }

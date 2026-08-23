@@ -113,7 +113,7 @@ onBeforeUnmount(()=>{
       {{ displaySlide.title }}</h3>
     <p style="font-size:12.5px;line-height:1.5;color:var(--ink)">{{ displaySlide.body }}</p>
     <div style="display:flex;gap:5px;justify-content:center;margin:10px 0 2px">
-      <span v-for="(s,i) in g.TOUR_SLIDES" :key="i" aria-hidden="true"
+      <span v-for="(_,i) in g.TOUR_SLIDES" :key="i" aria-hidden="true"
             :style="{width:'6px',height:'6px',borderRadius:'50%',
                      background: i===step ? 'var(--blue)' : 'var(--line)'}"></span>
     </div>

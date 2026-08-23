@@ -141,7 +141,6 @@ watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
 // Quick pick's condensed-not-silent checks: docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
 const verdict=computed(()=>{
   const c=g.checks;
-  const gr=g.draftGroup();
   const notes=[ceilingNote.value,subsidyNote.value].filter((x): x is NonNullable<typeof x> => !!x);
   // Cost/hashrate/draw live on the hero; this is what's left — notes in
   // both modes, second-order figures only in Customise.

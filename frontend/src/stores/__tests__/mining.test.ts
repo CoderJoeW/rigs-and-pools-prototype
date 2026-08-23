@@ -119,7 +119,6 @@ describe('PPLNS payouts', () => {
     g.setGroupPool(g.s.groups[0], pool.id);
     expect(g.poolHash(pool)).toBeGreaterThan(0);
 
-    const tessera = g.s.chains.find(c => c.id === 'tessera')!;
     const walletBefore = g.s.wallet.tessera;
     g.s.today.blocks = 0;
 

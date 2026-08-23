@@ -266,7 +266,7 @@ describe('SitesView', () => {
     });
 
     it('once installed, the action becomes Upgrade and the picker only offers strictly higher tiers', async () => {
-      const { wrapper, store } = mountWithStore(SitesView, {
+      const { wrapper } = mountWithStore(SitesView, {
         seed: g => { g.s.cash = 1000000; g.s.sites[0].fab = 'fab-bench'; },
       });
       await openFabSection(wrapper);
