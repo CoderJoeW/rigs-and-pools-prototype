@@ -2,16 +2,13 @@ import { computed } from 'vue';
 import { C } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game, Site } from './types.js';
+import type { Game, Site, DraftPricing, DraftCheck } from './types.js';
 import type { Frame, Mobo, Cooler, Card, Psu } from '../data/hardware.js';
 
 // Same duck-typed-union rationale as dispatch.ts's SP/P: draft.kind picks
 // between a GPU chassis part and an ASIC controller part with unrelated
 // fields, read here without a runtime discriminant check.
 const P = (id: string): any => PART(id);
-
-interface DraftPricing { maxSlots: number; coreW: number; psu: Psu; unit: Card; conn: number; mh: number; air: number; cost: number; wall: number }
-interface DraftCheck { ok: boolean; title: string; label: string; fix: string }
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installBuildDraft(G: Game): void {

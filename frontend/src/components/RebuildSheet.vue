@@ -44,7 +44,8 @@ const rbPickerRows=computed(()=>{
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }
   const lim=rbInfo.value.lim;
-  return (g.SLOT_OPTS[slot] as any[]).concat(g.s.customParts.filter((p: any)=>p.kind===slot)).map((p: any)=>{
+  // slot is 'frame'|'mobo'|'cool'|'psu' here — 'unit' already returned above.
+  return ((g.SLOT_OPTS as unknown as Record<string, any[]>)[slot]).concat(g.s.customParts.filter((p: any)=>p.kind===slot)).map((p: any)=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }

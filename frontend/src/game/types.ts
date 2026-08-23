@@ -6,7 +6,7 @@
 import type { Chain } from '../data/chains.js';
 import type { DayWeather } from '../services/weatherService.js';
 import type { ComputedRef } from 'vue';
-import type { Card, Psu } from '../data/hardware.js';
+import type { Card, Psu, Frame, Mobo, Cooler } from '../data/hardware.js';
 import type { Job, Shell, Source, Storage, Plant, SitePart } from '../data/site-parts.js';
 import type { DesignKind, DesignPicks, DesignAxis, DesignBase } from '../data/customParts.js';
 import type { Fab } from '../data/fab.js';
@@ -163,6 +163,12 @@ export interface FleetRefitInfo { rigs: number; cost: number }
 export interface FleetMoveInfo { rigs: number; hash: number }
 export interface FleetSpecInfo { rigs: number; cost: number; already: number; blocked: number; why: string | null }
 
+// buildDraft.ts's dp/checks: the draft's own pricing and the gates canBuild checks.
+export interface DraftPricing { maxSlots: number; coreW: number; psu: Psu; unit: Card; conn: number; mh: number; air: number; cost: number; wall: number }
+export interface DraftCheck { ok: boolean; title: string; label: string; fix: string }
+// buildDraft.ts's draftExpected: the draft's pre-purchase revenue/cost estimate.
+export interface DraftExpected { rev: number; pow: number; net: number; payback: number }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -299,7 +305,7 @@ export interface GameState {
 // docs/implementation-notes.md#the-gamegameexports-types-srcgametypests
 export interface GameExports {
   s: GameState;
-  C: any;
+  C: typeof import('../data/constants.js').C;
   SHELLS: Shell[];
   SOURCES: Source[];
   PLANTS: Plant[];
@@ -369,19 +375,19 @@ export interface GameExports {
   myHash(chain: ChainState): number;
   diffOf(chain: ChainState): number;
   mttb(chain: ChainState): number;
-  dp: any;
-  checks: any;
-  canBuild: any;
-  draftEff: any;
-  buildTime: any;
+  dp: ComputedRef<DraftPricing>;
+  checks: ComputedRef<DraftCheck[]>;
+  canBuild: ComputedRef<boolean>;
+  draftEff: ComputedRef<number>;
+  buildTime: ComputedRef<number>;
   unitEcon(unit: Card): UnitEcon;
-  draftExpected: any;
+  draftExpected: ComputedRef<DraftExpected>;
   generatePreset: any;
   maxBuildQty: any;
   blockValue: any;
   bondReq: any;
   poolTrust(pool: Pool): number;
-  TRUST_RAMP: any;
+  TRUST_RAMP: number;
   poolCapLimit(pool: Pool): number;
   poolHash(pool: Pool): number;
   poolProfit(pool: Pool): number;
@@ -423,7 +429,7 @@ export interface GameExports {
   swapWorn(id: number, th: number): void;
   expectedDay: ComputedRef<number>;
   powerRateDay: ComputedRef<number>;
-  SLOT_OPTS: any;
+  SLOT_OPTS: { frame: Frame[]; mobo: Mobo[]; cool: Cooler[]; psu: Psu[] };
   rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
   startRebuild(rig: Rig): void;
   applyRebuild: any;
@@ -638,5 +644,14 @@ export interface Game {
   fleetToSpec(draft: RebuildDraft, scope: Scope): void;
   fleetMoveInfo(groupId: number, scope: Scope): FleetMoveInfo;
   fleetMove(groupId: number, scope: Scope): void;
+  C: typeof import('../data/constants.js').C;
+  TRUST_RAMP: number;
+  SLOT_OPTS: { frame: Frame[]; mobo: Mobo[]; cool: Cooler[]; psu: Psu[] };
+  dp: ComputedRef<DraftPricing>;
+  checks: ComputedRef<DraftCheck[]>;
+  canBuild: ComputedRef<boolean>;
+  draftEff: ComputedRef<number>;
+  buildTime: ComputedRef<number>;
+  draftExpected: ComputedRef<DraftExpected>;
   [key: string]: any;
 }
