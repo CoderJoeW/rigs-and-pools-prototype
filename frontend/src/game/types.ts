@@ -84,10 +84,59 @@ export interface DesignInProgress { fid: number; kind: import('../data/customPar
 export interface RebuildDraft { frame: string; mobo: string; cool: string; psu: string; unit: string; n: number }
 export interface RebuildInProgress { rig: number; picker: string | null; draft: RebuildDraft }
 
-// Assembled across several not-fully-typed installers; stays loose until
-// worth tightening together — docs/implementation-notes.md#the-gamegameexports-types-srcgametypests
-export type Rig = any;
-export type Pool = any;
+export interface Unit {
+  p: string;    // card/part id
+  w: number;    // wear fraction, 0-1; 1 = dead
+  // wear-rate multiplier from wearRate(); absent on a rebuilt or floor-rescue
+  // unit, read defensively as `unit.wr || 1`
+  wr?: number;
+}
+
+export interface Rig {
+  id: number;
+  kind: string;   // 'gpu' for every rig built through the current UI
+  frame: string;  // part id
+  mobo: string;   // part id
+  psu: string;    // part id
+  cool: string;   // part id; falsy means "no cooler"
+  ctrl: string;   // part id; inert unless kind !== 'gpu'
+  units: Unit[];
+  risers: number;    // only meaningful for kind === 'gpu'
+  refurb: number;    // times refurbished, via swapWorn/applyRebuildTo
+  site: number;      // FK into GameState.sites
+  group: number;     // FK into GameState.groups
+  tune: number;      // overclock fraction, read as `rig.tune || 0`
+  on: boolean;
+  building: number;  // seconds left to finish assembly/rebuild; 0 = live
+  open: boolean;     // UI-only; not read anywhere in game/*.ts
+  name: string;
+  cut?: 'broke' | 'brownout' | null;  // set by insolvency.ts / autopilot.ts's shed
+  deadNote?: boolean;                 // true once cardWear.ts finds every unit worn
+  // 1 right after applyRebuildTo; consumed by finishRigBuilds to pick
+  // "rebuilt" vs "assembled" in its toast.
+  rb?: number;
+}
+
+export interface Pool {
+  id: string;
+  chain: string;
+  name: string;
+  scheme: 'PPS' | 'PPLNS';
+  fee: number;
+  owner: 'you' | 'sim' | 'rival';
+  ownerSim?: number;  // sim pools only — FK into GameState.sims
+  bond: number;
+  bond0: number;      // high-water-mark bond, for poolProfit/solvency
+  cap: number;        // live capacity/hash cache, recomputed each tick
+  capped?: boolean;   // set only by poolMarket.ts's refreshPools
+  born: number;
+  live: boolean;
+  earned: number;
+  found?: number;      // block-win counter; player pool omits it at creation
+  feeMoved?: number;   // sim/rival pools seed -1e9; player pool sets it lazily
+  lapse?: number;      // consecutive-empty-tick counter driving auto-close
+  hist?: number[];     // sampled hashrate history, lazily created by samplePoolHashHistory
+}
 
 export interface Sim {
   id: number;

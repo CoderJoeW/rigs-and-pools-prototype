@@ -59,7 +59,7 @@ export function installInsolvency(G: Game): void {
         mobo: FLOOR_RIG.mobo, psu: FLOOR_RIG.psu, cool: FLOOR_RIG.cool, ctrl: 'k3',
         units: Array.from({ length: FLOOR_RIG.n }, () => ({ p: FLOOR_RIG.unit, w: 0 })),
         risers: FLOOR_RIG.n, refurb: 0,          // one riser per card, as billed
-        site: G.s.sites[0]!.id, group: G.s.groups[0]!.id, on: true, building: 0,
+        site: G.s.sites[0]!.id, group: G.s.groups[0]!.id, tune: 0, on: true, building: 0,
         open: false, name: 'Rig ' + G.s.nextId });
       G.say('big', 'The room still has one working rig. Start again.');
       G.pop('Back to one rig', 'the room was always free', 'dark', { always: true });

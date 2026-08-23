@@ -13,6 +13,8 @@ import Compare from './Compare.vue';
 const g = useGameStore();
 
 const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find((x: any)=>x.id===g.s.rebuild!.rig) : null);
+// pending/chain live on the rig's group, not the rig itself, since the group refactor.
+const rbGroup=computed(()=> rbRig.value ? g.groupOf(rbRig.value) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
 const rbInfo=computed(()=> rbRig.value ? g.rebuildInfo(rbRig.value, rbD.value) : {checks:[],lim:1});
 const rbFields=computed(()=>{
@@ -121,9 +123,9 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <span>Nothing changed yet — pick a part or move the card count.</span></div>
         </div>
 
-        <div v-if="rbRig.pending>0" class="warnbox" style="margin-bottom:8px">
+        <div v-if="rbGroup && rbGroup.pending>0" class="warnbox" style="margin-bottom:8px">
           <b>Going down forfeits the PPLNS window</b> —
-          {{ fmt.c(rbRig.pending) }} {{ g.chain(rbRig.chain).tick }} at risk.</div>
+          {{ fmt.c(rbGroup.pending) }} {{ g.chain(rbGroup.chain).tick }} at risk.</div>
 
         <button class="btn btn-wide" :class="rbInfo.ok?'btn-pri':''" :disabled="!rbInfo.ok"
                 @click="g.applyRebuild()">

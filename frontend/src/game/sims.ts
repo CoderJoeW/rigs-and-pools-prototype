@@ -3,7 +3,7 @@ import { reactive } from 'vue';
 import { CHAINS } from '../data/chains.js';
 import { gauss } from '../utils/random.js';
 import { nextRivalName } from './rivals.js';
-import type { Game, ChainState, Sim } from './types.js';
+import type { Game, ChainState, Sim, Pool } from './types.js';
 
 // Economic simulated players (cash, hashrate, chain, pool, style, decision
 // timer, coin inventory) that reinvest, switch chains/pools, sell, and
@@ -46,7 +46,7 @@ interface SimPoolOptions { id: string; chain: string; sim: Sim; name: string; sc
 // A sim-owned pool's shape, shared by seedStarterPools (day-one market) and
 // tryFoundPool (pools sims open later) — they differ only in bond sizing
 // and scheme/fee choice, not in what a pool object is.
-function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }: SimPoolOptions) {
+function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }: SimPoolOptions): Pool {
   return { id, chain, owner: 'sim', ownerSim: sim.id, name, scheme, fee,
     bond, bond0: bond, cap: 0, born, live: true,
     earned: 0, found: 0, feeMoved: -1e9, lapse: 0 };

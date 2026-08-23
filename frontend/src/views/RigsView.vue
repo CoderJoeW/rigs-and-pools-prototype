@@ -30,7 +30,7 @@ watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 const rig=computed(()=> openRig.value==null ? null
   : g.s.rigs.find((r: any)=>r.id===openRig.value) || null);
 const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
-  useInlineRename(()=>rig.value.name, (name: string)=>g.renameRig(rig.value.id,name));
+  useInlineRename(()=>rig.value!.name, (name: string)=>g.renameRig(rig.value!.id,name));
 watch(openRig, ()=>{ renameOpen.value=false; resetSwipe(); });
 const fleetOpen=ref(false);
 const REPAIR_AT=C.REPAIR_AT;

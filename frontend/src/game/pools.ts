@@ -16,7 +16,7 @@ export function installPools(G: Game): void {
     G.s.cash -= need;
     G.s.pools.push({ id:'you'+Math.random().toString(36).slice(2,7), chain:chainId,
       name:'Your '+chain.name+' pool', scheme, fee, owner:'you',
-      bond:need, bond0:need, cap:0, born:G.s.t, live:true, earned:0, _blocks:0 });
+      bond:need, bond0:need, cap:0, born:G.s.t, live:true, earned:0 });
     G.say('sys', 'Founded a ' + scheme + ' pool on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%',
       '-' + fmt.usd(need));
     G.pop('Pool opened', 'bond posted: ' + fmt.usd(need), 'blu', { always: true });
