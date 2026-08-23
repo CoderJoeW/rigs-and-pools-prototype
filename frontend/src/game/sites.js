@@ -2,6 +2,7 @@ import { C } from '../data/constants.js';
 import { SHELLS, SITEPART, jobPart } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { fmt } from '../utils/format.js';
+import { trimName } from './state.js';
 
 /* 10-site-management.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -13,7 +14,7 @@ export function installSites(G){
   function newSite(shellId){
     const sh=SHELLS.find(x=>x.id===shellId);
     if(!sh||G.s.cash<sh.price) return;
-    G.s.cash-=sh.price; G.s.spent+=sh.price;
+    G.spend(sh.price);
     const f={ id:G.s.nextSite++, name:sh.name+' '+(G.s.sites.length+1), shell:'bedroom', fab:null,
       sources:[], plants:[{p:'p-open',n:1}], queue:[], wind:0.5 };
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
@@ -23,7 +24,7 @@ export function installSites(G){
   function addSitePart(fid,pid,kind){
     const f=G.site(fid), P=SITEPART(pid);
     if(!f||!P||G.s.cash<P.price) return;
-    G.s.cash-=P.price; G.s.spent+=P.price;
+    G.spend(P.price);
     if(P.hours<=0){ if(kind==='source') G.addTo(f.sources,pid);
       else if(kind==='storage') G.addTo(f.storage=f.storage||[],pid);
       else G.addTo(f.plants,pid);
@@ -35,7 +36,7 @@ export function installSites(G){
   function rush(fid,idx){
     const f=G.site(fid), j=f.queue[idx]; if(!j) return;
     const c=rushCost(j); if(G.s.cash<c) return;
-    G.s.cash-=c; G.s.spent+=c; j.left=0.0001;
+    G.spend(c); j.left=0.0001;
     G.say('site','Paid to rush '+jobPart(j).name,'-'+fmt.usd(c),undefined,undefined,-c);
   }
   /* ---- site management: grow, rename, or close a site ----
@@ -53,7 +54,7 @@ export function installSites(G){
     const credit=Math.round(cur.price*0.5);
     const cost=Math.max(0, sh.price-credit);
     if(G.s.cash<cost) return;
-    G.s.cash-=cost; G.s.spent+=cost;
+    G.spend(cost);
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
     G.say('site','Expanding '+f.name+' to '+sh.name+' — '+sh.hours+' h','-'+fmt.usd(cost),undefined,undefined,-cost);
   }
@@ -70,14 +71,14 @@ export function installSites(G){
     const credit=cur?Math.round(cur.price*0.5):0;
     const cost=Math.max(0, fb.price-credit);
     if(G.s.cash<cost) return;
-    G.s.cash-=cost; G.s.spent+=cost;
+    G.spend(cost);
     f.queue.push({ p:fabId, kind:'fab', left:fb.hours, total:fb.hours });
     G.say('site',(cur?'Upgrading':'Building')+' '+f.name+"'s fab to "+fb.name+' — '+fb.hours+' h',
       '-'+fmt.usd(cost),undefined,undefined,-cost);
   }
   function renameSite(fid,name){
     const f=G.site(fid); if(!f) return;
-    const n=(name||'').trim().slice(0,24);
+    const n=trimName(name);
     if(n) f.name=n;
   }
   function decommissionSite(fid){

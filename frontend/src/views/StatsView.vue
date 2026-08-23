@@ -1,10 +1,11 @@
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import StatChart from '../components/StatChart.vue';
 import RankBadge from '../components/RankBadge.vue';
+import { useSegTabs } from '../composables/useSegTabs.js';
 
 const g = useGameStore();
 
@@ -19,19 +20,7 @@ const SEGS=[
   {k:'awards', label:'Achievements',
    icon:'M12 3.2l7 3v5c0 4.3-3 8.1-7 9.6-4-1.5-7-5.3-7-9.6v-5zM9 12l2.2 2.2L15.4 10'},
 ];
-const seg=ref('stats');
-const segEl=reactive({});
-const segKey=e=>{
-  const d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1
-          : e.key==='Home' ? 'first' : e.key==='End' ? 'last' : 0;
-  if(!d) return;
-  e.preventDefault();
-  const i=SEGS.findIndex(x=>x.k===seg.value);
-  const n = d==='first' ? 0 : d==='last' ? SEGS.length-1
-          : (i+d+SEGS.length)%SEGS.length;
-  seg.value=SEGS[n].k;
-  const el=segEl[seg.value]; if(el&&el.focus) el.focus();
-};
+const { seg, segEl, segKey } = useSegTabs(SEGS, 'stats');
 
 // One emblem per milestone, six per-track contact sheets cut into four;
 // lit when earned, near-monochrome when not.

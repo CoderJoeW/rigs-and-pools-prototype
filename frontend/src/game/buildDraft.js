@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { C } from '../data/constants.js';
-import { FRAMES, MOBOS, COOLERS, PART, RISER } from '../data/hardware.js';
+import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
@@ -10,7 +10,7 @@ export function installBuildDraft(G){
     let base;
     if(draft.kind==='gpu'){
       const framePart=PART(draft.frame), moboPart=PART(draft.mobo), psuPart=PART(draft.psu), unitPart=PART(draft.unit);
-      base = { maxSlots:Math.min(framePart.slots,moboPart.pcie), coreW:framePart.w+moboPart.w+coolPart.w+draft.n*RISER.w+draft.n*unitPart.w,
+      base = { maxSlots:Math.min(framePart.slots,moboPart.pcie), coreW:gpuCoreW(framePart,moboPart,coolPart,unitPart,draft.n),
         psu:psuPart, unit:unitPart, conn:draft.n*unitPart.conn, mh:draft.n*unitPart.mh, air:framePart.air*coolPart.fac,
         cost:framePart.price+moboPart.price+psuPart.price+coolPart.price+draft.n*(unitPart.price+RISER.price) };
     } else {
@@ -84,7 +84,7 @@ export function installBuildDraft(G){
         const mobo=MOBOS.find(candidate=>candidate.pcie>=n);
         if(!frame||!mobo) continue;
         const cool=COOLERS[0];
-        const core=frame.w+mobo.w+cool.w+n*RISER.w+n*unit.w;
+        const core=gpuCoreW(frame,mobo,cool,unit,n);
         const psu=G.livePsus.find(candidate=>G.psuUsableW(candidate)>=core && candidate.conn>=n*unit.conn);
         if(!psu) continue;
         yield {unit,n,frame,mobo,cool,core,psu};

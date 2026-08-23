@@ -1,7 +1,8 @@
 import { C } from '../data/constants.js';
-import { FRAMES, MOBOS, COOLERS, PART, RISER } from '../data/hardware.js';
+import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 import { wearRate } from '../utils/random.js';
+import { trimName } from './state.js';
 
 /* 09-actions.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -21,7 +22,7 @@ export function installActions(G){
     if(qtyToBuild<1) return;
     const draft=G.s.draft, draftPricing=G.dp.value;
     const total=draftPricing.cost*qtyToBuild;
-    G.s.cash-=total; G.s.spent+=total;
+    G.spend(total);
     const firstId=G.s.nextId;
     for(let k=0;k<qtyToBuild;k++){
       const units=[]; for(let i=0;i<draft.n;i++) units.push({p:draft.unit,w:0,wr:wearRate()});
@@ -40,20 +41,20 @@ export function installActions(G){
     }
   }
   function renameRig(id,name){
-    const rig=G.s.rigs.find(entry=>entry.id===id); if(!rig) return;
-    const trimmedName=(name||'').trim().slice(0,24);
+    const rig=G.rig(id); if(!rig) return;
+    const trimmedName=trimName(name);
     if(trimmedName) rig.name=trimmedName;
   }
   function scrapRig(id){
-    const rig=G.s.rigs.find(entry=>entry.id===id); if(!rig) return;
+    const rig=G.rig(id); if(!rig) return;
     const back=G.rigSalvage(rig); G.s.cash+=back; G.s.rigs=G.s.rigs.filter(other=>other.id!==id);
     G.say('sys','Stripped '+rig.name+' for parts','+'+fmt.usd(back),undefined,undefined,back);
   }
   function swapWorn(id,th){
-    const rig=G.s.rigs.find(entry=>entry.id===id); if(!rig) return;
+    const rig=G.rig(id); if(!rig) return;
     const {n:wornCount,cost}=G.rigWorn(rig,th);          // one definition of worn, shared with the fleet sweep
     if(!wornCount||G.s.cash<cost) return;
-    G.s.cash-=cost; G.s.spent+=cost; G.s.repairs=(G.s.repairs||0)+wornCount; rig.deadNote=false;
+    G.spend(cost); G.s.repairs=(G.s.repairs||0)+wornCount; rig.deadNote=false;
     for(const unit of rig.units) if(unit.w>=th) unit.w=0;
     rig.refurb++;
     G.say('sys','Replaced '+wornCount+' card'+(wornCount>1?'s':'')+' in '+rig.name,'-'+fmt.usd(cost),undefined,undefined,-cost);
@@ -83,7 +84,7 @@ export function installActions(G){
     if(draft.n>rig.risers) buy+=(draft.n-rig.risers)*RISER.price;
     else if(draft.n<rig.risers) credit+=Math.round((rig.risers-draft.n)*RISER.price*0.5);
     const net=buy-credit;
-    const core=framePart.w+moboPart.w+coolPart.w+draft.n*RISER.w+draft.n*unitPart.w;
+    const core=gpuCoreW(framePart,moboPart,coolPart,unitPart,draft.n);
     const wall=core/psuPart.eff;
     const site=G.site(rig.site);
     const checks=[
@@ -124,13 +125,13 @@ export function installActions(G){
   }
   function applyRebuild(){
     const rebuild=G.s.rebuild; if(!rebuild) return;
-    const rig=G.s.rigs.find(entry=>entry.id===rebuild.rig); if(!rig||rig.building>0) return;
+    const rig=G.rig(rebuild.rig); if(!rig||rig.building>0) return;
     const info=rebuildInfo(rig,rebuild.draft);
     if(!info.ok) return;
     applyRebuildTo(rig,rebuild.draft,info);
     G.s.rebuild=null;
   }
-  const toggleRig = id => { const rig=G.s.rigs.find(entry=>entry.id===id);
+  const toggleRig = id => { const rig=G.rig(id);
     if(rig&&rig.building<=0){ rig.on=!rig.on; rig.cut=null; } };   // never touches the group's window
   const setRigGroup = (rig,groupId)=>{ rig.group=groupId; };
 
@@ -143,9 +144,9 @@ export function installActions(G){
      one place that finishes a rig, whether it got there by waiting or paying. */
   const rushRigCost = rig => Math.ceil(rig.building/3600*C.RUSH_PER_HOUR);
   function rushRig(id){
-    const rig=G.s.rigs.find(entry=>entry.id===id); if(!rig||rig.building<=0) return;
+    const rig=G.rig(id); if(!rig||rig.building<=0) return;
     const cost=rushRigCost(rig); if(G.s.cash<cost) return;
-    G.s.cash-=cost; G.s.spent+=cost; rig.building=0.0001;
+    G.spend(cost); rig.building=0.0001;
     G.say('sys','Paid to rush '+rig.name,'-'+fmt.usd(cost),undefined,undefined,-cost);
   }
 

@@ -1,7 +1,8 @@
-import { SIM_CHAINS, SIM_PLAYERS, SIM_RATIO, C, TX_FEES, PPLNS_COVER, RIVAL_NAMES } from '../data/constants.js';
+import { SIM_CHAINS, SIM_PLAYERS, SIM_RATIO, C, TX_FEES, PPLNS_COVER, SIM_FEE_MIN, SIM_FEE_MAX } from '../data/constants.js';
 import { reactive } from 'vue';
 import { CHAINS } from '../data/chains.js';
 import { gauss } from '../utils/random.js';
+import { nextRivalName } from './rivals.js';
 
 // Economic simulated players: cash, hashrate, chain, pool, style, decision
 // timer, a coin-inventory value. They reinvest, switch chains/pools, sell,
@@ -29,34 +30,42 @@ export const SIM_DECIDE_MAX_H = 336;           // a fortnight — decision-gap c
 let simSeq = 0;
 let poolSeq = 0;
 
+// Every chain a sim can operate on, including tessera — SIM_CHAINS itself
+// deliberately excludes tessera (comment on its own definition:
+// "Tessera stays a newcomer refuge"), but the per-chain trackers below
+// (hash, counts, solo-member lists) still need a zeroed slot for it.
+const ALL_SIM_CHAINS = [...SIM_CHAINS, 'tessera'];
+
+// Reactivity rationale: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+function zeroPerChain(){
+  const map = Object.create(null);
+  for(const chainId of ALL_SIM_CHAINS) map[chainId] = 0;
+  return map;
+}
+
+// A sim-owned pool's shape, shared by seedStarterPools (the day-one market)
+// and tryFoundPool (pools sims open later) — the two differ only in how
+// they size the bond and pick a scheme/fee, not in what a pool object is.
+function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }){
+  return { id, chain, owner: 'sim', ownerSim: sim.id, name, scheme, fee,
+    bond, bond0: bond, cap: 0, born, live: true,
+    earned: 0, found: 0, feeMoved: -1e9, lapse: 0 };
+}
+
 export function installSims(G){
-  function emptyChainHash(){
-    const hashByChain = Object.create(null);
-    for(const chainId of SIM_CHAINS) hashByChain[chainId] = 0;
-    hashByChain.tessera = 0;
-    return hashByChain;
-  }
-  // Reactivity rationale: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-  const emptyChainCounts = () => {
-    const countByChain = {};
-    for(const chainId of SIM_CHAINS) countByChain[chainId] = 0;
-    countByChain.tessera = 0;
-    return countByChain;
-  };
-  G._simChainHash = emptyChainHash();
-  G._simChainN = reactive(emptyChainCounts());
+  G._simChainHash = zeroPerChain();
+  G._simChainN = reactive(zeroPerChain());
   G._simPoolHash = Object.create(null);
-  G._simSoloHash = emptyChainHash();
+  G._simSoloHash = zeroPerChain();
   G._poolMembers = new Map();
   G._soloMembers = Object.create(null);
-  for(const chainId of SIM_CHAINS) G._soloMembers[chainId] = [];
-  G._soloMembers.tessera = [];
+  for(const chainId of ALL_SIM_CHAINS) G._soloMembers[chainId] = [];
   G._membersDirty = true;
 
   function rebuildMembers(){
     G._poolMembers.clear();
     for(const chainId of Object.keys(G._soloMembers)) G._soloMembers[chainId] = [];
-    const tally = emptyChainCounts();
+    const tally = zeroPerChain();
     const sims = G.s.sims;
     for(let i = 0; i < sims.length; i++){
       const sim = sims[i];
@@ -181,9 +190,9 @@ export function installSims(G){
   function seedSims(now){
     simSeq = 0;
     poolSeq = 0;
-    G._simChainHash = emptyChainHash();
+    G._simChainHash = zeroPerChain();
     G._simPoolHash = Object.create(null);
-    G._simSoloHash = emptyChainHash();
+    G._simSoloHash = zeroPerChain();
     G._poolMembers.clear();
     for(const chainId of Object.keys(G._soloMembers)) G._soloMembers[chainId] = [];
     G._membersDirty = true;
@@ -223,8 +232,6 @@ export function installSims(G){
   }
 
   function seedStarterPools(now){
-    const names = RIVAL_NAMES;
-    let nameIndex = 0;
     for(const chainId of SIM_CHAINS){
       const chain = CHAINS.find(entry => entry.id === chainId);
       const candidates = G.s.sims.filter(sim => sim.chain === chainId).sort((simA, simB) => simB.cash - simA.cash);
@@ -240,12 +247,8 @@ export function installSims(G){
         if(bond < 50) continue;
         sim.cash -= bond;
         const id = 's' + sim.id + 'p' + (++poolSeq);
-        const pool = {
-          id, chain: chainId, owner: 'sim', ownerSim: sim.id,
-          name: names[nameIndex++ % names.length] + (nameIndex > names.length ? ' ' + Math.ceil(nameIndex / names.length) : ''),
-          scheme, fee, bond, bond0: bond, cap: 0, born: now || 0, live: true,
-          earned: 0, found: 0, feeMoved: -1e9, lapse: 0,
-        };
+        const pool = makeSimPool({ id, chain: chainId, sim, scheme, fee, bond,
+          name: nextRivalName(poolSeq), born: now || 0 });
         G.s.pools.push(pool);
         setSimPool(sim, id);
       }
@@ -253,9 +256,9 @@ export function installSims(G){
   }
 
   function reindexSims(){
-    G._simChainHash = emptyChainHash();
+    G._simChainHash = zeroPerChain();
     G._simPoolHash = Object.create(null);
-    G._simSoloHash = emptyChainHash();
+    G._simSoloHash = zeroPerChain();
     let maxId = 0;
     for(const sim of G.s.sims){
       if(sim.id > maxId) maxId = sim.id;
@@ -462,16 +465,19 @@ export function installSims(G){
     if(bond < 80 || sim.cash < bond + 50) return;
     sim.cash -= bond;
     const id = 's' + sim.id + 'p' + (++poolSeq);
-    const name = RIVAL_NAMES[poolSeq % RIVAL_NAMES.length] +
-      (poolSeq >= RIVAL_NAMES.length ? ' ' + Math.ceil(poolSeq / RIVAL_NAMES.length) : '');
-    const pool = {
-      id, chain: sim.chain, owner: 'sim', ownerSim: sim.id,
-      name, scheme, fee, bond, bond0: bond, cap: 0, born: G.s.t, live: true,
-      earned: 0, found: 0, feeMoved: -1e9, lapse: 0,
-    };
+    const pool = makeSimPool({ id, chain: sim.chain, sim, scheme, fee, bond,
+      name: nextRivalName(poolSeq), born: G.s.t });
     G.s.pools.push(pool);
     setSimPool(sim, id);
     if(G.say) G.say('pool', pool.name + ' has opened on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%');
+  }
+
+  // G.setPoolFee (pools.js) isn't installed yet when a test drives installSims
+  // on its own, so this falls back to a bare assignment — same clamped value
+  // either way, just without the trust-affecting side effects setPoolFee has.
+  function adjustPoolFee(pool, newFee){
+    if(G.setPoolFee) G.setPoolFee(pool, newFee);
+    else pool.fee = newFee;
   }
 
   function manageOwnedPools(sim){
@@ -482,13 +488,11 @@ export function installSims(G){
       const full = poolHashAmount >= cap * 0.95;
       const share = poolHashAmount / Math.max(1, G._simChainHash[pool.chain] || 1);
       if(full && Math.random() < 0.25){
-        if(G.setPoolFee) G.setPoolFee(pool, Math.min(0.09, pool.fee * 1.05));
-        else pool.fee = Math.min(0.09, pool.fee * 1.05);
+        adjustPoolFee(pool, Math.min(SIM_FEE_MAX, pool.fee * 1.05));
         const bondTopUp = Math.min(pool.earned * 0.1, sim.cash * 0.05);
         if(bondTopUp > 10){ pool.bond += bondTopUp; pool.bond0 = Math.max(pool.bond0, pool.bond); pool.earned -= bondTopUp; }
       } else if(share < 0.05 && Math.random() < 0.3){
-        if(G.setPoolFee) G.setPoolFee(pool, Math.max(0.002, pool.fee * 0.92));
-        else pool.fee = Math.max(0.002, pool.fee * 0.92);
+        adjustPoolFee(pool, Math.max(SIM_FEE_MIN, pool.fee * 0.92));
       }
       pool.lapse = poolHashAmount < 1 ? (pool.lapse || 0) + 1 : 0;
       if(pool.lapse > 96 && Math.random() < 0.2){

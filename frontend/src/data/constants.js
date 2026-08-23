@@ -40,6 +40,11 @@ export const TX_FEES = 0.06;
 
 // Pool founding: design-spec.md §5 / §5a.
 export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's value
+// Clamp on a simulated pool operator's fee — rival (poolMarket.js) and
+// sim-owned (sims.js) pools both nudge their fee up when full, down when
+// starved, and both stop at these same two bounds.
+export const SIM_FEE_MIN = 0.002;
+export const SIM_FEE_MAX = 0.09;
 export const SIM_PLAYERS = 100;      // the rest of the network
 // Chain ladder rationale: design-spec.md §2a. The per-mult premiums and rung
 // spacing there predate a 2026-08-21 rebalance (now Halcyon +35%, Nova +75%,

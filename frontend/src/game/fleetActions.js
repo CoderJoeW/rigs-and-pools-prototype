@@ -17,6 +17,14 @@ export function installFleetActions(G){
   const fleetRigs = scope => Array.isArray(scope)
     ? G.s.rigs.filter(rig=>scope.includes(rig.id))
     : G.s.rigs.filter(rig=>scope==null||rig.site===scope);
+  // Every fleet action but the group move skips a rig still mid-build —
+  // one shared filter so "which rigs does this apply to" can't drift
+  // between the quote and the action that follows it. One pass over the
+  // scope, not fleetRigs(scope) followed by a second filter: these back
+  // FleetSheet's computeds, which re-run on every tick while it's open.
+  const liveFleetRigs = scope => Array.isArray(scope)
+    ? G.s.rigs.filter(rig=>scope.includes(rig.id)&&rig.building<=0)
+    : G.s.rigs.filter(rig=>(scope==null||rig.site===scope)&&rig.building<=0);
   /* One rig's worn-card count and replacement bill. The single-rig detail sheet
      and the fleet-wide sweep below are the same question asked of a different
      number of rigs, so both ask it here — repair pricing has one definition. */
@@ -26,27 +34,27 @@ export function installFleetActions(G){
   };
   const fleetWorn = (threshold,scope) => {
     let wornCount=0, cost=0, rigs=0;
-    for(const rig of fleetRigs(scope)){ if(rig.building>0) continue;
+    for(const rig of liveFleetRigs(scope)){
       const worn=rigWorn(rig,threshold);
       if(worn.n){ rigs++; wornCount+=worn.n; cost+=worn.cost; } }
     return {rigs,n:wornCount,cost};
   };
   function fleetRepair(threshold,scope){
     const info=fleetWorn(threshold,scope); if(!info.n||G.s.cash<info.cost) return;
-    for(const rig of fleetRigs(scope)){ if(rig.building>0) continue;
-      if(rigWorn(rig,threshold).n) G.swapWorn(rig.id,threshold); }
+    for(const rig of liveFleetRigs(scope))
+      if(rigWorn(rig,threshold).n) G.swapWorn(rig.id,threshold);
   }
   const fleetDraft=(rig,unitId)=>({ frame:rig.frame, mobo:rig.mobo, cool:rig.cool, psu:rig.psu,
     unit:unitId, n:rig.units.length });
   const fleetRefitInfo = (unitId,scope) => {
     let rigs=0, cost=0;
-    for(const rig of fleetRigs(scope)){ if(rig.building>0) continue;
+    for(const rig of liveFleetRigs(scope)){
       const info=G.rebuildInfo(rig,fleetDraft(rig,unitId));
       if(info.ok){ rigs++; cost+=Math.max(0,info.net); } }
     return {rigs,cost};
   };
   function fleetRefit(unitId,scope){                   // each rig goes DOWN for its own rebuild
-    for(const rig of fleetRigs(scope)){ if(rig.building>0) continue;
+    for(const rig of liveFleetRigs(scope)){
       const draft=fleetDraft(rig,unitId), info=G.rebuildInfo(rig,draft);
       if(info.ok) G.applyRebuildTo(rig,draft,info); }
   }
@@ -59,8 +67,7 @@ export function installFleetActions(G){
     psu:G.s.draft.psu, unit:G.s.draft.unit, n:G.s.draft.n });
   const fleetSpecInfo = (draft,scope) => {
     let rigs=0, cost=0, already=0, blocked=0, why=null;
-    for(const rig of fleetRigs(scope)){
-      if(rig.building>0) continue;
+    for(const rig of liveFleetRigs(scope)){
       const info=G.rebuildInfo(rig,draft);
       if(!info.changed){ already++; continue; }
       if(info.ok){ rigs++; cost+=Math.max(0,info.net); }
@@ -71,8 +78,7 @@ export function installFleetActions(G){
   function fleetToSpec(draft,scope){
     const info=fleetSpecInfo(draft,scope);
     if(!info.rigs || G.s.cash<info.cost) return;       // quote the whole job or do none of it
-    for(const rig of fleetRigs(scope)){
-      if(rig.building>0) continue;
+    for(const rig of liveFleetRigs(scope)){
       const updatedInfo=G.rebuildInfo(rig,draft);
       if(updatedInfo.ok && updatedInfo.changed) G.applyRebuildTo(rig,draft,updatedInfo);
     }

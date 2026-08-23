@@ -34,10 +34,11 @@ export function installTimeOfDay(G){
   const site = id => G.s.sites.find(x=>x.id===id);
   const active = computed(()=> site(G.s.activeSite) || G.s.sites[0]);
   const chain = id => G.s.chains.find(c=>c.id===id);
+  const rig = id => G.s.rigs.find(x=>x.id===id);
   const poolOf = id => G.s.pools.find(p=>p.id===id) || null;
   const price = c => Math.max(0.02, c.ref*(1-c.impact));
   const evMult = p => p ? (1-p.fee)*(p.scheme==='PPS'?1:1+TX_FEES) : 1+TX_FEES;
 
 
-  Object.assign(G, {active,ambient,band,bandOf,chain,evMult,hourOf,poolOf,price,rateAt,site,solarFactor});
+  Object.assign(G, {active,ambient,band,bandOf,chain,evMult,hourOf,poolOf,price,rateAt,rig,site,solarFactor});
 }

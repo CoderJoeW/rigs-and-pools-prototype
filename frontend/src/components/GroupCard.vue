@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import ChainMark from './ChainMark.vue';
+import { useInlineRename } from '../composables/useInlineRename.js';
 
 // One mining group row on the Farm tab: name, chain/pool, rack share, advice.
 // Extracted from a v-for body so rename state can be plain refs per group.
@@ -15,10 +16,8 @@ const props = defineProps({
 
 const g = useGameStore();
 
-const renameOpen = ref(false);
-const renameDraft = ref('');
-const startRename = () => { renameDraft.value = props.gr.name; renameOpen.value = true; };
-const saveRename = () => { g.renameGroup(props.gr, renameDraft.value); renameOpen.value = false; };
+const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
+  useInlineRename(() => props.gr.name, name => g.renameGroup(props.gr, name));
 
 const poolLabel = computed(() => { const p = g.poolOf(props.gr.pool); return p ? p.name : 'Solo'; });
 </script>

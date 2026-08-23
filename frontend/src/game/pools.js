@@ -1,5 +1,6 @@
 import { C } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
+import { trimName } from './state.js';
 
 /* 11-your-pool.js — installed into the shared context G.
    Cross-module references go through G, so the 7 mutually dependent
@@ -24,7 +25,7 @@ export function installPools(G){
   }
   function renamePool(pool,name){
     if(pool.owner!=='you') return;               // a rival's pool is not yours to rename
-    const trimmedName=(name||'').trim().slice(0,24);
+    const trimmedName=trimName(name);
     if(trimmedName) pool.name=trimmedName;
   }
   function setPoolFee(pool,fee){
@@ -105,7 +106,7 @@ export function installPools(G){
     const coins=netUsd/G.price(chain);         // what a frictionless fill would buy
     const slip=Math.min(0.5,0.5*coins/chain.depth);
     const filled=coins*(1-slip);           // slippage: fewer coins for the same dollar
-    G.s.cash-=cost; G.s.wallet[chain.id]+=filled; G.s.spent+=cost;
+    G.spend(cost); G.s.wallet[chain.id]+=filled;
     chain.impact=Math.max(-0.85,chain.impact-coins/chain.depth);
     G.say('pay','Bought '+fmt.c(filled)+' '+chain.tick+
       (slip>0.005?' ('+fmt.pct(slip)+' slippage)':''),'-'+fmt.usd2(cost));

@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_CHAINS, RIVAL_PER_CHAIN } from '../data/constants.js';
+import { C, TX_FEES, BOND_MULT, TRUST_RAMP, COVER_DAYS, PPLNS_COVER, VAR_K, SIM_CHAINS, RIVAL_PER_CHAIN, SIM_FEE_MIN, SIM_FEE_MAX } from '../data/constants.js';
 import { mkRival } from './rivals.js';
 import { fmt } from '../utils/format.js';
 import { cue } from '../services/audio.js';
@@ -117,10 +117,10 @@ export function installPoolMarket(G){
       const full=G.poolHash(p)>=poolCapLimit(p)*0.95;
       if(full && Math.random()<0.30){
         // capacity is scarce; charge for it, and put earnings into more bond
-        G.setPoolFee(p, Math.min(0.09, p.fee*1.06));
+        G.setPoolFee(p, Math.min(SIM_FEE_MAX, p.fee*1.06));
         p.bond*=1.02; p.bond0=Math.max(p.bond0,p.bond);
       } else if(share<0.06 && Math.random()<0.35){
-        G.setPoolFee(p, Math.max(0.002, p.fee*0.90));
+        G.setPoolFee(p, Math.max(SIM_FEE_MIN, p.fee*0.90));
       }
       // an empty pool bleeds its operator; long enough and they fold
       p.lapse = G.poolHash(p)<1 ? (p.lapse||0)+1 : 0;
