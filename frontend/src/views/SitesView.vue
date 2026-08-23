@@ -4,66 +4,36 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import { useSitePickerRows } from '../composables/useSitePickerRows.js';
+import { useSitePower } from '../composables/useSitePower.js';
+import { useSiteFloor } from '../composables/useSiteFloor.js';
 import DesignSheet from '../components/DesignSheet.vue';
 import Compare from '../components/Compare.vue';
 import RackTile from '../components/RackTile.vue';
 import SiteFilm from '../components/SiteFilm.vue';
-import { CHAIN_HUE } from '../data/chains.js';
 import { sitePhase } from '../utils/siteArt.js';
 import fabShot from '../assets/site/fab.webp';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
-const mix=computed(()=>{
-  const site=f.value, out=[];
-  for(const src of site.sources){
-    const P=g.SITEPART(src.p);
-    out.push({ id:src.p, name:P.name+(src.n>1?' ×'+src.n:''), kind:P.kind,
-      out:g.srcOut(site,src), rate:P.rate });
-  }
-  return out.sort((a,b)=>b.out-a.out);
-});
-const sourceRows=computed(()=>g.SOURCES.filter((p: any)=>p.price>0).map((p: any)=>({
-  id:p.id, name:p.name,
-  sub:(p.yield
-        ? fmt.w(p.peak*p.yield)+' real — '+fmt.w(p.peak)+' nameplate at '
-          +(p.yield*100).toFixed(0)+'% yield'
-        : fmt.w(p.peak)+' peak')
-      +' · '+(p.rate>0?fmt.usd2(p.rate)+'/kWh':'no fuel cost')
-      +' · '+p.hours+' h to build',
-  value:fmt.usd(p.price),
-  valueSub:p.rate>0?p.kind:fmt.usd2(p.price/(p.peak*(p.yield||1)))+'/W' })));
-const storageRows=computed(()=>g.STORAGE.map((p: any)=>({ id:p.id, name:p.name,
-  sub:p.kwh+' kWh · '+p.kw+' kW · '+p.hours+' h to build',
-  value:fmt.usd(p.price), valueSub:'' })));
-const chooseStorage=(id: string)=>{ g.addSitePart(f.value.id,id,'storage'); g.s.sitePicker=null; };
-const plantRows=computed(()=>g.PLANTS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name,
-  sub:fmt.w(p.cap)+' of heat · '+fmt.pct(p.pue,0)+' of it burned as power · '+p.hours+' h',
-  value:fmt.usd(p.price),
-  valueSub:'at '+fmt.w(g.siteHeat(f.value))+' it would draw '+fmt.w(g.siteHeat(f.value)*p.pue) })));
-const shellRows=computed(()=>g.SHELLS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name, sub:p.slots+' rig positions · '+p.hours+' h to build',
-  value:fmt.usd(p.price), valueSub:'', locked:g.s.cash<p.price })));
-const expandRows=computed(()=>{ const cur=g.SITEPART(f.value.shell);
-  return g.SHELLS.filter((p: any)=>p.slots>cur.slots).map((p: any)=>{ const credit=Math.round(cur.price*0.5), cost=Math.max(0,p.price-credit);
-    return { id:p.id, name:p.name, sub:cur.slots+' → '+p.slots+' rig positions · '+p.hours+' h to build',
-      value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
-const fabRows=computed(()=>{ const cur=f.value.fab?g.FAB(f.value.fab):null;
-  return g.FABS.filter((p: any)=>!cur||p.tier>cur.tier).map((p: any)=>{ const credit=cur?Math.round(cur.price*0.5):0, cost=Math.max(0,p.price-credit);
-    return { id:p.id, name:p.name, sub:p.slots.join(', ')+' · '+p.budget+' design budget · '+p.hours+' h to build',
-      value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
-const chooseSrc=(id: string)=>{ g.addSitePart(f.value.id,id,'source'); g.s.sitePicker=null; };
-const choosePlant=(id: string)=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=null; };
-const chooseShell=(id: string)=>{ g.newSite(id); g.s.sitePicker=null; };
-const chooseFabPick=(id: string)=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
-const chooseExpand=(id: string)=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
+
+const { mix, sourceRows, storageRows, plantRows, shellRows, expandRows, fabRows,
+  chooseSrc, choosePlant, chooseStorage, chooseShell, chooseFabPick, chooseExpand } = useSitePickerRows(g, f);
+
+const { plan, flowIn, flowOut, flowInTop, flowOutTop, billToday, billCoolShare,
+  battKwh, battPct, battMode, heatLoad, heatPath } = useSitePower(g, f);
+
+const { floor, legend, emptyDrawn, openTile, floorAmbient, siteHash, siteStatus } = useSiteFloor(g, f);
+const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.85?'warm':'cool');
+
 const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
   useInlineRename(()=>f.value.name, name=>g.renameSite(f.value.id,name));
 const decomArm=ref(false);
-/* The switcher is a disclosure rather than a permanent list: on a farm with
-   one site the list says nothing the trigger has not already said, and on a
-   farm with ten it would push the site itself off the first screen. v-show
-   rather than v-if so the rows keep their place in the document and the
-   open/close is a paint, not a rebuild. */
+// The switcher is a disclosure rather than a permanent list: on a farm with
+// one site the list says nothing the trigger has not already said, and on a
+// farm with ten it would push the site itself off the first screen. v-show
+// rather than v-if so the rows keep their place in the document and the
+// open/close is a paint, not a rebuild.
 const listOpen=ref(false);
 watch(()=>f.value&&f.value.id, ()=>{ decomArm.value=false; renameOpen.value=false; listOpen.value=false; });
 const pickSite=(id: number)=>{ g.s.activeSite=id; listOpen.value=false; };
@@ -73,105 +43,19 @@ const decomLabel=computed(()=> !canDecommission.value
   : decomArm.value ? 'Tap again — this cannot be undone' : 'Retire this site');
 const decommission=()=>{ if(!decomArm.value){ decomArm.value=true; return; } g.decommissionSite(f.value.id); decomArm.value=false; };
 const sec=reactive({power:false,batt:false,cool:false,fab:false});
-const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
-  rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
-const segs=(parts: [string, number][],total: number)=>parts.map(([k,w])=>({k,w, pct: total>0?Math.max(0,w)/total*100:0, c:(FLOW_C as any)[k]}));
-const plan=computed(()=> g.sitePlan(f.value));
-const flow=computed(()=> g.flowOf(f.value));
-const flowIn=computed(()=>{ const x=flow.value; const tot=x.inRenew+x.inBatt+x.inPaid+x.unserved;
-  return segs([['solar',x.inRenew],['battery',x.inBatt],['grid',x.inPaid],['unserved',x.unserved]],tot); });
-const flowOut=computed(()=>{ const x=flow.value; const tot=x.rigs+x.cool+x.charge;
-  return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
-/* The headline beside each flow bar: the single biggest contributor, since a
-   list of four is what the bar underneath is already for. */
-const biggest=(list: any[])=>{ const live=list.filter((x: any)=>x.pct>0);
-  if(!live.length) return null;
-  return live.reduce((a: any,b: any)=>b.w>a.w?b:a); };
-/* Unserved stays in the bar as its red segment, but it is demand that went
-   unmet, not somewhere power arrived from — headlining it would name a source
-   that does not exist. */
-const flowInTop=computed(()=>biggest(flowIn.value.filter(x=>x.k!=='unserved')));
-const flowOutTop=computed(()=>biggest(flowOut.value));
-/* Today's metered spend at this site, and how it is pacing. f.bill only
-   accumulates while the site draws, so a site that has not drawn yet has no
-   bill object at all and the whole strip stays honest by reading zero. */
-const billToday=computed(()=>{ const b=f.value.bill; return b?b.off+b.sh+b.peak:0; });
-const billCoolShare=computed(()=>{ const b=f.value.bill;
-  return b&&billToday.value>0 ? b.cool/billToday.value : 0; });
 
-/* FLOOR_COLS has to be the number of columns .riggrid actually paints, or the
-   row-column address contradicts the layout it claims to describe. The shell
-   is capped at 440px, so the grid is a fixed three rather than auto-fill —
-   one number, stated in both places, instead of a guess about reflow. */
-const MAX_TILES=60, MAX_EMPTY=12, FLOOR_COLS=3;
-const rigsHere=computed(()=>g.siteRigs(f.value));
-const floorTemp=computed(()=>g.siteTemp(f.value));
-const floorAmbient=computed(()=>{ const t=floorTemp.value; return t>=70?'hot':t>=58?'warm':'cool'; });
-const siteHash=computed(()=>rigsHere.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
-const siteStatus=computed(()=>{ const t=floorTemp.value;
-  if(t>=70) return {label:'HOT',tone:'hot'};
-  if(rigsHere.value.some((r: any)=>g.rigLive(r))) return {label:'ONLINE',tone:'online'};
-  return {label:'IDLE',tone:'idle'}; });
-/* Positions are addressed the way a floor is walked rather than counted:
-   row-column, both padded, so 01-04 is the fourth position of the first row
-   and matches what a label on the actual rack would say. */
-const posCode=(i: number)=>String(Math.floor(i/FLOOR_COLS)+1).padStart(2,'0')+'-'
-  +String(i%FLOOR_COLS+1).padStart(2,'0');
-const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots(f.value), rigs.length), cells=[];
-  let running=0;
-  for(const r of rigs){ if(cells.length>=MAX_TILES) break; const st=g.rigState(r); if(st.dot==='run') running++;
-    const gr=g.groupOf(r); const chain=gr?gr.chain:null; const cards=r.units?r.units.length:0;
-    const code=posCode(cells.length);
-    cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, code, chain, hue:chain!=null?CHAIN_HUE[chain]:undefined, cards,
-      label:'Position '+code+' — '+r.name+', '+st.label+(st.sub?' ('+st.sub+')':'') }); }
-  const empties=Math.min(MAX_EMPTY, MAX_TILES-cells.length, slots-rigs.length);
-  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null, code:posCode(cells.length) });
-  return { cells, rigs:rigs.length, slots, running, hidden:Math.max(0, slots-cells.length), temp:floorTemp.value, ambient:floorAmbient.value }; });
-const DOT_LABEL={ run:'Running', build:'Building', warn:'Warning', bad:'Bad', off:'Off' };
-const legend=computed(()=>{ const n: Record<string, number>={}; for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
-  return ['run','build','warn','bad','off'].filter(k=>n[k]).map(k=>({ k, n:n[k], label:(DOT_LABEL as any)[k] })); });
-/* Counted rather than inferred from legend.length: a full site draws no empty
-   tiles and must not claim a key for them, and a site that is nothing BUT
-   empty positions has no rig states yet and would otherwise lose the legend
-   entirely. */
-const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
-const openTile=(id: number)=>{ g.s.focusRig=id; g.s.tab='rigs'; };
-/* The hero shows the shell you actually bought, in the light the simulation
-   says it is — see utils/siteArt.ts for both, and for why the previous scheme
-   (three quarry photographs dealt out by site id) had to go. */
+// The hero shows the shell you actually bought, in the light the simulation
+// says it is — see utils/siteArt.ts for both, and for why the previous scheme
+// (three quarry photographs dealt out by site id) had to go.
 const heroPhase=computed(()=>sitePhase(g.s.t));
 const siteDot=(st: any)=>{ if(g.siteTemp(st)>=70) return 'bad';
   if(g.siteRigs(st).some((r: any)=>g.rigLive(r))) return 'run';
   return 'off'; };
 
-const battKwh=computed(()=>g.battKwh(f.value));
-const battPct=computed(()=>battKwh.value>0?Math.min(1,(f.value.batt||0)/battKwh.value):0);
-const battMode=computed(()=>{ const p=plan.value;
-  if(p.chW>0) return {k:'charging',text:'charging '+fmt.w(p.chW)+' from solar',cls:'pos'};
-  if(p.gridChW>0) return {k:'charging',text:'charging '+fmt.w(p.gridChW)+' off-peak',cls:'blu'};
-  if(p.disW>0) return {k:'discharging',text:'discharging '+fmt.w(p.disW),cls:'amb'};
-  return {k:'idle',text:'idle',cls:''}; });
-/* The heat trace is a reading drawn as a waveform, not decoration: how hard
-   the wave swings is the site's heat against its cooling capacity, so a plant
-   that is coping draws a flat line and one that is losing draws a ragged one.
-   Deterministic — the same load always draws the same trace, so a change on
-   screen means a change in the simulation. */
-const heatLoad=computed(()=>{ const cap=g.siteCooling(f.value);
-  return cap>0?Math.min(1.6,g.siteHeat(f.value)/cap):(g.siteHeat(f.value)>0?1.6:0); });
-/* The three sine terms sum to 1.06, so an amplitude past ~10.4 would push the
-   trace outside the 24-tall viewBox and CLIP FLAT — reading as calm at exactly
-   the overload this is here to show. 2 + 5.2·load tops out at 10.3. */
-const heatPath=computed(()=>{ const amp=2+heatLoad.value*5.2, pts=[];
-  for(let i=0;i<=48;i++){ const x=i/48*100;
-    const y=12 - (Math.sin(i*0.62)*0.62 + Math.sin(i*1.37+1.1)*0.28 + Math.sin(i*2.9+0.4)*0.16)*amp;
-    pts.push((i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2)); }
-  return pts.join(' '); });
-const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.85?'warm':'cool');
-
 const fabQueued=computed(()=>f.value.queue.find((j: any)=>j.kind==='fab'));
 const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
-/* What a queued job IS. A site queue only ever holds infrastructure — see
-   sites.ts — so these are the whole vocabulary. */
+// What a queued job IS. A site queue only ever holds infrastructure — see
+// sites.ts — so these are the whole vocabulary.
 const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
