@@ -13,7 +13,7 @@ describe('OnboardingBanner', () => {
   it('stays quiet for a fresh game while the tour is still up, even though a coach step is ready', () => {
     const { wrapper, store } = mountWithStore(OnboardingBanner);
     expect(store.showTour).toBe(true);
-    expect(store.onboardingStep.id).toBe('build'); // the predicate resolves...
+    expect(store.onboardingStep!.id).toBe('build'); // the predicate resolves...
     expect(wrapper.find('.card')!.exists()).toBe(false); // ...but the banner defers to the tour
   });
 

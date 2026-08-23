@@ -4,7 +4,7 @@ import { freshStore } from '../../test/testStore.js';
 describe('onboarding coach', () => {
   it('starts on "build" — the first thing a brand-new player needs to do', () => {
     const g = freshStore();
-    expect(g.onboardingStep.id).toBe('build');
+    expect(g.onboardingStep!.id).toBe('build');
   });
 
   it('advances to "earn" once a rig exists, before it clears 100 MH/s', () => {
@@ -16,7 +16,7 @@ describe('onboarding coach', () => {
     g.s.draft.n = 1;
     g.build();
     expect(g.totalHash).toBeLessThan(100);
-    expect(g.onboardingStep.id).toBe('earn');
+    expect(g.onboardingStep!.id).toBe('earn');
   });
 
   it('advances to "grow" once hashrate clears the h1 milestone bar', () => {
@@ -25,7 +25,7 @@ describe('onboarding coach', () => {
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
     expect(g.totalHash).toBeGreaterThanOrEqual(100);
-    expect(g.onboardingStep.id).toBe('grow');
+    expect(g.onboardingStep!.id).toBe('grow');
   });
 
   it('issue #8: "grow" names the rival-pool ecosystem specifically, not just a generic "found a pool" afterthought', () => {
@@ -38,7 +38,7 @@ describe('onboarding coach', () => {
     g.generatePreset();
     g.build();
     for (let i = 0; i < 5; i++) g.stepTick(60);
-    const text = g.onboardingStep.text;
+    const text = g.onboardingStep!.text;
     expect(text).toContain('rival pools');
     expect(text).toContain('reputation');
     // names at least one real non-Tessera chain, not just "Chains" in the abstract
@@ -52,7 +52,7 @@ describe('onboarding coach', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    expect(g.onboardingStep.id).toBe('automate');
+    expect(g.onboardingStep!.id).toBe('automate');
   });
 
   it('a second site alone also clears "grow", without needing a pool', () => {
@@ -62,7 +62,7 @@ describe('onboarding coach', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.s.cash = 5000;
     g.newSite('shed');
-    expect(g.onboardingStep.id).toBe('automate');
+    expect(g.onboardingStep!.id).toBe('automate');
   });
 
   it('"automate" clears once auto-shutdown is enabled', () => {
@@ -72,7 +72,7 @@ describe('onboarding coach', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.s.cash = 5000;
     g.newSite('shed');
-    expect(g.onboardingStep.id).toBe('automate');
+    expect(g.onboardingStep!.id).toBe('automate');
     g.s.autoOff = true;
     expect(g.onboardingStep).toBe(null);
   });
@@ -84,7 +84,7 @@ describe('onboarding coach', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60);
     g.s.cash = Math.max(g.s.cash, 10000);
     g.foundPool('tessera', 'PPLNS', 0.02);
-    expect(g.onboardingStep.id).toBe('automate');
+    expect(g.onboardingStep!.id).toBe('automate');
     g.s.autoFix = true;
     expect(g.onboardingStep).toBe(null);
   });
@@ -258,7 +258,7 @@ describe('the walkthrough tour', () => {
   it('the reactive coach stays quiet while the tour is up', () => {
     const g = freshStore();
     expect(g.showTour).toBe(true);
-    expect(g.onboardingStep.id).toBe('build'); // the predicate still resolves...
+    expect(g.onboardingStep!.id).toBe('build'); // the predicate still resolves...
     // ...but OnboardingBanner itself is the thing that checks showTour
     // before rendering it (see components/__tests__/OnboardingBanner.test.js)
   });

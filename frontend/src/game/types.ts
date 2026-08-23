@@ -169,6 +169,9 @@ export interface DraftCheck { ok: boolean; title: string; label: string; fix: st
 // buildDraft.ts's draftExpected: the draft's pre-purchase revenue/cost estimate.
 export interface DraftExpected { rev: number; pow: number; net: number; payback: number }
 
+// onboarding.ts's STEPS: the reactive coach's script, one entry per nudge.
+export interface OnboardingStep { id: string; done: (G: Game) => boolean; text: string }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -382,10 +385,10 @@ export interface GameExports {
   buildTime: ComputedRef<number>;
   unitEcon(unit: Card): UnitEcon;
   draftExpected: ComputedRef<DraftExpected>;
-  generatePreset: any;
-  maxBuildQty: any;
-  blockValue: any;
-  bondReq: any;
+  generatePreset(): boolean;
+  maxBuildQty(): number;
+  blockValue(c: ChainState): number;
+  bondReq(c: ChainState, scheme: 'PPS' | 'PPLNS'): number;
   poolTrust(pool: Pool): number;
   TRUST_RAMP: number;
   poolCapLimit(pool: Pool): number;
@@ -423,8 +426,8 @@ export interface GameExports {
   bondFloor(pool: Pool): number;
   topUpBond(pool: Pool, amount: number): void;
   closePool(pool: Pool): void;
-  stepTick: any;
-  build: any;
+  stepTick(dtOverride?: number): void;
+  build(qty?: number): void;
   scrapRig(id: number): void;
   swapWorn(id: number, th: number): void;
   expectedDay: ComputedRef<number>;
@@ -432,7 +435,7 @@ export interface GameExports {
   SLOT_OPTS: { frame: Frame[]; mobo: Mobo[]; cool: Cooler[]; psu: Psu[] };
   rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
   startRebuild(rig: Rig): void;
-  applyRebuild: any;
+  applyRebuild(): void;
   toggleRig(id: number): void;
   setRigGroup(rig: Rig, groupId: number): void;
   groupOf(rig: Rig): Group;
@@ -440,12 +443,12 @@ export interface GameExports {
   groupRigs(group: Group): Rig[];
   setGroupChain(group: Group, chainId: string): void;
   setGroupPool(group: Group, poolId: string): void;
-  addGroup: any;
-  dropGroup: any;
+  addGroup(): Group;
+  dropGroup(group: Group): void;
   renameGroup(group: Group, name: string): void;
-  newSite: any;
+  newSite(shellId: string): void;
   addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void;
-  chooseFab: any;
+  chooseFab(fid: number, fabId: string): void;
   rush(fid: number, idx: number): void;
   rushCost(job: Job): number;
   rushRig(id: number): void;
@@ -453,7 +456,7 @@ export interface GameExports {
   upgradeShell(fid: number, shellId: string): void;
   renameSite(fid: number, name: string): void;
   renameRig(id: number, name: string): void;
-  decommissionSite: any;
+  decommissionSite(fid: number): void;
   sell(chainId: string, frac: number): void;
   buy(chainId: string, frac: number): void;
   fleetMove(groupId: number, scope: Scope): void;
@@ -461,7 +464,7 @@ export interface GameExports {
   draftSpec(): RebuildDraft;
   fleetSpecInfo(draft: RebuildDraft, scope: Scope): FleetSpecInfo;
   fleetToSpec(draft: RebuildDraft, scope: Scope): void;
-  dripCost: any;
+  dripCost(chain: ChainState, frac?: number): number;
   dripWorst(): DripWorst | null;
   setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
   toggleHold(chainId: string): void;
@@ -472,20 +475,20 @@ export interface GameExports {
   fleetRepair(threshold: number, scope: Scope): void;
   fleetRefitInfo(unitId: string, scope: Scope): FleetRefitInfo;
   fleetRefit(unitId: string, scope: Scope): void;
-  onboardingStep: any;
-  dismissOnboarding: any;
-  showChainsNudge: any;
-  dismissChainsNudge: any;
+  onboardingStep: ComputedRef<OnboardingStep | null>;
+  dismissOnboarding(): void;
+  showChainsNudge: ComputedRef<boolean>;
+  dismissChainsNudge(): void;
   TOUR_SLIDES: TourSlide[];
-  showTour: any;
+  showTour: ComputedRef<boolean>;
   dismissTour(): void;
   restartTour(): void;
-  saveNow: any;
-  loadSave: any;
+  saveNow(): Promise<void>;
+  loadSave(): Promise<boolean>;
   wipeSave(): Promise<void>;
   exportSave(): string;
-  importSave: any;
-  creditAway: any;
+  importSave(text: string): Promise<boolean>;
+  creditAway(away: number): Promise<number>;
 }
 
 export interface Game {
@@ -653,5 +656,27 @@ export interface Game {
   draftEff: ComputedRef<number>;
   buildTime: ComputedRef<number>;
   draftExpected: ComputedRef<DraftExpected>;
+  stepTick(dtOverride?: number): void;
+  build(qty?: number): void;
+  generatePreset(): boolean;
+  maxBuildQty(): number;
+  blockValue(c: ChainState): number;
+  bondReq(c: ChainState, scheme: 'PPS' | 'PPLNS'): number;
+  applyRebuild(): void;
+  addGroup(): Group;
+  dropGroup(group: Group): void;
+  newSite(shellId: string): void;
+  chooseFab(fid: number, fabId: string): void;
+  decommissionSite(fid: number): void;
+  dripCost(chain: ChainState, frac?: number): number;
+  onboardingStep: ComputedRef<OnboardingStep | null>;
+  dismissOnboarding(): void;
+  showChainsNudge: ComputedRef<boolean>;
+  dismissChainsNudge(): void;
+  showTour: ComputedRef<boolean>;
+  saveNow(): Promise<void>;
+  loadSave(): Promise<boolean>;
+  importSave(text: string): Promise<boolean>;
+  creditAway(away: number): Promise<number>;
   [key: string]: any;
 }

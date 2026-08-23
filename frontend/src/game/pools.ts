@@ -45,7 +45,7 @@ export function installPools(G: Game): void {
      have. Without this you could pull your capital the moment a dry spell
      started and leave members underwritten by nothing. */
   const bondFloor = (pool: Pool) => Math.max(
-    G.bondReq(G.chain(pool.chain), pool.scheme),        // never below the entry stake
+    G.bondReq(G.chain(pool.chain)!, pool.scheme),       // never below the entry stake
     G.bondFor(pool, G.poolHash(pool)));                 // nor below cover for current members
   function addBond(pool: Pool, amount: number): void {
     amount = Math.min(Math.round(amount), Math.floor(G.s.cash)); if (amount <= 0) return;
