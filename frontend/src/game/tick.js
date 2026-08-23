@@ -151,19 +151,13 @@ export function installTick(G) {
       advanceChainAnchor(chain, days);
       advanceChainMarket(chain, days);
       checkMilestones();
-      if (crossedInterval(HIST_SAMPLE_INTERVAL, dt)) {
-        chain.hist.push(G.price(chain));
-        if (chain.hist.length > 110) chain.hist.shift();
-      }
+      if (crossedInterval(HIST_SAMPLE_INTERVAL, dt)) pushCapped(chain.hist, G.price(chain), 110);
     }
   }
 
   function advanceChainAnchor(chain, days) {
     if (!chain.anchor) chain.anchor = Math.max(1, G.chainHash(chain) / chain.floor);
-    // anchor0 freezes the save's starting anchor so decay always relaxes toward a
-    // fraction of THAT, not of whatever anchor last was — persistence's
-    // sim-reseed/reset/retune paths overwrite chain.anchor directly without
-    // touching anchor0, so a mid-decay save keeps its original maturity floor.
+    // anchor0 rationale: docs/implementation-notes.md#chain-anchor-decay-advancechainanchor-in-tickjs.
     if (!chain.anchor0) chain.anchor0 = chain.anchor;
     const decay = ANCHOR_DECAY[chain.id];
     if (!decay) return;
@@ -308,9 +302,8 @@ export function installTick(G) {
   }
 
   function shedOverCapacityRigs(site) {
-    const battAvail = () => G.battFirm(site);
     let guard = 0;
-    while (G.siteDemand(site) > G.siteCapacity(site) + battAvail() && guard++ < 40) {
+    while (G.siteDemand(site) > G.siteCapacity(site) + G.battFirm(site) && guard++ < 40) {
       const liveRigs = G.siteRigs(site).filter(rig => G.rigLive(rig));
       if (!liveRigs.length) break;
       let worst = liveRigs[0];
@@ -323,7 +316,6 @@ export function installTick(G) {
   }
 
   function restoreShedRigs(site) {
-    const battAvail = () => G.battFirm(site);
     const cutRigs = G.siteRigs(site)
       .filter(rig => !rig.on && (rig.cut === 'brownout' || rig.cut === 'broke') && rig.building <= 0)
       .sort((rigA, rigB) => netIfOn(rigB) - netIfOn(rigA));
@@ -333,7 +325,7 @@ export function installTick(G) {
       rig.on = true;
       const wouldDraw = G.siteDemand(site);
       rig.on = wasOn;
-      if (wouldDraw > (G.siteCapacity(site) + battAvail()) * 0.97) break;
+      if (wouldDraw > (G.siteCapacity(site) + G.battFirm(site)) * 0.97) break;
       rig.on = true;
       rig.cut = null;
       G.say('sys', rig.name + ' restored — ' + site.name + ' has capacity again');
@@ -390,22 +382,9 @@ export function installTick(G) {
     pushCapped(G.s.netHist = G.s.netHist || [], G.netDay.value, 110);
     pushCapped(G.s.hashHist = G.s.hashHist || [], G.totalHash.value, 110);
     pushCapped(G.s.cashHist = G.s.cashHist || [], G.s.cash, 110);
-    // Power spend has its own series because Farm's "Cost today" card needs a
-    // cost trend, and netHist is profit — under a cost heading a rising profit
-    // line reads as rising spend, exactly backwards.
+    // Why these four don't collapse into fewer series: docs/implementation-notes.md#history-series-samplehistoryseries-in-tickjs.
     pushCapped(G.s.powerHist = G.s.powerHist || [], G.powerDay.value, 110);
-    // Efficiency has to be its own series rather than hashHist over powerHist:
-    // powerHist is what the power COST in dollars, while MH/W is hashrate over
-    // watts drawn — the two are only proportional while the tariff and the band
-    // hold still, which is exactly what this game moves around. Stored the way
-    // effMhw computes it, once per sample.
     pushCapped(G.s.effHist = G.s.effHist || [], G.effMhw.value, 110);
-    // Net TO DATE, sampled — not a running sum of netHist. netDay is
-    // today().earned-today().power and today() resets at every midnight, so
-    // netHist holds partial-day snapshots taken at whatever fraction of the day
-    // the 0.75-day cadence lands on; adding them up gives a number with no
-    // meaning and about half the real total. lifetimeNet is the cumulative
-    // figure itself, so the series records that.
     pushCapped(G.s.netCumHist = G.s.netCumHist || [], G.lifetimeNet.value, 110);
   }
 

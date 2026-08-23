@@ -232,7 +232,6 @@ export function installSims(G){
   }
 
   function seedStarterPools(now){
-    let nameSeq = 0;
     for(const chainId of SIM_CHAINS){
       const chain = CHAINS.find(entry => entry.id === chainId);
       const candidates = G.s.sims.filter(sim => sim.chain === chainId).sort((simA, simB) => simB.cash - simA.cash);
@@ -249,7 +248,7 @@ export function installSims(G){
         sim.cash -= bond;
         const id = 's' + sim.id + 'p' + (++poolSeq);
         const pool = makeSimPool({ id, chain: chainId, sim, scheme, fee, bond,
-          name: nextRivalName(++nameSeq), born: now || 0 });
+          name: nextRivalName(poolSeq), born: now || 0 });
         G.s.pools.push(pool);
         setSimPool(sim, id);
       }

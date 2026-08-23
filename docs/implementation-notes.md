@@ -741,3 +741,45 @@ a fast-forward burst turning income into a machine gun — is instead
 handled by `audio.js`'s own per-cue cooldowns, measured in real (not
 game) milliseconds like `TOAST_GAP`, so no speed multiplier can outrun
 them.
+
+## Rival/sim pool naming (`nextRivalName` in `rivals.js`)
+
+One naming sequence shared by every place that mints a rival/sim pool name
+(`mkRival`, `sims.js`'s `seedStarterPools`/`tryFoundPool`,
+`persistence.js`'s server-pool replacement) so they can't drift into
+different conventions — they previously did, including one path that
+dropped the disambiguating suffix entirely and would have produced
+duplicate names once its sequence ran past `RIVAL_NAMES.length`. `seq` is
+1-based: the count of names minted so far, including the one being named.
+First pass through the list gets no suffix; each further pass appends its
+cycle number (2, 3, ...).
+
+## History series (`sampleHistorySeries` in `tick.js`)
+
+Four of the sampled series look like they could collapse into fewer:
+
+- **`powerHist`** is its own series (not derived from `netHist`) because
+  Farm's "Cost today" card needs a cost trend, and `netHist` is profit —
+  under a cost heading, a rising profit line reads as rising spend,
+  exactly backwards.
+- **`effHist`** can't be `hashHist` over `powerHist` either: `powerHist` is
+  the power COST in dollars, while MH/W is hashrate over watts drawn — the
+  two are only proportional while the tariff and the band hold still,
+  which is exactly what this game moves around. It's stored the way
+  `effMhw` computes it, once per sample.
+- **`netCumHist`** is net TO DATE, sampled — not a running sum of
+  `netHist`. `netDay` is `today().earned - today().power`, and `today()`
+  resets at every midnight, so `netHist` holds partial-day snapshots taken
+  at whatever fraction of the day the 0.75-day cadence lands on; adding
+  them up gives a number with no meaning and about half the real total.
+  `lifetimeNet` is the cumulative figure itself, so the series records
+  that directly.
+
+## Chain anchor decay (`advanceChainAnchor` in `tick.js`)
+
+`chain.anchor0` freezes the save's *starting* anchor so decay always
+relaxes toward a fraction of THAT, not of whatever `chain.anchor` last
+was. `persistence.js`'s sim-reseed/reset/retune paths overwrite
+`chain.anchor` directly without touching `anchor0`, so a mid-decay save
+that goes through one of those keeps its original maturity floor instead
+of resetting it.

@@ -19,8 +19,12 @@ export function installFleetActions(G){
     : G.s.rigs.filter(rig=>scope==null||rig.site===scope);
   // Every fleet action but the group move skips a rig still mid-build —
   // one shared filter so "which rigs does this apply to" can't drift
-  // between the quote and the action that follows it.
-  const liveFleetRigs = scope => fleetRigs(scope).filter(rig=>rig.building<=0);
+  // between the quote and the action that follows it. One pass over the
+  // scope, not fleetRigs(scope) followed by a second filter: these back
+  // FleetSheet's computeds, which re-run on every tick while it's open.
+  const liveFleetRigs = scope => Array.isArray(scope)
+    ? G.s.rigs.filter(rig=>scope.includes(rig.id)&&rig.building<=0)
+    : G.s.rigs.filter(rig=>(scope==null||rig.site===scope)&&rig.building<=0);
   /* One rig's worn-card count and replacement bill. The single-rig detail sheet
      and the fleet-wide sweep below are the same question asked of a different
      number of rigs, so both ask it here — repair pricing has one definition. */

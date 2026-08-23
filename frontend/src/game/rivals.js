@@ -7,14 +7,7 @@ import { C, TX_FEES, SIM_RATIO, COVER_DAYS, PPLNS_COVER, VAR_K, RIVAL_NAMES } fr
    (rather than in data/constants.js, where the rest of the network-sim
    tuning lives) because it isn't a constant — it's an entity factory with
    its own mutable sequence counter, i.e. game logic. */
-// One naming sequence shared by every place that mints a rival/sim pool name
-// (mkRival below, sims.js's seedStarterPools/tryFoundPool, persistence.js's
-// server-pool replacement) so they can't drift into different conventions —
-// they previously did, including one path that dropped the disambiguating
-// suffix entirely and would have produced duplicate names once its sequence
-// ran past RIVAL_NAMES.length. `seq` is 1-based: the count of names minted
-// so far, including the one being named. First pass through the list gets no
-// suffix; each further pass appends its cycle number (2, 3, ...).
+// Naming-sequence rationale: docs/implementation-notes.md#rival-sim-pool-naming-nextrivalname-in-rivalsjs.
 export function nextRivalName(seq){
   const idx=(seq-1)%RIVAL_NAMES.length;
   const cycle=Math.ceil(seq/RIVAL_NAMES.length);
