@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { reactive, ref, type ComponentPublicInstance } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import ChainMark from '../components/ChainMark.vue';
 import MyPoolCard from '../components/MyPoolCard.vue';
 import ChainGem from '../components/ChainGem.vue';
 import { useSegTabs } from '../composables/useSegTabs.js';
+import type { Focusable } from '../composables/useSegTabs.js';
 import { useChainCards, big, coins } from '../composables/useChainCards.js';
 import { usePoolFounding } from '../composables/usePoolFounding.js';
 
@@ -47,7 +48,7 @@ const { spark, fieldMine, field, found, fScheme, fFee, fChain, bond, projShare, 
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'chseg-'+x.k" :aria-controls="'chpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: Element | ComponentPublicInstance | null)=>{ if(el) segEl[x.k]=el as Focusable }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>

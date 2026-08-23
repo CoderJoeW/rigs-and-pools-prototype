@@ -1,7 +1,7 @@
 import { reactive, ref, type Ref } from 'vue';
 
 export interface Seg { k: string; [key: string]: unknown }
-interface Focusable { focus?: () => void }
+export interface Focusable { focus?: () => void }
 
 // A real ARIA tablist's roving-focus keyboard behaviour: Left/Right/Home/End
 // move both the active segment and DOM focus, wrapping at the ends. Shared

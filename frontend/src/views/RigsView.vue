@@ -13,6 +13,7 @@ import ChainMark from '../components/ChainMark.vue';
 import Chassis from '../components/Chassis.vue';
 import RigShot from '../components/RigShot.vue';
 import { sitePlate, sitePhase } from '../utils/siteArt.js';
+import type { Rig } from '../game/types.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
@@ -28,7 +29,7 @@ const { picking, chosen, chosenIds, chooseAll, stopPicking, scopeId, scopeLabel,
 watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
 
 const rig=computed(()=> openRig.value==null ? null
-  : g.s.rigs.find((r: any)=>r.id===openRig.value) || null);
+  : g.s.rigs.find((r: Rig)=>r.id===openRig.value) || null);
 const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
   useInlineRename(()=>rig.value!.name, (name: string)=>g.renameRig(rig.value!.id,name));
 watch(openRig, ()=>{ renameOpen.value=false; resetSwipe(); });
@@ -38,16 +39,16 @@ const REPAIR_AT=C.REPAIR_AT;
 /* Same worn-card definition the fleet sweep uses, asked of the open rig only. */
 const rigWorn=computed(()=> rig.value ? g.rigWorn(rig.value,REPAIR_AT) : {n:0,cost:0});
 
-const siteHash=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
-const siteNet=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigNet(r),0));
-const siteLive=computed(()=>siteRigs.value.filter((r: any)=>g.rigLive(r)).length);
+const siteHash=computed(()=>siteRigs.value.reduce((a: number,r: Rig)=>a+g.rigHash(r),0));
+const siteNet=computed(()=>siteRigs.value.reduce((a: number,r: Rig)=>a+g.rigNet(r),0));
+const siteLive=computed(()=>siteRigs.value.filter((r: Rig)=>g.rigLive(r)).length);
 const siteSlots=computed(()=>g.siteSlots(f.value));
 // Hero wears the site's own shell (same plate as Sites/Farm), not a fixed rig photo.
 const heroShot=computed(()=>sitePlate(f.value.shell, sitePhase(g.s.t)));
 // Same dot vocabulary the rows use, not a fourth "site" colour.
 const siteStatus=computed(()=>{
   if(siteLive.value) return {dot:'run', label:'Active'};
-  if(siteRigs.value.some((r: any)=>r.building>0)) return {dot:'build', label:'Building'};
+  if(siteRigs.value.some((r: Rig)=>r.building>0)) return {dot:'build', label:'Building'};
   if(siteRigs.value.length) return {dot:'off', label:'Idle'};
   return {dot:'off', label:'Empty'};
 });
@@ -57,7 +58,7 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
 const takeFocusRig=()=>{
   const id=g.s.focusRig; if(id==null) return;
   g.s.focusRig=null;
-  const r=g.s.rigs.find((x: any)=>x.id===id);
+  const r=g.s.rigs.find((x: Rig)=>x.id===id);
   if(r && r.site===g.s.activeSite) openRig.value=id;
 };
 onMounted(takeFocusRig);

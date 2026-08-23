@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainGem from '../components/ChainGem.vue';
 import { CHAIN_HUE } from '../data/chains.js';
 import { useSegTabs } from '../composables/useSegTabs.js';
+import type { Focusable } from '../composables/useSegTabs.js';
+import type { ChainState } from '../game/types.js';
 
 const g = useGameStore();
 const open=reactive<Record<string, boolean>>({});
-const slip=(c: any,f: number)=>Math.min(0.5,0.5*(g.s.wallet[c.id]!*f)/c.depth);
+const slip=(c: ChainState,f: number)=>Math.min(0.5,0.5*(g.s.wallet[c.id]!*f)/c.depth);
 
 // Segmented layout, same real-tablist pattern as ChainsView: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
@@ -84,7 +86,7 @@ async function onBackupFile(e: Event){
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'mkseg-'+x.k" :aria-controls="'mkpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: Element | ComponentPublicInstance | null)=>{ if(el) segEl[x.k]=el as Focusable }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>

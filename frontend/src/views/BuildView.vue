@@ -7,6 +7,7 @@ import { useBuildVerdict } from '../composables/useBuildVerdict.js';
 import PartPickerSheet from '../components/PartPickerSheet.vue';
 import PartTile from '../components/PartTile.vue';
 import { rigShot } from '../utils/rigArt.js';
+import type { DraftCheck } from '../game/types.js';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
@@ -95,7 +96,7 @@ const siteAfter=computed(()=>{
 // here, not in the picker: needs cardLimit AFTER the draft changes, and a
 // prop the child received is a render old by then.
 const choose=(id: string)=>{
-  (g.s.draft as any)[g.s.picker!]=id;
+  (g.s.draft as unknown as Record<string, string>)[g.s.picker!]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };
@@ -264,7 +265,7 @@ const { buildStatus, verdict } = useBuildVerdict(g, mode, qty, maxQty, effShown,
 
     <div class="sec"><span class="eyebrow">Pre-build checks</span>
       <span class="eyebrow" :class="g.canBuild?'okc':'noc'">{{ g.canBuild
-        ? 'all '+g.checks.length+' pass' : g.checks.filter((c: any)=>!c.ok).length+' to fix' }}</span></div>
+        ? 'all '+g.checks.length+' pass' : g.checks.filter((c: DraftCheck)=>!c.ok).length+' to fix' }}</span></div>
     <div class="card checkcard">
       <div v-for="vg in verdict" :key="vg.t" class="vgroup">
         <div v-if="vg.t" class="vgroup-hd"><span class="t">{{ vg.t }}</span></div>

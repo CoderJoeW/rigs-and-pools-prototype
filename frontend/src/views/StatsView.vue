@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type ComponentPublicInstance } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import StatChart from '../components/StatChart.vue';
 import RankBadge from '../components/RankBadge.vue';
 import { useSegTabs } from '../composables/useSegTabs.js';
+import type { Focusable } from '../composables/useSegTabs.js';
+import type { Milestone } from '../data/milestones.js';
 
 const g = useGameStore();
 
@@ -64,14 +66,14 @@ const tiles=computed(()=>[
 ]);
 
 const tracks=computed(()=>{
-  const by: Record<string, any[]>={};
+  const by: Record<string, (Milestone & { done: boolean; day: number })[]>={};
   for(const m of g.MILESTONES){
     (by[m.track]=by[m.track]||[]).push({ ...m,
       done:!!(g.s.mile&&g.s.mile.done[m.id]),
       day:g.s.mile&&g.s.mile.done[m.id]?Math.floor(g.s.mile.done[m.id]!/86400)+1:0 });
   }
   return Object.entries(by).map(([name,items])=>({name,items,
-    n:items.filter((x: any)=>x.done).length}));
+    n:items.filter(x=>x.done).length}));
 });
 /* The whole climb as a shape (issue #51): past ranks filled, the current one
    marked, ranks not yet reached left empty — the same .track vocabulary the
@@ -91,7 +93,7 @@ const ladder=computed(()=>g.RANKS.map(([need,name]: [number,string],i: number)=>
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'stseg-'+x.k" :aria-controls="'stpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: Element | ComponentPublicInstance | null)=>{ if(el) segEl[x.k]=el as Focusable }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>

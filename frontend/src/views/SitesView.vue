@@ -5,6 +5,8 @@ import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
 import type { DesignKind } from '../data/customParts.js';
+import type { Rig, Site } from '../game/types.js';
+import type { Job } from '../data/site-parts.js';
 import { useSitePickerRows } from '../composables/useSitePickerRows.js';
 import { useSitePower } from '../composables/useSitePower.js';
 import { useSiteFloor } from '../composables/useSiteFloor.js';
@@ -49,17 +51,17 @@ const sec=reactive({power:false,batt:false,cool:false,fab:false});
 // says it is — see utils/siteArt.ts for both, and for why the previous scheme
 // (three quarry photographs dealt out by site id) had to go.
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const siteDot=(st: any)=>{ if(g.siteTemp(st)>=70) return 'bad';
-  if(g.siteRigs(st).some((r: any)=>g.rigLive(r))) return 'run';
+const siteDot=(st: Site)=>{ if(g.siteTemp(st)>=70) return 'bad';
+  if(g.siteRigs(st).some((r: Rig)=>g.rigLive(r))) return 'run';
   return 'off'; };
 
-const fabQueued=computed(()=>f.value.queue.find((j: any)=>j.kind==='fab'));
-const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
+const fabQueued=computed(()=>f.value.queue.find((j: Job)=>j.kind==='fab'));
+const KIND_LABEL: Record<DesignKind, string> ={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
 // What a queued job IS. A site queue only ever holds infrastructure — see
 // sites.ts — so these are the whole vocabulary.
-const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
+const JOB_LABEL: Record<Job['kind'], string> ={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
-const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
+const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab)!.slots : []);
 const openDesignKind=(kind: DesignKind)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
 const pickerSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
@@ -315,16 +317,16 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           <circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3
             M5.4 5.4l2.1 2.1M16.5 16.5l2.1 2.1M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1"/></svg></span>
         <span style="flex:1;text-align:left"><span class="nm">Fabrication</span>
-          <div class="sb">{{ f.fab ? g.FAB(f.fab).name
+          <div class="sb">{{ f.fab ? g.FAB(f.fab)!.name
             : '3D printers, machine shop, assembly — ' + (fabQueued ? 'under construction' : 'not installed') }}</div></span>
         <img class="fab-shot" :src="fabShot" alt="" aria-hidden="true" />
         <span class="sec-cv" :class="{open:sec.fab}" aria-hidden="true"><svg viewBox="0 0 24 24">
           <path d="m6 9 6 6 6-6"/></svg></span></button>
       <div v-if="sec.fab" class="card-bd">
         <template v-if="f.fab">
-          <div class="dl"><dt>Tier</dt><dd>{{ g.FAB(f.fab).tier }} of {{ g.FABS.length }}</dd></div>
-          <div class="dl"><dt>Design budget</dt><dd>{{ g.FAB(f.fab).budget }}</dd></div>
-          <div class="dl"><dt>Can manufacture</dt><dd style="text-transform:capitalize">{{ g.FAB(f.fab).slots.join(', ') }}</dd></div>
+          <div class="dl"><dt>Tier</dt><dd>{{ g.FAB(f.fab)!.tier }} of {{ g.FABS.length }}</dd></div>
+          <div class="dl"><dt>Design budget</dt><dd>{{ g.FAB(f.fab)!.budget }}</dd></div>
+          <div class="dl"><dt>Can manufacture</dt><dd style="text-transform:capitalize">{{ g.FAB(f.fab)!.slots.join(', ') }}</dd></div>
           <p v-if="g.s.help" class="hint">The design budget is what a custom part's tuning can spend — pushing one stat further costs more of it the further you push.</p>
         </template>
         <p v-else-if="fabQueued" class="note">Under construction — see the queue below for progress.</p>
@@ -339,7 +341,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="eyebrow">{{ f.queue.length }} job{{ f.queue.length===1?'':'s' }}</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="qrow">
-          <span class="qslot" aria-hidden="true">{{ (JOB_LABEL as any)[j.kind] || 'Build' }}</span>
+          <span class="qslot" aria-hidden="true">{{ JOB_LABEL[j.kind] || 'Build' }}</span>
           <span class="qmain">
             <span class="qhd"><span class="nm">{{ g.jobPart(j)!.name }}</span></span>
             <span class="qbar">
@@ -366,7 +368,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <template v-else-if="g.s.sitePicker==='design'">
           <div class="list">
             <button v-for="k in designKinds" :key="k" class="rowline" @click="openDesignKind(k)">
-              <span style="flex:1"><span class="nm">{{ (KIND_LABEL as any)[k] }}</span></span><span class="ch">&rsaquo;</span></button>
+              <span style="flex:1"><span class="nm">{{ KIND_LABEL[k] }}</span></span><span class="ch">&rsaquo;</span></button>
           </div>
         </template>
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />

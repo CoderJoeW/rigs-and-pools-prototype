@@ -19,7 +19,7 @@ const props = defineProps({
 const g = useGameStore();
 
 const designPreview=computed(()=>{ const d=g.s.design; if(!d) return null;
-  const site=g.s.sites.find(x=>x.id===d.fid)||props.site, fab=g.FAB(site.fab); const liveTop=g.liveTopOf(d.kind);
+  const site=g.s.sites.find(x=>x.id===d.fid)||props.site, fab=g.FAB(site.fab!)!; const liveTop=g.liveTopOf(d.kind);
   return { axes:g.DESIGN_AXES[d.kind], fab, totals:g.designTotals(d.kind,d.picks), stats:g.designStats(d.kind,d.picks,liveTop), cost:g.designCost(d.kind,d.picks,liveTop) }; });
 const axisAtCap=(ax: any)=>{ const d=g.s.design; if(!d) return true; const cur=d.picks[ax.key]||0;
   if(cur>=g.MAX_AXIS_POINTS) return true;

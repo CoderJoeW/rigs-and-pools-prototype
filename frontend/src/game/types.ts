@@ -322,7 +322,7 @@ export interface GameExports {
   PLANTS: Plant[];
   STORAGE: Storage[];
   FABS: Fab[];
-  FAB: any;
+  FAB(id: string): Fab | undefined;
   PSUS: Psu[];
   DESIGN_AXES: Record<DesignKind, DesignAxis[]>;
   MAX_AXIS_POINTS: number;
@@ -545,15 +545,16 @@ export interface Game {
   poolTrust(pool: Pool): number;
   groupAdvice(group: Group): GroupAdvice | null;
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
-  // PART/SITEPART/FAB return discriminated unions (Part = Frame|Mobo|Psu|
-  // Cooler|Card, SitePart = Shell|Source|Storage|Plant) accessed duck-typed
-  // by every caller, exactly like dispatch.ts's SP/P — narrowing the return
+  // PART/SITEPART return discriminated unions (Part = Frame|Mobo|Psu|Cooler|
+  // Card, SitePart = Shell|Source|Storage|Plant) accessed duck-typed by
+  // every caller, exactly like dispatch.ts's SP/P — narrowing the return
   // type would mean threading a type guard through dozens of call sites for
   // no caught bug, since a field that doesn't exist on the wrong variant
-  // already fails loudly at runtime.
+  // already fails loudly at runtime. FAB has no such excuse (Fab is one
+  // concrete shape) and is typed properly below.
   PART: any;
   SITEPART: any;
-  FAB: any;
+  FAB(id: string): Fab | undefined;
   siteHeat(site: Site): number;
   sitePlantW(site: Site, extraHeat?: number): number;
   siteCooling(site: Site): number;
