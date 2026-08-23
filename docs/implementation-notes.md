@@ -616,9 +616,9 @@ own click handler, and from a one-shot document gesture listener armed in
 
 A caught `unlock()` failure logs rather than silently swallowing, because
 a swallowed failure here is indistinguishable from "the player muted it,"
-and this codebase has been bitten by exactly that before (see `tick.js`'s
-milestone catch) — the game stays playable in silence, but not silently
-broken.
+and this codebase has been bitten by exactly that before (see
+`milestoneTracker.js`'s milestone catch) — the game stays playable in
+silence, but not silently broken.
 
 **Voice envelopes.** `exponentialRampToValueAtTime` never reaches 0, so
 envelopes start and end at 0.0001 rather than 0 — ramping to a true zero
@@ -754,7 +754,7 @@ duplicate names once its sequence ran past `RIVAL_NAMES.length`. `seq` is
 First pass through the list gets no suffix; each further pass appends its
 cycle number (2, 3, ...).
 
-## History series (`sampleHistorySeries` in `tick.js`)
+## History series (`sampleHistorySeries` in `historySampling.js`)
 
 Four of the sampled series look like they could collapse into fewer:
 
@@ -775,7 +775,7 @@ Four of the sampled series look like they could collapse into fewer:
   `lifetimeNet` is the cumulative figure itself, so the series records
   that directly.
 
-## Chain anchor decay (`advanceChainAnchor` in `tick.js`)
+## Chain anchor decay (`advanceChainAnchor` in `chainEconomy.js`)
 
 `chain.anchor0` freezes the save's *starting* anchor so decay always
 relaxes toward a fraction of THAT, not of whatever `chain.anchor` last

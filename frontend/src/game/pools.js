@@ -95,7 +95,7 @@ export function installPools(G){
      the same way — just signed the other direction. Selling pushes impact
      positive (price sags below ref); buying pushes it negative (price runs
      above ref). Both decay back toward 0 via the same per-tick relaxation
-     in tick.js, so a premium fades exactly as a discount does. This is
+     in chainEconomy.js, so a premium fades exactly as a discount does. This is
      what completes the buy side the design spec's v33 fundamentals never
      shipped — no new price model, just the existing one used both ways. */
   function doBuy(chain,usd){
