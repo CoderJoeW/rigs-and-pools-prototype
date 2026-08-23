@@ -14,9 +14,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
 
-    "allowJs": true,
-    "checkJs": false,
-
     "jsx": "preserve",
     "types": ["vite/client", "node"]
   },
