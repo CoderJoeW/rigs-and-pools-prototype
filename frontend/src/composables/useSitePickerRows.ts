@@ -2,6 +2,8 @@ import { computed, type ComputedRef } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import type { Site } from '../game/types.js';
+import type { Source, Storage, Plant, Shell } from '../data/site-parts.js';
+import type { Fab } from '../data/fab.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
@@ -12,14 +14,14 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
   const mix = computed(() => {
     const site = f.value, out = [];
     for (const src of site.sources) {
-      const P = g.SITEPART(src.p);
+      const P = g.SITEPART(src.p)!;
       out.push({ id: src.p, name: P.name + (src.n > 1 ? ' ×' + src.n : ''), kind: P.kind,
         out: g.srcOut(site, src), rate: P.rate });
     }
     return out.sort((a, b) => b.out - a.out);
   });
 
-  const sourceRows = computed(() => g.SOURCES.filter((p: any) => p.price > 0).map((p: any) => ({
+  const sourceRows = computed(() => g.SOURCES.filter((p: Source) => p.price > 0).map((p: Source) => ({
     id: p.id, name: p.name,
     sub: (p.yield
           ? fmt.w(p.peak * p.yield) + ' real — ' + fmt.w(p.peak) + ' nameplate at '
@@ -30,22 +32,22 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
     value: fmt.usd(p.price),
     valueSub: p.rate > 0 ? p.kind : fmt.usd2(p.price / (p.peak * (p.yield || 1))) + '/W' })));
 
-  const storageRows = computed(() => g.STORAGE.map((p: any) => ({ id: p.id, name: p.name,
+  const storageRows = computed(() => g.STORAGE.map((p: Storage) => ({ id: p.id, name: p.name,
     sub: p.kwh + ' kWh · ' + p.kw + ' kW · ' + p.hours + ' h to build',
     value: fmt.usd(p.price), valueSub: '' })));
 
-  const plantRows = computed(() => g.PLANTS.filter((p: any) => p.price > 0).map((p: any) => ({ id: p.id, name: p.name,
+  const plantRows = computed(() => g.PLANTS.filter((p: Plant) => p.price > 0).map((p: Plant) => ({ id: p.id, name: p.name,
     sub: fmt.w(p.cap) + ' of heat · ' + fmt.pct(p.pue, 0) + ' of it burned as power · ' + p.hours + ' h',
     value: fmt.usd(p.price),
     valueSub: 'at ' + fmt.w(g.siteHeat(f.value)) + ' it would draw ' + fmt.w(g.siteHeat(f.value) * p.pue) })));
 
-  const shellRows = computed(() => g.SHELLS.filter((p: any) => p.price > 0).map((p: any) => ({ id: p.id, name: p.name,
+  const shellRows = computed(() => g.SHELLS.filter((p: Shell) => p.price > 0).map((p: Shell) => ({ id: p.id, name: p.name,
     sub: p.slots + ' rig positions · ' + p.hours + ' h to build',
     value: fmt.usd(p.price), valueSub: '', locked: g.s.cash < p.price })));
 
   const expandRows = computed(() => {
-    const cur = g.SITEPART(f.value.shell);
-    return g.SHELLS.filter((p: any) => p.slots > cur.slots).map((p: any) => {
+    const cur = g.SITEPART(f.value.shell) as Shell;
+    return g.SHELLS.filter((p: Shell) => p.slots > cur.slots).map((p: Shell) => {
       const credit = Math.round(cur.price * 0.5), cost = Math.max(0, p.price - credit);
       return { id: p.id, name: p.name, sub: cur.slots + ' → ' + p.slots + ' rig positions · ' + p.hours + ' h to build',
         value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '', locked: g.s.cash < cost };
@@ -54,7 +56,7 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
 
   const fabRows = computed(() => {
     const cur = f.value.fab ? g.FAB(f.value.fab) : null;
-    return g.FABS.filter((p: any) => !cur || p.tier > cur.tier).map((p: any) => {
+    return g.FABS.filter((p: Fab) => !cur || p.tier > cur.tier).map((p: Fab) => {
       const credit = cur ? Math.round(cur.price * 0.5) : 0, cost = Math.max(0, p.price - credit);
       return { id: p.id, name: p.name, sub: p.slots.join(', ') + ' · ' + p.budget + ' design budget · ' + p.hours + ' h to build',
         value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '', locked: g.s.cash < cost };

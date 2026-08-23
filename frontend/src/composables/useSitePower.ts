@@ -8,14 +8,16 @@ type Store = ReturnType<typeof useGameStore>;
 const FLOW_C: Record<string, string> = { solar: 'var(--gold)', battery: 'var(--blue)', grid: 'var(--ink-3)',
   rigs: 'var(--green)', cooling: 'var(--blue)', charging: 'var(--gold)', unserved: 'var(--red)' };
 
-const segs = (parts: [string, number][], total: number) =>
-  parts.map(([k, w]) => ({ k, w, pct: total > 0 ? Math.max(0, w) / total * 100 : 0, c: FLOW_C[k] }));
+interface FlowSeg { k: string; w: number; pct: number; c: string }
+
+const segs = (parts: [string, number][], total: number): FlowSeg[] =>
+  parts.map(([k, w]) => ({ k, w, pct: total > 0 ? Math.max(0, w) / total * 100 : 0, c: FLOW_C[k]! }));
 
 // The single biggest contributor to a flow bar — a headline beside it, since
 // a list of every segment is what the bar underneath is already for.
-const biggest = (list: any[]) => {
-  const live = list.filter((x: any) => x.pct > 0);
-  return live.length ? live.reduce((a: any, b: any) => (b.w > a.w ? b : a)) : null;
+const biggest = (list: FlowSeg[]): FlowSeg | null => {
+  const live = list.filter(x => x.pct > 0);
+  return live.length ? live.reduce((a, b) => (b.w > a.w ? b : a)) : null;
 };
 
 // Power flow, today's bill, battery charge and the cooling heat trace for

@@ -1,13 +1,14 @@
 import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { sparkPath } from '../utils/spark.js';
+import type { ChainState } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
 // The "Market" tab's pool field, and the founding-form projections for the
 // "Your pools" tab's new-pool sheet.
 export function usePoolFounding(g: Store) {
-  const spark = (x: any) => sparkPath(Array.isArray(x) ? x : x.hist, 32, 26);
+  const spark = (x: number[] | ChainState) => sparkPath(Array.isArray(x) ? x : x.hist, 32, 26);
   const fieldMine = ref(true);
   const field = computed(() => {
     const mine = new Set(g.s.groups.map(x => x.chain));

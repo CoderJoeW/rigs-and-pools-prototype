@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import type { DraftCheck } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
@@ -38,7 +39,7 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
 
   // aria-live announcement snapshotting (why draftKey AND gateKey, not a naive computed).
   const draftKey=computed(()=> JSON.stringify(g.s.draft));
-  const gateKey=computed(()=> g.checks.map((c:any)=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
+  const gateKey=computed(()=> g.checks.map((c:DraftCheck)=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
   const buildStatus=ref('');
   watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
     const n=Math.min(qty.value, Math.max(1,maxQty.value||1));
@@ -46,7 +47,7 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
       ? (n>1
           ? 'Ready to order '+n+' rigs for '+fmt.usd(g.dp.cost*n)+'.'
           : 'Ready to order for '+fmt.usd(g.dp.cost)+'.')
-      : 'Cannot build yet: '+g.checks.filter((c:any)=>!c.ok).map((c:any)=>c.label).join('; ')+'.';
+      : 'Cannot build yet: '+g.checks.filter((c:DraftCheck)=>!c.ok).map((c:DraftCheck)=>c.label).join('; ')+'.';
   }, { immediate:true });
 
   // Quick pick's condensed-not-silent checks.
@@ -55,7 +56,7 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
     const notes=[ceilingNote.value,subsidyNote.value].filter((x): x is NonNullable<typeof x> => !!x);
     // Cost/hashrate/draw live on the hero; this is what's left — notes in
     // both modes, second-order figures only in Customise.
-    if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter((x:any)=>!x.ok), notes } ];
+    if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter((x:DraftCheck)=>!x.ok), notes } ];
     return [
       { t:'Cost & payback', rows:[], checks:[c[5]], notes },
       { t:'Hashrate & MH/W', rows:[ {k:'MH/W', v:effShown.value.toFixed(3)} ],
