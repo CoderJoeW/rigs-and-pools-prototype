@@ -69,6 +69,10 @@ export interface BuildDraft {
 export interface DripSettings { on: boolean; frac: number; hours: number }
 
 export interface DayTotals { day: number; earned: number; power: number; blocks: number }
+// The closed-out previous day, stashed by dispatch.ts's today() with the
+// hashrate reading it doesn't otherwise carry. The index signature is for
+// yday()'s dynamic `yesterday[key]` lookup (key: 'earned' | 'power' | 'hash').
+export interface YdayTotals extends DayTotals { hash: number; [key: string]: number }
 
 export interface ToastState { n: number; text: string; amount: string; cls: string }
 
@@ -199,7 +203,7 @@ export interface GameState {
   rebuilds: number;
   peakNetDay: number;
   today: DayTotals;
-  yday: DayTotals | null;
+  yday: YdayTotals | null;
   unlocked: Record<string, boolean>;
   picker: string | null;
   sitePicker: unknown;
