@@ -23,7 +23,7 @@ const mix=computed(()=>{
   }
   return out.sort((a,b)=>b.out-a.out);
 });
-const sourceRows=computed(()=>g.SOURCES.filter(p=>p.price>0).map(p=>({
+const sourceRows=computed(()=>g.SOURCES.filter((p: any)=>p.price>0).map((p: any)=>({
   id:p.id, name:p.name,
   sub:(p.yield
         ? fmt.w(p.peak*p.yield)+' real — '+fmt.w(p.peak)+' nameplate at '
@@ -33,29 +33,29 @@ const sourceRows=computed(()=>g.SOURCES.filter(p=>p.price>0).map(p=>({
       +' · '+p.hours+' h to build',
   value:fmt.usd(p.price),
   valueSub:p.rate>0?p.kind:fmt.usd2(p.price/(p.peak*(p.yield||1)))+'/W' })));
-const storageRows=computed(()=>g.STORAGE.map(p=>({ id:p.id, name:p.name,
+const storageRows=computed(()=>g.STORAGE.map((p: any)=>({ id:p.id, name:p.name,
   sub:p.kwh+' kWh · '+p.kw+' kW · '+p.hours+' h to build',
   value:fmt.usd(p.price), valueSub:'' })));
-const chooseStorage=id=>{ g.addSitePart(f.value.id,id,'storage'); g.s.sitePicker=null; };
-const plantRows=computed(()=>g.PLANTS.filter(p=>p.price>0).map(p=>({ id:p.id, name:p.name,
+const chooseStorage=(id: string)=>{ g.addSitePart(f.value.id,id,'storage'); g.s.sitePicker=null; };
+const plantRows=computed(()=>g.PLANTS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name,
   sub:fmt.w(p.cap)+' of heat · '+fmt.pct(p.pue,0)+' of it burned as power · '+p.hours+' h',
   value:fmt.usd(p.price),
   valueSub:'at '+fmt.w(g.siteHeat(f.value))+' it would draw '+fmt.w(g.siteHeat(f.value)*p.pue) })));
-const shellRows=computed(()=>g.SHELLS.filter(p=>p.price>0).map(p=>({ id:p.id, name:p.name, sub:p.slots+' rig positions · '+p.hours+' h to build',
+const shellRows=computed(()=>g.SHELLS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name, sub:p.slots+' rig positions · '+p.hours+' h to build',
   value:fmt.usd(p.price), valueSub:'', locked:g.s.cash<p.price })));
 const expandRows=computed(()=>{ const cur=g.SITEPART(f.value.shell);
-  return g.SHELLS.filter(p=>p.slots>cur.slots).map(p=>{ const credit=Math.round(cur.price*0.5), cost=Math.max(0,p.price-credit);
+  return g.SHELLS.filter((p: any)=>p.slots>cur.slots).map((p: any)=>{ const credit=Math.round(cur.price*0.5), cost=Math.max(0,p.price-credit);
     return { id:p.id, name:p.name, sub:cur.slots+' → '+p.slots+' rig positions · '+p.hours+' h to build',
       value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
 const fabRows=computed(()=>{ const cur=f.value.fab?g.FAB(f.value.fab):null;
-  return g.FABS.filter(p=>!cur||p.tier>cur.tier).map(p=>{ const credit=cur?Math.round(cur.price*0.5):0, cost=Math.max(0,p.price-credit);
+  return g.FABS.filter((p: any)=>!cur||p.tier>cur.tier).map((p: any)=>{ const credit=cur?Math.round(cur.price*0.5):0, cost=Math.max(0,p.price-credit);
     return { id:p.id, name:p.name, sub:p.slots.join(', ')+' · '+p.budget+' design budget · '+p.hours+' h to build',
       value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
-const chooseSrc=id=>{ g.addSitePart(f.value.id,id,'source'); g.s.sitePicker=null; };
-const choosePlant=id=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=null; };
-const chooseShell=id=>{ g.newSite(id); g.s.sitePicker=null; };
-const chooseFabPick=id=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
-const chooseExpand=id=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
+const chooseSrc=(id: string)=>{ g.addSitePart(f.value.id,id,'source'); g.s.sitePicker=null; };
+const choosePlant=(id: string)=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=null; };
+const chooseShell=(id: string)=>{ g.newSite(id); g.s.sitePicker=null; };
+const chooseFabPick=(id: string)=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
+const chooseExpand=(id: string)=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
 const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
   useInlineRename(()=>f.value.name, name=>g.renameSite(f.value.id,name));
 const decomArm=ref(false);
@@ -66,7 +66,7 @@ const decomArm=ref(false);
    open/close is a paint, not a rebuild. */
 const listOpen=ref(false);
 watch(()=>f.value&&f.value.id, ()=>{ decomArm.value=false; renameOpen.value=false; listOpen.value=false; });
-const pickSite=id=>{ g.s.activeSite=id; listOpen.value=false; };
+const pickSite=(id: number)=>{ g.s.activeSite=id; listOpen.value=false; };
 const canDecommission=computed(()=> g.s.sites.length>1 && g.siteRigs(f.value).length===0 && f.value.queue.length===0);
 const decomLabel=computed(()=> !canDecommission.value
   ? (g.s.sites.length<=1 ? 'Your only site' : g.siteRigs(f.value).length>0 ? 'Move its rigs out first' : 'Finish construction first')
@@ -75,7 +75,7 @@ const decommission=()=>{ if(!decomArm.value){ decomArm.value=true; return; } g.d
 const sec=reactive({power:false,batt:false,cool:false,fab:false});
 const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
   rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
-const segs=(parts,total)=>parts.map(([k,w])=>({k,w, pct: total>0?Math.max(0,w)/total*100:0, c:FLOW_C[k]}));
+const segs=(parts: [string, number][],total: number)=>parts.map(([k,w])=>({k,w, pct: total>0?Math.max(0,w)/total*100:0, c:(FLOW_C as any)[k]}));
 const plan=computed(()=> g.sitePlan(f.value));
 const flow=computed(()=> g.flowOf(f.value));
 const flowIn=computed(()=>{ const x=flow.value; const tot=x.inRenew+x.inBatt+x.inPaid+x.unserved;
@@ -84,9 +84,9 @@ const flowOut=computed(()=>{ const x=flow.value; const tot=x.rigs+x.cool+x.charg
   return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
 /* The headline beside each flow bar: the single biggest contributor, since a
    list of four is what the bar underneath is already for. */
-const biggest=list=>{ const live=list.filter(x=>x.pct>0);
+const biggest=(list: any[])=>{ const live=list.filter((x: any)=>x.pct>0);
   if(!live.length) return null;
-  return live.reduce((a,b)=>b.w>a.w?b:a); };
+  return live.reduce((a: any,b: any)=>b.w>a.w?b:a); };
 /* Unserved stays in the bar as its red segment, but it is demand that went
    unmet, not somewhere power arrived from — headlining it would name a source
    that does not exist. */
@@ -107,15 +107,15 @@ const MAX_TILES=60, MAX_EMPTY=12, FLOOR_COLS=3;
 const rigsHere=computed(()=>g.siteRigs(f.value));
 const floorTemp=computed(()=>g.siteTemp(f.value));
 const floorAmbient=computed(()=>{ const t=floorTemp.value; return t>=70?'hot':t>=58?'warm':'cool'; });
-const siteHash=computed(()=>rigsHere.value.reduce((a,r)=>a+g.rigHash(r),0));
+const siteHash=computed(()=>rigsHere.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
 const siteStatus=computed(()=>{ const t=floorTemp.value;
   if(t>=70) return {label:'HOT',tone:'hot'};
-  if(rigsHere.value.some(r=>g.rigLive(r))) return {label:'ONLINE',tone:'online'};
+  if(rigsHere.value.some((r: any)=>g.rigLive(r))) return {label:'ONLINE',tone:'online'};
   return {label:'IDLE',tone:'idle'}; });
 /* Positions are addressed the way a floor is walked rather than counted:
    row-column, both padded, so 01-04 is the fourth position of the first row
    and matches what a label on the actual rack would say. */
-const posCode=i=>String(Math.floor(i/FLOOR_COLS)+1).padStart(2,'0')+'-'
+const posCode=(i: number)=>String(Math.floor(i/FLOOR_COLS)+1).padStart(2,'0')+'-'
   +String(i%FLOOR_COLS+1).padStart(2,'0');
 const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots(f.value), rigs.length), cells=[];
   let running=0;
@@ -128,20 +128,20 @@ const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots
   for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null, code:posCode(cells.length) });
   return { cells, rigs:rigs.length, slots, running, hidden:Math.max(0, slots-cells.length), temp:floorTemp.value, ambient:floorAmbient.value }; });
 const DOT_LABEL={ run:'Running', build:'Building', warn:'Warning', bad:'Bad', off:'Off' };
-const legend=computed(()=>{ const n={}; for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
-  return ['run','build','warn','bad','off'].filter(k=>n[k]).map(k=>({ k, n:n[k], label:DOT_LABEL[k] })); });
+const legend=computed(()=>{ const n: Record<string, number>={}; for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
+  return ['run','build','warn','bad','off'].filter(k=>n[k]).map(k=>({ k, n:n[k], label:(DOT_LABEL as any)[k] })); });
 /* Counted rather than inferred from legend.length: a full site draws no empty
    tiles and must not claim a key for them, and a site that is nothing BUT
    empty positions has no rig states yet and would otherwise lose the legend
    entirely. */
 const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
-const openTile=id=>{ g.s.focusRig=id; g.s.tab='rigs'; };
+const openTile=(id: number)=>{ g.s.focusRig=id; g.s.tab='rigs'; };
 /* The hero shows the shell you actually bought, in the light the simulation
    says it is — see utils/siteArt.js for both, and for why the previous scheme
    (three quarry photographs dealt out by site id) had to go. */
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const siteDot=st=>{ if(g.siteTemp(st)>=70) return 'bad';
-  if(g.siteRigs(st).some(r=>g.rigLive(r))) return 'run';
+const siteDot=(st: any)=>{ if(g.siteTemp(st)>=70) return 'bad';
+  if(g.siteRigs(st).some((r: any)=>g.rigLive(r))) return 'run';
   return 'off'; };
 
 const battKwh=computed(()=>g.battKwh(f.value));
@@ -168,15 +168,15 @@ const heatPath=computed(()=>{ const amp=2+heatLoad.value*5.2, pts=[];
   return pts.join(' '); });
 const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.85?'warm':'cool');
 
-const fabQueued=computed(()=>f.value.queue.find(j=>j.kind==='fab'));
+const fabQueued=computed(()=>f.value.queue.find((j: any)=>j.kind==='fab'));
 const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
 /* What a queued job IS. A site queue only ever holds infrastructure — see
    sites.js — so these are the whole vocabulary. */
 const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
 const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
-const openDesignKind=kind=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
-const pickerSheetEl=ref(null);
+const openDesignKind=(kind: string)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
+const pickerSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
 
@@ -196,7 +196,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
       <div class="list" v-show="listOpen">
         <button v-for="st in g.s.sites" :key="st.id" class="rowline sitepick-row"
                 :class="{on:st.id===g.s.activeSite}"
-                :aria-current="st.id===g.s.activeSite?'true':null"
+                :aria-current="st.id===g.s.activeSite?'true':undefined"
                 @click="pickSite(st.id)">
           <i class="dot" :class="siteDot(st)" aria-hidden="true"></i>
           <span style="flex:1;min-width:0"><span class="nm">{{ st.name }}</span>
@@ -454,7 +454,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="eyebrow">{{ f.queue.length }} job{{ f.queue.length===1?'':'s' }}</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="qrow">
-          <span class="qslot" aria-hidden="true">{{ JOB_LABEL[j.kind] || 'Build' }}</span>
+          <span class="qslot" aria-hidden="true">{{ (JOB_LABEL as any)[j.kind] || 'Build' }}</span>
           <span class="qmain">
             <span class="qhd"><span class="nm">{{ g.jobPart(j).name }}</span></span>
             <span class="qbar">
@@ -481,7 +481,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <template v-else-if="g.s.sitePicker==='design'">
           <div class="list">
             <button v-for="k in designKinds" :key="k" class="rowline" @click="openDesignKind(k)">
-              <span style="flex:1"><span class="nm">{{ KIND_LABEL[k] }}</span></span><span class="ch">&rsaquo;</span></button>
+              <span style="flex:1"><span class="nm">{{ (KIND_LABEL as any)[k] }}</span></span><span class="ch">&rsaquo;</span></button>
           </div>
         </template>
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
