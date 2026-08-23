@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { CHAIN_HUE } from '../data/chains.js';
+import type { Site, Rig } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
@@ -17,18 +18,18 @@ const posCode = (i: number) => String(Math.floor(i / FLOOR_COLS) + 1).padStart(2
   + '-' + String(i % FLOOR_COLS + 1).padStart(2, '0');
 
 // The rack grid, its legend and status readout for the active site's floor.
-export function useSiteFloor(g: Store, f: ComputedRef<any>) {
+export function useSiteFloor(g: Store, f: ComputedRef<Site>) {
   const rigsHere = computed(() => g.siteRigs(f.value));
   const floorTemp = computed(() => g.siteTemp(f.value));
   const floorAmbient = computed(() => {
     const t = floorTemp.value;
     return t >= 70 ? 'hot' : t >= 58 ? 'warm' : 'cool';
   });
-  const siteHash = computed(() => rigsHere.value.reduce((a: number, r: any) => a + g.rigHash(r), 0));
+  const siteHash = computed(() => rigsHere.value.reduce((a: number, r: Rig) => a + g.rigHash(r), 0));
   const siteStatus = computed(() => {
     const t = floorTemp.value;
     if (t >= 70) return { label: 'HOT', tone: 'hot' };
-    if (rigsHere.value.some((r: any) => g.rigLive(r))) return { label: 'ONLINE', tone: 'online' };
+    if (rigsHere.value.some((r: Rig) => g.rigLive(r))) return { label: 'ONLINE', tone: 'online' };
     return { label: 'IDLE', tone: 'idle' };
   });
 

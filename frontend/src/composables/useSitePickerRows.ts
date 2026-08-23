@@ -1,13 +1,14 @@
 import { computed, type ComputedRef } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import type { Site } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
 // The "install a ___" picker sheets on SitesView all reduce a catalogue to
 // {id, name, sub, value, valueSub, locked?} rows for the Compare component,
 // plus a pick() that installs the chosen id and closes the sheet.
-export function useSitePickerRows(g: Store, f: ComputedRef<any>) {
+export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
   const mix = computed(() => {
     const site = f.value, out = [];
     for (const src of site.sources) {

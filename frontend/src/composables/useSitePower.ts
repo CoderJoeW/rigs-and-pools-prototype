@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
+import type { Site } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
@@ -19,7 +20,7 @@ const biggest = (list: any[]) => {
 
 // Power flow, today's bill, battery charge and the cooling heat trace for
 // the active site — everything SitesView's Power/Battery/Cooling sections read.
-export function useSitePower(g: Store, f: ComputedRef<any>) {
+export function useSitePower(g: Store, f: ComputedRef<Site>) {
   const plan = computed(() => g.sitePlan(f.value));
   const flow = computed(() => g.flowOf(f.value));
   const flowIn = computed(() => {

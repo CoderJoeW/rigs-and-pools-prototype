@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, type PropType } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
@@ -14,7 +14,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   /* A site id, null for the whole farm, or an explicit array of rig ids —
      whatever fleetRigs() understands. */
-  scopeId: { type: [Number, String, Array], default: null },
+  scopeId: { type: [Number, String, Array] as PropType<number | string | number[] | null>, default: null },
   scopeLabel: { type: String, default: '' },
 });
 const emit = defineEmits(['update:open']);

@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { CHAIN_HUE } from '../data/chains.js';
+import type { ChainState, Pool } from '../game/types.js';
 
 type Store = ReturnType<typeof useGameStore>;
 
@@ -19,8 +20,8 @@ export const easeWord = (e: number) => e > 1.02 ? { k: 'easy', label: 'Running e
   : e < 0.98 ? { k: 'hard', label: 'Running hard' }
   : { k: 'steady', label: 'Steady' };
 
-function bestPoolOn(g: Store, c: any) {
-  let best: any = null, bestH = -1;
+function bestPoolOn(g: Store, c: ChainState) {
+  let best: Pool | null = null, bestH = -1;
   for (const p of g.s.pools) {
     if (!p.live || p.chain !== c.id) continue;
     const h = g.poolHash(p);
@@ -33,7 +34,7 @@ function bestPoolOn(g: Store, c: any) {
 // frequency comparison — perf/scoring rationale:
 // docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 export function useChainCards(g: Store) {
-  const hueOf = (c: any) => CHAIN_HUE[c.id];
+  const hueOf = (c: ChainState) => CHAIN_HUE[c.id];
 
   const cards = computed(() => g.s.chains.map(c => {
     const groups = g.s.groups.filter(x => x.chain === c.id);
