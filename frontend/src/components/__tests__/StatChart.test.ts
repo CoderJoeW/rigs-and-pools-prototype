@@ -11,7 +11,7 @@ import StatChart from '../StatChart.vue';
    redundant set throws on the getter-only inherited accessor. Dispatching
    the constructed event ourselves sidesteps the bug; the constructor already
    sets clientX correctly, so nothing here needs to touch it again. */
-async function firePointer(el, type, opts) {
+async function firePointer(el: Element, type: string, opts: any = {}) {
   el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...opts }));
   await nextTick();
 }
@@ -88,7 +88,7 @@ describe('StatChart', () => {
     const plot = wrapper.find('.sc-plot')!;
     // jsdom gives every element a zero-width rect, so the scrub is driven
     // through a stubbed one — the arithmetic is what is under test.
-    plot.element.getBoundingClientRect = () => ({ left: 0, width: 100, top: 0, height: 86 });
+    (plot.element as HTMLElement).getBoundingClientRect = () => ({ left: 0, width: 100, top: 0, height: 86 } as DOMRect);
 
     expect(wrapper.find('.sc-dot')!.classes()).toContain('live');
     await firePointer(plot.element, 'pointerdown', { clientX: 0 });

@@ -10,7 +10,7 @@ import App from '../App.vue';
    onUnmounted's clearInterval() clears a REAL timer instead of running
    before the async continuation ever set one — otherwise that interval
    is orphaned and keeps ticking a torn-down test's store afterward. */
-let mounted = [];
+let mounted: any[] = [];
 beforeEach(() => {
   // App.vue keeps this meta tag (normally written once in index.html) in
   // sync at runtime; the test document needs it present to have something
@@ -70,7 +70,7 @@ describe('App', () => {
     seed.build();
     for (let i = 0; i < 60; i++) seed.stepTick(60);
     await seed.saveNow();
-    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save'));
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
     raw.savedAt = Date.now() - 24 * 3600 * 1000;
     localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
 
@@ -135,7 +135,7 @@ describe('App', () => {
     } finally {
       dateSpy.mockRestore();
       if (visDesc) Object.defineProperty(document, 'visibilityState', visDesc);
-      else delete document.visibilityState;
+      else delete (document as any).visibilityState;
     }
   });
 
@@ -213,7 +213,7 @@ describe('App', () => {
     } finally {
       dateSpy.mockRestore();
       if (visDesc) Object.defineProperty(document, 'visibilityState', visDesc);
-      else delete document.visibilityState;
+      else delete (document as any).visibilityState;
     }
   });
 
@@ -354,7 +354,7 @@ describe('App', () => {
     const { wrapper, store } = mountWithStore(App);
     mounted.push(wrapper);
     await flushPromises();
-    const meta = document.querySelector('meta[name="theme-color"]');
+    const meta = document.querySelector('meta[name="theme-color"]')!;
     expect(meta.getAttribute('content')).toBe('#F7F6F1'); // auto, no matchMedia in jsdom -> light
 
     store.s.theme = 'dark';

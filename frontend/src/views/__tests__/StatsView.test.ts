@@ -5,8 +5,8 @@ import StatsView from '../StatsView.vue';
 
 
 /* Three segments now — anything below the summary has to be switched to. */
-const seg = (wrapper, label) =>
-  wrapper.findAll('.segtab').find(t => t.text().includes(label))!.trigger('click');
+const seg = (wrapper: any, label: string) =>
+  wrapper.findAll('.segtab').find((t: any) => t.text().includes(label))!.trigger('click');
 
 describe('StatsView', () => {
   it('shows the starting rank and milestone tracks', () => {
@@ -58,7 +58,7 @@ describe('StatsView', () => {
     // stringified rank from a mangled save, would sail through ||0
     // straight into the array index. Number.isFinite catches that too.
     const { wrapper } = mountWithStore(StatsView, {
-      seed: g => { g.s.mile.rank = 'not-a-rank'; },
+      seed: (g: any) => { g.s.mile.rank = 'not-a-rank'; },
     });
     expect(wrapper.text()).toContain('Hobbyist');
   });
@@ -148,7 +148,7 @@ describe('StatsView', () => {
   it('the top-rank caption counts every milestone, not just the ones it needed', async () => {
     const { wrapper, store } = mountWithStore(StatsView);
     store.s.mile.rank = store.RANKS.length - 1;
-    store.s.mile.done = Object.fromEntries(store.MILESTONES.slice(0, 20).map(m => [m.id, 1]));
+    store.s.mile.done = Object.fromEntries(store.MILESTONES.slice(0, 20).map((m: any) => [m.id, 1]));
     await nextTick();
     // The top rank lands at 20 of the catalog's 24 — "all 20" would have been
     // a lie the Achievements segment contradicts on the same tab.

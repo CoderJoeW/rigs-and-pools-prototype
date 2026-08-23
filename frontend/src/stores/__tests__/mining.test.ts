@@ -270,8 +270,9 @@ describe('jackpot blocks', () => {
     const pool = g.s.pools.find(p => p.chain === 'ferro' && p.owner !== 'you')!;
     pool.scheme = 'PPLNS'; pool.fee = 0.02; pool.live = true;
     const sim = g.s.sims.find(m => m.chain === 'ferro')!;
-    if (g.setSimHash) g.setSimHash(sim, 1e6); else sim.hash = 1e6;
-    if (g.setSimPool) g.setSimPool(sim, pool.id); else { sim.pool = pool.id; if (g.reindexSims) g.reindexSims(); }
+    const ga = g as any;
+    if (ga.setSimHash) ga.setSimHash(sim, 1e6); else sim.hash = 1e6;
+    if (ga.setSimPool) ga.setSimPool(sim, pool.id); else { sim.pool = pool.id; if (ga.reindexSims) ga.reindexSims(); }
 
     g.generatePreset();
     g.build();

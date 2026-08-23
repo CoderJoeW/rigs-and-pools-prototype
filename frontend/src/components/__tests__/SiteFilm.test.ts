@@ -9,13 +9,13 @@ import { C } from '../../data/constants.js';
 // sitePhase runs on the DAY_HOURS visual cycle, not a literal 24h clock —
 // express test times as hour-of-cycle so they hold regardless of DAY_HOURS.
 const CYCLE = C.DAY_HOURS * 3600;
-const atHour = h => (h / 24) * CYCLE;
+const atHour = (h: number) => (h / 24) * CYCLE;
 
-const mountFilm = props => mount(SiteFilm, { props, attachTo: document.body });
+const mountFilm = (props: any) => mount(SiteFilm, { props, attachTo: document.body });
 /* The film is gated on device preferences read in onMounted, so it is never
    in the DOM on the first render — a test that asserts the video is PRESENT
    has to let that flush first. */
-const mountLive = async props => { const w = mountFilm(props); await nextTick(); return w; };
+const mountLive = async (props: any) => { const w = mountFilm(props); await nextTick(); return w; };
 
 describe('siteArt', () => {
   it('has a day and a night plate for every shell you can buy', () => {
@@ -45,8 +45,8 @@ describe('siteArt', () => {
       const f = siteFilm(id);
       expect(f, id).toBeTruthy();
       // WebM for a Chromium built without H.264, MP4 for Safari.
-      expect(f.webm).toMatch(/\.webm/);
-      expect(f.mp4).toMatch(/\.mp4/);
+      expect(f!.webm).toMatch(/\.webm/);
+      expect(f!.mp4).toMatch(/\.mp4/);
     }
   });
 });
