@@ -7,10 +7,10 @@ import { fmt } from '../../utils/format.js';
 /* Lifted out of ChainsView's v-for, where every piece of its state was a map
    keyed by pool id. These cover the parts that keying used to reach — rename,
    the fee draft, the bond steps — none of which the view's own tests touched. */
-function card(seed){
-  let pool;
+function card(seed?: (g: any, pool?: any) => void){
+  let pool: any;
   const { wrapper, store } = mountWithStore(MyPoolCard, {
-    seed: g => { g.foundPool('tessera', 'PPLNS', 0.02); pool = g.myPools[0]; if(seed) seed(g, pool); },
+    seed: (g: any) => { g.foundPool('tessera', 'PPLNS', 0.02); pool = g.myPools[0]; if(seed) seed(g, pool); },
     props: { get pool(){ return pool; }, open: true },
   });
   return { wrapper, store, pool };
@@ -45,7 +45,7 @@ describe('MyPoolCard', () => {
   });
 
   it('stays collapsed until asked to open', () => {
-    let pool;
+    let pool: any;
     const { wrapper } = mountWithStore(MyPoolCard, {
       seed: g => { g.foundPool('tessera', 'PPLNS', 0.02); pool = g.myPools[0]; },
       props: { get pool(){ return pool; }, open: false },
@@ -108,7 +108,7 @@ describe('MyPoolCard', () => {
   });
 
   it('renders a PPS pool with its capacity and dry-spell risk', () => {
-    let pool;
+    let pool: any;
     const { wrapper } = mountWithStore(MyPoolCard, {
       seed: g => {
         // A PPS bond is an order of magnitude past a PPLNS one — $4,000 against

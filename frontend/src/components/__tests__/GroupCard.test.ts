@@ -4,10 +4,10 @@ import GroupCard from '../GroupCard.vue';
 
 /* Lifted out of FarmView's v-for over groupRows. The rename state used to be
    maps keyed by group id; these cover the seam the extraction created. */
-function row(seed){
-  let gr;
+function row(seed?: (g: any, gr?: any) => void){
+  let gr: any;
   const { wrapper, store } = mountWithStore(GroupCard, {
-    seed: g => { gr = g.s.groups[0]; if(seed) seed(g, gr); },
+    seed: (g: any) => { gr = g.s.groups[0]; if(seed) seed(g, gr); },
     props: { get gr(){ return gr; }, advice: null, ceiling: null, totalSlots: 4 },
   });
   return { wrapper, store, gr };
@@ -26,8 +26,8 @@ describe('GroupCard', () => {
   });
 
   it('names the pool once the group points at one', () => {
-    let name;
-    const { wrapper } = row((g, gr) => {
+    let name: string;
+    const { wrapper } = row((g: any, gr: any) => {
       g.foundPool('tessera', 'PPLNS', 0.02);
       const p = g.myPools[0];
       gr.pool = p.id; name = p.name;
@@ -65,7 +65,7 @@ describe('GroupCard', () => {
   /* advice and ceiling are objects the view computes from the whole farm, not
      strings — the prop types have to say so or Vue warns on every render. */
   it('surfaces a better-paying chain when the parent finds one', () => {
-    let gr;
+    let gr: any;
     const { wrapper } = mountWithStore(GroupCard, {
       seed: g => { gr = g.s.groups[0]; },
       props: { get gr(){ return gr; }, advice: { share: 0.3, alt: 'Halcyon', mult: 2.5 },
@@ -76,7 +76,7 @@ describe('GroupCard', () => {
   });
 
   it('warns when the group is past the chain’s emission ceiling', () => {
-    let gr;
+    let gr: any;
     const { wrapper } = mountWithStore(GroupCard, {
       seed: g => { gr = g.s.groups[0]; },
       props: { get gr(){ return gr; }, advice: null,

@@ -14,14 +14,14 @@ import { fileURLToPath } from 'node:url';
    care what the columns are, only that the three-tier ladder still has three
    tiers and that they are the right way round. */
 
-const read = rel => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
-const styleOf = src => src.slice(src.indexOf('<style scoped>') + 14, src.lastIndexOf('</style>'));
+const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+const styleOf = (src: string) => src.slice(src.indexOf('<style scoped>') + 14, src.lastIndexOf('</style>'));
 
 /* Selector -> the @media condition it sits under, '' for top level. A selector
    appearing at several widths yields several entries, in source order. */
-function rulesByMedia(css){
+function rulesByMedia(css: string){
   css = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const out = [];
+  const out: { media: string; sel: string; body: string }[] = [];
   const media = /@media([^{]*)\{([\s\S]*?)\n\}/g;
   let m;
   while((m = media.exec(css))){
@@ -37,7 +37,7 @@ function rulesByMedia(css){
 
 const groupCard = rulesByMedia(styleOf(read('../GroupCard.vue')));
 const farmView = rulesByMedia(styleOf(read('../../views/FarmView.vue')));
-const at = (rules, sel) => rules.filter(r => r.sel === sel).map(r => r.media);
+const at = (rules: { media: string; sel: string; body: string }[], sel: string) => rules.filter(r => r.sel === sel).map(r => r.media);
 
 describe('GroupCard stylesheet structure', () => {
   it('keeps the group strip’s three-tier width ladder', () => {

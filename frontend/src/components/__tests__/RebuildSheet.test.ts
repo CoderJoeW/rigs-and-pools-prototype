@@ -6,9 +6,9 @@ import RebuildSheet from '../RebuildSheet.vue';
 /* The larger of the two RigsView sheets, and — like the fleet sheet — it had no
    coverage of its own before it moved out. It takes no props: g.s.rebuild is
    the whole input, so these drive it the way startRebuild does. */
-function open(seed){
+function open(seed?: (g: any) => void){
   return mountWithStore(RebuildSheet, {
-    seed: g => {
+    seed: (g: any) => {
       g.generatePreset();
       g.s.cash = 500000;
       g.build();
@@ -44,23 +44,23 @@ describe('RebuildSheet', () => {
   it('opens a slot picker and comes back on Back', async () => {
     const { wrapper, store: g } = open();
     await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame'))!.trigger('click');
-    expect(g.s.rebuild.picker).toBe('frame');
+    expect(g.s.rebuild!.picker).toBe('frame');
 
     await wrapper.findAll('button').find(b => b.text().includes('Back'))!.trigger('click');
-    expect(g.s.rebuild.picker).toBe(null);
+    expect(g.s.rebuild!.picker).toBe(null);
   });
 
   it('picking a part changes the draft and marks the row changed', async () => {
     const { wrapper, store: g } = open();
-    const before = g.s.rebuild.draft.frame;
+    const before = g.s.rebuild!.draft.frame;
     await wrapper.findAll('button.pickrow').find(b => b.text().includes('Frame'))!.trigger('click');
 
     const other = wrapper.findAll('.cmp-r').find(r => !r.text().includes('Installed'))!;
     await other.trigger('click');
     await nextTick();
 
-    expect(g.s.rebuild.picker).toBe(null);
-    if(g.s.rebuild.draft.frame !== before) expect(wrapper.text()).toContain('CHANGED');
+    expect(g.s.rebuild!.picker).toBe(null);
+    if(g.s.rebuild!.draft.frame !== before) expect(wrapper.text()).toContain('CHANGED');
   });
 
   it('the stepper moves the card count within the pair’s limit', async () => {
@@ -68,15 +68,15 @@ describe('RebuildSheet', () => {
     const plus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Increase card count')!;
     const minus = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === 'Decrease card count')!;
 
-    const start = g.s.rebuild.draft.n;
+    const start = g.s.rebuild!.draft.n;
     await minus().trigger('click');
-    expect(g.s.rebuild.draft.n).toBe(start - 1);
+    expect(g.s.rebuild!.draft.n).toBe(start - 1);
     await plus().trigger('click');
-    expect(g.s.rebuild.draft.n).toBe(start);
+    expect(g.s.rebuild!.draft.n).toBe(start);
 
     // never past the limit the frame/board pair allows
     for(let i = 0; i < 40; i++){ if(plus().attributes('disabled') !== undefined) break; await plus().trigger('click'); }
-    expect(g.s.rebuild.draft.n).toBeLessThanOrEqual(g.rebuildInfo(g.s.rigs[0], g.s.rebuild.draft).lim);
+    expect(g.s.rebuild!.draft.n).toBeLessThanOrEqual(g.rebuildInfo(g.s.rigs[0], g.s.rebuild!.draft).lim);
   });
 
   it('refuses to commit a draft that changes nothing', () => {
