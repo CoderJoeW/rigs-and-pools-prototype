@@ -160,7 +160,7 @@ export interface GameState {
   picker: string | null;
   sitePicker: unknown;
   rebuild: RebuildInProgress | null;
-  focusRig: unknown;
+  focusRig: number | null;
   saveInfo: string;
   wipeArm: boolean;
   customParts: unknown[];
