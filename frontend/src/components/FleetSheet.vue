@@ -5,6 +5,7 @@ import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import type { Card } from '../data/hardware.js';
+import type { Scope } from '../game/types.js';
 
 /* The fleet actions sheet — repair, move, refit, rebuild-to-spec, each applied
    to a scope rather than one rig. Unlike the rebuild sheet this cannot be
@@ -15,7 +16,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   /* A site id, null for the whole farm, or an explicit array of rig ids —
      whatever fleetRigs() understands. */
-  scopeId: { type: [Number, String, Array] as PropType<number | string | number[] | null>, default: null },
+  scopeId: { type: [Number, Array] as PropType<Scope>, default: null },
   scopeLabel: { type: String, default: '' },
 });
 const emit = defineEmits(['update:open']);

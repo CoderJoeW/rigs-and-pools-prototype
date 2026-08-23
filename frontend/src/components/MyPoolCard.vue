@@ -207,9 +207,9 @@ const bondSteps = computed(() => {
       <div v-if="feeDraft!==undefined&&Math.abs(feeDraft-pool.fee)>0.0005"
            class="warnbox" style="margin-top:6px">
         <b>{{ (feeDraft*100).toFixed(2) }}% would settle at
-          {{ fmt.hash(feeProj) }}</b>
-        <span :class="feeProj>g.poolHash(pool)?'pos':'neg'">
-          ({{ feeProj>g.poolHash(pool)?'+':'' }}{{ fmt.hash(feeProj-g.poolHash(pool)) }})</span>
+          {{ fmt.hash(feeProj!) }}</b>
+        <span :class="feeProj!>g.poolHash(pool)?'pos':'neg'">
+          ({{ feeProj!>g.poolHash(pool)?'+':'' }}{{ fmt.hash(feeProj!-g.poolHash(pool)) }})</span>
         <div class="sb" style="margin-top:3px">Changing the fee resets your fee-stability
           reputation for three days — that cost is in this figure.</div>
         <div style="display:flex;gap:6px;margin-top:6px">

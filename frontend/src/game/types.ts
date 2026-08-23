@@ -155,6 +155,14 @@ export interface DesignTotals { budget: number; cash: number; points: number }
 // onboarding.ts's TOUR_SLIDES: the scripted walkthrough's script.
 export interface TourSlide { tab: string; target: string; title: string; body: string }
 
+// fleetActions.ts: one site (id), the whole farm (null/undefined), or an
+// explicit list of rig ids — every fleet action's scope argument.
+export type Scope = number | number[] | null | undefined;
+export interface FleetWornInfo { rigs: number; n: number; cost: number }
+export interface FleetRefitInfo { rigs: number; cost: number }
+export interface FleetMoveInfo { rigs: number; hash: number }
+export interface FleetSpecInfo { rigs: number; cost: number; already: number; blocked: number; why: string | null }
+
 export interface Rig {
   id: number;
   kind: string;   // 'gpu' for every rig built through the current UI
@@ -391,24 +399,24 @@ export interface GameExports {
   idleCashAdvice: any;
   draftGroup(): Group;
   battAdvice(site: Site): BattAdvice | null;
-  myPools: any;
-  foundPool: any;
+  myPools: ComputedRef<Pool[]>;
+  foundPool(chainId: string, scheme: 'PPS' | 'PPLNS', fee: number): void;
   setPoolFee(pool: Pool, fee: number): void;
   renamePool(pool: Pool, name: string): void;
   simsOn(chainId: string): number;
   poolRep(pool: Pool): number;
   repParts(pool: Pool): RepParts;
-  rivalPools: any;
-  poolDemand: any;
-  poolProj: any;
-  nextTierBond: any;
+  rivalPools: ComputedRef<Pool[]>;
+  poolDemand(p: Pool, fee?: number): number;
+  poolProj(p: Pool, fee?: number): number;
+  nextTierBond(p: Pool): number;
   poolPnl(pool: Pool): PoolPnl;
   addBond(pool: Pool, amount: number): void;
   releaseBond(pool: Pool, amount: number): void;
   capBinding(pool: Pool): string;
-  bondFloor: any;
+  bondFloor(pool: Pool): number;
   topUpBond(pool: Pool, amount: number): void;
-  closePool: any;
+  closePool(pool: Pool): void;
   stepTick: any;
   build: any;
   scrapRig(id: number): void;
@@ -442,22 +450,22 @@ export interface GameExports {
   decommissionSite: any;
   sell(chainId: string, frac: number): void;
   buy(chainId: string, frac: number): void;
-  fleetMove: any;
-  fleetMoveInfo: any;
+  fleetMove(groupId: number, scope: Scope): void;
+  fleetMoveInfo(groupId: number, scope: Scope): FleetMoveInfo;
   draftSpec(): RebuildDraft;
-  fleetSpecInfo: any;
-  fleetToSpec: any;
+  fleetSpecInfo(draft: RebuildDraft, scope: Scope): FleetSpecInfo;
+  fleetToSpec(draft: RebuildDraft, scope: Scope): void;
   dripCost: any;
   dripWorst(): DripWorst | null;
   setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
   toggleHold(chainId: string): void;
   MILESTONES: Milestone[];
   RANKS: [number, string][];
-  fleetWorn: any;
+  fleetWorn(threshold: number, scope: Scope): FleetWornInfo;
   rigWorn(rig: Rig, threshold: number): WornInfo;
-  fleetRepair: any;
-  fleetRefitInfo: any;
-  fleetRefit: any;
+  fleetRepair(threshold: number, scope: Scope): void;
+  fleetRefitInfo(unitId: string, scope: Scope): FleetRefitInfo;
+  fleetRefit(unitId: string, scope: Scope): void;
   onboardingStep: any;
   dismissOnboarding: any;
   showChainsNudge: any;
@@ -614,5 +622,21 @@ export interface Game {
   lifetimeNet: ComputedRef<number>;
   myHash(chain: ChainState): number;
   mttb(chain: ChainState): number;
+  foundPool(chainId: string, scheme: 'PPS' | 'PPLNS', fee: number): void;
+  myPools: ComputedRef<Pool[]>;
+  rivalPools: ComputedRef<Pool[]>;
+  poolDemand(p: Pool, fee?: number): number;
+  poolProj(p: Pool, fee?: number): number;
+  nextTierBond(p: Pool): number;
+  bondFloor(pool: Pool): number;
+  closePool(pool: Pool): void;
+  fleetWorn(threshold: number, scope: Scope): FleetWornInfo;
+  fleetRepair(threshold: number, scope: Scope): void;
+  fleetRefitInfo(unitId: string, scope: Scope): FleetRefitInfo;
+  fleetRefit(unitId: string, scope: Scope): void;
+  fleetSpecInfo(draft: RebuildDraft, scope: Scope): FleetSpecInfo;
+  fleetToSpec(draft: RebuildDraft, scope: Scope): void;
+  fleetMoveInfo(groupId: number, scope: Scope): FleetMoveInfo;
+  fleetMove(groupId: number, scope: Scope): void;
   [key: string]: any;
 }

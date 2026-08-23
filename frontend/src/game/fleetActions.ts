@@ -1,8 +1,6 @@
 import { PART } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game, Rig, Unit, RebuildDraft, RebuildCheck } from './types.js';
-
-type Scope = number | number[] | null | undefined;
+import type { Game, Rig, Unit, RebuildDraft, RebuildCheck, Scope } from './types.js';
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent

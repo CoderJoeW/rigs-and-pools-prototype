@@ -15,7 +15,7 @@ export function usePoolFounding(g: Store) {
       .slice().sort((a, b) => g.poolHash(b) - g.poolHash(a));
   });
 
-  const found = ref(false), fScheme = ref('PPLNS'), fFee = ref(0.02);
+  const found = ref(false), fScheme = ref<'PPS' | 'PPLNS'>('PPLNS'), fFee = ref(0.02);
   // Always a real chain id: defaults to 'ferro', otherwise driven by the
   // chain picker, which only ever offers real chains.
   const fChain = ref((g.s.groups[0] && g.s.groups[0].chain) || 'ferro');
