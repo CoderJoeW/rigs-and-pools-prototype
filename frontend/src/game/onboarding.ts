@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { Game, Pool } from './types.js';
+import type { Game, Pool, OnboardingStep } from './types.js';
 
 // Onboarding — a reactive coach plus one scripted walkthrough. Full
 // rationale (why predicates not a step index, why TOUR_SLIDES is the
@@ -20,8 +20,6 @@ const TOUR_SLIDES = [
   { tab:'build', target:'[data-tour="build"]', title:'Let’s build your first rig',
     body:'This is where a rig is born. Quick pick has already loaded a smart, affordable preset — tap Order parts below to lock it in. Customise lets you choose every part yourself once you’re ready.' },
 ];
-
-interface OnboardingStep { id: string; done(G: Game): boolean; text: string }
 
 const STEPS: OnboardingStep[] = [
   { id:'build',
