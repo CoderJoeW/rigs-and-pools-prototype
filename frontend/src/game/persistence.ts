@@ -1,4 +1,4 @@
-import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
+import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
 import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
@@ -7,7 +7,7 @@ import { DESIGN_AXES, MAX_AXIS_POINTS, designTotals, designStats, designCost } f
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { allUnlocked } from './state.js';
-import { nextRivalName } from './rivals.js';
+import { mkRival } from './rivals.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
 import type { Game, Sim, Pool, Rig, Group } from './types.js';
@@ -209,19 +209,10 @@ export function installPersistence(G: Game): void {
       if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
     }
     for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
-    let seq = 0;
-    for (const cid of SIM_CHAINS) {
-      const c = CHAINS.find(x => x.id === cid)!;
-      for (let i = 0; i < RIVAL_PER_CHAIN; i++) {
-        const scheme = Math.random() < 0.35 ? 'PPS' : 'PPLNS';
-        const fee = scheme === 'PPS' ? 0.015 + Math.random() * 0.045 : 0.005 + Math.random() * 0.035;
-        const per = C.PAY * c.mult * (scheme === 'PPS' ? COVER_DAYS : PPLNS_COVER);
-        const bond = Math.round(per * SIM_RATIO * c.floor * (0.12 + Math.random() * 0.45));
-        G.s.pools.push({ id: 'rm' + (++seq), chain: cid, owner: 'rival',
-          name: nextRivalName(seq), scheme, fee, bond, bond0: bond,
-          cap: 0, born: G.s.t, live: true, earned: 0, found: 0, feeMoved: -1e9, lapse: 0 });
-      }
-    }
+    // The same rival factory a live game founds new rivals through
+    // (rivals.ts) — this migration used to hand-build its own pool object
+    // with a simpler, less accurate bond formula.
+    for (const cid of SIM_CHAINS) for (let i = 0; i < RIVAL_PER_CHAIN; i++) G.s.pools.push(mkRival(cid, G.s.t));
     G.say('pool', 'The official pools have wound up — the market is all private operators now');
   }
   async function hydrateUnsafe(data: SaveFile): Promise<boolean> {

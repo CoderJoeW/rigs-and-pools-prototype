@@ -1,4 +1,4 @@
-import { C } from '../data/constants.js';
+import { C, TRADE_IN_RATE } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 import { wearRate } from '../utils/random.js';
@@ -69,24 +69,28 @@ export function installActions(G: Game): void {
      cost that makes it a decision. */
   const SLOT_OPTS = { frame:FRAMES, mobo:MOBOS, cool:COOLERS, psu:G.livePsus };
   const rebuildTime = (cardCount: number) => C.BUILD_BASE * (0.5 + 0.1 * cardCount);   // wired already: a little faster than new
+  // Same TRADE_IN_RATE a site's shell/fab upgrade credits (sites.ts) and the
+  // picker preview quotes (useSitePickerRows.ts) — whether it's a whole
+  // slot, a batch of worn cards, or risers.
+  const tradeInCredit = (price: number) => Math.round(price * TRADE_IN_RATE);
   function rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo {
     const framePart = P(draft.frame), moboPart = P(draft.mobo), coolPart = P(draft.cool), psuPart = P(draft.psu), unitPart = P(draft.unit);
     const lim = Math.min(framePart.slots, moboPart.pcie);
     let buy = 0, credit = 0;
     for (const slot of ['frame', 'mobo', 'cool', 'psu'] as const) if (draft[slot] !== rig[slot]) {
-      buy += P(draft[slot]).price; credit += Math.round(P(rig[slot]).price * 0.5);
+      buy += P(draft[slot]).price; credit += tradeInCredit(P(rig[slot]).price);
     }
     const typeChanged = draft.unit !== rig.units[0].p;
     if (typeChanged) {
       buy += draft.n * unitPart.price;
-      credit += Math.round(rig.units.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w) * 0.5, 0));
+      credit += tradeInCredit(rig.units.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w), 0));
     } else if (draft.n > rig.units.length) buy += (draft.n - rig.units.length) * unitPart.price;
     else if (draft.n < rig.units.length) {
       const drop = [...rig.units].sort((unitA: Unit, unitB: Unit) => unitB.w - unitA.w).slice(0, rig.units.length - draft.n);
-      credit += Math.round(drop.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w) * 0.5, 0));
+      credit += tradeInCredit(drop.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w), 0));
     }
     if (draft.n > rig.risers) buy += (draft.n - rig.risers) * RISER.price;
-    else if (draft.n < rig.risers) credit += Math.round((rig.risers - draft.n) * RISER.price * 0.5);
+    else if (draft.n < rig.risers) credit += tradeInCredit((rig.risers - draft.n) * RISER.price);
     const net = buy - credit;
     const core = gpuCoreW(framePart, moboPart, coolPart, unitPart, draft.n);
     const wall = core / psuPart.eff;

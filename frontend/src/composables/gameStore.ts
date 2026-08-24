@@ -1,5 +1,6 @@
 import { useGameStore } from '../stores/game.js';
 import { CHAIN_HUE } from '../data/chains.js';
+import { C } from '../data/constants.js';
 import type { Rig } from '../game/types.js';
 import type { Card } from '../data/hardware.js';
 
@@ -26,8 +27,9 @@ export function customUnitCards(g: Store): Card[] {
   return g.s.customParts.filter(p => p.kind === 'unit') as unknown as Card[];
 }
 
-// A site's temperature banding — shared by useFarmRows and useSiteFloor so
-// "hot"/"warm"'s cutoffs live in one place, not two copies that could drift.
+// A site's temperature banding — same C.WARM_TEMP/HOT_TEMP cardWear.ts
+// keys its wear-rate penalty off, so the UI's "hot"/"warm" always matches
+// what's actually happening to the cards.
 export function ambientOf(temp: number): 'hot' | 'warm' | 'cool' {
-  return temp >= 70 ? 'hot' : temp >= 58 ? 'warm' : 'cool';
+  return temp >= C.HOT_TEMP ? 'hot' : temp >= C.WARM_TEMP ? 'warm' : 'cool';
 }

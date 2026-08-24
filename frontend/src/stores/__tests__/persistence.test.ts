@@ -3,6 +3,7 @@ import { watchEffect } from 'vue';
 import { freshStore, reopenStore } from '../../test/testStore.js';
 import { sfx } from '../../services/audio.js';
 import { PART_MAP } from '../../data/hardware.js';
+import { SIM_CHAINS, RIVAL_PER_CHAIN } from '../../data/constants.js';
 
 // wipeSave() ends with a cosmetic location.reload(), already wrapped in a
 // try/catch in app code — jsdom has no real navigation, so stub it quiet.
@@ -166,6 +167,27 @@ describe('saveNow / loadSave round trip', () => {
     expect(g2.s.sites.length).toBeGreaterThan(0);
     expect(g2.active).toBeTruthy();
     expect(() => g2.idleCashAdvice).not.toThrow();
+  });
+
+  it('a save with pre-rival server-owned pools retires them into real rivals', async () => {
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
+    raw.state.pools = [{ id: 'legacy1', chain: 'tessera', name: 'Official Pool', scheme: 'PPS',
+      fee: 0.02, owner: 'server', bond: 1000, bond0: 1000, cap: 0, born: 0, live: true, earned: 0 }];
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.s.pools.some((p: any) => p.owner === 'server')).toBe(false);
+    const rivals = g2.s.pools.filter((p: any) => p.owner === 'rival');
+    expect(rivals.length).toBe(SIM_CHAINS.length * RIVAL_PER_CHAIN);
+    for (const p of rivals) {
+      expect(p.bond).toBeGreaterThan(0);
+      expect(['PPS', 'PPLNS']).toContain(p.scheme);
+      expect(SIM_CHAINS).toContain(p.chain);
+    }
   });
 });
 
@@ -443,8 +465,12 @@ describe('offline catch-up', () => {
 
     // broken: the watcher fires once, on the initial assignment, and
     // never again — seenDone.size stays at 1 for the whole 24h run.
-    // working: dozens of distinct snapshots, one per yield boundary.
-    expect(seenDone.size).toBeGreaterThan(10);
+    // working: several-to-dozens of distinct snapshots, one per yield
+    // boundary — the exact count is a function of how much real wall-clock
+    // time one stepTick(30) costs on the machine running this, not
+    // something to pin a specific number to; > 2 still clearly separates
+    // "stuck at 1" from "genuinely updating" with headroom either direction.
+    expect(seenDone.size).toBeGreaterThan(2);
   });
 
   it('does not fast-forward for a short absence', async () => {

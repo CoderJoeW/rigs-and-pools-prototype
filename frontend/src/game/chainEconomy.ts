@@ -1,7 +1,7 @@
 import { ANCHOR_DECAY } from '../data/chains.js';
 import { gauss } from '../utils/random.js';
 import { pushCapped } from '../utils/collections.js';
-import { HIST_SAMPLE_INTERVAL } from './historySampling.js';
+import { HIST_SAMPLE_INTERVAL, HIST_CAP } from './historySampling.js';
 import type { Game, ChainState } from './types.js';
 
 export function installChainEconomy(G: Game): void {
@@ -12,9 +12,12 @@ export function installChainEconomy(G: Game): void {
       if (myHashRate > 0) G.flatDrip(chain, dt);
       advanceChainAnchor(chain, days);
       advanceChainMarket(chain, days);
-      G.checkMilestones();
-      if (G.crossedInterval(HIST_SAMPLE_INTERVAL, dt)) pushCapped(chain.hist, G.price(chain), 110);
+      if (G.crossedInterval(HIST_SAMPLE_INTERVAL, dt)) pushCapped(chain.hist, G.price(chain), HIST_CAP);
     }
+    // A whole-game concern, not a per-chain one — checking it once per chain
+    // re-evaluated every milestone (including ones with nothing to do with
+    // chains) as many times as there are chains, for the same result each time.
+    G.checkMilestones();
   }
 
   function advanceChainAnchor(chain: ChainState, days: number): void {

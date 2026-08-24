@@ -231,10 +231,8 @@ export function installPoolMarket(G: Game): void {
   // into a strobe) and cap per kind, teaching early then falling back to the
   // activity feed. cue() placement above the caps: docs/implementation-notes.md#toasts-pop-in-poolmarketjs.
   let lastToast = -1e9;
-  const restoring = false;
   const toastSeen: Record<string, number> = {};
   function pop(text: string, amount?: string, cls?: string, opts?: { kind?: string; always?: boolean }): void {
-    if (restoring) return;
     opts = opts || {};
     const kind = opts.kind || text;
     cue(cls, kind);

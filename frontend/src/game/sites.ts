@@ -1,4 +1,4 @@
-import { C } from '../data/constants.js';
+import { C, TRADE_IN_RATE } from '../data/constants.js';
 import { SHELLS, SITEPART, jobPart } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { fmt } from '../utils/format.js';
@@ -56,7 +56,7 @@ export function installSites(G: Game): void {
     const cur = SITEPART(f.shell) as { slots: number; price: number };
     if (sh.slots <= cur.slots) return;                    // only ever grows
     if (f.queue.some((j: Job) => j.kind === 'shell')) return;       // one shell job at a time
-    const credit = Math.round(cur.price * 0.5);
+    const credit = Math.round(cur.price * TRADE_IN_RATE);
     const cost = Math.max(0, sh.price - credit);
     if (G.s.cash < cost) return;
     G.spend(cost);
@@ -73,7 +73,7 @@ export function installSites(G: Game): void {
     const cur = f.fab ? FAB(f.fab) : null;
     if (cur && fb.tier <= cur.tier) return;                 // only ever grows
     if (f.queue.some((j: Job) => j.kind === 'fab')) return;           // one fab job at a time
-    const credit = cur ? Math.round(cur.price * 0.5) : 0;
+    const credit = cur ? Math.round(cur.price * TRADE_IN_RATE) : 0;
     const cost = Math.max(0, fb.price - credit);
     if (G.s.cash < cost) return;
     G.spend(cost);
@@ -89,7 +89,7 @@ export function installSites(G: Game): void {
   function decommissionSite(fid: number): void {
     const f = G.site(fid);
     if (!f || G.s.sites.length <= 1 || G.siteRigs(f).length > 0 || f.queue.length > 0) return;
-    const back = Math.round(0.5 * ((SITEPART(f.shell) as { price: number }).price
+    const back = Math.round(TRADE_IN_RATE * ((SITEPART(f.shell) as { price: number }).price
       + f.sources.reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)
       + f.plants.reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)
       + (f.storage || []).reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)

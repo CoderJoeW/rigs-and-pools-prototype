@@ -6,7 +6,7 @@ export function installCardWear(G: Game): void {
   function wearCardsAndWarnOnHeat(days: number): void {
     for (const site of G.s.sites) {
       const temp = G.siteTemp(site);
-      const heat = 1 + Math.pow(Math.max(0, (temp - 58) / 12), 2);
+      const heat = 1 + Math.pow(Math.max(0, (temp - C.WARM_TEMP) / 12), 2);
       site.temp = temp;
       warnIfSiteHot(site, temp, heat);
       for (const rig of G.siteRigs(site)) {
@@ -16,7 +16,7 @@ export function installCardWear(G: Game): void {
   }
 
   function warnIfSiteHot(site: Site, temp: number, heat: number): void {
-    const hot = temp >= 70 && G.siteRigs(site).some((rig: Rig) => G.rigLive(rig));
+    const hot = temp >= C.HOT_TEMP && G.siteRigs(site).some((rig: Rig) => G.rigLive(rig));
     if (hot && !site.hotWarn) {
       site.hotWarn = true;
       G.say('bad', site.name + ' is cooking — ' + temp.toFixed(0) + '°C: throttling, and cards wearing '

@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 import { fmt } from '../utils/format.js';
+import { TRADE_IN_RATE } from '../data/constants.js';
 import type { Site } from '../game/types.js';
 import type { Source, Storage, Plant, Shell } from '../data/site-parts.js';
 import type { Fab } from '../data/fab.js';
@@ -43,11 +44,11 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
     sub: p.slots + ' rig positions · ' + p.hours + ' h to build',
     value: fmt.usd(p.price), valueSub: '', locked: g.s.cash < p.price })));
 
-  // Trade-in credit on an upgrade: half the current part's price, off the
-  // new one's. Shared by expandRows (shell) and fabRows (fab) so the rate
-  // can't drift between the two upgrade pickers.
+  // Same TRADE_IN_RATE the actual upgrade action charges (sites.ts) — this
+  // is only the preview, so it has to keep matching or the picker would
+  // quote a price the click doesn't honor.
   const tradeInCost = (curPrice: number, newPrice: number) => {
-    const credit = Math.round(curPrice * 0.5);
+    const credit = Math.round(curPrice * TRADE_IN_RATE);
     return { credit, cost: Math.max(0, newPrice - credit) };
   };
 

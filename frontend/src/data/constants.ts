@@ -34,9 +34,21 @@ export const C = {
   JACKPOT_MULT:3,
   BLOCK_BASELINE_MIN:5,
   BLOCK_BASELINE_WINDOW:20,
+  // A site's "hot"/"warm"/"cool" banding: cardWear.ts's wear-rate penalty
+  // and warning both key off HOT_TEMP, and the UI (ambientOf, SitesView's
+  // COOKING tag) reads the same two numbers so what's shown always matches
+  // what's actually happening to the cards.
+  WARM_TEMP:58,
+  HOT_TEMP:70,
 };
 
 export const TX_FEES = 0.06;
+
+// Half the catalogue price back on anything an upgrade or a rebuild
+// removes — a rig's rebuild, a site's shell/fab upgrade, and a site's
+// decommission salvage all use this same rate. Not rigSalvage's distress
+// rates (insolvency.ts), which are deliberately lower and per-component.
+export const TRADE_IN_RATE = 0.5;
 
 // Pool founding: design-spec.md §5 / §5a.
 export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's value

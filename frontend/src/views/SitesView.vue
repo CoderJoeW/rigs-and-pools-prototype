@@ -51,7 +51,7 @@ const sec=reactive({power:false,batt:false,cool:false,fab:false});
 // says it is — see utils/siteArt.ts for both, and for why the previous scheme
 // (three quarry photographs dealt out by site id) had to go.
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const siteDot=(st: Site)=>{ if(g.siteTemp(st)>=70) return 'bad';
+const siteDot=(st: Site)=>{ if(g.siteTemp(st)>=g.C.HOT_TEMP) return 'bad';
   if(g.siteRigs(st).some((r: Rig)=>g.rigLive(r))) return 'run';
   return 'off'; };
 
@@ -281,7 +281,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           <span class="sec-ico blu" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="M12 3v18"/><path d="m4.2 7.5 15.6 9"/><path d="m19.8 7.5-15.6 9"/></svg></span>
           <span style="flex:1;text-align:left"><span class="nm">Cooling</span>
-            <span v-if="floor.temp>=70" class="tag" style="background:var(--red-t);color:var(--red);margin-left:5px">COOKING</span>
+            <span v-if="floor.temp>=g.C.HOT_TEMP" class="tag" style="background:var(--red-t);color:var(--red);margin-left:5px">COOKING</span>
             <div class="sb">{{ floor.temp.toFixed(0) }}&deg;C · {{ f.plants.length }} unit{{ f.plants.length===1?'':'s' }}</div></span>
           <span class="sec-cv" :class="{open:sec.cool}" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="m6 9 6 6 6-6"/></svg></span></button>
@@ -296,7 +296,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
               <b>{{ floor.temp.toFixed(0) }} &deg;C</b>
               <span>Max exhaust</span></div>
           </div>
-          <div class="track" style="margin-top:9px"><i :class="g.siteHeat(f)>g.siteCooling(f)?'o':g.siteTemp(f)>58?'w':'g'" :style="{width:Math.min(100,g.siteHeat(f)/Math.max(1,g.siteCooling(f))*100)+'%'}"></i></div>
+          <div class="track" style="margin-top:9px"><i :class="g.siteHeat(f)>g.siteCooling(f)?'o':g.siteTemp(f)>g.C.WARM_TEMP?'w':'g'" :style="{width:Math.min(100,g.siteHeat(f)/Math.max(1,g.siteCooling(f))*100)+'%'}"></i></div>
           <div class="track-cap"><span>Heat against capacity</span><b>{{ fmt.w(g.siteHeat(f)) }} / {{ fmt.w(g.siteCooling(f)) }}</b></div>
           <div class="dl"><dt>Outside</dt><dd>{{ g.ambient.toFixed(0) }}&deg;C</dd></div>
           <div class="dl"><dt>Cooling draws</dt>

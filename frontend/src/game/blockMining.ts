@@ -4,6 +4,11 @@ import type { Game, ChainState, Group, Sim, Pool } from './types.js';
 
 interface Winner { pool: string; mine: boolean; group?: Group; sim?: Sim }
 
+// The small skim a PPLNS payout takes for imperfect pool connectivity —
+// shared by the pool's own PPLNS share and its PPS flat drip, so the two
+// payout paths can't drift onto different tax rates for the same cause.
+const PAYOUT_CONN_TAX = 1 - 0.02 * (1 - CONN_Q);
+
 export function installBlockMining(G: Game): void {
   function runBlockWindow(chain: ChainState, dt: number): void {
     const networkHash = G.chainHash(chain);
@@ -62,6 +67,10 @@ export function installBlockMining(G: Game): void {
     return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
   }
 
+  // "— 3.2x your usual": the jackpot multiplier phrase, built identically
+  // wherever a block clears blockBaseline's threshold (solo and PPLNS both).
+  const jackpotText = (usd: number, baseline: number) => (usd / baseline).toFixed(1) + 'x your usual';
+
   function trackBlockUsd(key: string, usd: number): void {
     const recentValues = G.s.recentBlockUsd[key] || (G.s.recentBlockUsd[key] = []);
     recentValues.push(usd);
@@ -100,7 +109,7 @@ export function installBlockMining(G: Game): void {
     const record = usd > G.s.bestBlock;
     const jackpot = !record && baseline && usd >= baseline * C.JACKPOT_MULT;
     if (jackpot) {
-      G.say('jackpot', 'Jackpot on ' + chain.name + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
+      G.say('jackpot', 'Jackpot on ' + chain.name + ' — ' + jackpotText(usd, baseline!),
         '+' + fmt.c(fullReward), fullReward, chain.tick);
     } else {
       G.say('block', 'Block solved solo on ' + chain.name, '+' + fmt.c(fullReward), fullReward, chain.tick);
@@ -109,7 +118,7 @@ export function installBlockMining(G: Game): void {
       G.s.bestBlock = usd;
       G.pop('Biggest block yet', '+' + fmt.usd2(usd), '', { always: true, kind: 'record' });
     } else if (jackpot) {
-      G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
+      G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + jackpotText(usd, baseline!),
         'jackpot', { always: true });
     } else {
       G.pop('Block solved', '+' + fmt.c(fullReward) + ' ' + chain.tick, '', { kind: 'block' });
@@ -151,7 +160,7 @@ export function installBlockMining(G: Game): void {
     const miningHash = miningGroups.reduce((sum, group) => sum + G.groupHash(group), 0);
     if (!(poolHashTotal > 0 && miningHash > 0)) return;
 
-    const share = fullReward * (1 - pool.fee) * (miningHash / poolHashTotal) * (1 - 0.02 * (1 - CONN_Q));
+    const share = fullReward * (1 - pool.fee) * (miningHash / poolHashTotal) * PAYOUT_CONN_TAX;
     let paidOut = 0;
     for (const group of miningGroups) {
       const rawShare = share * G.groupHash(group) / miningHash;
@@ -173,8 +182,8 @@ export function installBlockMining(G: Game): void {
       const jackpot = baseline && usd >= baseline * C.JACKPOT_MULT;
       if (jackpot) {
         G.say('jackpot', group.name + ' solved the ' + chain.name + ' pool block — '
-          + (usd / baseline!).toFixed(1) + 'x your usual', '+' + fmt.c(share), share, chain.tick);
-        G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + (usd / baseline!).toFixed(1) + 'x your usual',
+          + jackpotText(usd, baseline!), '+' + fmt.c(share), share, chain.tick);
+        G.pop('Jackpot', '+' + fmt.usd2(usd) + ' — ' + jackpotText(usd, baseline!),
           'jackpot', { always: true });
       } else {
         G.say('block', group.name + ' solved the ' + chain.name + ' pool block', '+' + fmt.c(share), share, chain.tick);
@@ -195,7 +204,7 @@ export function installBlockMining(G: Game): void {
       // that stops a miss there being free money rather than a stale label.
       const pool = G.poolOf(group.pool);
       if (!pool || !pool.live || pool.scheme !== 'PPS') continue;
-      const drip = (dt * G.groupHash(group) / G.diffOf(chain)) * chain.reward * (1 - pool.fee) * (1 - 0.02 * (1 - CONN_Q));
+      const drip = (dt * G.groupHash(group) / G.diffOf(chain)) * chain.reward * (1 - pool.fee) * PAYOUT_CONN_TAX;
       G.s.wallet[chain.id]! += drip;
       G.today().earned += drip * G.price(chain);
     }
