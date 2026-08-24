@@ -666,15 +666,35 @@ gain — it needs "off," "on," and "on, I am across the room."
 
 `hydrateUnsafe` used to be one 116-line function; it is now a fixed
 sequence of named steps, each fixing exactly one gap a save can predate:
-`resetTransientUiState`, `reindexCustomParts`, the `allUnlocked()` refresh,
-`reseedOrReindexSims`, `migrateLegacyGroups`, `migrateLegacyDefaults`,
-`rebalanceChains`, `retireServerPools`. The order matters and mirrors the
-original inline sequence — later steps read state earlier ones establish
-(`migrateLegacyGroups` needs every rig to already have a resolved
+`resetTransientUiState`, `repairEmptySites`, `reindexCustomParts`, the
+`allUnlocked()` refresh, `reseedOrReindexSims`, `migrateLegacyGroups`,
+`migrateLegacyDefaults`, `rebalanceChains`, `retireServerPools`. The order
+matters and mirrors the original inline sequence — later steps read state
+earlier ones establish (`repairEmptySites` has to run before anything else
+touches `G.s.sites`, since `migrateLegacyDefaults` iterates it directly;
+`migrateLegacyGroups` needs every rig to already have a resolved
 `group`-free legacy shape; `rebalanceChains` and `retireServerPools` both
 read `G.s.sims`, which `reseedOrReindexSims` must have already seeded or
 reindexed) — so don't reorder the calls in `hydrateUnsafe` without
 checking what each step assumes is already true.
+
+**`resetState`'s in-place clear.** Every `GameState` field is required, so
+the object is transiently invalid by the type's own contract between the
+clear and the following `Object.assign` — repopulated on the very next
+line. Clearing in place (deleting each key rather than reassigning `G.s`
+to a new object) keeps Vue's `reactive()` proxy identity, so every
+existing computed/watcher stays wired to the same object instead of
+observing a dead one.
+
+**`repairEmptySites`.** `G.active` (`timeOfDay.ts`) and every `Site`-typed
+caller downstream of it are typed non-nullable on the strength of an
+in-app invariant — `decommissionSite` refuses to drop a farm's last site —
+but a hand-edited or corrupted save isn't bound by that invariant, since
+this game persists client-side with no server-side validation. Rather
+than reintroduce `| undefined`/null-guards across the ~90 places `G.active`
+is read, hydration repairs the one place the invariant can actually break:
+an empty or missing `G.s.sites` falls back to `freshState()`'s starting
+site (and matching `nextSite`/`activeSite`) before anything else runs.
 
 ## Sites view hero scrim (`src/views/SitesView.vue`)
 
@@ -1218,3 +1238,18 @@ to the word Tessera.
 The hue comes from the static `CHAIN_HUE` map rather than from the live
 chain record, so a world restored from a save made before chains had
 hues still shows its colours — see the note in `chains.ts`.
+
+## Duck-typed part lookups (`PART`/`SITEPART` in `src/game/types.ts`, `SP`/`P` in `src/game/dispatch.ts`)
+
+`Part` (`Frame | Mobo | Psu | Cooler | Card`) and `SitePart` (`Shell |
+Source | Storage | Plant`) are discriminated unions of very different
+shapes — a solar source's `peak`/`yield`/`rate` has nothing in common with
+a cooler's `cap`/`pue` or a PSU's `eff`/`conn`. Every caller of
+`G.PART`/`G.SITEPART` (and `dispatch.ts`'s own `SP`/`P` aliases for them)
+reads whichever fields its call site knows apply, by construction, without
+a runtime discriminant check. Narrowing the return type would mean
+threading a type guard through dozens of call sites for no caught bug,
+since a field that doesn't exist on the wrong variant already fails
+loudly at runtime — so both are typed `any` in `types.ts` rather than
+their real union type. `FAB` has no such excuse (`Fab` is one concrete
+shape) and is typed properly.

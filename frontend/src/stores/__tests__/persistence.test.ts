@@ -149,6 +149,24 @@ describe('saveNow / loadSave round trip', () => {
     expect(Object.keys(g2.s.recentBlockUsd).length).toBeGreaterThan(0);
     expect(g2.s.recentBlockUsd.tessera.length).toBeGreaterThan(0);
   });
+
+  it('a save with an empty sites array is repaired, not left to crash G.active', async () => {
+    // G.active (timeOfDay.ts) is typed non-nullable on the strength of an
+    // in-app invariant only — decommissionSite refuses to drop the last
+    // site — which a hand-edited or corrupted save isn't bound by.
+    const g1 = freshStore();
+    await g1.saveNow();
+    const raw = JSON.parse(localStorage.getItem('rigs-and-pools-save')!);
+    raw.state.sites = [];
+    localStorage.setItem('rigs-and-pools-save', JSON.stringify(raw));
+
+    const g2 = reopenStore();
+    await g2.loadSave();
+
+    expect(g2.s.sites.length).toBeGreaterThan(0);
+    expect(g2.active).toBeTruthy();
+    expect(() => g2.idleCashAdvice).not.toThrow();
+  });
 });
 
 describe('save invalidation across the onboarding-system update', () => {

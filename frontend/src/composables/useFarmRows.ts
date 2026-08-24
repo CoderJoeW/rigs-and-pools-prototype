@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import type { Rig } from '../game/types.js';
-import { type Store, rigChainHue } from './gameStore.js';
+import { type Store, ambientOf, rigChainHue } from './gameStore.js';
 
 // Dominant chassis state for a site row hero — prefer attention states, then
 // running, then build, else off. Same vocabulary the Rigs list and Sites
@@ -28,7 +28,7 @@ export function useFarmRows(g: Store) {
     const rigs: Rig[] = g.siteRigs(f);
     const slots = g.siteSlots(f);
     const temp = g.siteTemp(f);
-    const ambient = temp >= 70 ? 'hot' : temp >= 58 ? 'warm' : 'cool';
+    const ambient = ambientOf(temp);
     const demand = g.siteDemand(f);
     const capacity = g.siteCapacity(f) + g.battFirm(f);
     const util = capacity > 0 ? Math.min(1, demand / capacity) : 0;

@@ -43,10 +43,18 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
     sub: p.slots + ' rig positions · ' + p.hours + ' h to build',
     value: fmt.usd(p.price), valueSub: '', locked: g.s.cash < p.price })));
 
+  // Trade-in credit on an upgrade: half the current part's price, off the
+  // new one's. Shared by expandRows (shell) and fabRows (fab) so the rate
+  // can't drift between the two upgrade pickers.
+  const tradeInCost = (curPrice: number, newPrice: number) => {
+    const credit = Math.round(curPrice * 0.5);
+    return { credit, cost: Math.max(0, newPrice - credit) };
+  };
+
   const expandRows = computed(() => {
     const cur = g.SITEPART(f.value.shell) as Shell;
     return g.SHELLS.filter((p: Shell) => p.slots > cur.slots).map((p: Shell) => {
-      const credit = Math.round(cur.price * 0.5), cost = Math.max(0, p.price - credit);
+      const { credit, cost } = tradeInCost(cur.price, p.price);
       return { id: p.id, name: p.name, sub: cur.slots + ' → ' + p.slots + ' rig positions · ' + p.hours + ' h to build',
         value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '', locked: g.s.cash < cost };
     });
@@ -55,7 +63,7 @@ export function useSitePickerRows(g: Store, f: ComputedRef<Site>) {
   const fabRows = computed(() => {
     const cur = f.value.fab ? g.FAB(f.value.fab) : null;
     return g.FABS.filter((p: Fab) => !cur || p.tier > cur.tier).map((p: Fab) => {
-      const credit = cur ? Math.round(cur.price * 0.5) : 0, cost = Math.max(0, p.price - credit);
+      const { credit, cost } = tradeInCost(cur ? cur.price : 0, p.price);
       return { id: p.id, name: p.name, sub: p.slots.join(', ') + ' · ' + p.budget + ' design budget · ' + p.hours + ' h to build',
         value: fmt.usd(cost), valueSub: credit ? fmt.usd(credit) + ' credited' : '', locked: g.s.cash < cost };
     });

@@ -34,27 +34,27 @@ export function installBuildDraft(G: Game): void {
     const draft = G.s.draft, draftInfo = dp.value, site = G.active.value, results: DraftCheck[] = [];
     const limitedBy = draft.kind === 'gpu'
       ? (P(draft.frame).slots <= P(draft.mobo).pcie ? 'the frame' : 'the motherboard') : 'the controller';
-    results.push({ ok:draft.n<=draftInfo.maxSlots, title:'Cards fit the slots',
+    results.push({ key:'slots', ok:draft.n<=draftInfo.maxSlots, title:'Cards fit the slots',
       label:draft.n+' units into '+draftInfo.maxSlots+' slots',
       fix:'The smaller of the frame and the board sets this — right now it is '+limitedBy+'.' });
     const cap = G.psuUsableW(draftInfo.psu);
-    results.push({ ok:draftInfo.coreW<=cap, title:'Supply carries the draw',
+    results.push({ key:'psuDraw', ok:draftInfo.coreW<=cap, title:'Supply carries the draw',
       label:fmt.w(draftInfo.coreW)+' draw against '+fmt.w(cap)+' usable',
       fix:G.psuCarrying(draftInfo.coreW)+' would carry it.' });
-    results.push({ ok:draftInfo.conn<=draftInfo.psu.conn, title:'Enough PCIe connectors',
+    results.push({ key:'psuConn', ok:draftInfo.conn<=draftInfo.psu.conn, title:'Enough PCIe connectors',
       label:draftInfo.conn+' PCIe connectors, supply has '+draftInfo.psu.conn,
       fix:G.psuWithConn(draftInfo.conn)+' would fit.' });
-    results.push({ ok:G.siteRigs(site).length<G.siteSlots(site), title:'Free position on the floor',
+    results.push({ key:'floor', ok:G.siteRigs(site).length<G.siteSlots(site), title:'Free position on the floor',
       label:'Floor space at '+site.name+': '+G.siteRigs(site).length+' of '+G.siteSlots(site),
       fix:'A bigger shell has more positions.' });
     const coolDelta = G.sitePlantW(site, draftInfo.coreW / Math.max(0.01, draftInfo.air)) - G.sitePlantW(site);
     const after = G.siteDemand(site) + draftInfo.coreW / draftInfo.psu.eff + coolDelta;
-    results.push({ ok:after<=G.siteCapacity(site)+G.battFirm(site), title:'Power budget within limit',
+    results.push({ key:'power', ok:after<=G.siteCapacity(site)+G.battFirm(site), title:'Power budget within limit',
       label:'Power at '+site.name+': '+fmt.w(after)+' of '
         +fmt.w(G.siteCapacity(site)+G.battFirm(site))+' available'
         +(coolDelta>1?' (incl. '+fmt.w(coolDelta)+' more cooling)':''),
       fix:'Install another source at this site.' });
-    results.push({ ok:G.s.cash>=draftInfo.cost, title:'You can pay for it',
+    results.push({ key:'cash', ok:G.s.cash>=draftInfo.cost, title:'You can pay for it',
       label:'Parts cost '+fmt.usd(draftInfo.cost)+', you hold '+fmt.usd(G.s.cash),
       fix:'Short '+fmt.usd(draftInfo.cost-G.s.cash)+'.' });
     return results;

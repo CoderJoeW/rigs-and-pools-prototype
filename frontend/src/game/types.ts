@@ -180,7 +180,11 @@ export interface FleetSpecInfo { rigs: number; cost: number; already: number; bl
 
 // buildDraft.ts's dp/checks: the draft's own pricing and the gates canBuild checks.
 export interface DraftPricing { maxSlots: number; coreW: number; psu: Psu; unit: Card; conn: number; mh: number; air: number; cost: number; wall: number }
-export interface DraftCheck { ok: boolean; title: string; label: string; fix: string }
+// key lets useBuildVerdict.ts group checks into verdict sections by name
+// instead of by array position, so reordering buildDraft.ts's checks.push
+// calls can't silently misfile a check under the wrong heading.
+export type DraftCheckKey = 'slots' | 'psuDraw' | 'psuConn' | 'floor' | 'power' | 'cash';
+export interface DraftCheck { key: DraftCheckKey; ok: boolean; title: string; label: string; fix: string }
 // buildDraft.ts's draftExpected: the draft's pre-purchase revenue/cost estimate.
 export interface DraftExpected { rev: number; pow: number; net: number; payback: number }
 
@@ -489,7 +493,8 @@ export interface GameExports {
   fleetToSpec(draft: RebuildDraft, scope: Scope): void;
   dripCost(chain: ChainState, frac?: number): number;
   dripWorst(): DripWorst | null;
-  setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
+  setDrip(key: 'on', value: boolean): void;
+  setDrip(key: 'frac' | 'hours', value: number): void;
   toggleHold(chainId: string): void;
   MILESTONES: Milestone[];
   RANKS: [number, string][];
@@ -560,13 +565,7 @@ export interface Game {
   poolTrust(pool: Pool): number;
   groupAdvice(group: Group): GroupAdvice | null;
   chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null;
-  // PART/SITEPART return discriminated unions (Part = Frame|Mobo|Psu|Cooler|
-  // Card, SitePart = Shell|Source|Storage|Plant) accessed duck-typed by
-  // every caller, exactly like dispatch.ts's SP/P — narrowing the return
-  // type would mean threading a type guard through dozens of call sites for
-  // no caught bug, since a field that doesn't exist on the wrong variant
-  // already fails loudly at runtime. FAB has no such excuse (Fab is one
-  // concrete shape) and is typed properly below.
+  // Duck-typed union rationale: docs/implementation-notes.md#duck-typed-part-lookups-part-sitepart-in-srcgametypests-sp-p-in-srcgamedispatchts.
   PART: any;
   SITEPART: any;
   FAB(id: string): Fab | undefined;
@@ -624,7 +623,8 @@ export interface Game {
   renameGroup(group: Group, name: string): void;
   releaseBond(pool: Pool, amount: number): void;
   rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo;
-  setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void;
+  setDrip(key: 'on', value: boolean): void;
+  setDrip(key: 'frac' | 'hours', value: number): void;
   designTotals(kind: DesignKind, picks: DesignPicks): DesignTotals;
   SHELLS: Shell[];
   SOURCES: Source[];

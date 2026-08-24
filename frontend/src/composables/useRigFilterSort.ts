@@ -22,9 +22,12 @@ export function useRigFilterSort(g: Store, siteRigs: ComputedRef<Rig[]>) {
     { k: 'worn', label: 'Worn', test: (r: Rig) => ['worn', 'wearing'].includes(stateOf(r).k), mark: 'dot', dot: 'warn' },
   ];
   const filt = ref('all');
+  // One pass over siteRigs tallying every filter's count at once, rather
+  // than a separate .filter().length per chip re-scanning the whole list.
   const counts = computed(() => {
     const o: Record<string, number> = {};
-    for (const x of FILTERS) o[x.k] = siteRigs.value.filter(x.test).length;
+    for (const x of FILTERS) o[x.k] = 0;
+    for (const r of siteRigs.value) for (const x of FILTERS) if (x.test(r)) o[x.k]!++;
     return o;
   });
 

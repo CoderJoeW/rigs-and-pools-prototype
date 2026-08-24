@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { customUnitCards } from '../composables/gameStore.js';
 import Compare from './Compare.vue';
 import type { Card } from '../data/hardware.js';
 import type { Rig, RebuildDraft } from '../game/types.js';
@@ -42,7 +43,7 @@ const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
   const slot=g.s.rebuild!.picker as RebuildSlot;
   if(slot==='unit'){
-    return g.cards().concat(g.s.customParts.filter(p=>p.kind==='unit') as unknown as Card[]).map((c: Card)=>({ id:c.id, name:c.name,
+    return g.cards().concat(customUnitCards(g)).map((c: Card)=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }

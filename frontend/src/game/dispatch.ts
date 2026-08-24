@@ -8,13 +8,7 @@ import { fmt } from '../utils/format.js';
 import type { Game, Site, ChainState, Group, Rig, Unit, Pool, SitePlan, FlowInfo, BattAdvice, GroupAdvice, ChainCeiling } from './types.js';
 import type { Psu } from '../data/hardware.js';
 
-// SitePart/Part are discriminated unions of very different shapes (a solar
-// source's peak/yield/rate has nothing in common with a cooler's cap/pue or
-// a PSU's eff/conn); this file reads whichever fields its call site knows
-// apply, by construction, without a runtime discriminant check at every
-// access. Narrowing the return type would mean threading a type guard
-// through every one of these — real cost for no caught bug, since a field
-// that doesn't exist on the wrong variant already fails loudly at runtime.
+// Duck-typed union rationale: docs/implementation-notes.md#duck-typed-part-lookups-part-sitepart-in-srcgametypests-sp-p-in-srcgamedispatchts.
 const SP = (id: string): any => SITEPART(id);
 const P = (id: string): any => PART(id);
 

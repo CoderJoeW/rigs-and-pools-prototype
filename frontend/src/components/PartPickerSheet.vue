@@ -28,7 +28,7 @@ const optionsFor = (k: DesignKind): DesignBase[] => {
 
 const pickerRows = computed(() => {
   const k = g.s.picker; if(!k) return [];
-  const cur = (g.s.draft as unknown as Record<string, string>)[k], fld = field.value;
+  const cur = g.s.draft[k], fld = field.value;
   const lim = props.cardLimit;
   // Same duck-typed-union rationale as PART/SITEPART: p is one of five
   // unrelated part shapes, read here without a runtime discriminant check.

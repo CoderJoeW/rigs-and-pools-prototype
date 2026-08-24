@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 import type { Site, Rig } from '../game/types.js';
-import { type Store, rigChainHue } from './gameStore.js';
+import { type Store, ambientOf, rigChainHue } from './gameStore.js';
 
 const MAX_TILES = 60, MAX_EMPTY = 12, FLOOR_COLS = 3;
 const DOT_LABEL: Record<string, string> = { run: 'Running', build: 'Building', warn: 'Warning', bad: 'Bad', off: 'Off' };
@@ -18,10 +18,7 @@ const posCode = (i: number) => String(Math.floor(i / FLOOR_COLS) + 1).padStart(2
 export function useSiteFloor(g: Store, f: ComputedRef<Site>) {
   const rigsHere = computed(() => g.siteRigs(f.value));
   const floorTemp = computed(() => g.siteTemp(f.value));
-  const floorAmbient = computed(() => {
-    const t = floorTemp.value;
-    return t >= 70 ? 'hot' : t >= 58 ? 'warm' : 'cool';
-  });
+  const floorAmbient = computed(() => ambientOf(floorTemp.value));
   const siteHash = computed(() => rigsHere.value.reduce((a: number, r: Rig) => a + g.rigHash(r), 0));
   const siteStatus = computed(() => {
     if (floorAmbient.value === 'hot') return { label: 'HOT', tone: 'hot' };

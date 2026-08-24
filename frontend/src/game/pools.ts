@@ -135,13 +135,16 @@ export function installPools(G: Game): void {
     }
     return worst;
   };
-  // 'on' takes a boolean, 'frac'/'hours' take a number — one signature per
-  // key would be truer, but the three UI callers already pass the right
-  // shape for their own key, so this just needs to stay out of `any`.
-  const setDrip = (key: 'on' | 'frac' | 'hours', value: boolean | number) => {
+  // One overload per key, same pattern as utils/format.ts's partSub — 'on'
+  // takes a boolean, 'frac'/'hours' take a number, so a caller passing the
+  // wrong value type for a given key fails to compile instead of silently
+  // writing it through a shared boolean|number cast.
+  function setDrip(key: 'on', value: boolean): void;
+  function setDrip(key: 'frac' | 'hours', value: number): void;
+  function setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void {
     (G.s.drip as unknown as Record<'on' | 'frac' | 'hours', boolean | number>)[key] = value;
     G.s.dripAt = G.s.t + G.s.drip.hours * 3600;
-  };
+  }
   const toggleHold = (chainId: string) => { G.s.hold = G.s.hold || {}; G.s.hold[chainId] = !G.s.hold[chainId]; };
 
   Object.assign(G, { addBond, bondFloor, buy, closePool, doBuy, doSell, dripCost, dripWorst, fireDrip, foundPool, poolProfit, releaseBond, renamePool, sell, setDrip, setPoolFee, toggleHold, topUpBond, withdrawProfit });

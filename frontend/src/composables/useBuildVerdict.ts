@@ -1,14 +1,20 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { fmt } from '../utils/format.js';
-import type { DraftCheck } from '../game/types.js';
+import type { DraftCheck, DraftCheckKey } from '../game/types.js';
 import type { Store } from './gameStore.js';
 
 // The Build view's verdict panel: the checks gating canBuild, plus the two
 // advisory notes and the aria-live build-status line. Rationale for the
 // snapshotting and note design:
 // docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue
-export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, maxQty: Ref<number>,
-  effShown: Ref<number>, drawShown: Ref<number>) {
+export interface BuildVerdictArgs {
+  mode: Ref<'preset' | 'custom'>; qty: Ref<number>; maxQty: Ref<number>;
+  effShown: Ref<number>; drawShown: Ref<number>;
+}
+// Named fields rather than positional args: qty/maxQty and effShown/drawShown
+// are same-typed adjacent pairs a positional swap at the call site would not
+// catch at compile time.
+export function useBuildVerdict(g: Store, { mode, qty, maxQty, effShown, drawShown }: BuildVerdictArgs) {
   // Verdict panel ranking: design-spec.md §6i. ceilingNote is thread 32's
   // signal, deliberately kept out of canBuild's gate.
   const ceilingNote=computed(()=>{
@@ -51,16 +57,17 @@ export function useBuildVerdict(g: Store, mode: Ref<string>, qty: Ref<number>, m
   // Quick pick's condensed-not-silent checks.
   const verdict=computed(()=>{
     const c=g.checks;
+    const byKey=(...keys: DraftCheckKey[]) => keys.map(k=>c.find(x=>x.key===k)!);
     const notes=[ceilingNote.value,subsidyNote.value].filter((x): x is NonNullable<typeof x> => !!x);
     // Cost/hashrate/draw live on the hero; this is what's left — notes in
     // both modes, second-order figures only in Customise.
     if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter((x:DraftCheck)=>!x.ok), notes } ];
     return [
-      { t:'Cost & payback', rows:[], checks:[c[5]], notes },
+      { t:'Cost & payback', rows:[], checks:byKey('cash'), notes },
       { t:'Hashrate & MH/W', rows:[ {k:'MH/W', v:effShown.value.toFixed(3)} ],
-        checks:[c[0],c[2],c[1]] },
+        checks:byKey('slots','psuConn','psuDraw') },
       { t:'Site impact', rows:[ {k:'Draw', v:fmt.w(drawShown.value)} ],
-        checks:[c[4],c[3]] },
+        checks:byKey('power','floor') },
     ];
   });
 

@@ -143,6 +143,18 @@ export function installPersistence(G: Game): void {
     }
     for (const r of legacyRigs) if (!r.group) r.group = G.s.groups[0]!.id;
   }
+  // G.active and every Site-typed caller downstream of it assume G.s.sites
+  // is never empty (decommissionSite refuses to drop the last one) — but
+  // that's an in-app invariant only, not something a hand-edited or
+  // corrupted save is bound by, so hydration has to repair it at the door
+  // rather than let every caller re-guard against a state that "can't happen".
+  function repairEmptySites(): void {
+    if (Array.isArray(G.s.sites) && G.s.sites.length) return;
+    const fresh = G.freshState();
+    G.s.sites = fresh.sites;
+    G.s.nextSite = fresh.nextSite;
+    G.s.activeSite = fresh.activeSite;
+  }
   function migrateLegacyDefaults(): void {
     if ('autoSell' in G.s) {
       G.s.drip = { on: !!(G.s as unknown as { autoSell?: boolean }).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
@@ -215,6 +227,7 @@ export function installPersistence(G: Game): void {
   async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
     Object.assign(G.s, data.state);
     resetTransientUiState();
+    repairEmptySites();
     reindexCustomParts();
     G.s.unlocked = allUnlocked();
     reseedOrReindexSims();
@@ -228,10 +241,7 @@ export function installPersistence(G: Game): void {
   }
   function resetState(): void {
     const fresh = G.freshState();
-    // Every GameState field is required, so this is transiently invalid by
-    // the type's own contract — repopulated on the very next line. Clearing
-    // in place (not replacing G.s) keeps Vue's reactive() proxy identity,
-    // so every existing computed/watcher stays wired to the same object.
+    // In-place clear rationale: docs/implementation-notes.md#save-migration-steps-srcgamepersistencets.
     for (const k of Object.keys(G.s)) delete (G.s as unknown as Record<string, unknown>)[k];
     Object.assign(G.s, fresh);
     G.liveCards.length = 0; G.liveCards.push(...CARDS);

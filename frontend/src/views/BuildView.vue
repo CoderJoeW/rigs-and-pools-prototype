@@ -11,7 +11,7 @@ import type { DraftCheck, PickerField, CardLimit } from '../game/types.js';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
-const mode=ref('preset');           // 'preset' | 'custom' — preset first, always
+const mode=ref<'preset' | 'custom'>('preset');   // preset first, always
 const presetFound=ref(true);
 function runPreset(){ presetFound.value=g.generatePreset(); }
 // Run synchronously here, before the tweened refs below read their starting
@@ -25,7 +25,7 @@ const qty=ref(1);
 const maxQty=computed(()=> g.maxBuildQty());
 watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
 const orderCost=computed(()=> g.dp.cost*Math.min(qty.value, Math.max(1,maxQty.value||1)));
-function setMode(m: string){
+function setMode(m: 'preset' | 'custom'){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
@@ -101,7 +101,7 @@ const choose=(id: string)=>{
   g.s.picker=null;
 };
 
-const { buildStatus, verdict } = useBuildVerdict(g, mode, qty, maxQty, effShown, drawShown);
+const { buildStatus, verdict } = useBuildVerdict(g, { mode, qty, maxQty, effShown, drawShown });
 </script>
 
 <template>
