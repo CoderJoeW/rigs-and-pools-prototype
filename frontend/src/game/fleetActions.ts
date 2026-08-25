@@ -1,10 +1,8 @@
 import { PART } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game } from './types.js';
+import type { Game, Rig, Unit, RebuildDraft, RebuildCheck, Scope } from './types.js';
 
-type Scope = number | number[] | null | undefined;
-
-// 12-fleet-actions.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -18,22 +16,22 @@ export function installFleetActions(G: Game): void {
      routes through this one, selection came for free everywhere the moment
      this understood arrays: thread 6 was a UI problem, not a model one. */
   const fleetRigs = (scope: Scope) => Array.isArray(scope)
-    ? G.s.rigs.filter((rig: any) => scope.includes(rig.id))
-    : G.s.rigs.filter((rig: any) => scope == null || rig.site === scope);
+    ? G.s.rigs.filter((rig: Rig) => scope.includes(rig.id))
+    : G.s.rigs.filter((rig: Rig) => scope == null || rig.site === scope);
   // Every fleet action but the group move skips a rig still mid-build —
   // one shared filter so "which rigs does this apply to" can't drift
   // between the quote and the action that follows it. One pass over the
   // scope, not fleetRigs(scope) followed by a second filter: these back
   // FleetSheet's computeds, which re-run on every tick while it's open.
   const liveFleetRigs = (scope: Scope) => Array.isArray(scope)
-    ? G.s.rigs.filter((rig: any) => scope.includes(rig.id) && rig.building <= 0)
-    : G.s.rigs.filter((rig: any) => (scope == null || rig.site === scope) && rig.building <= 0);
+    ? G.s.rigs.filter((rig: Rig) => scope.includes(rig.id) && rig.building <= 0)
+    : G.s.rigs.filter((rig: Rig) => (scope == null || rig.site === scope) && rig.building <= 0);
   /* One rig's worn-card count and replacement bill. The single-rig detail sheet
      and the fleet-wide sweep below are the same question asked of a different
      number of rigs, so both ask it here — repair pricing has one definition. */
-  const rigWorn = (rig: any, threshold: number) => {
-    const wornUnits = rig.units.filter((unit: any) => unit.w >= threshold);
-    return { n: wornUnits.length, cost: wornUnits.reduce((sum: number, unit: any) => sum + PART(unit.p)!.price, 0) };
+  const rigWorn = (rig: Rig, threshold: number) => {
+    const wornUnits = rig.units.filter((unit: Unit) => unit.w >= threshold);
+    return { n: wornUnits.length, cost: wornUnits.reduce((sum: number, unit: Unit) => sum + PART(unit.p)!.price, 0) };
   };
   const fleetWorn = (threshold: number, scope: Scope) => {
     let wornCount = 0, cost = 0, rigs = 0;
@@ -48,7 +46,7 @@ export function installFleetActions(G: Game): void {
     for (const rig of liveFleetRigs(scope))
       if (rigWorn(rig, threshold).n) G.swapWorn(rig.id, threshold);
   }
-  const fleetDraft = (rig: any, unitId: string) => ({ frame: rig.frame, mobo: rig.mobo, cool: rig.cool, psu: rig.psu,
+  const fleetDraft = (rig: Rig, unitId: string) => ({ frame: rig.frame, mobo: rig.mobo, cool: rig.cool, psu: rig.psu,
     unit: unitId, n: rig.units.length });
   const fleetRefitInfo = (unitId: string, scope: Scope) => {
     let rigs = 0, cost = 0;
@@ -71,17 +69,17 @@ export function installFleetActions(G: Game): void {
      so there is one place to design a rig rather than two. */
   const draftSpec = () => ({ frame: G.s.draft.frame, mobo: G.s.draft.mobo, cool: G.s.draft.cool,
     psu: G.s.draft.psu, unit: G.s.draft.unit, n: G.s.draft.n });
-  const fleetSpecInfo = (draft: any, scope: Scope) => {
+  const fleetSpecInfo = (draft: RebuildDraft, scope: Scope) => {
     let rigs = 0, cost = 0, already = 0, blocked = 0, why: string | null = null;
     for (const rig of liveFleetRigs(scope)) {
       const info = G.rebuildInfo(rig, draft);
       if (!info.changed) { already++; continue; }
       if (info.ok) { rigs++; cost += Math.max(0, info.net); }
-      else { blocked++; if (!why) { const failedCheck = info.checks.find((check: any) => !check.ok); if (failedCheck) why = failedCheck.label; } }
+      else { blocked++; if (!why) { const failedCheck = info.checks.find((check: RebuildCheck) => !check.ok); if (failedCheck) why = failedCheck.label; } }
     }
     return { rigs, cost, already, blocked, why };
   };
-  function fleetToSpec(draft: any, scope: Scope): void {
+  function fleetToSpec(draft: RebuildDraft, scope: Scope): void {
     const info = fleetSpecInfo(draft, scope);
     if (!info.rigs || G.s.cash < info.cost) return;       // quote the whole job or do none of it
     for (const rig of liveFleetRigs(scope)) {
@@ -94,8 +92,8 @@ export function installFleetActions(G: Game): void {
   /* Bulk group move. Assignment never forfeits anything (the window belongs to
      the group, not the rig), so this is safe to do to a whole farm at once. */
   const fleetMoveInfo = (groupId: number, scope: Scope) => {
-    const rigsToMove = fleetRigs(scope).filter((rig: any) => rig.group !== groupId);
-    return { rigs: rigsToMove.length, hash: rigsToMove.reduce((sum: number, rig: any) => sum + G.rigHash(rig), 0) };
+    const rigsToMove = fleetRigs(scope).filter((rig: Rig) => rig.group !== groupId);
+    return { rigs: rigsToMove.length, hash: rigsToMove.reduce((sum: number, rig: Rig) => sum + G.rigHash(rig), 0) };
   };
   function fleetMove(groupId: number, scope: Scope): void {
     if (!G.s.groups.some(group => group.id === groupId)) return;

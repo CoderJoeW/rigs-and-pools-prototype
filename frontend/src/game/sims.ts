@@ -3,14 +3,12 @@ import { reactive } from 'vue';
 import { CHAINS } from '../data/chains.js';
 import { gauss } from '../utils/random.js';
 import { nextRivalName } from './rivals.js';
-import type { Game, ChainState, Sim } from './types.js';
+import type { Game, ChainState, Sim, Pool } from './types.js';
 
-// Economic simulated players: cash, hashrate, chain, pool, style, decision
-// timer, a coin-inventory value. They reinvest, switch chains/pools, sell,
-// and occasionally found live pools the player competes with.
-// Design model: design-spec.md §6o / §6e. Derivations, perf rules and bug
-// history: docs/economy.md#simulated-miner-population-model-srcgamesimsjs
-// and docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+// Economic simulated players (cash, hashrate, chain, pool, style, decision
+// timer, coin inventory) that reinvest, switch chains/pools, sell, and
+// occasionally found live pools the player competes with. Design model:
+// design-spec.md §6o/§6e. Derivations/perf/bug history: docs/economy.md#simulated-miner-population-model-srcgamesimsjs, docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
 
 export const SIM_START = SIM_PLAYERS;          // 100 — the network on day one
 export const SIM_SOFT_CAP = 16000;             // logistic ceiling on the population
@@ -31,10 +29,9 @@ export const SIM_DECIDE_MAX_H = 336;           // a fortnight — decision-gap c
 let simSeq = 0;
 let poolSeq = 0;
 
-// Every chain a sim can operate on, including tessera — SIM_CHAINS itself
-// deliberately excludes tessera (comment on its own definition:
-// "Tessera stays a newcomer refuge"), but the per-chain trackers below
-// (hash, counts, solo-member lists) still need a zeroed slot for it.
+// Every chain a sim can operate on: SIM_CHAINS itself deliberately excludes
+// tessera ("Tessera stays a newcomer refuge"), but the per-chain trackers
+// below still need a zeroed slot for it.
 const ALL_SIM_CHAINS = [...SIM_CHAINS, 'tessera'];
 
 // Reactivity rationale: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
@@ -46,10 +43,10 @@ function zeroPerChain(): Record<string, number> {
 
 interface SimPoolOptions { id: string; chain: string; sim: Sim; name: string; scheme: 'PPS' | 'PPLNS'; fee: number; bond: number; born: number }
 
-// A sim-owned pool's shape, shared by seedStarterPools (the day-one market)
-// and tryFoundPool (pools sims open later) — the two differ only in how
-// they size the bond and pick a scheme/fee, not in what a pool object is.
-function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }: SimPoolOptions) {
+// A sim-owned pool's shape, shared by seedStarterPools (day-one market) and
+// tryFoundPool (pools sims open later) — they differ only in bond sizing
+// and scheme/fee choice, not in what a pool object is.
+function makeSimPool({ id, chain, sim, name, scheme, fee, bond, born }: SimPoolOptions): Pool {
   return { id, chain, owner: 'sim', ownerSim: sim.id, name, scheme, fee,
     bond, bond0: bond, cap: 0, born, live: true,
     earned: 0, found: 0, feeMoved: -1e9, lapse: 0 };
@@ -282,7 +279,7 @@ export function installSims(G: Game): void {
   }
 
   const simHashOf = (chain: ChainState) => G._simChainHash[chain.id] || 0;
-  const simPoolHashOf = (pool: any) => G._simPoolHash[pool.id] || 0;
+  const simPoolHashOf = (pool: Pool) => G._simPoolHash[pool.id] || 0;
   const simSoloHashOf = (chainId: string) => G._simSoloHash[chainId] || 0;
 
   function drawSimWinner(chain: ChainState, budget: number): { pool: string; mine: boolean; sim?: Sim } {
@@ -322,7 +319,7 @@ export function installSims(G: Game): void {
     if (!sim) return;
     sim.coins = (sim.coins || 0) + usd;
   }
-  function creditSimPoolShare(pool: any, fullCoin: number, price: number): void {
+  function creditSimPoolShare(pool: Pool, fullCoin: number, price: number): void {
     if (!pool || !pool.live) return;
     const poolHashAmount = (G._simPoolHash[pool.id] || 0);
     if (poolHashAmount <= 0) return;
@@ -424,9 +421,9 @@ export function installSims(G: Game): void {
 
   function switchToBetterChain(sim: Sim): void {
     let best = sim.chain;
-    let bestRevenue = G.revPerMh(G.chain(sim.chain)) * chainDraw(sim.chain) * SWITCH_EDGE;
+    let bestRevenue = G.revPerMh(G.chain(sim.chain)!) * chainDraw(sim.chain) * SWITCH_EDGE;
     for (const chainId of SIM_CHAINS) {
-      const chain = G.chain(chainId);
+      const chain = G.chain(chainId)!;   // chainId always a real chain, from SIM_CHAINS
       const chainSimHash = G._simChainHash[chainId] || 0;
       // Whale check measured against current hashrate, not the floor: docs/implementation-notes.md.
       if (chainId !== sim.chain && chainSimHash + sim.hash > simTargetOf(chainId) && sim.hash > 0.25 * Math.max(1, chainSimHash))
@@ -438,13 +435,13 @@ export function installSims(G: Game): void {
   }
 
   function pickSimPool(sim: Sim): void {
-    const poolOptions = G.s.pools.filter((pool: any) => pool.live && pool.chain === sim.chain &&
+    const poolOptions = G.s.pools.filter((pool: Pool) => pool.live && pool.chain === sim.chain &&
       (G.poolCapLimit ? (G._simPoolHash[pool.id] || 0) + sim.hash <= G.poolCapLimit(pool) * 1.02 : true));
     if (!poolOptions.length) { setSimPool(sim, 'solo'); return; }
     // Scores through poolMarket's own poolScore(), not a third hand-rolled
     // copy of the formula — a pool's worth must mean the same thing
     // regardless of which rule moved a miner.
-    let best: any = null, bestScore = -1;
+    let best: Pool | null = null, bestScore = -1;
     for (const pool of poolOptions) {
       const score = G.poolScore(pool);
       if (score > bestScore) { bestScore = score; best = pool; }
@@ -457,7 +454,7 @@ export function installSims(G: Game): void {
   function tryFoundPool(sim: Sim): void {
     const chain = G.chain(sim.chain);
     if (!chain || chain.id === 'tessera') return;
-    const liveCount = G.s.pools.filter((pool: any) => pool.live && pool.chain === sim.chain).length;
+    const liveCount = G.s.pools.filter((pool: Pool) => pool.live && pool.chain === sim.chain).length;
     if (liveCount > 14) return;
     const scheme: 'PPS' | 'PPLNS' = sim.style > 0.75 && sim.cash > 2000 ? (Math.random() < 0.45 ? 'PPS' : 'PPLNS') : 'PPLNS';
     const fee = scheme === 'PPS' ? 0.018 + Math.random() * 0.04 : 0.004 + Math.random() * 0.025;
@@ -475,10 +472,10 @@ export function installSims(G: Game): void {
     if (G.say) G.say('pool', pool.name + ' has opened on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%');
   }
 
-  // G.setPoolFee (pools.js) isn't installed yet when a test drives installSims
+  // G.setPoolFee (pools.ts) isn't installed yet when a test drives installSims
   // on its own, so this falls back to a bare assignment — same clamped value
   // either way, just without the trust-affecting side effects setPoolFee has.
-  function adjustPoolFee(pool: any, newFee: number): void {
+  function adjustPoolFee(pool: Pool, newFee: number): void {
     if (G.setPoolFee) G.setPoolFee(pool, newFee);
     else pool.fee = newFee;
   }
@@ -514,7 +511,7 @@ export function installSims(G: Game): void {
   }
 
   // Consolidates 5 previously-separate, drifted closure paths: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
-  function closeSimPool(pool: any, why: string): void {
+  function closeSimPool(pool: Pool, why: string): void {
     pool.live = false;
     for (const sim of G.s.sims as Sim[]) if (sim.pool === pool.id) setSimPool(sim, 'solo');
     for (const group of G.s.groups) if (group.pool === pool.id) {
@@ -523,9 +520,7 @@ export function installSims(G: Game): void {
     }
   }
 
-  function simPulse(): void {
-    const now = G.s.t;
-    const sims: Sim[] = G.s.sims;
+  function decideBudgetedSims(sims: Sim[], now: number): void {
     let budget = SIM_DECIDE_BUDGET;
     const start = Math.floor(Math.random() * Math.max(1, sims.length));
     for (let k = 0; k < sims.length && budget > 0; k++) {
@@ -535,47 +530,57 @@ export function installSims(G: Game): void {
       decide(sim);
       budget--;
     }
-
+  }
+  function spawnNewcomers(sims: Sim[], now: number): void {
     const population = sims.length;
-    if (population < SIM_SOFT_CAP) {
-      const sat = 1 - population / SIM_SOFT_CAP;
-      const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * population) * sat / 24;
-      let spawn = Math.floor(expect);
-      if (Math.random() < expect - spawn) spawn++;
-      for (let spawnIndex = 0; spawnIndex < spawn; spawnIndex++) {
-        const newSim = mkSim({
-          chain: pickJoinChain(sims.length),
-          hash: newcomerHash(),
-          cash: 60 + Math.random() * 280,
-          time: now,
-        });
-        sims.push(newSim);
-        bumpChainCount(newSim.chain, 1);
-        addHash(newSim, newSim.hash);
-        G._membersDirty = true;
+    if (population >= SIM_SOFT_CAP) return;
+    const sat = 1 - population / SIM_SOFT_CAP;
+    const expect = (SIM_JOIN_BASE + SIM_JOIN_WORD * population) * sat / 24;
+    let spawn = Math.floor(expect);
+    if (Math.random() < expect - spawn) spawn++;
+    for (let spawnIndex = 0; spawnIndex < spawn; spawnIndex++) {
+      const newSim = mkSim({
+        chain: pickJoinChain(sims.length),
+        hash: newcomerHash(),
+        cash: 60 + Math.random() * 280,
+        time: now,
+      });
+      sims.push(newSim);
+      bumpChainCount(newSim.chain, 1);
+      addHash(newSim, newSim.hash);
+      G._membersDirty = true;
+    }
+  }
+  function retireSim(sims: Sim[], index: number): void {
+    const sim = sims[index]!;
+    // Zero hashrate through setSimHash before releasing pools: docs/implementation-notes.md.
+    setSimHash(sim, 0);
+    for (const pool of G.s.pools) {
+      if (pool.owner === 'sim' && pool.ownerSim === sim.id && pool.live) {
+        closeSimPool(pool, 'when ' + pool.name + ' shut down');
+        if (G.say) G.say('pool', pool.name + ' has closed — its operator has left mining');
       }
     }
-
-    // Departure sampling scaled to population: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+    sims.splice(index, 1);
+    bumpChainCount(sim.chain, -1);
+    G._membersDirty = true;
+  }
+  // Departure sampling scaled to population: docs/implementation-notes.md#simulated-economy-srcgamesimsjs.
+  function sampleDepartures(sims: Sim[]): void {
     const looks = Math.max(1, Math.round(sims.length / SIM_START));
     for (let k = 0; k < looks; k++) {
       if (sims.length <= SIM_START || Math.random() >= 0.08) continue;
       const index = Math.floor(Math.random() * sims.length);
       const sim = sims[index]!;
-      if (sim.cash < 15 && sim.hash < 20 && sim.coins < 10) {
-        // Zero hashrate through setSimHash before releasing pools: docs/implementation-notes.md.
-        setSimHash(sim, 0);
-        for (const pool of G.s.pools) {
-          if (pool.owner === 'sim' && pool.ownerSim === sim.id && pool.live) {
-            closeSimPool(pool, 'when ' + pool.name + ' shut down');
-            if (G.say) G.say('pool', pool.name + ' has closed — its operator has left mining');
-          }
-        }
-        sims.splice(index, 1);
-        bumpChainCount(sim.chain, -1);
-        G._membersDirty = true;
-      }
+      if (sim.cash < 15 && sim.hash < 20 && sim.coins < 10) retireSim(sims, index);
     }
+  }
+  function simPulse(): void {
+    const now = G.s.t;
+    const sims: Sim[] = G.s.sims;
+    decideBudgetedSims(sims, now);
+    spawnNewcomers(sims, now);
+    sampleDepartures(sims);
   }
 
   function simFlatDrip(chain: ChainState, dt: number): void {

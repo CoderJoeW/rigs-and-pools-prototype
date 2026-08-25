@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import type { Site } from '../game/types.js';
+import type { DesignAxis } from '../data/customParts.js';
 
 /* The fab's part designer. Which part is being designed and how its points are
    spent is store state (g.s.design), so the sheet reads that directly; the view
@@ -11,7 +13,7 @@ import { useSheetA11y } from '../composables/useSheetA11y.js';
 const props = defineProps({
   /* The tab's active site — used only when g.s.design names a site that is no
      longer in the list, which is the pre-existing fallback. */
-  site: { type: Object as () => any, required: true },
+  site: { type: Object as () => Site, required: true },
   /* {frame:'Frame', mobo:'Board', …} — shared with the site picker. */
   kindLabels: { type: Object as () => Record<string, string>, required: true },
 });
@@ -19,9 +21,9 @@ const props = defineProps({
 const g = useGameStore();
 
 const designPreview=computed(()=>{ const d=g.s.design; if(!d) return null;
-  const site=g.s.sites.find(x=>x.id===d.fid)||props.site, fab=g.FAB(site.fab); const liveTop=g.liveTopOf(d.kind);
+  const site=g.s.sites.find(x=>x.id===d.fid)||props.site, fab=g.FAB(site.fab!)!; const liveTop=g.liveTopOf(d.kind);
   return { axes:g.DESIGN_AXES[d.kind], fab, totals:g.designTotals(d.kind,d.picks), stats:g.designStats(d.kind,d.picks,liveTop), cost:g.designCost(d.kind,d.picks,liveTop) }; });
-const axisAtCap=(ax: any)=>{ const d=g.s.design; if(!d) return true; const cur=d.picks[ax.key]||0;
+const axisAtCap=(ax: DesignAxis)=>{ const d=g.s.design; if(!d) return true; const cur=d.picks[ax.key]||0;
   if(cur>=g.MAX_AXIS_POINTS) return true;
   return g.designTotals(d.kind,{ ...d.picks, [ax.key]:cur+1 }).budget>designPreview.value!.fab.budget; };
 

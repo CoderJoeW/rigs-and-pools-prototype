@@ -6,18 +6,8 @@ import build from '../assets/floor/build.webp';
 import bad from '../assets/floor/bad.webp';
 import off from '../assets/floor/off.webp';
 
-/* One position on a site's floor plan.
-
-   Its own set of renders, alongside Chassis (square 64px badges beside a
-   single rig) and RigShot (the 16:9 shot fronting a Rigs row): these are
-   macro crops of a rack's front face, framed so the mesh and its LED rows fill
-   a wide tile edge to edge with no cabinet outline to shrink at this size. All
-   five states come from one crop box and differ only in what colour the LEDs
-   burn, so a position holds its exact framing as it changes state and only the
-   light moves.
-
-   An empty position renders as a <div> rather than a <button> — there is
-   nothing to open — and drops the render for a dashed outline. */
+// Rack tile architecture (own render set vs Chassis/RigShot, shared crop
+// box, empty-position fallback): docs/implementation-notes.md#floor-plan-rack-tile-srccomponentsracktilevue.
 const props = defineProps({
   state: { type: String, default: 'off' },
   empty: { type: Boolean, default: false },

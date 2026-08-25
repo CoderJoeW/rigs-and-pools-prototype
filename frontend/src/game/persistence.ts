@@ -1,4 +1,4 @@
-import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN, COVER_DAYS, PPLNS_COVER } from '../data/constants.js';
+import { C, TRUST_RAMP, SIM_RATIO, SIM_CHAINS, RIVAL_PER_CHAIN } from '../data/constants.js';
 import { CHAINS } from '../data/chains.js';
 import { SHELLS, SOURCES, PLANTS, STORAGE, SITEPART, jobPart } from '../data/site-parts.js';
 import { FABS, FAB } from '../data/fab.js';
@@ -7,17 +7,24 @@ import { DESIGN_AXES, MAX_AXIS_POINTS, designTotals, designStats, designCost } f
 import { MILESTONES, RANKS } from '../data/milestones.js';
 import { fmt } from '../utils/format.js';
 import { allUnlocked } from './state.js';
-import { nextRivalName } from './rivals.js';
+import { mkRival } from './rivals.js';
 import { storage } from '../services/storage.js';
 import { sfx } from '../services/audio.js';
-import type { Game } from './types.js';
+import type { Game, Sim, Pool, Rig, Group } from './types.js';
+import type { Part } from '../data/hardware.js';
 
 interface SaveFile { ver: number; savedAt: number; state: unknown }
+
+// A save can predate any field on Rig/GameState — that's what migration
+// exists to fix — so this code works with "might have anything, or
+// nothing" shapes rather than the current, fully-populated ones.
+type LegacyRig = Partial<Rig> & { chain?: string; pool?: string; pending?: number };
+// 'server'-owned pools predate the current owner union (now 'you'|'sim'|'rival').
+type LegacyPool = Omit<Pool, 'owner'> & { owner: string };
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installPersistence(G: Game): void {
   let wiped = false;
-  let restoring = false;
   let hydrating = false;
   async function saveNow(): Promise<void> {
     if (wiped) return;
@@ -27,7 +34,6 @@ export function installPersistence(G: Game): void {
   const nowMs = () => typeof performance === 'object' && performance.now ? performance.now() : Date.now();
   async function advance(seconds: number): Promise<number> {
     const credited = Math.min(seconds, C.OFFLINE_CAP);
-    restoring = true;
     sfx.busy = true;
     G.s.catchUp = { credited, done: 0 };
     const cu = G.s.catchUp as { credited: number; done: number };
@@ -44,7 +50,6 @@ export function installPersistence(G: Game): void {
       }
     } finally {
       sfx.busy = false;
-      restoring = false;
       G.s.catchUp = null;
     }
     return credited;
@@ -75,7 +80,6 @@ export function installPersistence(G: Game): void {
     hydrating = true;
     try { return await hydrateUnsafe(data); }
     catch (e) {
-      restoring = false;
       G.s.catchUp = null;
       console.warn('save failed to load, starting fresh:', e instanceof Error ? e.message : e);
       resetState();
@@ -84,20 +88,24 @@ export function installPersistence(G: Game): void {
     }
     finally { hydrating = false; }
   }
-  async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
-    restoring = true;
-    Object.assign(G.s, data.state);
+  // A save can predate whatever GameState field is being checked below —
+  // each migration here fixes exactly one such gap, in the order hydrateUnsafe
+  // applies them: docs/implementation-notes.md#save-migration-steps-srcgamepersistencets.
+  function resetTransientUiState(): void {
     G.s.toast = { n: 0, text: '', amount: '', cls: '' };
     G.s.catchUp = null;
     G.s.picker = null; G.s.sitePicker = null; G.s.design = null;
     G.s.rebuild = null; G.s.focusRig = null; G.s.speed = 1; G.s.wipeArm = false;
+  }
+  function reindexCustomParts(): void {
     if (!Array.isArray(G.s.customParts)) G.s.customParts = [];
-    for (const p of G.s.customParts as any[]) PART_MAP.set(p.id, p);
-    G.s.unlocked = allUnlocked();
+    for (const p of G.s.customParts) PART_MAP.set(p.id, p as unknown as Part);
+  }
+  function reseedOrReindexSims(): void {
     const needsSimReseed = !Array.isArray(G.s.sims) || !G.s.sims.length
-      || G.s.sims.some((m: any) => m.cash === undefined || m.style === undefined);
+      || G.s.sims.some((m: Partial<Sim>) => m.cash === undefined || m.style === undefined);
     if (needsSimReseed && G.seedSims) {
-      G.s.pools = (G.s.pools || []).filter((p: any) => p.owner === 'you');
+      G.s.pools = (G.s.pools || []).filter((p: Pool) => p.owner === 'you');
       G.seedSims(G.s.t || 0);
       for (const c of G.s.chains) {
         const start = G.simHashOf(c);
@@ -112,29 +120,45 @@ export function installPersistence(G: Game): void {
     } else if (G.reindexSims) {
       G.reindexSims();
     }
-
-    const legacy = G.s.rigs.some((r: any) => !r.group || ('chain' in r) || ('pool' in r));
+  }
+  function migrateLegacyGroups(): void {
+    const legacyRigs = G.s.rigs as LegacyRig[];
+    const legacy = legacyRigs.some(r => !r.group || ('chain' in r) || ('pool' in r));
     if (legacy || !G.s.groups || !G.s.groups.length) {
       G.s.groups = []; G.s.nextGroup = 1;
-      const combos = new Map<string, any>();
-      for (const r of G.s.rigs as any[]) {
+      const combos = new Map<string, Group>();
+      for (const r of legacyRigs) {
         const key = (r.chain || 'tessera') + '|' + (r.pool || 'solo');
         if (!combos.has(key)) {
-          const gr = { id: G.s.nextGroup++, name: G.s.groups.length ? 'Group ' + G.s.nextGroup : 'Main',
+          const gr: Group = { id: G.s.nextGroup++, name: G.s.groups.length ? 'Group ' + G.s.nextGroup : 'Main',
             chain: r.chain || 'tessera', pool: r.pool || 'solo', pending: 0 };
           G.s.groups.push(gr); combos.set(key, gr);
         }
-        const gr = combos.get(key);
+        const gr = combos.get(key)!;
         gr.pending += (r.pending || 0);
         r.group = gr.id; delete r.chain; delete r.pool; delete r.pending;
       }
       if (!G.s.groups.length) G.s.groups.push({ id: G.s.nextGroup++, name: 'Main',
         chain: 'tessera', pool: 'solo', pending: 0 });
     }
-    for (const r of G.s.rigs as any[]) if (!r.group) r.group = G.s.groups[0]!.id;
+    for (const r of legacyRigs) if (!r.group) r.group = G.s.groups[0]!.id;
+  }
+  // G.active and every Site-typed caller downstream of it assume G.s.sites
+  // is never empty (decommissionSite refuses to drop the last one) — but
+  // that's an in-app invariant only, not something a hand-edited or
+  // corrupted save is bound by, so hydration has to repair it at the door
+  // rather than let every caller re-guard against a state that "can't happen".
+  function repairEmptySites(): void {
+    if (Array.isArray(G.s.sites) && G.s.sites.length) return;
+    const fresh = G.freshState();
+    G.s.sites = fresh.sites;
+    G.s.nextSite = fresh.nextSite;
+    G.s.activeSite = fresh.activeSite;
+  }
+  function migrateLegacyDefaults(): void {
     if ('autoSell' in G.s) {
-      G.s.drip = { on: !!(G.s as any).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
-      delete (G.s as any).autoSell;
+      G.s.drip = { on: !!(G.s as unknown as { autoSell?: boolean }).autoSell, frac: 0.25, hours: 24 }; G.s.dripAt = 0;
+      delete (G.s as unknown as { autoSell?: boolean }).autoSell;
     }
     if (!G.s.drip) G.s.drip = { on: false, frac: 0.25, hours: 6 };
     if (!G.s.hold) G.s.hold = {};
@@ -142,6 +166,8 @@ export function installPersistence(G: Game): void {
     if (G.s.today && typeof G.s.today.blocks !== 'number') G.s.today.blocks = 0;
     if (typeof G.s.recentBlockUsd !== 'object' || G.s.recentBlockUsd === null || Array.isArray(G.s.recentBlockUsd))
       G.s.recentBlockUsd = {};
+  }
+  function rebalanceChains(): void {
     for (const c of G.s.chains) {
       const base = CHAINS.find(x => x.id === c.id);
       if (!base || (c.floor === base.floor && c.reward === base.reward)) continue;
@@ -155,10 +181,10 @@ export function installPersistence(G: Game): void {
       // Rescale to what the CURRENT model says the chain carries (population
       // arrived), not the old growth-rate model design-spec.md §6o replaced —
       // that model's answer would have multiplied every Obelisk miner ~130x.
-      const mine = G.s.sims.filter((m: any) => m.chain === c.id);
-      const have = mine.reduce((a: number, m: any) => a + m.hash, 0);
+      const mine = G.s.sims.filter((m: Sim) => m.chain === c.id);
+      const have = mine.reduce((a: number, m: Sim) => a + m.hash, 0);
       const want = G.simTargetOf ? G.simTargetOf(c.id) : SIM_RATIO * base.floor;
-      /* Through setSimHash, not `m.hash *= k`: the running totals sims.js
+      /* Through setSimHash, not `m.hash *= k`: the running totals sims.ts
          keeps (_simChainHash and the solo/pool splits) are maintained
          incrementally, and reindexSims has already run by here — so a bare
          assignment would leave every one of them stale for the session. */
@@ -170,39 +196,44 @@ export function installPersistence(G: Game): void {
       }
       c.obs = Math.max(c.floor, want);
     }
-    if (G.s.pools.some((p: any) => p.owner === 'server')) {
-      const dead = new Set(G.s.pools.filter((p: any) => p.owner === 'server').map((p: any) => p.id));
-      G.s.pools = G.s.pools.filter((p: any) => p.owner !== 'server');
-      // Through setSimPool for the same reason the rescale above goes through
-      // setSimHash: a bare assignment strands the miner's hashrate in
-      // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
-      for (const m of G.s.sims as any[]) if (dead.has(m.pool)) {
-        if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
-      }
-      for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
-      let seq = 0;
-      for (const cid of SIM_CHAINS) {
-        const c = CHAINS.find(x => x.id === cid)!;
-        for (let i = 0; i < RIVAL_PER_CHAIN; i++) {
-          const scheme = Math.random() < 0.35 ? 'PPS' : 'PPLNS';
-          const fee = scheme === 'PPS' ? 0.015 + Math.random() * 0.045 : 0.005 + Math.random() * 0.035;
-          const per = C.PAY * c.mult * (scheme === 'PPS' ? COVER_DAYS : PPLNS_COVER);
-          const bond = Math.round(per * SIM_RATIO * c.floor * (0.12 + Math.random() * 0.45));
-          G.s.pools.push({ id: 'rm' + (++seq), chain: cid, owner: 'rival',
-            name: nextRivalName(seq), scheme, fee, bond, bond0: bond,
-            cap: 0, born: G.s.t, live: true, earned: 0, found: 0, feeMoved: -1e9, lapse: 0 });
-        }
-      }
-      G.say('pool', 'The official pools have wound up — the market is all private operators now');
+  }
+  function retireServerPools(): void {
+    const legacyPools = G.s.pools as LegacyPool[];
+    if (!legacyPools.some(p => p.owner === 'server')) return;
+    const dead = new Set(legacyPools.filter(p => p.owner === 'server').map(p => p.id));
+    G.s.pools = legacyPools.filter(p => p.owner !== 'server') as Pool[];
+    // Through setSimPool for the same reason rebalanceChains's rescale goes
+    // through setSimHash: a bare assignment strands the miner's hashrate in
+    // _simPoolHash for a pool that no longer exists, and out of _simSoloHash.
+    for (const m of G.s.sims) if (dead.has(m.pool)) {
+      if (G.setSimPool) G.setSimPool(m, 'solo'); else m.pool = 'solo';
     }
+    for (const gr of G.s.groups) if (dead.has(gr.pool)) gr.pool = 'solo';
+    // The same rival factory a live game founds new rivals through
+    // (rivals.ts) — this migration used to hand-build its own pool object
+    // with a simpler, less accurate bond formula.
+    for (const cid of SIM_CHAINS) for (let i = 0; i < RIVAL_PER_CHAIN; i++) G.s.pools.push(mkRival(cid, G.s.t));
+    G.say('pool', 'The official pools have wound up — the market is all private operators now');
+  }
+  async function hydrateUnsafe(data: SaveFile): Promise<boolean> {
+    Object.assign(G.s, data.state);
+    resetTransientUiState();
+    repairEmptySites();
+    reindexCustomParts();
+    G.s.unlocked = allUnlocked();
+    reseedOrReindexSims();
+    migrateLegacyGroups();
+    migrateLegacyDefaults();
+    rebalanceChains();
+    retireServerPools();
     G.ensureWeather(); G.ensureGens();
-    restoring = false;
     await creditAway(Math.max(0, (Date.now() - data.savedAt) / 1000));
     return true;
   }
   function resetState(): void {
     const fresh = G.freshState();
-    for (const k of Object.keys(G.s)) delete (G.s as any)[k];
+    // In-place clear rationale: docs/implementation-notes.md#save-migration-steps-srcgamepersistencets.
+    for (const k of Object.keys(G.s)) delete (G.s as unknown as Record<string, unknown>)[k];
     Object.assign(G.s, fresh);
     G.liveCards.length = 0; G.liveCards.push(...CARDS);
     G.livePsus.length = 0; G.livePsus.push(...PSUS);
@@ -246,7 +277,7 @@ export function installPersistence(G: Game): void {
   /* The flat surface components read. This list is hand-maintained: anything an
      install* module puts on G has to be repeated here or it never reaches the
      Pinia store, and reading it gives undefined rather than an error.
-     src/stores/__tests__/exportSurface.test.js makes that loud — it fails if a
+     src/stores/__tests__/exportSurface.test.ts makes that loud — it fails if a
      key on G is neither published here nor declared private there. */
   G.__exports = {
     s: G.s,

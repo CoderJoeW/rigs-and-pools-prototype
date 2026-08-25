@@ -2,15 +2,19 @@ import { computed } from 'vue';
 import { C } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game } from './types.js';
+import type { Game, Site, DraftPricing, DraftCheck } from './types.js';
+import type { Frame, Mobo, Cooler, Card, Psu } from '../data/hardware.js';
 
+// Same duck-typed-union rationale as dispatch.ts's SP/P: draft.kind picks
+// between a GPU chassis part and an ASIC controller part with unrelated
+// fields, read here without a runtime discriminant check.
 const P = (id: string): any => PART(id);
 
 // Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 export function installBuildDraft(G: Game): void {
-  const dp = computed(() => {
+  const dp = computed<DraftPricing>(() => {
     const draft = G.s.draft, coolPart = P(draft.cool);
-    let base: any;
+    let base: Omit<DraftPricing, 'wall'>;
     if (draft.kind === 'gpu') {
       const framePart = P(draft.frame), moboPart = P(draft.mobo), psuPart = P(draft.psu), unitPart = P(draft.unit);
       base = { maxSlots:Math.min(framePart.slots,moboPart.pcie), coreW:gpuCoreW(framePart,moboPart,coolPart,unitPart,draft.n),
@@ -27,35 +31,35 @@ export function installBuildDraft(G: Game): void {
     return { ...base, wall: base.coreW / base.psu.eff };
   });
   const checks = computed(() => {
-    const draft = G.s.draft, draftInfo = dp.value, site = G.active.value, results: any[] = [];
+    const draft = G.s.draft, draftInfo = dp.value, site = G.active.value, results: DraftCheck[] = [];
     const limitedBy = draft.kind === 'gpu'
       ? (P(draft.frame).slots <= P(draft.mobo).pcie ? 'the frame' : 'the motherboard') : 'the controller';
-    results.push({ ok:draft.n<=draftInfo.maxSlots, title:'Cards fit the slots',
+    results.push({ key:'slots', ok:draft.n<=draftInfo.maxSlots, title:'Cards fit the slots',
       label:draft.n+' units into '+draftInfo.maxSlots+' slots',
       fix:'The smaller of the frame and the board sets this — right now it is '+limitedBy+'.' });
     const cap = G.psuUsableW(draftInfo.psu);
-    results.push({ ok:draftInfo.coreW<=cap, title:'Supply carries the draw',
+    results.push({ key:'psuDraw', ok:draftInfo.coreW<=cap, title:'Supply carries the draw',
       label:fmt.w(draftInfo.coreW)+' draw against '+fmt.w(cap)+' usable',
       fix:G.psuCarrying(draftInfo.coreW)+' would carry it.' });
-    results.push({ ok:draftInfo.conn<=draftInfo.psu.conn, title:'Enough PCIe connectors',
+    results.push({ key:'psuConn', ok:draftInfo.conn<=draftInfo.psu.conn, title:'Enough PCIe connectors',
       label:draftInfo.conn+' PCIe connectors, supply has '+draftInfo.psu.conn,
       fix:G.psuWithConn(draftInfo.conn)+' would fit.' });
-    results.push({ ok:G.siteRigs(site).length<G.siteSlots(site), title:'Free position on the floor',
+    results.push({ key:'floor', ok:G.siteRigs(site).length<G.siteSlots(site), title:'Free position on the floor',
       label:'Floor space at '+site.name+': '+G.siteRigs(site).length+' of '+G.siteSlots(site),
       fix:'A bigger shell has more positions.' });
     const coolDelta = G.sitePlantW(site, draftInfo.coreW / Math.max(0.01, draftInfo.air)) - G.sitePlantW(site);
     const after = G.siteDemand(site) + draftInfo.coreW / draftInfo.psu.eff + coolDelta;
-    results.push({ ok:after<=G.siteCapacity(site)+G.battFirm(site), title:'Power budget within limit',
+    results.push({ key:'power', ok:after<=G.siteCapacity(site)+G.battFirm(site), title:'Power budget within limit',
       label:'Power at '+site.name+': '+fmt.w(after)+' of '
         +fmt.w(G.siteCapacity(site)+G.battFirm(site))+' available'
         +(coolDelta>1?' (incl. '+fmt.w(coolDelta)+' more cooling)':''),
       fix:'Install another source at this site.' });
-    results.push({ ok:G.s.cash>=draftInfo.cost, title:'You can pay for it',
+    results.push({ key:'cash', ok:G.s.cash>=draftInfo.cost, title:'You can pay for it',
       label:'Parts cost '+fmt.usd(draftInfo.cost)+', you hold '+fmt.usd(G.s.cash),
       fix:'Short '+fmt.usd(draftInfo.cost-G.s.cash)+'.' });
     return results;
   });
-  const canBuild = computed(() => checks.value.every((check: any) => check.ok));
+  const canBuild = computed(() => checks.value.every((check: DraftCheck) => check.ok));
   const draftEff = computed(() => dp.value.coreW > 0 ? dp.value.mh / (dp.value.coreW / dp.value.psu.eff) : 0);
   const buildTime = computed(() => G.s.rigs.length === 0 ? 0 : C.BUILD_BASE * (0.6 + G.s.draft.n * 0.1));
   // Same shape as rigRev/rigPow so the pre-purchase estimate and the
@@ -68,18 +72,11 @@ export function installBuildDraft(G: Game): void {
     const net = rev - pow;
     return { rev, pow, net, payback: net > 0 ? draftInfo.cost / net : Infinity };
   });
-  // Preset generator: tries real drafts against the real canBuild/checks
-  // gate (cash-bound favours cheap cards, power-bound favours MH/W) — the
-  // 16x rig-positions-vs-frame-slots bug and the rejected cooling-escalation
-  // idea are both documented in design-spec.md §6n.
-  // candidateBuilds is the one search both generatePreset and openBuildCost
-  // run, replacing two copies that had silently diverged (issue #27):
-  // generatePreset writes the draft and runs the full canBuild gate incl.
-  // cash; openBuildCost skips cash and tests power headroom directly, read-only.
-  function* candidateBuilds(site: any): Generator<{ unit: any; n: number; frame: any; mobo: any; cool: any; core: number; psu: any }> {
+  // Shared search behind generatePreset/openBuildCost — docs/implementation-notes.md#build-draft-search-srcgamebuilddraftts
+  function* candidateBuilds(site: Site): Generator<{ unit: Card; n: number; frame: Frame; mobo: Mobo; cool: Cooler; core: number; psu: Psu }> {
     const flip = G.siteDemand(site) >= G.siteCapacity(site) * C.FLIP_AT;
     const pool = G.cards();
-    const order = flip ? [...pool].sort((cardA: any, cardB: any) => (cardB.mh / cardB.w) - (cardA.mh / cardA.w)) : pool;
+    const order = flip ? [...pool].sort((cardA: Card, cardB: Card) => (cardB.mh / cardB.w) - (cardA.mh / cardA.w)) : pool;
     const maxCards = Math.min(FRAMES[FRAMES.length - 1]!.slots, MOBOS[MOBOS.length - 1]!.pcie);
     for (const unit of order) {
       for (let n = maxCards; n >= 1; n--) {
@@ -88,7 +85,7 @@ export function installBuildDraft(G: Game): void {
         if (!frame || !mobo) continue;
         const cool = COOLERS[0]!;
         const core = gpuCoreW(frame, mobo, cool, unit, n);
-        const psu = G.livePsus.find((candidate: any) => G.psuUsableW(candidate) >= core && candidate.conn >= n * unit.conn);
+        const psu = G.livePsus.find((candidate: Psu) => G.psuUsableW(candidate) >= core && candidate.conn >= n * unit.conn);
         if (!psu) continue;
         yield { unit, n, frame, mobo, cool, core, psu };
       }
@@ -105,20 +102,15 @@ export function installBuildDraft(G: Game): void {
     Object.assign(G.s.draft, before);   // the search scribbles on the draft; put it back
     return false;
   }
-  const unitEcon = (unit: any) => {
+  const unitEcon = (unit: Card) => {
     const site = G.active.value;
     const wall = unit.w / P(G.s.draft.psu).eff;
     const net = unit.mh * G.draftRate() - wall / 1000 * 24 * G.margRate(site);
     return { net, wall, payback: net > 0 ? unit.price / net : Infinity, perKw: net / (wall / 1000), mhw: unit.mh / unit.w };
   };
-  // openBuildCost answers issue #7's idle-cash advisory ("is something
-  // buildable, and what would it cost") without depending on G.s.draft,
-  // which only refreshes on BuildView's mount and goes stale the moment site
-  // constraints move past it. Mirrors generatePreset()'s search read-only
-  // and skips the cash check, since the point here is a cost to compare
-  // cash against, not an affordability verdict.
-  const siteRigsOpen = (site: any) => G.siteSlots(site) - G.siteRigs(site).length;
-  const openBuildCost = (site: any): number | null => {
+  // Why this exists separately from generatePreset: docs/implementation-notes.md#build-draft-search-srcgamebuilddraftts
+  const siteRigsOpen = (site: Site) => G.siteSlots(site) - G.siteRigs(site).length;
+  const openBuildCost = (site: Site): number | null => {
     if (siteRigsOpen(site) <= 0) return null;
     for (const { unit, n, frame, mobo, cool, core, psu } of candidateBuilds(site)) {
       const coolDelta = G.sitePlantW(site, core / Math.max(0.01, frame.air * cool.fac)) - G.sitePlantW(site);

@@ -17,6 +17,27 @@ still resolve at call time exactly as the closure did; declaration order,
 hoisting and intra-module references are otherwise untouched. See
 design-spec.md §13e (The closure refactor) for the full migration story.
 
+## The `Game`/`GameExports` types (`src/game/types.ts`)
+
+`G` is intentionally a partly-loose type. The installers described above
+each contribute fields/methods to the same object, so `Game` grows a real,
+named member for each piece as it's typed precisely, while an index
+signature covers whatever installer output isn't worth naming yet — that
+mirrors the object's own assembly, and claims no more precision than the
+loosely-typed half of the codebase can back up. Rigs and pools specifically
+stay `any`: they're assembled across several not-fully-typed installers
+(`buildDraft.ts`, `pools.ts`, `poolMarket.ts`), and their shapes won't be
+worth tightening until those call sites are.
+
+`GameExports` — the flat surface `persistence.ts` publishes to components
+via Pinia (`G.__exports`, returned verbatim as the store's setup-store
+body) — is named explicitly even though every member is still `any`,
+purely so Pinia's `defineStore` can infer a real object type for the
+store: an index-signature-only type collapses to `any` as a whole, and
+every `g.xxx` access in a component would fail to resolve. `s` gets the
+one member precise enough to be cheap and worth it; the rest stay `any`
+until naming their real types earns its keep.
+
 ## Weather async-readiness seam (`src/services/weatherService.js`, `src/game/weather.js`)
 
 `weatherService` exposes `peek(day)` (sync, returns cached reading or
@@ -641,7 +662,116 @@ louder → muted. A separate slider would have to fit into a top bar
 already full at 320px, and a game with three cues doesn't need continuous
 gain — it needs "off," "on," and "on, I am across the room."
 
+## Save migration steps (`src/game/persistence.ts`)
+
+`hydrateUnsafe` used to be one 116-line function; it is now a fixed
+sequence of named steps, each fixing exactly one gap a save can predate:
+`resetTransientUiState`, `repairEmptySites`, `reindexCustomParts`, the
+`allUnlocked()` refresh, `reseedOrReindexSims`, `migrateLegacyGroups`,
+`migrateLegacyDefaults`, `rebalanceChains`, `retireServerPools`. The order
+matters and mirrors the original inline sequence — later steps read state
+earlier ones establish (`repairEmptySites` has to run before anything else
+touches `G.s.sites`, since `migrateLegacyDefaults` iterates it directly;
+`migrateLegacyGroups` needs every rig to already have a resolved
+`group`-free legacy shape; `rebalanceChains` and `retireServerPools` both
+read `G.s.sims`, which `reseedOrReindexSims` must have already seeded or
+reindexed) — so don't reorder the calls in `hydrateUnsafe` without
+checking what each step assumes is already true.
+
+**`resetState`'s in-place clear.** Every `GameState` field is required, so
+the object is transiently invalid by the type's own contract between the
+clear and the following `Object.assign` — repopulated on the very next
+line. Clearing in place (deleting each key rather than reassigning `G.s`
+to a new object) keeps Vue's `reactive()` proxy identity, so every
+existing computed/watcher stays wired to the same object instead of
+observing a dead one.
+
+**`repairEmptySites`.** `G.active` (`timeOfDay.ts`) and every `Site`-typed
+caller downstream of it are typed non-nullable on the strength of an
+in-app invariant — `decommissionSite` refuses to drop a farm's last site —
+but a hand-edited or corrupted save isn't bound by that invariant, since
+this game persists client-side with no server-side validation. Rather
+than reintroduce `| undefined`/null-guards across the ~90 places `G.active`
+is read, hydration repairs the one place the invariant can actually break:
+an empty or missing `G.s.sites` falls back to `freshState()`'s starting
+site (and matching `nextSite`/`activeSite`) before anything else runs.
+
+## Sites view hero scrim (`src/views/SitesView.vue`)
+
+The site hero's render is a backdrop, not a picture: it sits under a scrim
+heavy enough that the name and the three readings clear contrast on it
+whatever the shot is doing, and the card keeps its own border so it still
+reads as a card.
+
+The scrim is lighter overall than it used to be. The old plates were
+bright skies over a quarry and needed holding down; the current plates
+are interiors already shot with their mid-tones up and their top third
+kept calm, so the same strength scrim buried the room the card exists to
+show.
+
+Two layers rather than one, because the two jobs are different. `::after`
+is the overall wash, now gentle at the top. `::before` is a short band
+behind the status pill alone — 9.5px uppercase, no plate of its own, and
+the one piece of type here that the lighter wash left short of 4.5:1. It
+decays inside 74px, so it buys that row its contrast without touching the
+room below.
+
+## Rigs view (`src/views/RigsView.vue`)
+
+The Rigs tab's own chrome. Everything shared with the rest of the app —
+the card, the pill, the `.dot` vocabulary, the swipe mechanics — still
+comes from `main.css`; what lives in this file's `<style>` is the layout
+the mockup asks for and nothing else uses: a page header, a hero that
+fronts the site with a photograph, a list of rigs as separate cards
+rather than rows of one, and the sort/select bar between them.
+
+**One card per rig, not one card of rows** (`.riglist`): at this row
+height a shared panel reads as a table, and the mockup's list reads as a
+shelf of machines. The gap is what does it, so the swipe wrapper takes
+over the card's own frame — and its overflow, which is what clips the
+action panel underneath to the same rounded corners.
+
+**The swipe-reveal panel under the row** (`.rigswact`) is filled from the
+start rather than tinted-then-filled: it sits inside the rig's own card
+with nothing else in it, so there is no neighbouring row for a pale wash
+to get confused with, and the mockup shows it solid. The label uses
+`var(--card)` rather than white for the reason `main.css` states at
+`.rigswact.arm`: the dark theme's `--red` and `--green` are light enough
+that white on them lands under 3.5:1, where the card colour clears AA
+against both — which is also why `.arm` can no longer signal by filling
+in (that is the resting state now) and instead signals with a ring in the
+label's own colour. Darkening the fill would have been the obvious
+alternative and is the one thing that cannot work: it drags the dark
+theme's near-black label back under AA.
+
+"Let go now" happens on the glyph rather than on the panel: the panel's
+edges *are* the card's edges, so anything drawn there (a ring, a heavier
+border) lands on top of the card frame and reads as trim rather than as a
+change of state. The disc is well inboard, and flipping its fill costs no
+contrast — the glyph and its ground simply swap the pair they already had.
+
+Sort/select bar controls are padded to a real target rather than left at
+the global `*{padding:0}` reset — as bare text these were ~17px tall on a
+layout that is driven by thumbs, where the `.btn-sm` they replaced was
+~28px. The negative margins keep the padding from moving the text off the
+page's own margin.
+
 ## Chains view (`src/views/ChainsView.vue`)
+
+**Chain card plate (`.cc-plate`).** The chain's own plate, bled in from
+the left and masked out before it reaches the numbers on the right. Not a
+full-bleed banner: the card's text is ink-on-card in both themes, and
+turning it light to sit on a photograph would have made these the only
+cards in the app that do.
+
+The height is an accessibility constraint, not a look. `.cc-meta` and
+`.cc-k` are 10-11px in `--ink-3`, which this project already runs at
+about 3.1:1 on a bare card; a plate behind them dragged that to 2.6:1.
+Ending at 34px keeps it above that line entirely — it sits behind the
+gem, which is opaque, and behind the name, which is 17px semibold — so
+those labels are back on plain card at exactly the contrast they had
+before. Held at `--plate-a` so it reads at the same strength on either
+ground.
 
 **Segmented layout.** This tab used to be one scroll carrying five
 unrelated sections: the chains, the pool market, the rivals in it, the
@@ -775,6 +905,124 @@ Four of the sampled series look like they could collapse into fewer:
   `lifetimeNet` is the cumulative figure itself, so the series records
   that directly.
 
+## Tweened display numbers (`useTweenedNumber.ts`)
+
+Every figure in the UI is a plain interpolation of a store value, so a
+block landing and paying out $40 renders exactly like a page reload — one
+string on one frame, a different string on the next. `useTweenedNumber`
+eases the *displayed* number toward the real one over a short window so
+the change is visible without staring at the pixel (issue #43).
+Presentation only: the source of truth is never touched. Only a
+deliberately short list of figures opts in — TopBar's cash and the Farm's
+"Net today" hero (ambient: they move continuously in the background),
+and Build's verdict panel (discrete: it only moves because the player
+just acted, so the same easing reads as feedback on that action).
+Formatting stays the caller's job — pass the returned ref through the
+same `fmt.*` helper the raw value used.
+
+**Retargeting.** The simulation ticks 10x/second, so a new target usually
+arrives mid-flight. Each change re-aims from wherever the display
+currently sits rather than restarting from the old target, so the number
+never jumps backwards and only one flight is ever in progress. With
+ease-out, ~100ms into a 320ms window the display has already covered two
+thirds of the gap, so under a continuous stream of ticks it trails the
+true value by a fraction of one tick's delta — at any speed multiplier,
+since `SPEEDS` scales simulated dt, not the real-time tick rate. The
+window is wall-clock, so a bigger per-tick jump is covered faster rather
+than crawling.
+
+**`snapRatio`/`snapFloor` (discontinuity).** A change larger than
+`snapRatio` times the value's own magnitude isn't the simulation moving,
+it's the ground shifting under it (a save loading over a fresh store) —
+counting through it would be noise, so it snaps instead. The multiple is
+deliberately generous: spending most of your cash on a rig is a change
+worth watching, and still tweens. `snapFloor` is the scale below which
+nothing counts as a discontinuity, so a figure near zero — "Net today"
+just after the day rolls over — still animates its first real move
+instead of snapping it.
+
+**`epsilon`.** A live rig moves cash and the day's net by a tiny fraction
+of a cent on every tick from power accruing. Animating a change no
+formatter could render would re-render the component for nothing and
+keep the RAF loop alive permanently, so anything under epsilon is applied
+outright and exactly. It's compared against the *displayed* value, so a
+small tick arriving mid-animation doesn't cut that animation short.
+
+**Reduced motion.** `main.css`'s blanket rule only flattens CSS
+transition/animation durations; a JS tween is invisible to it, so the
+media query is checked here directly and re-read on every change, so
+toggling the OS setting takes effect without a reload.
+
+## Site photography (`utils/siteArt.ts`)
+
+The old scheme dealt three plates by `(site.id - 1) % 3`, so the picture
+had no relationship to the place it labelled — a spare bedroom and a
+warehouse bay were equally likely to show any of them — and all three
+were photographs of an open-pit *ore* mine, a different industry from the
+one this game is about. Every shell in `data/site-parts.ts` now has its
+own interior, shot to the same direction: real light, mid-tones held up
+so the top third of the frame stays calm under the status pill and name,
+and enough recognisable kit in frame (a breaker panel, ducting, a battery
+on the wall) that the picture says which tier you're on before you read
+a word.
+
+**Day/night.** Each shell was shot twice, the night plate produced as an
+edit of the day one so room, layout and camera are identical and only
+the light differs — which is what lets the two cross-fade rather than
+cut. `sitePhase`'s threshold is the solar elevation crossing zero (06:00/
+18:00 on the `DAY_HOURS` cycle), exactly where the day and night plates
+were lit to meet; it restates `timeOfDay.ts`'s internal `hourOf()` logic
+the same way `App.vue` does for the ambient layer, so the photograph
+always agrees with the sky and tariff.
+
+**Film.** The three biggest shells also have a five-second silent loop
+cut from their night plate — only those three, since they're the tiers a
+player spends real time looking at, and a loop costs about six stills in
+bytes. `siteFilm` returns null for the rest and `SiteFilm.vue` shows the
+still instead. Each loop ships as both WebM (VP9) and MP4 (H.264): H.264
+is the format every browser takes, Safari included, but it's
+patent-encumbered and a Chromium built without it treats the element as
+undecodable rather than falling back, so WebM is listed first for those
+that can take it.
+
+**Fallback.** A save written before a shell existed can still name it,
+but an unknown shell id must not blank the hero, so `sitePlate` falls
+back to `bedroom` — the one every run starts in.
+
+### Farm-row thumbnail (`src/components/SiteShot.vue`)
+
+Replaces `RackShot`, which showed the same studio photograph of a rack
+for every site whatever it was: a spare bedroom and a warehouse bay were
+the same picture, and the picture was of neither. This shows the shell,
+in the light the simulation says it is — the same plates the Sites hero
+uses, so tapping a row takes you to a bigger version of what you just
+tapped rather than to somewhere you have not seen.
+
+No film here, deliberately. The Farm lists every site at once, and three
+or four videos decoding behind a scrolling dashboard buys nothing at
+104px — motion belongs on the one site you have actually opened.
+
+Still per-state at the border, as before: the render is of a place, and
+whether that place is running, hot or dark is state the photograph
+cannot carry.
+
+## Build draft search (`src/game/buildDraft.ts`)
+
+`candidateBuilds` is the one search both `generatePreset` and
+`openBuildCost` run over, replacing two copies that had silently diverged
+(issue #27): `generatePreset` writes the result into `G.s.draft` and runs
+the full `canBuild` gate including cash; `openBuildCost` skips the cash
+check and tests power headroom directly, read-only. The preset generator
+tries real drafts against the real `canBuild`/`checks` gate — cash-bound
+favours cheap cards, power-bound favours MH/W — rather than a separate
+heuristic; the 16x rig-positions-vs-frame-slots bug and the rejected
+cooling-escalation idea that motivated this are both in design-spec.md §6n.
+
+`openBuildCost` answers issue #7's idle-cash advisory ("is something
+buildable, and what would it cost") without depending on `G.s.draft`,
+which only refreshes on BuildView's mount and goes stale the moment site
+constraints move past it. It mirrors `generatePreset`'s search read-only.
+
 ## Chain anchor decay (`advanceChainAnchor` in `chainEconomy.js`)
 
 `chain.anchor0` freezes the save's *starting* anchor so decay always
@@ -783,3 +1031,225 @@ was. `persistence.js`'s sim-reseed/reset/retune paths overwrite
 `chain.anchor` directly without touching `anchor0`, so a mid-decay save
 that goes through one of those keeps its original maturity floor instead
 of resetting it.
+
+## Single-series stat chart (`src/components/StatChart.vue`)
+
+One measure, one hue, over the ~80 days of samples the simulation keeps.
+Three of these sit on the Stats tab (one per measure) rather than sharing
+an axis — efficiency, hashrate and money have nothing in common to put on
+one scale, and two y-axes on one frame is the one thing a chart must never
+do.
+
+One series means no legend: the title names it. What replaces a legend is
+the direct label at the live end — one value, on the last point, rather
+than a number on every point.
+
+There is deliberately no "sum these for me" mode. A cumulative chart has
+to be fed a cumulative series: the per-day series here are snapshots of
+counters that reset at midnight, so adding them up produces a number with
+no meaning. The caller passes the series that already means what the
+chart claims. `avg` is opt-in for the same reason — an average is
+meaningful for a level sampled at an instant (hashrate, MH/W, cash) and
+misleading for one of those resetting counters, where it reports roughly
+half the real daily figure.
+
+Interaction is a scrub rather than a hover crosshair: this is a 440px
+touch layout, so the pointer that reads a chart here is a finger already
+resting on it — dragging moves a marker and swaps the direct label for
+the value under it. Releasing returns the label to the live end.
+
+## Part catalogue tiles (`src/components/PartTile.vue`)
+
+The component thumbnail beside each row of the Build tab's parts list, and
+beside every option inside the pickers those rows open. Keyed by part, not
+by slot — it used to take a slot name ('unit', 'frame', 'psu') and hand
+back one of five pictures, so all twelve cards shared a photograph and so
+did all ten power supplies. The Build tab is a shop, and every ladder in
+`data/hardware.ts` is monotonic: a dearer part is better on every axis
+that matters. None of that was visible with one photo per slot. Now every
+catalogue id has its own tile, and opening a picker shows the ladder as
+objects rather than as a column of identical squares over changing text.
+
+**How they were shot.** Five contact sheets, one per family, every member
+of a family in a single frame on one seamless studio floor under one soft
+key from upper left, then cut apart on a shared square box. That is what
+makes a column of five read as one set: the objects differ, the framing
+and the light do not. It is also why this cost five generations rather
+than forty-three — and why a sixth family could be added the same way.
+
+The warm studio ground is deliberate and is the one place the app's art
+departs from the near-black used for installed hardware (RigShot,
+RackTile, Chassis). Those show machines in a room; these show goods on a
+shelf. The tile's own background is set to match the sheets' floor so the
+crop sits on it rather than fighting a dark frame.
+
+The tile itself is decorative (`aria-hidden` unless a caller passes
+`label`) — every row and every option already names its own part in text
+beside the tile.
+
+**Runtime fallback for minted parts.** The catalogue is not fixed. Two
+kinds of part are minted at runtime and can never have a tile of their
+own: `hardware.ts` grows the ladder every `GEN_DAYS` with `g<n>a`/`g<n>b`
+cards and a matching `gp<n>` supply — an endless series, so shipping art
+for it is not a thing that can be finished — and the fab mints
+`custom-<kind>-<stamp>` parts a player designed themselves. Both sit above
+the top of the ladder they extend, so the honest picture for either is the
+top static part of that family — a top-end card really is what a
+next-generation card looks like. `tileFor()` falls back to
+`TOP_OF_FAMILY[kind]`'s tile, keeping the column of tiles full instead of
+putting an empty square against the best hardware in the game from
+in-game day 14 onward.
+
+`TILES` is an eager `import.meta.glob` over `../assets/part/*.webp` rather
+than forty-three import lines: the set is exactly the contents of the
+directory, and a part added to the catalogue needs only its tile dropped
+in beside the others.
+
+## Rig hero shot (`src/components/RigShot.vue`)
+
+The wide hardware shot that fronts every row of the Rigs list. Its own set
+of renders, and the reason it is not one of the app's other hardware
+visuals: `Chassis` is a 36–44px square badge that sits inside a line of
+text, and `RackTile` is a macro crop of a rack's mesh with no cabinet
+outline left in frame. This one is a 16:9 studio shot of a single rig with
+the whole enclosure in frame, because the Rigs row is the one place in the
+app that shows one machine at a size where the machine itself is the
+subject rather than a marker for it.
+
+**Two axes, not one.** Until this shot existed, every rig in the fleet —
+a two-card milk crate and a sixteen-slot rack shelf alike — shared one
+photograph, so the single most legible decision the Build tab offers was
+invisible everywhere it mattered. The frame is now the second axis;
+`utils/rigArt.ts` owns which of the three art classes a frame id wears,
+and why there are three.
+
+No chain LED, unlike `RackTile`'s version of this idea: a tile on the
+floor plan is wordless and needs the bar to say which chain it points at,
+where this row names the chain in text two lines down, with its
+`ChainMark` beside it. Painted here as well it was pure duplication — and
+a bright bar laid over a photograph whose own LEDs are the subject read as
+a fault in the picture rather than as a label.
+
+## Chain emblem (`src/components/ChainGem.vue`)
+
+A chain's emblem — the faceted stone that fronts its card on the Chains
+tab. One cut, five colours, and that is the whole idea: a chain's identity
+in this app has always been its OKLCH hue (`chains.ts`, `ChainMark`), so
+five different stones would have introduced a second, competing identity
+system for the same five things. Rendered once and recoloured per chain,
+they read as one set of five rather than five unrelated ornaments, and the
+hue in the render is the hue on the mark beside it.
+
+All five share one 1740px crop box measured on the base render, so the
+stone holds its exact size and position from card to card — only the
+colour moves, the same rule the rack, floor and rig sets follow.
+
+Decorative by default (the name is right beside it on a chain card); a
+caller with no such text passes `label` and gets a described image back.
+Falls back to the flat `--chain-h` swatch for any chain id without a
+render, so adding a chain to the catalogue cannot break this tab before
+its art exists.
+
+## Career-rank medallion (`src/components/RankBadge.vue`)
+
+One badge, six metals, climbing: copper, brass, gunmetal, silver, gold,
+platinum. The form never changes — same hexagonal frame, same pickaxe
+over a gearwheel, same crop box measured on the copper render — so the
+ladder reads as one object being upgraded rather than six unrelated
+awards, and the only thing that moves between ranks is what it is made
+of. The same rule the rack, rig and gem sets follow.
+
+Keyed by index into `RANKS` rather than by name: the ladder is ordered
+and what a rank is called is a label on it, so renaming one in
+`milestones.ts` cannot silently unhook its art. An index past the art
+falls back to the last badge rather than rendering nothing — a seventh
+rank added to the catalogue should look unfinished, not broken.
+
+The dark tile it sits on (in its `<style>`) is the same one every other
+generated asset in the app wears — `RigShot`, `ChainGem` and `PartTile`
+all frame their render rather than trying to knock its ground out.
+Blending it away was the first attempt and it does not survive both
+themes: the render's ground is near-black but not black, so `screen` left
+a grey plate on the dark card and would have blown the badge out on the
+light one. A framed tile is what the rest of the app already looks like,
+and it reads as deliberate in both.
+
+## Owned pool card (`src/components/MyPoolCard.vue`)
+
+One pool you own, on the Chains tab: capacity and bond, the members you
+can point at it, the fee dial and its projection, and the close/top-up
+controls. In the view this used to be a `v-for` body whose every piece of
+local state was a map keyed by pool id — `feeDraft[p.id]`,
+`poolRenameOpen[p.id]`, `poolRenameDraft[p.id]`. One card per component
+means those are just refs, and the keying disappears.
+
+**Hashrate sparkline.** `tick.ts` appends a `poolHash` sample to
+`pool.hist` every four in-game hours, so it only draws once a pool has
+been running a while — which is why an earlier extraction lost it
+silently: a freshly founded pool has an empty `hist` and never reaches
+the branch.
+
+**Fee draft.** An unset fee draft means "showing the live fee" — the
+projection and the Move/Cancel pair only appear once the player has
+actually moved the slider.
+
+**Why `demand`/`tierBond` are memoised and `poolHash`/`poolPnl` are not.**
+`demand` and `tierBond` scan every miner on the pool's chain — tens of
+thousands of them once the network has filled — and the template asks
+for them a dozen times per render between the "Turning away" line, the
+top-up button's four states and the fee projection. Through `computed()`
+each is one call per render, which measured as the difference between
+~90ms and ~15ms for an open card; the fee slider re-renders on every
+input event, so that is a live cost. They are cacheable because they walk
+`G.s.sims`, which *is* reactive: a miner's hashrate or chain moving
+invalidates them.
+
+`poolHash` and `poolPnl` look like the same kind of thing but are
+deliberately not memoised. `poolHash` reads the sim half of a pool's book
+out of `G._simPoolHash` — a plain object `sims.ts` keeps off Vue's
+reactivity on purpose (see that file's header) — so a `computed()` over
+it caches a value nothing will ever invalidate. Memoised, a card whose
+members were all simulated rendered a frozen "holding 0 MH/s", and with
+it a frozen FULL badge, capacity bar, blocks-a-day and projection delta.
+They are cheap anyway: a walk of the player's own groups and rigs, not of
+the network.
+
+## Floor-plan rack tile (`src/components/RackTile.vue`)
+
+One position on a site's floor plan. Its own set of renders, alongside
+`Chassis` (square 64px badges beside a single rig) and `RigShot` (the
+16:9 shot fronting a Rigs row): these are macro crops of a rack's front
+face, framed so the mesh and its LED rows fill a wide tile edge to edge
+with no cabinet outline to shrink at this size. All five states come from
+one crop box and differ only in what colour the LEDs burn, so a position
+holds its exact framing as it changes state and only the light moves.
+
+An empty position renders as a `<div>` rather than a `<button>` — there
+is nothing to open — and drops the render for a dashed outline.
+
+## Chain colour mark (`src/components/ChainMark.vue`)
+
+The colour half of a chain's name. Renders nothing on its own account —
+it always sits immediately before the text it belongs to, so the name is
+what a screen reader reads and the mark is what the eye catches. Hence
+`aria-hidden` and no title: a tooltip here would announce "Tessera" next
+to the word Tessera.
+
+The hue comes from the static `CHAIN_HUE` map rather than from the live
+chain record, so a world restored from a save made before chains had
+hues still shows its colours — see the note in `chains.ts`.
+
+## Duck-typed part lookups (`PART`/`SITEPART` in `src/game/types.ts`, `SP`/`P` in `src/game/dispatch.ts`)
+
+`Part` (`Frame | Mobo | Psu | Cooler | Card`) and `SitePart` (`Shell |
+Source | Storage | Plant`) are discriminated unions of very different
+shapes — a solar source's `peak`/`yield`/`rate` has nothing in common with
+a cooler's `cap`/`pue` or a PSU's `eff`/`conn`. Every caller of
+`G.PART`/`G.SITEPART` (and `dispatch.ts`'s own `SP`/`P` aliases for them)
+reads whichever fields its call site knows apply, by construction, without
+a runtime discriminant check. Narrowing the return type would mean
+threading a type guard through dozens of call sites for no caught bug,
+since a field that doesn't exist on the wrong variant already fails
+loudly at runtime — so both are typed `any` in `types.ts` rather than
+their real union type. `FAB` has no such excuse (`Fab` is one concrete
+shape) and is typed properly.

@@ -93,7 +93,7 @@ describe('MarketView', () => {
     const { wrapper, store } = mountWithStore(MarketView);
     const tsr = wrapper.findAll('.coincard').find(c => c.text().includes('TSR'))!;
     // Tessera trades near $0.024 — two decimals would round the day away.
-    expect(tsr.find('.cc-p')!.text()).toBe('$' + store.price(store.chain('tessera')).toFixed(4));
+    expect(tsr.find('.cc-p')!.text()).toBe('$' + store.price(store.chain('tessera')!).toFixed(4));
     const nva = wrapper.findAll('.coincard').find(c => c.text().includes('NVA'))!;
     expect(nva.find('.cc-p')!.text()).toMatch(/^\$\d+\.\d{2}$/);
   });
@@ -112,7 +112,7 @@ describe('MarketView', () => {
     // The only holding, so it is the whole wallet.
     expect(row.find('.hr-pct')!.text()).toBe('100%');
     expect(row.find('.hr-usd')!.text())
-      .toContain(fmt.usd2(1000 * store.price(store.chain('tessera'))));
+      .toContain(fmt.usd2(1000 * store.price(store.chain('tessera')!)));
     // An empty wallet slot has no share to claim.
     const ferro = wrapper.findAll('.holdrow').find(r => r.text().includes('FRO'))!;
     expect(ferro.find('.hr-pct')!.text()).toBe('—');

@@ -23,7 +23,7 @@ describe('build', () => {
     g.s.cash = 1e9; // clear of both the cash check AND the 2x-idle threshold
 
     expect(g.generatePreset()).toBe(true);
-    expect(g.idleCashAdvice.cost).toBeCloseTo(g.dp.cost, 5);
+    expect(g.idleCashAdvice!.cost).toBeCloseTo(g.dp.cost, 5);
 
     // again after actually building once, so the catalogue/site state has
     // moved (a rig now occupies a position and draws power) — extra power
@@ -34,7 +34,7 @@ describe('build', () => {
     for (let i = 0; i < 5; i++) g.stepTick(60); // finish assembly
     g.active.sources.push({ p: 's-400', n: 1 });
     expect(g.generatePreset()).toBe(true);
-    expect(g.idleCashAdvice.cost).toBeCloseTo(g.dp.cost, 5);
+    expect(g.idleCashAdvice!.cost).toBeCloseTo(g.dp.cost, 5);
   });
 
   it('spends cash, assembles the first rig instantly, and switches to the Rigs tab', () => {

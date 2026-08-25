@@ -3,7 +3,7 @@ import { dayIndexOf } from '../utils/calendar.js';
 import type { Game, Site } from './types.js';
 
 export function installPowerBilling(G: Game): void {
-  function billPower(dt: number, days: number, hrs: number): void {
+  function billPower(_dt: number, days: number, hrs: number): void {
     const bill = G.powerRateDay.value * days;
     G.s.cash -= bill;
     G.s.powerPaid += bill;

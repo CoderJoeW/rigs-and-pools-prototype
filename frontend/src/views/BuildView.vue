@@ -3,13 +3,15 @@ import { computed, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useTweenedNumber } from '../composables/useTweenedNumber.js';
+import { useBuildVerdict } from '../composables/useBuildVerdict.js';
 import PartPickerSheet from '../components/PartPickerSheet.vue';
 import PartTile from '../components/PartTile.vue';
 import { rigShot } from '../utils/rigArt.js';
+import type { DraftCheck, PickerField, CardLimit } from '../game/types.js';
 
 const g = useGameStore();
 const units=computed(()=>g.cards());
-const mode=ref('preset');           // 'preset' | 'custom' — preset first, always
+const mode=ref<'preset' | 'custom'>('preset');   // preset first, always
 const presetFound=ref(true);
 function runPreset(){ presetFound.value=g.generatePreset(); }
 // Run synchronously here, before the tweened refs below read their starting
@@ -23,7 +25,7 @@ const qty=ref(1);
 const maxQty=computed(()=> g.maxBuildQty());
 watch(maxQty, m=>{ if(qty.value>m) qty.value=Math.max(1,m); });
 const orderCost=computed(()=> g.dp.cost*Math.min(qty.value, Math.max(1,maxQty.value||1)));
-function setMode(m: string){
+function setMode(m: 'preset' | 'custom'){
   mode.value=m;
   if(m==='preset') runPreset();          // customise always opens with the preset loaded —
 }                                          // switching back regenerates it fresh
@@ -39,7 +41,7 @@ const effShown = useTweenedNumber(()=>g.draftEff);
 const drawShown = useTweenedNumber(()=>g.dp.wall);
 
 // Frame and board both cap the card count: design-spec.md §6i.
-const cardLimit=computed(()=>{
+const cardLimit=computed((): CardLimit=>{
   const f=g.PART(g.s.draft.frame), m=g.PART(g.s.draft.mobo);
   return { n:Math.min(f.slots,m.pcie),
            by: f.slots<m.pcie?'the frame':f.slots>m.pcie?'the motherboard':'both, equally',
@@ -53,7 +55,7 @@ const slotCells=computed(()=>{
 
 // `qty` is the count of that part in one rig — only the cards vary; a rig
 // has exactly one frame/board/cooler/supply, so no stepper on those rows.
-const FIELDS=computed(()=>{
+const FIELDS=computed((): PickerField[]=>{
   const x=g.s.draft, n=x.n;
   return [
     {k:'unit',label:'Cards',job:'the hashrate', qty:n,
@@ -94,66 +96,12 @@ const siteAfter=computed(()=>{
 // here, not in the picker: needs cardLimit AFTER the draft changes, and a
 // prop the child received is a render old by then.
 const choose=(id: string)=>{
-  (g.s.draft as any)[g.s.picker!]=id;
+  g.s.draft[g.s.picker!]=id;
   if(g.s.draft.n>cardLimit.value.n) g.s.draft.n=cardLimit.value.n;
   g.s.picker=null;
 };
 
-// Verdict panel ranking: design-spec.md §6i. ceilingNote is thread 32's
-// signal, deliberately kept out of canBuild's gate — see docs/implementation-notes.md.
-const ceilingNote=computed(()=>{
-  const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
-  const ceil=g.chainCeiling(c as any, g.dp.mh);
-  if(!ceil) return null;
-  const already=g.chainHash(c!)>c!.floor;   // "is at" only when true today, not just projected — issue #25
-  return { tone:'warn',
-    label: already
-      ? c.name+' is at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours'
-      : 'This rig would put '+c.name+' at its ceiling — '+fmt.pct(ceil.share,0)+' of it would be yours',
-    fix:'Above its floor a chain pays its emission, not your hashrate: '
-        +c.name+' hands out about '+fmt.usd(ceil.grossCap)
-        +'/day once it is at or above its floor, so this rig mostly divides '
-        +'the same pot. Move the group to another chain and it earns on top.' };
-});
-// Issue #6 — new-miner subsidy context, coexists with ceilingNote by design:
-// docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
-const subsidyNote=computed(()=>{
-  const gr=g.draftGroup(), c=gr&&g.chain(gr.chain);
-  if(!c || c.obs>c.floor) return null;
-  return { tone:'good', label:c.name+' is paying a new-miner premium',
-    fix:'Below its floor, '+c.name+' pays every miner the same rate regardless '
-        +'of how little hash they bring — the fast payback is a deliberate '
-        +'welcome gift, not a glitch. It fades as the chain fills toward its floor.' };
-});
-// aria-live announcement snapshotting (why draftKey AND gateKey, not a
-// naive computed): docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
-const draftKey=computed(()=> JSON.stringify(g.s.draft));
-const gateKey=computed(()=> g.checks.map((c:any)=>c.ok?1:0).join('')+':'+(g.canBuild?1:0));
-const buildStatus=ref('');
-watch(()=> draftKey.value+'|'+gateKey.value+'|'+qty.value, ()=>{
-  const n=Math.min(qty.value, Math.max(1,maxQty.value||1));
-  buildStatus.value = g.canBuild
-    ? (n>1
-        ? 'Ready to order '+n+' rigs for '+fmt.usd(g.dp.cost*n)+'.'
-        : 'Ready to order for '+fmt.usd(g.dp.cost)+'.')
-    : 'Cannot build yet: '+g.checks.filter((c:any)=>!c.ok).map((c:any)=>c.label).join('; ')+'.';
-}, { immediate:true });
-// Quick pick's condensed-not-silent checks: docs/implementation-notes.md#build-view-verdict-panel-srcviewsbuildviewvue.
-const verdict=computed(()=>{
-  const c=g.checks;
-  const gr=g.draftGroup();
-  const notes=[ceilingNote.value,subsidyNote.value].filter((x): x is NonNullable<typeof x> => !!x);
-  // Cost/hashrate/draw live on the hero; this is what's left — notes in
-  // both modes, second-order figures only in Customise.
-  if(mode.value==='preset') return [ { t:'', rows:[], checks:c.filter((x:any)=>!x.ok), notes } ];
-  return [
-    { t:'Cost & payback', rows:[], checks:[c[5]], notes },
-    { t:'Hashrate & MH/W', rows:[ {k:'MH/W', v:effShown.value.toFixed(3)} ],
-      checks:[c[0],c[2],c[1]] },
-    { t:'Site impact', rows:[ {k:'Draw', v:fmt.w(drawShown.value)} ],
-      checks:[c[4],c[3]] },
-  ];
-});
+const { buildStatus, verdict } = useBuildVerdict(g, { mode, qty, maxQty, effShown, drawShown });
 </script>
 
 <template>
@@ -208,7 +156,7 @@ const verdict=computed(()=>{
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 16.5 10 10l3.5 3L20 6.5"/><path d="M15 6.5h5v5"/></svg>
         Expected <b :class="netShown>=0?'pos':'neg'">{{ fmt.usd2(netShown) }}/day</b>
-        on {{ g.chain(g.draftGroup().chain).name }}
+        on {{ g.chain(g.draftGroup().chain)!.name }}
       </div>
 
       <!-- aria-pressed, not role="radio": the radio pattern's contract is a
@@ -317,7 +265,7 @@ const verdict=computed(()=>{
 
     <div class="sec"><span class="eyebrow">Pre-build checks</span>
       <span class="eyebrow" :class="g.canBuild?'okc':'noc'">{{ g.canBuild
-        ? 'all '+g.checks.length+' pass' : g.checks.filter((c: any)=>!c.ok).length+' to fix' }}</span></div>
+        ? 'all '+g.checks.length+' pass' : g.checks.filter((c: DraftCheck)=>!c.ok).length+' to fix' }}</span></div>
     <div class="card checkcard">
       <div v-for="vg in verdict" :key="vg.t" class="vgroup">
         <div v-if="vg.t" class="vgroup-hd"><span class="t">{{ vg.t }}</span></div>

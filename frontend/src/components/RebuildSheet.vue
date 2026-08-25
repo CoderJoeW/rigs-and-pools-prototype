@@ -3,7 +3,12 @@ import { computed, ref } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt, partSub } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { customUnitCards } from '../composables/gameStore.js';
 import Compare from './Compare.vue';
+import type { Card } from '../data/hardware.js';
+import type { Rig, RebuildDraft } from '../game/types.js';
+
+type RebuildSlot = keyof Omit<RebuildDraft, 'n'>;
 
 /* The rig rebuild planner. Everything it needs already lives in the store as
    g.s.rebuild — which rig, the draft, and which slot's picker is open — so it
@@ -12,9 +17,12 @@ import Compare from './Compare.vue';
    the fleet sheet needs the view's selection passed in. */
 const g = useGameStore();
 
-const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find((x: any)=>x.id===g.s.rebuild!.rig) : null);
+const rbRig=computed(()=> g.s.rebuild ? g.s.rigs.find((x: Rig)=>x.id===g.s.rebuild!.rig) : null);
+// pending/chain live on the rig's group, not the rig itself, since the group refactor.
+const rbGroup=computed(()=> rbRig.value ? g.groupOf(rbRig.value) : null);
 const rbD=computed(()=> g.s.rebuild ? g.s.rebuild.draft : null);
-const rbInfo=computed(()=> rbRig.value ? g.rebuildInfo(rbRig.value, rbD.value) : {checks:[],lim:1});
+const rbInfo=computed(()=> rbRig.value && rbD.value ? g.rebuildInfo(rbRig.value, rbD.value)
+  : {buy:0,credit:0,net:0,core:0,wall:0,lim:1,checks:[],time:0,ok:false,changed:false,hashNew:0});
 const rbFields=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
   const P=g.PART;
@@ -33,14 +41,19 @@ const rbFields=computed(()=>{
 });
 const rbPickerRows=computed(()=>{
   const r=rbRig.value, d=rbD.value; if(!r||!d) return [];
-  const slot=g.s.rebuild!.picker as string;
+  const slot=g.s.rebuild!.picker as RebuildSlot;
   if(slot==='unit'){
-    return g.cards().concat(g.s.customParts.filter((p: any)=>p.kind==='unit')).map((c: any)=>({ id:c.id, name:c.name,
+    return g.cards().concat(customUnitCards(g)).map((c: Card)=>({ id:c.id, name:c.name,
       sub:c.mh+' MH · '+(c.mh/c.w).toFixed(2)+' MH/W · rig would make '+fmt.hash(d.n*c.mh),
       value:fmt.usd(c.price), valueSub:'each', current:c.id===d.unit }));
   }
   const lim=rbInfo.value.lim;
-  return (g.SLOT_OPTS[slot] as any[]).concat(g.s.customParts.filter((p: any)=>p.kind===slot)).map((p: any)=>{
+  // slot is 'frame'|'mobo'|'cool'|'psu' here — 'unit' already returned above.
+  // The concat mixes SLOT_OPTS's catalogue shapes with a fab-designed
+  // CustomPart, so — same duck-typed-union rationale as PART/SITEPART — the
+  // map below reads fields by slot without a runtime discriminant check.
+  const opts: any[] = g.SLOT_OPTS[slot];
+  return opts.concat(g.s.customParts.filter(p=>p.kind===slot)).map((p: any)=>{
     let note='';
     if(slot==='frame'){ const would=Math.min(p.slots,g.PART(d.mobo).pcie);
       note=would!==lim?' · limit → '+would:''; }
@@ -49,12 +62,12 @@ const rbPickerRows=computed(()=>{
     const eff=partSub(slot as any,p);
     return { id:p.id, name:p.name, sub:eff+note,
       value:p.price?fmt.usd(p.price):'free', valueSub:'',
-      current:p.id===(d as any)[slot] };
+      current:p.id===d[slot] };
   });
 });
 const rbChoose=(id: string)=>{
   const d=rbD.value; if(!d||!g.s.rebuild) return;
-  (d as any)[g.s.rebuild.picker!]=id;
+  d[g.s.rebuild.picker as RebuildSlot]=id;
   const lim=Math.min(g.PART(d.frame).slots,g.PART(d.mobo).pcie);
   if(d.n>lim) d.n=lim;
   g.s.rebuild.picker=null;
@@ -62,7 +75,7 @@ const rbChoose=(id: string)=>{
 
 const rebuildSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
-  ()=>{ if(g.s.rebuild) g.s.rebuild.picker ? g.s.rebuild.picker=null : g.s.rebuild=null; });
+  ()=>{ if(!g.s.rebuild) return; if(g.s.rebuild.picker) g.s.rebuild.picker=null; else g.s.rebuild=null; });
 </script>
 
 <template>
@@ -121,9 +134,9 @@ useSheetA11y(rebuildSheetEl, computed(()=>!!(g.s.rebuild&&rbRig.value)),
             <span>Nothing changed yet — pick a part or move the card count.</span></div>
         </div>
 
-        <div v-if="rbRig.pending>0" class="warnbox" style="margin-bottom:8px">
+        <div v-if="rbGroup && rbGroup.pending>0" class="warnbox" style="margin-bottom:8px">
           <b>Going down forfeits the PPLNS window</b> —
-          {{ fmt.c(rbRig.pending) }} {{ g.chain(rbRig.chain).tick }} at risk.</div>
+          {{ fmt.c(rbGroup.pending) }} {{ g.chain(rbGroup.chain)!.tick }} at risk.</div>
 
         <button class="btn btn-wide" :class="rbInfo.ok?'btn-pri':''" :disabled="!rbInfo.ok"
                 @click="g.applyRebuild()">

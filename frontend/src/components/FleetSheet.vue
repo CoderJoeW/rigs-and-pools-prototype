@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, type PropType } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
+import { customUnitCards } from '../composables/gameStore.js';
+import type { Scope } from '../game/types.js';
 
 /* The fleet actions sheet — repair, move, refit, rebuild-to-spec, each applied
    to a scope rather than one rig. Unlike the rebuild sheet this cannot be
@@ -14,7 +16,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   /* A site id, null for the whole farm, or an explicit array of rig ids —
      whatever fleetRigs() understands. */
-  scopeId: { type: [Number, String, Array], default: null },
+  scopeId: { type: [Number, Array] as PropType<Scope>, default: null },
   scopeLabel: { type: String, default: '' },
 });
 const emit = defineEmits(['update:open']);
@@ -28,7 +30,7 @@ const specInfo = computed(() => g.fleetSpecInfo(g.draftSpec(), scope.value));
 const wornInfo = computed(() => g.fleetWorn(REPAIR_AT, scope.value));
 const moveInfo = computed(() => g.fleetMoveInfo(fleetGroup.value, scope.value));
 const refitInfo = computed(() => g.fleetRefitInfo(fleetCard.value, scope.value));
-const fleetCardOpts = computed(() => g.cards().concat(g.s.customParts.filter((p: any) => p.kind === 'unit')));
+const fleetCardOpts = computed(() => g.cards().concat(customUnitCards(g)));
 
 const fleetSheetEl = ref<HTMLElement | null>(null);
 useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open', false));
@@ -62,8 +64,8 @@ useSheetA11y(fleetSheetEl, computed(() => props.open), () => emit('update:open',
         <div class="rigfld"><label for="fleet-group-select">Move to a group</label>
           <select id="fleet-group-select" v-model.number="fleetGroup">
             <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
-              {{ gr.name }} — {{ g.chain(gr.chain).name }}{{ gr.pool==='solo'?' · solo'
-                :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool).name:'') }}</option>
+              {{ gr.name }} — {{ g.chain(gr.chain)!.name }}{{ gr.pool==='solo'?' · solo'
+                :(g.poolOf(gr.pool)?' · '+g.poolOf(gr.pool)!.name:'') }}</option>
           </select>
           <button class="btn btn-wide" style="margin-top:6px"
                   :class="moveInfo.rigs?'btn-pri':''"

@@ -4,66 +4,39 @@ import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import type { DesignKind } from '../data/customParts.js';
+import type { Rig, Site } from '../game/types.js';
+import type { Job } from '../data/site-parts.js';
+import { useSitePickerRows } from '../composables/useSitePickerRows.js';
+import { useSitePower } from '../composables/useSitePower.js';
+import { useSiteFloor } from '../composables/useSiteFloor.js';
 import DesignSheet from '../components/DesignSheet.vue';
 import Compare from '../components/Compare.vue';
 import RackTile from '../components/RackTile.vue';
 import SiteFilm from '../components/SiteFilm.vue';
-import { CHAIN_HUE } from '../data/chains.js';
 import { sitePhase } from '../utils/siteArt.js';
 import fabShot from '../assets/site/fab.webp';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
-const mix=computed(()=>{
-  const site=f.value, out=[];
-  for(const src of site.sources){
-    const P=g.SITEPART(src.p);
-    out.push({ id:src.p, name:P.name+(src.n>1?' ×'+src.n:''), kind:P.kind,
-      out:g.srcOut(site,src), rate:P.rate });
-  }
-  return out.sort((a,b)=>b.out-a.out);
-});
-const sourceRows=computed(()=>g.SOURCES.filter((p: any)=>p.price>0).map((p: any)=>({
-  id:p.id, name:p.name,
-  sub:(p.yield
-        ? fmt.w(p.peak*p.yield)+' real — '+fmt.w(p.peak)+' nameplate at '
-          +(p.yield*100).toFixed(0)+'% yield'
-        : fmt.w(p.peak)+' peak')
-      +' · '+(p.rate>0?fmt.usd2(p.rate)+'/kWh':'no fuel cost')
-      +' · '+p.hours+' h to build',
-  value:fmt.usd(p.price),
-  valueSub:p.rate>0?p.kind:fmt.usd2(p.price/(p.peak*(p.yield||1)))+'/W' })));
-const storageRows=computed(()=>g.STORAGE.map((p: any)=>({ id:p.id, name:p.name,
-  sub:p.kwh+' kWh · '+p.kw+' kW · '+p.hours+' h to build',
-  value:fmt.usd(p.price), valueSub:'' })));
-const chooseStorage=(id: string)=>{ g.addSitePart(f.value.id,id,'storage'); g.s.sitePicker=null; };
-const plantRows=computed(()=>g.PLANTS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name,
-  sub:fmt.w(p.cap)+' of heat · '+fmt.pct(p.pue,0)+' of it burned as power · '+p.hours+' h',
-  value:fmt.usd(p.price),
-  valueSub:'at '+fmt.w(g.siteHeat(f.value))+' it would draw '+fmt.w(g.siteHeat(f.value)*p.pue) })));
-const shellRows=computed(()=>g.SHELLS.filter((p: any)=>p.price>0).map((p: any)=>({ id:p.id, name:p.name, sub:p.slots+' rig positions · '+p.hours+' h to build',
-  value:fmt.usd(p.price), valueSub:'', locked:g.s.cash<p.price })));
-const expandRows=computed(()=>{ const cur=g.SITEPART(f.value.shell);
-  return g.SHELLS.filter((p: any)=>p.slots>cur.slots).map((p: any)=>{ const credit=Math.round(cur.price*0.5), cost=Math.max(0,p.price-credit);
-    return { id:p.id, name:p.name, sub:cur.slots+' → '+p.slots+' rig positions · '+p.hours+' h to build',
-      value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
-const fabRows=computed(()=>{ const cur=f.value.fab?g.FAB(f.value.fab):null;
-  return g.FABS.filter((p: any)=>!cur||p.tier>cur.tier).map((p: any)=>{ const credit=cur?Math.round(cur.price*0.5):0, cost=Math.max(0,p.price-credit);
-    return { id:p.id, name:p.name, sub:p.slots.join(', ')+' · '+p.budget+' design budget · '+p.hours+' h to build',
-      value:fmt.usd(cost), valueSub:credit?fmt.usd(credit)+' credited':'', locked:g.s.cash<cost }; }); });
-const chooseSrc=(id: string)=>{ g.addSitePart(f.value.id,id,'source'); g.s.sitePicker=null; };
-const choosePlant=(id: string)=>{ g.addSitePart(f.value.id,id,'plant'); g.s.sitePicker=null; };
-const chooseShell=(id: string)=>{ g.newSite(id); g.s.sitePicker=null; };
-const chooseFabPick=(id: string)=>{ g.chooseFab(f.value.id,id); g.s.sitePicker=null; };
-const chooseExpand=(id: string)=>{ g.upgradeShell(f.value.id,id); g.s.sitePicker=null; };
+
+const { mix, sourceRows, storageRows, plantRows, shellRows, expandRows, fabRows,
+  chooseSrc, choosePlant, chooseStorage, chooseShell, chooseFabPick, chooseExpand } = useSitePickerRows(g, f);
+
+const { flowIn, flowOut, flowInTop, flowOutTop, billToday, billCoolShare,
+  battKwh, battPct, battMode, heatLoad, heatPath } = useSitePower(g, f);
+
+const { floor, legend, emptyDrawn, openTile, floorAmbient, siteHash, siteStatus } = useSiteFloor(g, f);
+const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.85?'warm':'cool');
+
 const { open:renameOpen, draft:renameDraft, start:startRename, commit:saveRename } =
   useInlineRename(()=>f.value.name, name=>g.renameSite(f.value.id,name));
 const decomArm=ref(false);
-/* The switcher is a disclosure rather than a permanent list: on a farm with
-   one site the list says nothing the trigger has not already said, and on a
-   farm with ten it would push the site itself off the first screen. v-show
-   rather than v-if so the rows keep their place in the document and the
-   open/close is a paint, not a rebuild. */
+// The switcher is a disclosure rather than a permanent list: on a farm with
+// one site the list says nothing the trigger has not already said, and on a
+// farm with ten it would push the site itself off the first screen. v-show
+// rather than v-if so the rows keep their place in the document and the
+// open/close is a paint, not a rebuild.
 const listOpen=ref(false);
 watch(()=>f.value&&f.value.id, ()=>{ decomArm.value=false; renameOpen.value=false; listOpen.value=false; });
 const pickSite=(id: number)=>{ g.s.activeSite=id; listOpen.value=false; };
@@ -73,109 +46,23 @@ const decomLabel=computed(()=> !canDecommission.value
   : decomArm.value ? 'Tap again — this cannot be undone' : 'Retire this site');
 const decommission=()=>{ if(!decomArm.value){ decomArm.value=true; return; } g.decommissionSite(f.value.id); decomArm.value=false; };
 const sec=reactive({power:false,batt:false,cool:false,fab:false});
-const FLOW_C={ solar:'var(--gold)', battery:'var(--blue)', grid:'var(--ink-3)',
-  rigs:'var(--green)', cooling:'var(--blue)', charging:'var(--gold)', unserved:'var(--red)' };
-const segs=(parts: [string, number][],total: number)=>parts.map(([k,w])=>({k,w, pct: total>0?Math.max(0,w)/total*100:0, c:(FLOW_C as any)[k]}));
-const plan=computed(()=> g.sitePlan(f.value));
-const flow=computed(()=> g.flowOf(f.value));
-const flowIn=computed(()=>{ const x=flow.value; const tot=x.inRenew+x.inBatt+x.inPaid+x.unserved;
-  return segs([['solar',x.inRenew],['battery',x.inBatt],['grid',x.inPaid],['unserved',x.unserved]],tot); });
-const flowOut=computed(()=>{ const x=flow.value; const tot=x.rigs+x.cool+x.charge;
-  return segs([['rigs',x.rigs],['cooling',x.cool],['charging',x.charge]],tot); });
-/* The headline beside each flow bar: the single biggest contributor, since a
-   list of four is what the bar underneath is already for. */
-const biggest=(list: any[])=>{ const live=list.filter((x: any)=>x.pct>0);
-  if(!live.length) return null;
-  return live.reduce((a: any,b: any)=>b.w>a.w?b:a); };
-/* Unserved stays in the bar as its red segment, but it is demand that went
-   unmet, not somewhere power arrived from — headlining it would name a source
-   that does not exist. */
-const flowInTop=computed(()=>biggest(flowIn.value.filter(x=>x.k!=='unserved')));
-const flowOutTop=computed(()=>biggest(flowOut.value));
-/* Today's metered spend at this site, and how it is pacing. f.bill only
-   accumulates while the site draws, so a site that has not drawn yet has no
-   bill object at all and the whole strip stays honest by reading zero. */
-const billToday=computed(()=>{ const b=f.value.bill; return b?b.off+b.sh+b.peak:0; });
-const billCoolShare=computed(()=>{ const b=f.value.bill;
-  return b&&billToday.value>0 ? b.cool/billToday.value : 0; });
 
-/* FLOOR_COLS has to be the number of columns .riggrid actually paints, or the
-   row-column address contradicts the layout it claims to describe. The shell
-   is capped at 440px, so the grid is a fixed three rather than auto-fill —
-   one number, stated in both places, instead of a guess about reflow. */
-const MAX_TILES=60, MAX_EMPTY=12, FLOOR_COLS=3;
-const rigsHere=computed(()=>g.siteRigs(f.value));
-const floorTemp=computed(()=>g.siteTemp(f.value));
-const floorAmbient=computed(()=>{ const t=floorTemp.value; return t>=70?'hot':t>=58?'warm':'cool'; });
-const siteHash=computed(()=>rigsHere.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
-const siteStatus=computed(()=>{ const t=floorTemp.value;
-  if(t>=70) return {label:'HOT',tone:'hot'};
-  if(rigsHere.value.some((r: any)=>g.rigLive(r))) return {label:'ONLINE',tone:'online'};
-  return {label:'IDLE',tone:'idle'}; });
-/* Positions are addressed the way a floor is walked rather than counted:
-   row-column, both padded, so 01-04 is the fourth position of the first row
-   and matches what a label on the actual rack would say. */
-const posCode=(i: number)=>String(Math.floor(i/FLOOR_COLS)+1).padStart(2,'0')+'-'
-  +String(i%FLOOR_COLS+1).padStart(2,'0');
-const floor=computed(()=>{ const rigs=rigsHere.value, slots=Math.max(g.siteSlots(f.value), rigs.length), cells=[];
-  let running=0;
-  for(const r of rigs){ if(cells.length>=MAX_TILES) break; const st=g.rigState(r); if(st.dot==='run') running++;
-    const gr=g.groupOf(r); const chain=gr?gr.chain:null; const cards=r.units?r.units.length:0;
-    const code=posCode(cells.length);
-    cells.push({ key:'r'+r.id, id:r.id, dot:st.dot, code, chain, hue:chain!=null?CHAIN_HUE[chain]:undefined, cards,
-      label:'Position '+code+' — '+r.name+', '+st.label+(st.sub?' ('+st.sub+')':'') }); }
-  const empties=Math.min(MAX_EMPTY, MAX_TILES-cells.length, slots-rigs.length);
-  for(let i=0;i<empties;i++) cells.push({ key:'e'+i, id:null, code:posCode(cells.length) });
-  return { cells, rigs:rigs.length, slots, running, hidden:Math.max(0, slots-cells.length), temp:floorTemp.value, ambient:floorAmbient.value }; });
-const DOT_LABEL={ run:'Running', build:'Building', warn:'Warning', bad:'Bad', off:'Off' };
-const legend=computed(()=>{ const n: Record<string, number>={}; for(const r of rigsHere.value){ const d=g.rigState(r).dot; n[d]=(n[d]||0)+1; }
-  return ['run','build','warn','bad','off'].filter(k=>n[k]).map(k=>({ k, n:n[k], label:(DOT_LABEL as any)[k] })); });
-/* Counted rather than inferred from legend.length: a full site draws no empty
-   tiles and must not claim a key for them, and a site that is nothing BUT
-   empty positions has no rig states yet and would otherwise lose the legend
-   entirely. */
-const emptyDrawn=computed(()=>floor.value.cells.filter(c=>c.id===null).length);
-const openTile=(id: number)=>{ g.s.focusRig=id; g.s.tab='rigs'; };
-/* The hero shows the shell you actually bought, in the light the simulation
-   says it is — see utils/siteArt.js for both, and for why the previous scheme
-   (three quarry photographs dealt out by site id) had to go. */
+// The hero shows the shell you actually bought, in the light the simulation
+// says it is — see utils/siteArt.ts for both, and for why the previous scheme
+// (three quarry photographs dealt out by site id) had to go.
 const heroPhase=computed(()=>sitePhase(g.s.t));
-const siteDot=(st: any)=>{ if(g.siteTemp(st)>=70) return 'bad';
-  if(g.siteRigs(st).some((r: any)=>g.rigLive(r))) return 'run';
+const siteDot=(st: Site)=>{ if(g.siteTemp(st)>=g.C.HOT_TEMP) return 'bad';
+  if(g.siteRigs(st).some((r: Rig)=>g.rigLive(r))) return 'run';
   return 'off'; };
 
-const battKwh=computed(()=>g.battKwh(f.value));
-const battPct=computed(()=>battKwh.value>0?Math.min(1,(f.value.batt||0)/battKwh.value):0);
-const battMode=computed(()=>{ const p=plan.value;
-  if(p.chW>0) return {k:'charging',text:'charging '+fmt.w(p.chW)+' from solar',cls:'pos'};
-  if(p.gridChW>0) return {k:'charging',text:'charging '+fmt.w(p.gridChW)+' off-peak',cls:'blu'};
-  if(p.disW>0) return {k:'discharging',text:'discharging '+fmt.w(p.disW),cls:'amb'};
-  return {k:'idle',text:'idle',cls:''}; });
-/* The heat trace is a reading drawn as a waveform, not decoration: how hard
-   the wave swings is the site's heat against its cooling capacity, so a plant
-   that is coping draws a flat line and one that is losing draws a ragged one.
-   Deterministic — the same load always draws the same trace, so a change on
-   screen means a change in the simulation. */
-const heatLoad=computed(()=>{ const cap=g.siteCooling(f.value);
-  return cap>0?Math.min(1.6,g.siteHeat(f.value)/cap):(g.siteHeat(f.value)>0?1.6:0); });
-/* The three sine terms sum to 1.06, so an amplitude past ~10.4 would push the
-   trace outside the 24-tall viewBox and CLIP FLAT — reading as calm at exactly
-   the overload this is here to show. 2 + 5.2·load tops out at 10.3. */
-const heatPath=computed(()=>{ const amp=2+heatLoad.value*5.2, pts=[];
-  for(let i=0;i<=48;i++){ const x=i/48*100;
-    const y=12 - (Math.sin(i*0.62)*0.62 + Math.sin(i*1.37+1.1)*0.28 + Math.sin(i*2.9+0.4)*0.16)*amp;
-    pts.push((i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2)); }
-  return pts.join(' '); });
-const coolTone=computed(()=> floorAmbient.value==='hot'?'hot':heatLoad.value>0.85?'warm':'cool');
-
-const fabQueued=computed(()=>f.value.queue.find((j: any)=>j.kind==='fab'));
-const KIND_LABEL={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
-/* What a queued job IS. A site queue only ever holds infrastructure — see
-   sites.js — so these are the whole vocabulary. */
-const JOB_LABEL={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
+const fabQueued=computed(()=>f.value.queue.find((j: Job)=>j.kind==='fab'));
+const KIND_LABEL: Record<DesignKind, string> ={ frame:'Frame', mobo:'Board', cool:'Cooler', psu:'Supply', unit:'Card' };
+// What a queued job IS. A site queue only ever holds infrastructure — see
+// sites.ts — so these are the whole vocabulary.
+const JOB_LABEL: Record<Job['kind'], string> ={ shell:'Shell', source:'Power', storage:'Battery', plant:'Cooling',
   fab:'Fab', mfg:'Parts' };
-const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab).slots : []);
-const openDesignKind=(kind: string)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
+const designKinds=computed(()=> f.value.fab ? g.FAB(f.value.fab)!.slots : []);
+const openDesignKind=(kind: DesignKind)=>{ g.openDesign(f.value.id,kind); g.s.sitePicker=null; };
 const pickerSheetEl=ref<HTMLElement | null>(null);
 useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker=null; });
 </script>
@@ -381,7 +268,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
                       aria-label="grid charge" :aria-pressed="!!f.gridCharge"><i></i></button>
               <span class="swk">Grid charge</span>
             </div>
-            <p v-if="g.battAdvice(f)" class="hint" :style="g.battAdvice(f).warn?'color:var(--amber)':''">{{ g.battAdvice(f).text }}</p>
+            <p v-if="g.battAdvice(f)" class="hint" :style="g.battAdvice(f)!.warn?'color:var(--amber)':''">{{ g.battAdvice(f)!.text }}</p>
             <p v-if="g.s.help" class="hint">Soaks free solar surplus, and can buy cheap off-peak grid to spend during the 17:00&ndash;21:00 peak. While charged it also counts toward capacity, carrying a renewable site through the night.</p>
           </template>
           <p v-else class="note">No battery installed. One soaks solar surplus, arbitrages the tariff, and keeps rigs alive after dark.</p>
@@ -394,7 +281,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           <span class="sec-ico blu" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="M12 3v18"/><path d="m4.2 7.5 15.6 9"/><path d="m19.8 7.5-15.6 9"/></svg></span>
           <span style="flex:1;text-align:left"><span class="nm">Cooling</span>
-            <span v-if="floor.temp>=70" class="tag" style="background:var(--red-t);color:var(--red);margin-left:5px">COOKING</span>
+            <span v-if="floor.temp>=g.C.HOT_TEMP" class="tag" style="background:var(--red-t);color:var(--red);margin-left:5px">COOKING</span>
             <div class="sb">{{ floor.temp.toFixed(0) }}&deg;C · {{ f.plants.length }} unit{{ f.plants.length===1?'':'s' }}</div></span>
           <span class="sec-cv" :class="{open:sec.cool}" aria-hidden="true"><svg viewBox="0 0 24 24">
             <path d="m6 9 6 6 6-6"/></svg></span></button>
@@ -409,7 +296,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
               <b>{{ floor.temp.toFixed(0) }} &deg;C</b>
               <span>Max exhaust</span></div>
           </div>
-          <div class="track" style="margin-top:9px"><i :class="g.siteHeat(f)>g.siteCooling(f)?'o':g.siteTemp(f)>58?'w':'g'" :style="{width:Math.min(100,g.siteHeat(f)/Math.max(1,g.siteCooling(f))*100)+'%'}"></i></div>
+          <div class="track" style="margin-top:9px"><i :class="g.siteHeat(f)>g.siteCooling(f)?'o':g.siteTemp(f)>g.C.WARM_TEMP?'w':'g'" :style="{width:Math.min(100,g.siteHeat(f)/Math.max(1,g.siteCooling(f))*100)+'%'}"></i></div>
           <div class="track-cap"><span>Heat against capacity</span><b>{{ fmt.w(g.siteHeat(f)) }} / {{ fmt.w(g.siteCooling(f)) }}</b></div>
           <div class="dl"><dt>Outside</dt><dd>{{ g.ambient.toFixed(0) }}&deg;C</dd></div>
           <div class="dl"><dt>Cooling draws</dt>
@@ -430,16 +317,16 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
           <circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3
             M5.4 5.4l2.1 2.1M16.5 16.5l2.1 2.1M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1"/></svg></span>
         <span style="flex:1;text-align:left"><span class="nm">Fabrication</span>
-          <div class="sb">{{ f.fab ? g.FAB(f.fab).name
+          <div class="sb">{{ f.fab ? g.FAB(f.fab)!.name
             : '3D printers, machine shop, assembly — ' + (fabQueued ? 'under construction' : 'not installed') }}</div></span>
         <img class="fab-shot" :src="fabShot" alt="" aria-hidden="true" />
         <span class="sec-cv" :class="{open:sec.fab}" aria-hidden="true"><svg viewBox="0 0 24 24">
           <path d="m6 9 6 6 6-6"/></svg></span></button>
       <div v-if="sec.fab" class="card-bd">
         <template v-if="f.fab">
-          <div class="dl"><dt>Tier</dt><dd>{{ g.FAB(f.fab).tier }} of {{ g.FABS.length }}</dd></div>
-          <div class="dl"><dt>Design budget</dt><dd>{{ g.FAB(f.fab).budget }}</dd></div>
-          <div class="dl"><dt>Can manufacture</dt><dd style="text-transform:capitalize">{{ g.FAB(f.fab).slots.join(', ') }}</dd></div>
+          <div class="dl"><dt>Tier</dt><dd>{{ g.FAB(f.fab)!.tier }} of {{ g.FABS.length }}</dd></div>
+          <div class="dl"><dt>Design budget</dt><dd>{{ g.FAB(f.fab)!.budget }}</dd></div>
+          <div class="dl"><dt>Can manufacture</dt><dd style="text-transform:capitalize">{{ g.FAB(f.fab)!.slots.join(', ') }}</dd></div>
           <p v-if="g.s.help" class="hint">The design budget is what a custom part's tuning can spend — pushing one stat further costs more of it the further you push.</p>
         </template>
         <p v-else-if="fabQueued" class="note">Under construction — see the queue below for progress.</p>
@@ -454,9 +341,9 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <span class="eyebrow">{{ f.queue.length }} job{{ f.queue.length===1?'':'s' }}</span></div>
       <div class="list">
         <div v-for="(j,i) in f.queue" :key="i" class="qrow">
-          <span class="qslot" aria-hidden="true">{{ (JOB_LABEL as any)[j.kind] || 'Build' }}</span>
+          <span class="qslot" aria-hidden="true">{{ JOB_LABEL[j.kind] || 'Build' }}</span>
           <span class="qmain">
-            <span class="qhd"><span class="nm">{{ g.jobPart(j).name }}</span></span>
+            <span class="qhd"><span class="nm">{{ g.jobPart(j)!.name }}</span></span>
             <span class="qbar">
               <span class="track" style="margin:0;flex:1">
                 <i class="b" :style="{width:((1-j.left/j.total)*100).toFixed(0)+'%'}"></i></span>
@@ -481,7 +368,7 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
         <template v-else-if="g.s.sitePicker==='design'">
           <div class="list">
             <button v-for="k in designKinds" :key="k" class="rowline" @click="openDesignKind(k)">
-              <span style="flex:1"><span class="nm">{{ (KIND_LABEL as any)[k] }}</span></span><span class="ch">&rsaquo;</span></button>
+              <span style="flex:1"><span class="nm">{{ KIND_LABEL[k] }}</span></span><span class="ch">&rsaquo;</span></button>
           </div>
         </template>
         <Compare v-else title="Cheapest first" metric="cost" :rows="plantRows" :pick="choosePlant" />
@@ -512,22 +399,10 @@ useSheetA11y(pickerSheetEl, computed(()=>!!g.s.sitePicker), ()=>{ g.s.sitePicker
 .sitepick-row.on{background:var(--green-t)}
 .sitepick-row .ch{flex:none;color:var(--ink-3);font-size:13px}
 
-/* ---- site hero ----
-   The render is a backdrop, not a picture: it sits under a scrim heavy enough
-   that the name and the three readings clear contrast on it whatever the shot
-   is doing, and the card keeps its own border so it still reads as a card. */
+/* ---- site hero ---- */
+/* Hero scrim rationale (two-layer contrast strategy): docs/implementation-notes.md#sites-view-hero-scrim-srcviewssitesviewvue. */
 .site-hero{position:relative;padding:0;overflow:hidden;isolation:isolate}
 .site-hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
-/* Lighter overall than it used to be. The old plates were bright skies over a
-   quarry and needed holding down; these are interiors already shot with their
-   mid-tones up and their top third kept calm, so the same scrim buried the
-   room the card exists to show.
-
-   Two layers rather than one, because the two jobs are different. ::after is
-   the overall wash, now gentle at the top. ::before is a short band behind the
-   status pill alone — 9.5px uppercase, no plate of its own, and the one piece
-   of type here that the lighter wash left short of 4.5:1. It decays inside
-   74px, so it buys that row its contrast without touching the room below. */
 .site-hero::before{content:'';position:absolute;inset:0 0 auto 0;height:74px;z-index:1;
   pointer-events:none;
   background:linear-gradient(180deg,rgba(4,6,9,.74) 0%,rgba(4,6,9,.34) 58%,rgba(4,6,9,0) 100%)}

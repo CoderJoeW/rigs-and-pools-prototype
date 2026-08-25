@@ -1,4 +1,4 @@
-import type { GameExports } from '../game/types.js';
+import type { GameExports, Site, Pool, Rig, Unit } from '../game/types.js';
 
 // Career board, not a quest log — no cash, no perks: design-spec.md §8.
 export const RANKS: [number, string][] = [[0,'Hobbyist'],[4,'Tinkerer'],[8,'Operator'],[12,'Engineer'],[16,'Mogul'],[20,'Magnate']];
@@ -32,17 +32,17 @@ export const MILESTONES: Milestone[] = [
   { id:'i1', track:'Infrastructure', name:'Second site', desc:'Operate two sites',
     check:g=>g.s.sites.length>=2 },
   { id:'i2', track:'Infrastructure', name:'Off the meter', desc:'Install a renewable source',
-    check:g=>g.s.sites.some((f:any)=>f.sources.some((x:any)=>{const P=g.SITEPART(x.p);return P&&P.rate<=0;})) },
+    check:g=>g.s.sites.some((f:Site)=>f.sources.some(x=>{const P=g.SITEPART(x.p);return P&&P.rate<=0;})) },
   { id:'i3', track:'Infrastructure', name:'Stored sunlight', desc:'Install a battery',
-    check:g=>g.s.sites.some((f:any)=>(f.storage||[]).length>0) },
+    check:g=>g.s.sites.some((f:Site)=>(f.storage||[]).length>0) },
   { id:'i4', track:'Infrastructure', name:'Quarter megawatt', desc:'250 kW of total capacity',
-    check:g=>g.s.sites.reduce((a:number,f:any)=>a+g.siteCapacity(f),0)>=250000 },
+    check:g=>g.s.sites.reduce((a:number,f:Site)=>a+g.siteCapacity(f),0)>=250000 },
   { id:'p1', track:'Pools', name:'Pool founder', desc:'Open your own pool',
-    check:g=>g.s.pools.some((p:any)=>p.owner==='you'&&p.live) },
+    check:g=>g.s.pools.some((p:Pool)=>p.owner==='you'&&p.live) },
   { id:'p2', track:'Pools', name:'PPS operator', desc:'Run a PPS pool — their variance, your bond',
-    check:g=>g.s.pools.some((p:any)=>p.owner==='you'&&p.live&&p.scheme==='PPS') },
+    check:g=>g.s.pools.some((p:Pool)=>p.owner==='you'&&p.live&&p.scheme==='PPS') },
   { id:'p3', track:'Pools', name:'Terahash pool', desc:'A pool of yours reaches 1 TH/s',
-    check:g=>g.s.pools.some((p:any)=>p.owner==='you'&&p.live&&g.poolHash(p)>=1e6) },
+    check:g=>g.s.pools.some((p:Pool)=>p.owner==='you'&&p.live&&g.poolHash(p)>=1e6) },
   { id:'p4', track:'Pools', name:'Pool profits', desc:'Withdraw $250,000 from your pools, lifetime',
     check:g=>(g.s.poolTake||0)>=250000 },
   { id:'e1', track:'Economy', name:'In the black', desc:'Lifetime net past $25,000',
@@ -56,9 +56,9 @@ export const MILESTONES: Milestone[] = [
   { id:'c1', track:'Craft', name:'First rebuild', desc:'Retrofit a rig through the planner',
     check:g=>(g.s.rebuilds||0)>=1 },
   { id:'c2', track:'Craft', name:'Full board', desc:'A rig running 8 cards',
-    check:g=>g.s.rigs.some((r:any)=>r.units.length>=8) },
+    check:g=>g.s.rigs.some((r:Rig)=>r.units.length>=8) },
   { id:'c3', track:'Craft', name:'New silicon in service', desc:'A generation card mining',
-    check:g=>g.s.rigs.some((r:any)=>r.units.some((u:any)=>{const P=g.PART(u.p);return P&&P.gen;})) },
+    check:g=>g.s.rigs.some((r:Rig)=>r.units.some((u:Unit)=>{const P=g.PART(u.p);return P&&P.gen;})) },
   { id:'c4', track:'Craft', name:'Fifty repairs', desc:'Replace 50 worn cards, lifetime',
     check:g=>(g.s.repairs||0)>=50 },
 ];

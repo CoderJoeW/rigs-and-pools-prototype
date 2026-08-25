@@ -1,9 +1,9 @@
 import { C } from '../data/constants.js';
 import { fmt } from '../utils/format.js';
 import { trimName } from './state.js';
-import type { Game, ChainState } from './types.js';
+import type { Game, ChainState, Pool } from './types.js';
 
-// 11-your-pool.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -11,12 +11,12 @@ import type { Game, ChainState } from './types.js';
 export function installPools(G: Game): void {
   /* ---- running a pool ---- */
   function foundPool(chainId: string, scheme: 'PPS' | 'PPLNS', fee: number): void {
-    const chain = G.chain(chainId), need = G.bondReq(chain, scheme);
+    const chain = G.chain(chainId)!, need = G.bondReq(chain, scheme);   // chainId always a real chain
     if (G.s.cash < need) return;
     G.s.cash -= need;
     G.s.pools.push({ id:'you'+Math.random().toString(36).slice(2,7), chain:chainId,
       name:'Your '+chain.name+' pool', scheme, fee, owner:'you',
-      bond:need, bond0:need, cap:0, born:G.s.t, live:true, earned:0, _blocks:0 });
+      bond:need, bond0:need, cap:0, born:G.s.t, live:true, earned:0 });
     G.say('sys', 'Founded a ' + scheme + ' pool on ' + chain.name + ' at ' + (fee * 100).toFixed(1) + '%',
       '-' + fmt.usd(need));
     G.pop('Pool opened', 'bond posted: ' + fmt.usd(need), 'blu', { always: true });
@@ -24,12 +24,12 @@ export function installPools(G: Game): void {
     if (!G.simsOn(chainId))
       G.say('bad', 'No other miners work ' + chain.name + ' — this pool can only ever hold your own rigs');
   }
-  function renamePool(pool: any, name: string): void {
+  function renamePool(pool: Pool, name: string): void {
     if (pool.owner !== 'you') return;               // a rival's pool is not yours to rename
     const trimmedName = trimName(name);
     if (trimmedName) pool.name = trimmedName;
   }
-  function setPoolFee(pool: any, fee: number): void {
+  function setPoolFee(pool: Pool, fee: number): void {
     if (Math.abs(fee - pool.fee) > 0.0005) pool.feeMoved = G.s.t;
     pool.fee = Math.max(0, Math.min(0.15, fee));
     G.s.shakeAt = G.s.t + 300;      // word gets around in five minutes; debounces a slider drag
@@ -44,30 +44,30 @@ export function installPools(G: Game): void {
   /* What the bond may not go below: on PPS, cover for the members you already
      have. Without this you could pull your capital the moment a dry spell
      started and leave members underwritten by nothing. */
-  const bondFloor = (pool: any) => Math.max(
-    G.bondReq(G.chain(pool.chain), pool.scheme),        // never below the entry stake
+  const bondFloor = (pool: Pool) => Math.max(
+    G.bondReq(G.chain(pool.chain)!, pool.scheme),       // never below the entry stake
     G.bondFor(pool, G.poolHash(pool)));                 // nor below cover for current members
-  function addBond(pool: any, amount: number): void {
+  function addBond(pool: Pool, amount: number): void {
     amount = Math.min(Math.round(amount), Math.floor(G.s.cash)); if (amount <= 0) return;
     G.s.cash -= amount; pool.bond += amount; pool.bond0 = Math.max(pool.bond0, pool.bond);
     G.say('sys', 'Added ' + fmt.usd(amount) + ' to ' + pool.name + "'s bond", '-' + fmt.usd(amount), undefined, undefined, -amount);
   }
-  function releaseBond(pool: any, amount: number): void {
+  function releaseBond(pool: Pool, amount: number): void {
     const room = Math.max(0, pool.bond - bondFloor(pool));
     amount = Math.min(Math.round(amount), Math.floor(room)); if (amount <= 0) return;
     pool.bond -= amount; G.s.cash += amount;
     pool.bond0 = pool.bond;      // a deliberate downsize is an announcement, not a default:
     G.say('sys', 'Released ' + fmt.usd(amount) + ' from ' + pool.name + "'s bond", '+' + fmt.usd(amount), undefined, undefined, amount);
   }                      // losses still push bond below bond0 and cost you trust
-  function topUpBond(pool: any, amount: number): void { addBond(pool, amount); }
-  const poolProfit = (pool: any) => Math.max(0, pool.bond - pool.bond0);
-  function withdrawProfit(pool: any): void {
+  function topUpBond(pool: Pool, amount: number): void { addBond(pool, amount); }
+  const poolProfit = (pool: Pool) => Math.max(0, pool.bond - pool.bond0);
+  function withdrawProfit(pool: Pool): void {
     const amount = Math.round(poolProfit(pool));
     if (amount <= 0) return;
     pool.bond -= amount; G.s.cash += amount; G.s.poolTake = (G.s.poolTake || 0) + amount;
     G.say('sys', 'Withdrew profit from ' + pool.name, '+' + fmt.usd(amount), undefined, undefined, amount);
   }
-  function closePool(pool: any): void {
+  function closePool(pool: Pool): void {
     const back = Math.round(pool.bond);
     G.s.cash += back;
     /* Through the shared closing path, which releases the pool's simulated
@@ -90,13 +90,13 @@ export function installPools(G: Game): void {
     if (!quiet) G.say('pay', 'Sold ' + fmt.c(amount) + ' ' + chain.tick +
       (slip > 0.005 ? ' (' + fmt.pct(slip) + ' slippage)' : ''), '+' + fmt.usd2(net));
   }
-  const sell = (chainId: string, frac: number) => doSell(G.chain(chainId), G.s.wallet[chainId]! * frac);
+  const sell = (chainId: string, frac: number) => doSell(G.chain(chainId)!, G.s.wallet[chainId]! * frac);
   /* Buying is doSell's mirror image, not a separate model: the same book
      depth sets slippage, the same exchange fee applies, and impact moves
      the same way — just signed the other direction. Selling pushes impact
      positive (price sags below ref); buying pushes it negative (price runs
      above ref). Both decay back toward 0 via the same per-tick relaxation
-     in chainEconomy.js, so a premium fades exactly as a discount does. This is
+     in chainEconomy.ts, so a premium fades exactly as a discount does. This is
      what completes the buy side the design spec's v33 fundamentals never
      shipped — no new price model, just the existing one used both ways. */
   function doBuy(chain: ChainState, usd: number): void {
@@ -112,7 +112,7 @@ export function installPools(G: Game): void {
     G.say('pay', 'Bought ' + fmt.c(filled) + ' ' + chain.tick +
       (slip > 0.005 ? ' (' + fmt.pct(slip) + ' slippage)' : ''), '-' + fmt.usd2(cost));
   }
-  const buy = (chainId: string, frac: number) => doBuy(G.chain(chainId), G.s.cash * frac);
+  const buy = (chainId: string, frac: number) => doBuy(G.chain(chainId)!, G.s.cash * frac);
   function fireDrip(): void {
     for (const chain of G.s.chains) {
       if (G.s.hold && G.s.hold[chain.id]) continue;          // exempt what you are holding
@@ -135,7 +135,16 @@ export function installPools(G: Game): void {
     }
     return worst;
   };
-  const setDrip = (key: 'on' | 'frac' | 'hours', value: any) => { (G.s.drip as any)[key] = value; G.s.dripAt = G.s.t + G.s.drip.hours * 3600; };
+  // One overload per key, same pattern as utils/format.ts's partSub — 'on'
+  // takes a boolean, 'frac'/'hours' take a number, so a caller passing the
+  // wrong value type for a given key fails to compile instead of silently
+  // writing it through a shared boolean|number cast.
+  function setDrip(key: 'on', value: boolean): void;
+  function setDrip(key: 'frac' | 'hours', value: number): void;
+  function setDrip(key: 'on' | 'frac' | 'hours', value: boolean | number): void {
+    (G.s.drip as unknown as Record<'on' | 'frac' | 'hours', boolean | number>)[key] = value;
+    G.s.dripAt = G.s.t + G.s.drip.hours * 3600;
+  }
   const toggleHold = (chainId: string) => { G.s.hold = G.s.hold || {}; G.s.hold[chainId] = !G.s.hold[chainId]; };
 
   Object.assign(G, { addBond, bondFloor, buy, closePool, doBuy, doSell, dripCost, dripWorst, fireDrip, foundPool, poolProfit, releaseBond, renamePool, sell, setDrip, setPoolFee, toggleHold, topUpBond, withdrawProfit });

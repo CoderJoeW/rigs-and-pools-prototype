@@ -117,7 +117,7 @@ describe('rigWorn', () => {
 describe('fleetWorn / fleetRepair', () => {
   it('repairs only rigs actually carrying worn cards, across the whole farm', () => {
     const g = freshStore();
-    const [a, b] = twoRigs(g);
+    const [a] = twoRigs(g); // the second rig stays unworn, on purpose
     a.units[0].w = 0.5; // only rig a is worn
 
     const info = g.fleetWorn(0.35, null);

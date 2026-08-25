@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { Game } from './types.js';
+import type { Game, Pool, OnboardingStep } from './types.js';
 
 // Onboarding — a reactive coach plus one scripted walkthrough. Full
 // rationale (why predicates not a step index, why TOUR_SLIDES is the
@@ -21,8 +21,6 @@ const TOUR_SLIDES = [
     body:'This is where a rig is born. Quick pick has already loaded a smart, affordable preset — tap Order parts below to lock it in. Customise lets you choose every part yourself once you’re ready.' },
 ];
 
-interface OnboardingStep { id: string; done(G: Game): boolean; text: string }
-
 const STEPS: OnboardingStep[] = [
   { id:'build',
     done: G => G.s.rigs.length>0,
@@ -31,7 +29,7 @@ const STEPS: OnboardingStep[] = [
     done: G => G.totalHash.value>=100, // mirrors milestone h1, "First real hashrate"
     text: 'Rig ordered — it starts earning once assembly finishes. Watch it on Farm, or check Chains to see where else it could mine.' },
   { id:'grow',   // issue #8 rationale: docs/onboarding.md
-    done: G => G.s.sites.length>1 || G.s.pools.some((p:any)=>p.owner==='you'),
+    done: G => G.s.sites.length>1 || G.s.pools.some((p: Pool)=>p.owner==='you'),
     text: 'Cash flowing? Add a second site on Sites — or check Chains: Halcyon, Nova, Ferro and Obelisk each run rival pools with live reputations and fills, and founding your own grows past what one rig on one chain can earn.' },
   { id:'automate',   // placed last deliberately: docs/onboarding.md
     done: G => !!(G.s.autoOff || G.s.autoFix),
@@ -47,7 +45,7 @@ export function installOnboarding(G: Game): void {
 
   // issue #30 rationale (why this nudge lives on Chains, not the banner): docs/onboarding.md.
   const showChainsNudge = computed(() =>
-    !G.s.chainsNudgeDismissed && !G.s.pools.some((p: any) => p.owner === 'you'));
+    !G.s.chainsNudgeDismissed && !G.s.pools.some((p: Pool) => p.owner === 'you'));
   const dismissChainsNudge = () => { G.s.chainsNudgeDismissed = true; };
 
   // showTour gating (nextId not rigs.length, tourReplay escape hatch): docs/onboarding.md.

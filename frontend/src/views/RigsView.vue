@@ -1,124 +1,37 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { C } from '../data/constants.js';
 import { useSheetA11y } from '../composables/useSheetA11y.js';
-import { useSwipeAction } from '../composables/useSwipeAction.js';
 import { useInlineRename } from '../composables/useInlineRename.js';
+import { useRigFilterSort } from '../composables/useRigFilterSort.js';
+import { useRigSelection } from '../composables/useRigSelection.js';
 import RebuildSheet from '../components/RebuildSheet.vue';
 import FleetSheet from '../components/FleetSheet.vue';
 import ChainMark from '../components/ChainMark.vue';
 import Chassis from '../components/Chassis.vue';
 import RigShot from '../components/RigShot.vue';
-import { CHAIN_HUE } from '../data/chains.js';
 import { sitePlate, sitePhase } from '../utils/siteArt.js';
+import type { Rig } from '../game/types.js';
 
 const g = useGameStore();
 const f=computed(()=>g.active);
-
-const avgWear=(r: any)=>g.rigWear(r);
-const stateOf=(r: any)=>g.rigState(r);
-const needsEye=(r: any)=>['off','worn','losing','wearing'].includes(stateOf(r).k);
-const chainHueOf=(r: any)=>{
-  const gr=g.groupOf(r);
-  const chain=gr?gr.chain:null;
-  return chain!=null?CHAIN_HUE[chain]:undefined;
-};
-const chassisOf=(r: any)=>{
-  const n=r.units?r.units.length:0;
-  return {
-    state:stateOf(r).dot,
-    size:n>=9?'lg':n>=5?'md':'sm',
-    chainHue:chainHueOf(r),
-    label:stateOf(r).label,
-  };
-};
 const siteRigs=computed(()=>g.siteRigs(f.value));
-// Filter chips: design-spec.md §6n.
-const FILTERS=[
-  {k:'all',     label:'All',      test:()=>true,  mark:'layers'},
-  {k:'attention',label:'Needs attention', test:needsEye, alert:true, mark:'warn'},
-  {k:'run',     label:'Running',  test:(r: any)=>stateOf(r).k==='run',  mark:'dot', dot:'run'},
-  {k:'off',     label:'Off',      test:(r: any)=>stateOf(r).k==='off',  mark:'dot', dot:'off'},
-  {k:'worn',    label:'Worn',     test:(r: any)=>['worn','wearing'].includes(stateOf(r).k),
-                                  mark:'dot', dot:'warn'},
-];
-const filt=ref('all');
-const counts=computed(()=>{
-  const o: Record<string, number>={}; for(const x of FILTERS) o[x.k]=siteRigs.value.filter(x.test).length;
-  return o;
-});
-// Each sort names its own direction (e.g. "Net/day (high -> low)"); cmp is
-// always written ascending and reversed when flipped.
-const SORTS=[
-  {k:'name', label:'Name',
-   // By name, not id, since rigs are renameable here; numeric collation so
-   // "Rig 2" precedes "Rig 10", id breaks a tie.
-   cmp:(a: any,b: any)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.id-b.id,
-   ends:['A–Z','Z–A']},
-  {k:'net',  label:'Net/day', cmp:(a: any,b: any)=>g.rigNet(a)-g.rigNet(b), ends:['low → high','high → low'], desc:true},
-  {k:'hash', label:'Hashrate',cmp:(a: any,b: any)=>g.rigHash(a)-g.rigHash(b), ends:['low → high','high → low'], desc:true},
-  {k:'wear', label:'Wear',    cmp:(a: any,b: any)=>avgWear(a)-avgWear(b), ends:['low → high','high → low'], desc:true},
-];
-const sortBy=ref('name');
-// Direction held per column so switching sorts doesn't leak one's flip into another.
-const sortDesc=reactive(Object.fromEntries(SORTS.map(x=>[x.k,!!x.desc])));
-const sortOpen=ref(false);
-const sortOf=(k: string)=>SORTS.find(x=>x.k===k)!;
-const sortEnd=(k: string)=>sortOf(k).ends[sortDesc[k]?1:0];
-const sortLabel=computed(()=>sortOf(sortBy.value).label+' ('+sortEnd(sortBy.value)+')');
-const flipSort=()=>{ sortDesc[sortBy.value]=!sortDesc[sortBy.value]; };
-const pickSort=(k: string)=>{
-  if(k===sortBy.value) flipSort(); else sortBy.value=k;
-  sortOpen.value=false;
-};
-const shown=computed(()=>{
-  const test=FILTERS.find(x=>x.k===filt.value)!.test;
-  const s=sortOf(sortBy.value), dir=sortDesc[sortBy.value]?-1:1;
-  return siteRigs.value.filter(test).sort((a: any,b: any)=>s.cmp(a,b)*dir);
-});
 
-const picking=ref(false);
-const chosen=reactive<Record<number, boolean>>({});
-const chosenIds=computed(()=>shown.value.filter((r: any)=>chosen[r.id]).map((r: any)=>r.id));
-const toggleChoose=(r: any)=>{ chosen[r.id]=!chosen[r.id]; };
-const chooseAll=()=>{ const all=chosenIds.value.length===shown.value.length;
-  for(const r of shown.value) chosen[(r as any).id]=!all; };
-const stopPicking=()=>{ picking.value=false; for(const k in chosen) delete chosen[k as any]; };
-const scopeId=computed(()=> picking.value && chosenIds.value.length
-  ? chosenIds.value : (f.value?f.value.id:null));
-const scopeLabel=computed(()=> picking.value && chosenIds.value.length
-  ? chosenIds.value.length+' selected'
-  : (f.value?'all '+siteRigs.value.length+' at '+f.value.name:''));
-
-/* Swipe-a-row-to-power-it: the pointer mechanics live in the composable, which
-   knows nothing about rigs. What stays here is the domain half — which rows may
-   be swiped, and what the swipe does. */
-const canSwipe=(r: any)=>!!r && !picking.value && stateOf(r).k!=='build';
-const swipeVerb=(r: any)=>r.on?'Power off':'Power on';
-const rigById=(id: number)=>g.s.rigs.find((r: any)=>r.id===id);
-
-const { sw, SW_FIRE, onDown:onSwipeDown, onMove:onSwipeMove, onUp:onSwipeUp,
-  onCancel:onSwipeCancel, fire:fireSwipe, close:closeSwipe, reset:resetSwipe,
-  takeClick, isOpen:swipeOpen } = useSwipeAction({
-    can: (id: any) => canSwipe(rigById(id)),
-    fire: (id: any) => g.toggleRig(id),
-    within: '.rigswipe',
-  });
-
-const rowClick=(r: any)=>{
-  if(takeClick()) return;                      // this click is the tail of a drag
-  if(swipeOpen(r.id)){ closeSwipe(); return; } // an open row closes before it opens
-  if(picking.value) toggleChoose(r); else openRig.value=r.id;
-};
-watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
+const { stateOf, avgWear, chassisOf, FILTERS, SORTS, filt, counts, sortBy, sortDesc,
+  sortOpen, sortLabel, sortEnd, flipSort, pickSort, shown } = useRigFilterSort(g, siteRigs);
 
 const openRig=ref<number | null>(null);
+const { picking, chosen, chosenIds, chooseAll, stopPicking, scopeId, scopeLabel,
+  swipeVerb, sw, SW_FIRE, onSwipeDown, onSwipeMove, onSwipeUp, onSwipeCancel,
+  fireSwipe, resetSwipe, rowClick } = useRigSelection(g, shown, siteRigs, f, openRig);
+watch([picking,filt,sortBy,()=>sortDesc[sortBy.value]],()=>resetSwipe());
+
 const rig=computed(()=> openRig.value==null ? null
-  : g.s.rigs.find((r: any)=>r.id===openRig.value) || null);
+  : g.s.rigs.find((r: Rig)=>r.id===openRig.value) || null);
 const { open:renameOpen, draft:renameDraft, start:startRenameRig, commit:saveRenameRig } =
-  useInlineRename(()=>rig.value.name, (name: string)=>g.renameRig(rig.value.id,name));
+  useInlineRename(()=>rig.value!.name, (name: string)=>g.renameRig(rig.value!.id,name));
 watch(openRig, ()=>{ renameOpen.value=false; resetSwipe(); });
 const fleetOpen=ref(false);
 const REPAIR_AT=C.REPAIR_AT;
@@ -126,16 +39,16 @@ const REPAIR_AT=C.REPAIR_AT;
 /* Same worn-card definition the fleet sweep uses, asked of the open rig only. */
 const rigWorn=computed(()=> rig.value ? g.rigWorn(rig.value,REPAIR_AT) : {n:0,cost:0});
 
-const siteHash=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigHash(r),0));
-const siteNet=computed(()=>siteRigs.value.reduce((a: number,r: any)=>a+g.rigNet(r),0));
-const siteLive=computed(()=>siteRigs.value.filter((r: any)=>g.rigLive(r)).length);
+const siteHash=computed(()=>siteRigs.value.reduce((a: number,r: Rig)=>a+g.rigHash(r),0));
+const siteNet=computed(()=>siteRigs.value.reduce((a: number,r: Rig)=>a+g.rigNet(r),0));
+const siteLive=computed(()=>siteRigs.value.filter((r: Rig)=>g.rigLive(r)).length);
 const siteSlots=computed(()=>g.siteSlots(f.value));
 // Hero wears the site's own shell (same plate as Sites/Farm), not a fixed rig photo.
 const heroShot=computed(()=>sitePlate(f.value.shell, sitePhase(g.s.t)));
 // Same dot vocabulary the rows use, not a fourth "site" colour.
 const siteStatus=computed(()=>{
   if(siteLive.value) return {dot:'run', label:'Active'};
-  if(siteRigs.value.some((r: any)=>r.building>0)) return {dot:'build', label:'Building'};
+  if(siteRigs.value.some((r: Rig)=>r.building>0)) return {dot:'build', label:'Building'};
   if(siteRigs.value.length) return {dot:'off', label:'Idle'};
   return {dot:'off', label:'Empty'};
 });
@@ -145,7 +58,7 @@ watch(()=>f.value&&f.value.id, ()=>{ stopPicking(); openRig.value=null; filt.val
 const takeFocusRig=()=>{
   const id=g.s.focusRig; if(id==null) return;
   g.s.focusRig=null;
-  const r=g.s.rigs.find((x: any)=>x.id===id);
+  const r=g.s.rigs.find((x: Rig)=>x.id===id);
   if(r && r.site===g.s.activeSite) openRig.value=id;
 };
 onMounted(takeFocusRig);
@@ -252,7 +165,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
               <div class="sb">{{ r.units.length }}× {{ g.PART(r.units[0].p).name }}<template
                   v-if="g.s.groups.length>1"> &middot; {{ g.groupOf(r).name }}</template>
                 &middot; <ChainMark :chain="g.groupOf(r).chain"
-                />{{ g.chain(g.groupOf(r).chain).name }}</div>
+                />{{ g.chain(g.groupOf(r).chain)!.name }}</div>
               <div class="wearline">
                 <span class="wl">Wear</span>
                 <div class="wearbar" aria-hidden="true">
@@ -371,7 +284,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
             <select id="rig-group-select" :value="rig.group"
                     @change="g.setRigGroup(rig,parseInt(($event.target as HTMLSelectElement).value))">
               <option v-for="gr in g.s.groups" :key="gr.id" :value="gr.id">
-                {{ gr.name }} — {{ g.chain(gr.chain).name }}</option>
+                {{ gr.name }} — {{ g.chain(gr.chain)!.name }}</option>
             </select>
             <p class="hint">Moving between groups never forfeits anything — the window belongs to
               the group. Manage groups on the Farm tab.</p></div>
@@ -418,12 +331,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 </template>
 
 <style scoped>
-/* The Rigs tab's own chrome. Everything shared with the rest of the app — the
-   card, the pill, the .dot vocabulary, the swipe mechanics — still comes from
-   main.css; what lives here is the layout the mockup asks for and nothing
-   else uses: a page header, a hero that fronts the site with a photograph,
-   a list of rigs as separate cards rather than rows of one, and the sort /
-   select bar between them. */
+/* Rigs view layout/style rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 
 .rigrush{flex:none;background:var(--amber-t);color:var(--amber);font-weight:500}
 .rigrush:active:not(:disabled){background:color-mix(in srgb,var(--amber) 25%,transparent)}
@@ -476,11 +384,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigfilters .pill.alert.on .pill-ic{color:var(--red)}
 
 /* ---- sort and select bar -------------------------------------------- */
-/* Every control here is padded to a real target rather than left at the
-   global *{padding:0} reset — as bare text these were ~17px tall on a layout
-   that is driven by thumbs, where the .btn-sm they replaced was ~28px. The
-   negative margins keep the padding from moving the text off the page's
-   own margin. */
+/* Padding-to-target rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigbar{display:flex;align-items:center;gap:4px;padding:0 2px 10px;min-height:34px}
 .rigsort{font-size:12px;color:var(--ink-3);white-space:nowrap;padding:9px 6px;margin-left:-6px}
 .rigsort b{color:var(--ink);font-weight:600}
@@ -502,11 +406,7 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigsorts{padding:0 12px 10px;margin:0 -12px}
 
 /* ---- the list ------------------------------------------------------- */
-/* One card per rig rather than one card of rows: at this row height a shared
-   panel reads as a table, and the mockup's list reads as a shelf of machines.
-   The gap is what does it, so the swipe wrapper takes over the card's own
-   frame — and its overflow, which is what clips the action panel underneath
-   to the same rounded corners. */
+/* One-card-per-rig rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .riglist{display:grid;gap:8px}
 .rigswipe{background:var(--card);border:1px solid var(--line);border-radius:10px;
   overflow:hidden}
@@ -537,25 +437,10 @@ useSheetA11y(rigSheetEl, computed(()=>!!rig.value), ()=>{ openRig.value=null; })
 .rigrow .rt .k{font-size:9px;color:var(--ink-3);margin-top:1px}
 .rigrow .ch{flex:none;color:var(--ink-3);font-size:17px;line-height:1}
 
-/* The panel under the row. Filled from the start rather than tinted-then-
-   filled: it now sits inside the rig's own card with nothing else in it, so
-   there is no neighbouring row for a pale wash to get confused with, and the
-   mockup shows it solid.
-   The label is var(--card) rather than white for the reason main.css states
-   at .rigswact.arm: the dark theme's --red and --green are light enough that
-   white on them lands under 3.5:1, where the card colour clears AA against
-   both. Which is also why .arm can no longer signal by filling in — that is
-   the resting state now — and signals with a ring in the label's own colour
-   instead. Darkening the fill would have been the obvious alternative and is
-   the one thing that cannot work: it drags the dark theme's near-black label
-   back under AA. */
+/* Swipe-panel fill/contrast rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigswact{gap:9px;padding:0 16px;background:var(--red);color:var(--card)}
 .rigswact.go{background:var(--green);color:var(--card)}
-/* "Let go now" happens on the glyph rather than on the panel: the panel's
-   edges ARE the card's edges, so anything drawn there (a ring, a heavier
-   border) lands on top of the card frame and reads as trim rather than as a
-   change of state. The disc is well inboard, and flipping its fill costs no
-   contrast — the glyph and its ground simply swap the pair they already had. */
+/* "Let go now" glyph-vs-panel rationale: docs/implementation-notes.md#rigs-view-srcviewsrigsviewvue. */
 .rigswact .ic{flex:none;width:26px;height:26px;display:flex;align-items:center;
   justify-content:center;border-radius:50%;
   box-shadow:inset 0 0 0 1.5px color-mix(in srgb, currentColor 42%, transparent);

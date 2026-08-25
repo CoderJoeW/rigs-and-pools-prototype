@@ -4,7 +4,7 @@ export function installPoolBonds(G: Game): void {
   function settleYourPoolBonds(dt: number): void {
     for (const pool of G.s.pools) {
       if (pool.owner !== 'you' || !pool.live) continue;
-      const chain = G.chain(pool.chain);
+      const chain = G.chain(pool.chain)!;   // a pool's chain always resolves
       if (pool.scheme === 'PPS') {
         const owed = (dt * G.poolHash(pool) / G.diffOf(chain)) * chain.reward * G.price(chain) * (1 - pool.fee);
         pool.bond -= owed;

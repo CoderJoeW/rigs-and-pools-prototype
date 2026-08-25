@@ -5,12 +5,14 @@ import { CHAIN_BASE } from '../data/chains.js';
 import { SHELLS, SITEPART } from '../data/site-parts.js';
 import { PART, RISER } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
-import type { Game, Site, ChainState, Group } from './types.js';
+import type { Game, Site, ChainState, Group, Rig, Unit, Pool, SitePlan, FlowInfo, BattAdvice, GroupAdvice, ChainCeiling } from './types.js';
+import type { Psu } from '../data/hardware.js';
 
+// Duck-typed union rationale: docs/implementation-notes.md#duck-typed-part-lookups-part-sitepart-in-srcgametypests-sp-p-in-srcgamedispatchts.
 const SP = (id: string): any => SITEPART(id);
 const P = (id: string): any => PART(id);
 
-// 04-sites-and-rigs.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -27,7 +29,7 @@ export function installDispatch(G: Game): void {
   let heatVer = 0;
   const heatMemo = new Map<number, { version: number; heat: number }>();
   const touchHeat = () => { heatVer++; };
-  const siteHeatRaw = (site: Site) => siteRigs(site).reduce((sum: number, rig: any) => sum + (rigLive(rig) ? rigCoreW(rig) / rigAir(rig) : 0), 0);
+  const siteHeatRaw = (site: Site) => siteRigs(site).reduce((sum: number, rig: Rig) => sum + (rigLive(rig) ? rigCoreW(rig) / rigAir(rig) : 0), 0);
   const siteHeat = (site: Site) => {
     const cached = heatMemo.get(site.id);
     if (cached && cached.version === heatVer) return cached.heat;
@@ -46,28 +48,28 @@ export function installDispatch(G: Game): void {
     return draw;
   };
   const siteSlots = (site: Site) => SHELLS.find(shell => shell.id === site.shell)!.slots;
-  const siteRigs = (site: Site) => G.s.rigs.filter((rig: any) => rig.site === site.id);
-  const liveUnits = (rig: any) => rig.units;
-  const rigLive = (rig: any) => rig.on && rig.building <= 0 && liveUnits(rig).length > 0;
-  const rigHash = (rig: any) => {
+  const siteRigs = (site: Site) => G.s.rigs.filter((rig: Rig) => rig.site === site.id);
+  const liveUnits = (rig: Rig) => rig.units;
+  const rigLive = (rig: Rig) => rig.on && rig.building <= 0 && liveUnits(rig).length > 0;
+  const rigHash = (rig: Rig) => {
     if (!rigLive(rig)) return 0;
     const group = groupOf(rig); const chain = group && G.chain(group.chain); if (!chain) return 0;
     const site = G.site(rig.site);
-    const raw = liveUnits(rig).reduce((sum: number, unit: any) => sum + P(unit.p).mh * (1 - 0.4 * unit.w), 0) * (1 + (rig.tune || 0));
+    const raw = liveUnits(rig).reduce((sum: number, unit: Unit) => sum + P(unit.p).mh * (1 - 0.4 * unit.w), 0) * (1 + (rig.tune || 0));
     return raw * (site ? throttleOf(site) : 1);
   };
-  const chassisW = (rig: any) => (rig.kind === 'gpu'
+  const chassisW = (rig: Rig) => (rig.kind === 'gpu'
     ? P(rig.frame).w + P(rig.mobo).w + rig.risers * RISER.w : P(rig.ctrl).w) + (rig.cool ? P(rig.cool).w : 0);
-  const rigCoreW = (rig: any) => chassisW(rig) +
-    liveUnits(rig).reduce((sum: number, unit: any) => sum + P(unit.p).w * (1 + 0.5 * unit.w), 0) * (1 + (rig.tune || 0) * 1.9);
-  const rigWallW = (rig: any) => rigLive(rig) ? rigCoreW(rig) / P(rig.psu).eff : 0;
-  const rigAir = (rig: any) => (rig.kind === 'gpu' ? P(rig.frame).air : 1.30) * (rig.cool ? P(rig.cool).fac : 1);
-  const psuUsableW = (psu: any) => psu.w * C.PSU_HEADROOM;
+  const rigCoreW = (rig: Rig) => chassisW(rig) +
+    liveUnits(rig).reduce((sum: number, unit: Unit) => sum + P(unit.p).w * (1 + 0.5 * unit.w), 0) * (1 + (rig.tune || 0) * 1.9);
+  const rigWallW = (rig: Rig) => rigLive(rig) ? rigCoreW(rig) / P(rig.psu).eff : 0;
+  const rigAir = (rig: Rig) => (rig.kind === 'gpu' ? P(rig.frame).air : 1.30) * (rig.cool ? P(rig.cool).fac : 1);
+  const psuUsableW = (psu: Psu) => psu.w * C.PSU_HEADROOM;
   const psuCarrying = (coreW: number) =>
-    (G.livePsus.find((psu: any) => psuUsableW(psu) >= coreW) || {} as any).name || 'Nothing here is big enough';
+    (G.livePsus.find((psu: Psu) => psuUsableW(psu) >= coreW) as Psu | undefined)?.name || 'Nothing here is big enough';
   const psuWithConn = (conn: number) =>
-    (G.livePsus.find((psu: any) => psu.conn >= conn) || {} as any).name || 'No supply has enough';
-  const siteDemand = (site: Site) => siteRigs(site).reduce((sum: number, rig: any) => sum + rigWallW(rig), 0) + sitePlantW(site);
+    (G.livePsus.find((psu: Psu) => psu.conn >= conn) as Psu | undefined)?.name || 'No supply has enough';
+  const siteDemand = (site: Site) => siteRigs(site).reduce((sum: number, rig: Rig) => sum + rigWallW(rig), 0) + sitePlantW(site);
   const siteTemp = (site: Site) => {
     const cool = siteCooling(site); if (cool <= 0) return G.ambient.value + 75;
     return G.ambient.value + Math.min(75, siteHeat(site) / cool * 40);
@@ -81,7 +83,7 @@ export function installDispatch(G: Game): void {
   const battKwh = (site: Site) => siteStorage(site).reduce((sum, unit) => sum + SP(unit.p).kwh * unit.n, 0);
   const battKw = (site: Site) => siteStorage(site).reduce((sum, unit) => sum + SP(unit.p).kw * unit.n, 0) * 1000;
   const battFirm = (site: Site) => Math.min(battKw(site), (site.batt || 0) / BATT_HORIZON * 1000);
-  function sitePlan(site: Site) {
+  function sitePlan(site: Site): SitePlan {
     const load = siteDemand(site);
     let renew = 0; const paid: { out: number; rate: number }[] = [];
     for (const src of site.sources) {
@@ -90,7 +92,8 @@ export function installDispatch(G: Game): void {
     }
     const batteryLevel = site.batt || 0, kw = battKw(site), cap = battKwh(site);
     const firm = battFirm(site), paidCap = paid.reduce((sum, entry) => sum + entry.out, 0);
-    let deficit = Math.max(0, load - renew), surplus = Math.max(0, renew - load);
+    let deficit = Math.max(0, load - renew);
+    const surplus = Math.max(0, renew - load);
     let chW = 0, disW = 0, gridChW = 0;
     if (surplus > 0 && cap > 0 && batteryLevel < cap) chW = Math.min(surplus, kw);
     const shortfall = Math.max(0, deficit - paidCap);
@@ -113,7 +116,7 @@ export function installDispatch(G: Game): void {
     return { load, renew, chW, disW, gridChW, paidW, cost, unserved, firm };
   }
   const siteCostPerHour = (site: Site) => sitePlan(site).cost;
-  function flowOf(site: Site) {
+  function flowOf(site: Site): FlowInfo {
     const plan = sitePlan(site), cool = sitePlantW(site);
     return {
       load: plan.load, rigs: Math.max(0, plan.load - cool), cool,
@@ -123,7 +126,7 @@ export function installDispatch(G: Game): void {
       unserved: plan.unserved, cap: siteCapacity(site) + battFirm(site),
     };
   }
-  function battAdvice(site: Site) {
+  function battAdvice(site: Site): BattAdvice | null {
     const kwh = battKwh(site); if (kwh <= 0) return null;
     const kw = battKw(site), demand = siteDemand(site);
     let paidCap = 0, renewPeak = 0;
@@ -148,18 +151,18 @@ export function installDispatch(G: Game): void {
     return { warn: false, text: 'Well matched — soaking surplus and covering the peak.' };
   }
 
-  const totalHash = computed(() => G.s.rigs.reduce((sum: number, rig: any) => sum + rigHash(rig), 0));
+  const totalHash = computed(() => G.s.rigs.reduce((sum: number, rig: Rig) => sum + rigHash(rig), 0));
   const totalDemand = computed(() => G.s.sites.reduce((sum, site) => sum + siteDemand(site), 0));
   const totalCapacity = computed(() => G.s.sites.reduce((sum, site) => sum + siteCapacity(site), 0));
   const headroom = computed(() => totalCapacity.value > 0 ? totalDemand.value / totalCapacity.value : 1);
   const binding = computed(() => headroom.value > C.FLIP_AT ? 'power' : 'cash');
   const effMhw = computed(() => totalDemand.value > 0 ? totalHash.value / totalDemand.value : 0);
 
-  const groupOf = (rig: any): Group => G.s.groups.find(group => group.id === rig.group) || G.s.groups[0]!;
-  const groupHash = (group: Group) => G.s.rigs.reduce((sum: number, rig: any) => sum + (rig.group === group.id ? rigHash(rig) : 0), 0);
-  const groupRigs = (group: Group) => G.s.rigs.filter((rig: any) => rig.group === group.id);
+  const groupOf = (rig: Rig): Group => G.s.groups.find(group => group.id === rig.group) || G.s.groups[0]!;
+  const groupHash = (group: Group) => G.s.rigs.reduce((sum: number, rig: Rig) => sum + (rig.group === group.id ? rigHash(rig) : 0), 0);
+  const groupRigs = (group: Group) => G.s.rigs.filter((rig: Rig) => rig.group === group.id);
   const myHash = (chain: ChainState) => G.s.groups.reduce((sum, group) => sum + (group.chain === chain.id ? groupHash(group) : 0), 0);
-  /* O(1) via running totals maintained by sims.js — never scan the agent array. */
+  /* O(1) via running totals maintained by sims.ts — never scan the agent array. */
   const simHash = (chain: ChainState) => G.simHashOf ? G.simHashOf(chain) : 0;
   const chainHash = (chain: ChainState) => simHash(chain) + myHash(chain);
   const diffOf = (chain: ChainState) => Math.max(chain.floor, chain.obs) * chain.target;
@@ -167,7 +170,7 @@ export function installDispatch(G: Game): void {
   const blockETA = (chain: ChainState) => Math.max(0, chain.T - chain.elapsed);
   const blockProg = (chain: ChainState) => chain.T > 0 ? Math.min(1, chain.elapsed / chain.T) : 0;
   const winChance = (chain: ChainState) => { const networkHash = chainHash(chain); return networkHash > 0 ? myHash(chain) / networkHash : 0; };
-  function groupAdvice(group: Group) {
+  function groupAdvice(group: Group): GroupAdvice | null {
     const chain = G.chain(group.chain), groupHashAmount = groupHash(group);
     if (!chain || groupHashAmount <= 0) return null;
     const networkHash = chainHash(chain);
@@ -183,7 +186,7 @@ export function installDispatch(G: Game): void {
     if (!best || best.revPerMh < currentRevPerMh * 1.5) return null;
     return { share: groupHashAmount / networkHash, alt: best.chain.name, mult: best.revPerMh / Math.max(1e-9, currentRevPerMh) };
   }
-  function chainCeiling(chain: ChainState | undefined, extraMh?: number) {
+  function chainCeiling(chain: ChainState | undefined, extraMh?: number): ChainCeiling | null {
     if (!chain) return null;
     const mineHash = myHash(chain) + (extraMh || 0), networkHash = chainHash(chain) + (extraMh || 0);
     if (networkHash <= 0) return null;
@@ -194,7 +197,6 @@ export function installDispatch(G: Game): void {
   }
   const idleCashAdvice = computed(() => {
     const site = G.active.value;
-    if (!site) return null;
     const cost = G.openBuildCost(site);
     if (cost === null || G.s.cash < cost * C.IDLE_CASH_MULT) return null;
     return { site, cost, open: siteSlots(site) - siteRigs(site).length };
@@ -204,34 +206,34 @@ export function installDispatch(G: Game): void {
     const ratio = Math.min(100, Math.max(1, chainHash(chain) / chain.floor) / anchor);
     return CHAIN_BASE[chain.id]! * Math.pow(ratio, 0.45);
   };
-  const poolHash = (pool: any) => (G.simPoolHashOf ? G.simPoolHashOf(pool) : 0)
+  const poolHash = (pool: Pool) => (G.simPoolHashOf ? G.simPoolHashOf(pool) : 0)
     + G.s.groups.reduce((sum, group) => sum + (group.pool === pool.id ? groupHash(group) : 0), 0);
   const revPerMh = (chain: ChainState) => (86400 / diffOf(chain)) * chain.reward * G.price(chain);
   const blocksDay = (chain: ChainState) => 86400 * myHash(chain) / diffOf(chain);
   const mttb = (chain: ChainState) => { const blocks = blocksDay(chain); return blocks > 0 ? 1 / blocks : Infinity; };
 
-  const rigRev = (rig: any) => {
+  const rigRev = (rig: Rig) => {
     const group = groupOf(rig), chain = group && G.chain(group.chain);
     return (!chain || !rigLive(rig)) ? 0 : rigHash(rig) * revPerMh(chain) * G.evMult(G.poolOf(group.pool));
   };
-  const rigPow = (rig: any) => {
+  const rigPow = (rig: Rig) => {
     const site = G.site(rig.site); if (!site || !rigLive(rig)) return 0;
     const demand = siteDemand(site); return demand > 0 ? siteCostPerHour(site) * 24 * (rigWallW(rig) / demand) : 0;
   };
-  const rigNet = (rig: any) => rigRev(rig) - rigPow(rig);
+  const rigNet = (rig: Rig) => rigRev(rig) - rigPow(rig);
 
-  const rigWear = (rig: any) => rig.units.length ? rig.units.reduce((sum: number, unit: any) => sum + unit.w, 0) / rig.units.length : 0;
-  const rigState = (rig: any) =>
+  const rigWear = (rig: Rig) => rig.units.length ? rig.units.reduce((sum: number, unit: Unit) => sum + unit.w, 0) / rig.units.length : 0;
+  const rigState = (rig: Rig) =>
       rig.building>0 ? {k:'build', dot:'build', label:'Building', sub:fmt.dur(rig.building)}
     : !rig.on ? {k:'off', dot:'off',
         label: rig.cut==='broke' ? 'Stopped — no cash'
              : rig.cut==='brownout' ? 'Shed — site over capacity' : 'Off', sub:''}
-    : rig.units.every((unit: any) => unit.w>=1) ? {k:'worn', dot:'bad', label:'Worn out', sub:'cards need replacing'}
+    : rig.units.every((unit: Unit) => unit.w>=1) ? {k:'worn', dot:'bad', label:'Worn out', sub:'cards need replacing'}
     : rigNet(rig)<0 ? {k:'losing', dot:'bad', label:'Losing money', sub:'costs more than it earns'}
     : rigWear(rig)>0.6 ? {k:'wearing', dot:'warn', label:'Wearing', sub:'cards past 60%'}
     : {k:'run', dot:'run', label:'Running', sub:''};
 
-  const DEFAULT_ELEC = 15.00; // matches SOURCES' flat grid baseline — see site-parts.js
+  const DEFAULT_ELEC = 15.00; // matches SOURCES' flat grid baseline — see site-parts.ts
   const margRate = (site: Site) => {
     const demand = siteDemand(site);
     return demand > 0 ? siteCostPerHour(site) / demand * 1000 : DEFAULT_ELEC;
@@ -251,7 +253,7 @@ export function installDispatch(G: Game): void {
   const today = () => {
     const dayIdx = dayIndexOf(G.s.t);
     if (!G.s.today || G.s.today.day !== dayIdx) {
-      if (G.s.today && G.s.today.day === dayIdx - 1) G.s.yday = { ...G.s.today, hash: totalHash.value } as any;
+      if (G.s.today && G.s.today.day === dayIdx - 1) G.s.yday = { ...G.s.today, hash: totalHash.value };
       G.s.today = { day: dayIdx, earned: 0, power: 0, blocks: 0 };
     }
     return G.s.today;
@@ -261,7 +263,7 @@ export function installDispatch(G: Game): void {
      derived rather than stored — the snapshot keeps the two counters it is
      the difference of. */
   const yday = (key: string): number | null => {
-    const yesterday = G.s.yday as any;
+    const yesterday = G.s.yday;
     if (!yesterday || yesterday.day !== dayIndexOf(G.s.t) - 1) return null;
     const value = key === 'net' ? yesterday.earned - yesterday.power : yesterday[key];
     return Number.isFinite(value) ? value : null;
@@ -294,11 +296,11 @@ export function installDispatch(G: Game): void {
   const revenueDay = computed(() => today().earned);
   const powerDay = computed(() => today().power);
   const netDay = computed(() => today().earned - today().power);
-  const expectedDay = computed(() => G.s.rigs.reduce((sum: number, rig: any) => sum + rigRev(rig), 0));
+  const expectedDay = computed(() => G.s.rigs.reduce((sum: number, rig: Rig) => sum + rigRev(rig), 0));
   const powerRateDay = computed(() => G.s.sites.reduce((sum, site) => sum + siteCostPerHour(site) * 24, 0));
   const walletUsd = computed(() => G.s.chains.reduce((sum, chain) => sum + G.s.wallet[chain.id]! * G.price(chain), 0));
   const runway = computed(() => netDay.value >= 0 ? Infinity : G.s.cash / -netDay.value);
-  const poolEarned = computed(() => G.s.pools.reduce((sum: number, pool: any) => sum + (pool.owner === 'you' ? pool.earned : 0), 0));
+  const poolEarned = computed(() => G.s.pools.reduce((sum: number, pool: Pool) => sum + (pool.owner === 'you' ? pool.earned : 0), 0));
   const lifetimeNet = computed(() => G.s.earned + poolEarned.value - G.s.powerPaid - G.s.spent);
 
   Object.assign(G, { touchHeat, BATT_HORIZON, DEFAULT_ELEC, battAdvice, battFirm, battKw, battKwh, binding, blockETA, blockProg, blocksDay, chainCeiling, chainHash, chassisW, diffOf, dayDelta, dayPaceDelta, draftGroup, draftRate, easeOf, effMhw, expectedDay, flowOf, fundOf, groupAdvice, groupHash, groupOf, groupRigs, headroom, idleCashAdvice, lifetimeNet, liveUnits, margRate, mttb, myHash, netDay, poolEarned, poolHash, powerDay, powerRateDay, psuCarrying, psuUsableW, psuWithConn, revPerMh, revenueDay, rigAir, rigCoreW, rigHash, rigLive, rigNet, rigPow, rigRev, rigState, rigWallW, rigWear, runway, simHash, siteCapacity, siteCooling, siteCostPerHour, siteDemand, siteHeat, sitePlan, sitePlantW, siteRigs, siteSlots, siteStorage, siteTemp, srcOut, throttleOf, today, totalCapacity, totalDemand, totalHash, walletUsd, winChance });

@@ -1,19 +1,19 @@
 import { fmt } from '../utils/format.js';
 import { PART, type Card, type Psu } from '../data/hardware.js';
 import { trimName } from './state.js';
-import type { Game, Group } from './types.js';
+import type { Game, Group, Rig, Unit } from './types.js';
 
 export function installGroups(G: Game): void {
-  function netIfOn(rig: any): number {
+  function netIfOn(rig: Rig): number {
     const group = G.groupOf(rig);
     const chain = group && G.chain(group.chain);
     const site = G.site(rig.site);
     if (!chain || !site) return -999;
     const units = rig.units;
     if (!units.length) return -999;
-    const megahash = units.reduce((sum: number, unit: any) => sum + (PART(unit.p) as Card).mh * (1 - 0.4 * unit.w), 0) * (1 + (rig.tune || 0));
-    const watts = (G.chassisW(rig) + units.reduce((sum: number, unit: any) => sum + PART(unit.p)!.w * (1 + 0.5 * unit.w), 0)
-      * (1 + (rig.tune || 0) * 1.9)) / (PART(rig.psu) as Psu).eff;
+    const megahash = units.reduce((sum: number, unit: Unit) => sum + (PART(unit.p)! as Card).mh * (1 - 0.4 * unit.w), 0) * (1 + (rig.tune || 0));
+    const watts = (G.chassisW(rig) + units.reduce((sum: number, unit: Unit) => sum + PART(unit.p)!.w * (1 + 0.5 * unit.w), 0)
+      * (1 + (rig.tune || 0) * 1.9)) / (PART(rig.psu)! as Psu).eff;
     return megahash * G.revPerMh(chain) * G.evMult(G.poolOf(group.pool)) - watts / 1000 * 24 * G.margRate(site);
   }
 

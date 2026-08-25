@@ -86,15 +86,18 @@ describe('RebuildSheet', () => {
     expect(wrapper.text()).toContain('Nothing changed yet');
   });
 
-  /* The forfeit warning is keyed on rbRig.pending / rbRig.chain, but
-     persistence.js:110 deletes both from every rig — the PPLNS window moved
-     onto the GROUP in an earlier migration. So the branch is unreachable on any
-     current save, and its body would throw on g.chain(undefined).tick if it
-     ever were reached. Pinned as-is here rather than fixed: this PR is a pure
-     move and may not change behavior. Reported separately. */
-  it('does not warn about a forfeit for a rig that carries no window', () => {
+  // The forfeit warning reads pending/chain off the rig's GROUP, not the rig
+  // itself — the PPLNS window moved there in an earlier migration, and this
+  // component still read the pre-migration rig fields until a stricter Rig
+  // type (which has no `pending`/`chain`) caught the mismatch.
+  it('does not warn about a forfeit when the group carries no pending window', () => {
     const { wrapper, store: g } = open();
-    expect(g.s.rigs[0].pending).toBeUndefined();
+    expect(g.s.groups[0].pending).toBe(0);
     expect(wrapper.text()).not.toContain('forfeits the PPLNS window');
+  });
+
+  it('warns about forfeiting the PPLNS window when the group has one pending', () => {
+    const { wrapper } = open(g => { g.s.groups[0].pending = 5; });
+    expect(wrapper.text()).toContain('forfeits the PPLNS window');
   });
 });

@@ -1,4 +1,4 @@
-import { C } from '../data/constants.js';
+import { C, TRADE_IN_RATE } from '../data/constants.js';
 import { SHELLS, SITEPART, jobPart } from '../data/site-parts.js';
 import { FAB } from '../data/fab.js';
 import { fmt } from '../utils/format.js';
@@ -6,7 +6,7 @@ import { trimName } from './state.js';
 import type { Game } from './types.js';
 import type { Job } from '../data/site-parts.js';
 
-// 10-site-management.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -20,7 +20,7 @@ export function installSites(G: Game): void {
     const f = { id:G.s.nextSite++, name:sh.name+' '+(G.s.sites.length+1), shell:'bedroom', fab:null,
       sources:[], plants:[{p:'p-open',n:1}], queue:[] as Job[], wind:0.5 };
     f.queue.push({ p:shellId, kind:'shell', left:sh.hours, total:sh.hours });
-    G.s.sites.push(f as any); G.s.activeSite = f.id;
+    G.s.sites.push(f); G.s.activeSite = f.id;
     G.say('site', 'Broke ground on ' + sh.name + ' — ' + sh.hours + ' h', '-' + fmt.usd(sh.price), undefined, undefined, -sh.price);
   }
   function addSitePart(fid: number, pid: string, kind: 'source' | 'storage' | string): void {
@@ -56,7 +56,7 @@ export function installSites(G: Game): void {
     const cur = SITEPART(f.shell) as { slots: number; price: number };
     if (sh.slots <= cur.slots) return;                    // only ever grows
     if (f.queue.some((j: Job) => j.kind === 'shell')) return;       // one shell job at a time
-    const credit = Math.round(cur.price * 0.5);
+    const credit = Math.round(cur.price * TRADE_IN_RATE);
     const cost = Math.max(0, sh.price - credit);
     if (G.s.cash < cost) return;
     G.spend(cost);
@@ -73,7 +73,7 @@ export function installSites(G: Game): void {
     const cur = f.fab ? FAB(f.fab) : null;
     if (cur && fb.tier <= cur.tier) return;                 // only ever grows
     if (f.queue.some((j: Job) => j.kind === 'fab')) return;           // one fab job at a time
-    const credit = cur ? Math.round(cur.price * 0.5) : 0;
+    const credit = cur ? Math.round(cur.price * TRADE_IN_RATE) : 0;
     const cost = Math.max(0, fb.price - credit);
     if (G.s.cash < cost) return;
     G.spend(cost);
@@ -89,7 +89,7 @@ export function installSites(G: Game): void {
   function decommissionSite(fid: number): void {
     const f = G.site(fid);
     if (!f || G.s.sites.length <= 1 || G.siteRigs(f).length > 0 || f.queue.length > 0) return;
-    const back = Math.round(0.5 * ((SITEPART(f.shell) as { price: number }).price
+    const back = Math.round(TRADE_IN_RATE * ((SITEPART(f.shell) as { price: number }).price
       + f.sources.reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)
       + f.plants.reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)
       + (f.storage || []).reduce((a: number, x: { p: string; n: number }) => a + (SITEPART(x.p) as { price: number }).price * x.n, 0)
@@ -97,7 +97,7 @@ export function installSites(G: Game): void {
     G.s.cash += back;
     G.s.sites = G.s.sites.filter(x => x.id !== fid);
     if (G.s.activeSite === fid) G.s.activeSite = G.s.sites[0]!.id;
-    // an open design (game/fab.js) points at the site it was opened on —
+    // an open design (game/fab.ts) points at the site it was opened on —
     // decommissioning that site out from under it must close the sheet,
     // not leave it rendering a fab that no longer exists
     if (G.s.design && G.s.design.fid === fid) G.s.design = null;

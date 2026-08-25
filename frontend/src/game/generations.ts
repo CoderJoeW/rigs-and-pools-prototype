@@ -2,7 +2,7 @@ import { C } from '../data/constants.js';
 import { CARDS, PSUS, PART_MAP, genCardsFor, genPsuFor, type Card, type Psu } from '../data/hardware.js';
 import type { Game } from './types.js';
 
-// 01-generations.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and

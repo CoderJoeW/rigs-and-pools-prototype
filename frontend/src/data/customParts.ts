@@ -1,15 +1,7 @@
 import { FRAMES, MOBOS, COOLERS, PSUS, CARDS, type Frame, type Mobo, type Cooler, type Psu, type Card } from './hardware.js';
 
-// ---- fab-designed parts. Every catalogue ladder elsewhere in the game is
-// strictly monotonic and capped — the whole point of a fab (data/fab.js) is
-// a part that goes past that cap. A design starts from the TOP tier of its
-// slot's catalogue and pushes one or two stats further, paid for out of the
-// fab's `budget` (a per-design allowance, not a resource that depletes
-// across designs — see fab.js's own comment) plus real cash and build time.
-//
-// Two axes per slot, never more: the tradeoff this is meant to create is
-// "which stat, and how far" within ONE shared budget, and a longer axis
-// list would mostly just mean spreading thinner rather than choosing.
+// Fab-designed parts: push one or two stats past the catalogue's cap.
+// Rationale: docs/economy.md#fab-designed-parts-srcdatacustompartsts
 
 export type DesignKind = 'frame' | 'mobo' | 'cool' | 'psu' | 'unit';
 export type DesignBase = Frame | Mobo | Cooler | Psu | Card;
@@ -50,23 +42,13 @@ const STATIC_TOP: Record<DesignKind, DesignBase> = {
   unit: CARDS[CARDS.length - 1]!,
 };
 
-// unit and psu are the two ladders generations.js keeps growing for as long
-// as the game runs; frame/mobo/cool never do. A design's starting point for
-// those two MUST be the CURRENT top of the live catalogue, not this file's
-// static import — this module has no store access to ask for that, so
-// every caller that designs a unit or psu has to pass `liveTop` in (the
-// last element of g.cards() / g.livePsus). Skip that and a part designed
-// early quietly falls behind the catalogue itself a few in-game weeks
-// later: the opposite of "numbers nothing in any catalogue can match," the
-// entire reason to pay for a fab. Frame/mobo/cool callers can omit it.
+// liveTop must be the CURRENT top of the live catalogue for unit/psu designs
+// (see docs/economy.md) — this module has no store access to ask for that itself.
 export function designBaseStats(kind: DesignKind, liveTop?: DesignBase): Record<string, unknown> {
   return { ...(liveTop || STATIC_TOP[kind]) };
 }
 
-// Triangular: the Nth point on an axis costs budgetCost*N, so reaching N
-// points costs budgetCost*N*(N+1)/2 — climbing any one axis alone gets
-// steadily more expensive, which is what forces a real split across the
-// two axes instead of dumping every point into whichever is cheaper.
+// Triangular cost curve — docs/economy.md#fab-designed-parts-srcdatacustompartsts
 export const pointCost = (axis: DesignAxis, n: number): number => axis.budgetCost * n * (n + 1) / 2;
 
 export type DesignPicks = Record<string, number>;
@@ -95,12 +77,7 @@ export function designStats(kind: DesignKind, picks: DesignPicks, liveTop?: Desi
   return out;
 }
 
-// buildCash is the one-off R&D bill, paid to queue the manufacturing job
-// (same as any other site-part purchase). unitPrice is what the finished
-// design costs each time it's actually used to build a rig, forever after —
-// a modest, points-scaled premium over the catalogue's own top tier, so a
-// custom part stays true to "more expensive is always better" rather than
-// becoming free hashrate once the R&D is paid off.
+// buildCash vs unitPrice rationale — docs/economy.md#fab-designed-parts-srcdatacustompartsts
 export function designCost(kind: DesignKind, picks: DesignPicks, liveTop?: DesignBase): { buildCash: number; hours: number; unitPrice: number } {
   const { cash, points } = designTotals(kind, picks);
   const base = designBaseStats(kind, liveTop) as { price: number };

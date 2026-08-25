@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 import { C, TX_FEES } from '../data/constants.js';
-import type { Game, ChainState, Site } from './types.js';
+import type { Game, ChainState, Site, Rig, Pool } from './types.js';
 
-// 03-clock-and-tariff.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -10,7 +10,7 @@ import type { Game, ChainState, Site } from './types.js';
 export function installTimeOfDay(G: Game): void {
   /* ---- time of day drives solar; tariff band drives grid prices ----
      hourOf runs on a DAY_HOURS-long real-time cycle, not the 86400s-per-day
-     economic clock s.t otherwise keeps — see constants.js's DAY_HOURS. */
+     economic clock s.t otherwise keeps — see constants.ts's DAY_HOURS. */
   const cycleS = C.DAY_HOURS * 3600;
   const hourOf = (t: number) => ((t % cycleS) / cycleS) * 24;
   const bandOf = (h: number): 'off' | 'peak' | 'shoulder' => (h >= C.OFF_START || h < C.OFF_END) ? 'off'
@@ -33,10 +33,13 @@ export function installTimeOfDay(G: Game): void {
   });
 
   const site = (id: number): Site | undefined => G.s.sites.find(x => x.id === id);
-  const active = computed(() => site(G.s.activeSite) || G.s.sites[0]);
+  // G.s.sites is never empty in practice — decommissionSite refuses to drop
+  // the last one — so this asserts the real invariant rather than pushing
+  // `| undefined` through every one of active's many callers.
+  const active = computed(() => (site(G.s.activeSite) || G.s.sites[0])!);
   const chain = (id: string): ChainState | undefined => G.s.chains.find(c => c.id === id);
-  const rig = (id: number) => G.s.rigs.find((x: any) => x.id === id);
-  const poolOf = (id: string) => G.s.pools.find((p: any) => p.id === id) || null;
+  const rig = (id: number) => G.s.rigs.find((x: Rig) => x.id === id);
+  const poolOf = (id: string) => G.s.pools.find((p: Pool) => p.id === id) || null;
   const price = (c: ChainState) => Math.max(0.02, c.ref * (1 - c.impact));
   const evMult = (p: { fee: number; scheme: string } | null) => p ? (1 - p.fee) * (p.scheme === 'PPS' ? 1 : 1 + TX_FEES) : 1 + TX_FEES;
 

@@ -4,7 +4,7 @@ export const C = {
   // Tuning derivation: docs/economy.md#base_wear-005. Design rationale: design-spec.md §3.
   BASE_WEAR:0.05,
   // Manual repair line (RigsView's "worn past X%") — separate knob from
-  // state.js's fixAt (auto-replace's own threshold, defaulted higher at 0.45).
+  // state.ts's fixAt (auto-replace's own threshold, defaulted higher at 0.45).
   REPAIR_AT:0.35,
   PAY:4.20,                 // $/day per MH/s on a 1.00x chain
   EXCH_FEE:0.004, START_CASH:500,
@@ -34,24 +34,32 @@ export const C = {
   JACKPOT_MULT:3,
   BLOCK_BASELINE_MIN:5,
   BLOCK_BASELINE_WINDOW:20,
+  // A site's "hot"/"warm"/"cool" banding: cardWear.ts's wear-rate penalty
+  // and warning both key off HOT_TEMP, and the UI (ambientOf, SitesView's
+  // COOKING tag) reads the same two numbers so what's shown always matches
+  // what's actually happening to the cards.
+  WARM_TEMP:58,
+  HOT_TEMP:70,
 };
 
 export const TX_FEES = 0.06;
 
+// Half the catalogue price back on anything an upgrade or a rebuild
+// removes — a rig's rebuild, a site's shell/fab upgrade, and a site's
+// decommission salvage all use this same rate. Not rigSalvage's distress
+// rates (insolvency.ts), which are deliberately lower and per-component.
+export const TRADE_IN_RATE = 0.5;
+
 // Pool founding: design-spec.md §5 / §5a.
 export const BOND_MULT  = { PPS:200, PPLNS:20 };   // multiples of one block's value
-// Clamp on a simulated pool operator's fee — rival (poolMarket.js) and
-// sim-owned (sims.js) pools both nudge their fee up when full, down when
+// Clamp on a simulated pool operator's fee — rival (poolMarket.ts) and
+// sim-owned (sims.ts) pools both nudge their fee up when full, down when
 // starved, and both stop at these same two bounds.
 export const SIM_FEE_MIN = 0.002;
 export const SIM_FEE_MAX = 0.09;
 export const SIM_PLAYERS = 100;      // the rest of the network
-// Chain ladder rationale: design-spec.md §2a. The per-mult premiums and rung
-// spacing there predate a 2026-08-21 rebalance (now Halcyon +35%, Nova +75%,
-// Obelisk +120% vs Ferro's mult:1.00, rungs ~8-10x apart) — see docs/economy.md
-// for the current numbers until §2a's table is refreshed to match.
-// SIM_RATIO is where a chain's independent miners END UP once the network has
-// fully arrived, not where it starts — design-spec.md §6o.
+// Where a chain's independent miners end up once fully arrived, not where it
+// starts — design-spec.md §6o. Chain ladder rationale: docs/economy.md#chain-ladder-derivation-srcdatachainsts
 export const SIM_RATIO   = 0.6;
 // Block timing model (exact-arrival, not Poisson): design-spec.md §1.
 export const BLOCK_K = 3;

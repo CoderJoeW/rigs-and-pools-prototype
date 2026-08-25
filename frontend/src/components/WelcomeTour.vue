@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import keyArt from '../assets/key/hero.webp';
+import type { TourSlide } from '../game/types.js';
 
 const g = useGameStore();
 const step = ref(0);
@@ -72,13 +73,13 @@ watch(() => g.showTour, (shown: boolean) => {
 
 // Drives the tab to match the current slide; runs immediately so slide 1
 // is positioned correctly even though 'farm' is already the default tab.
-watch(() => g.showTour && slide.value, (s: any) => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
+watch(() => g.showTour && slide.value, (s: TourSlide | false) => { if (s) g.s.tab = s.tab; reposition(); }, { immediate:true });
 
 // The reverse direction — some spotlighted targets are themselves buttons
 // that jump tabs, so this resyncs the slide to match: docs/implementation-notes.md#tour-spotlight-tracking-srccomponentswelcometourvue.
 watch(() => g.s.tab, (tab: string) => {
   if(!g.showTour) return;
-  const idx = g.TOUR_SLIDES.findIndex((s: any) => s.tab === tab);
+  const idx = g.TOUR_SLIDES.findIndex((s: TourSlide) => s.tab === tab);
   if(idx !== -1 && idx !== step.value) step.value = idx;
 });
 
@@ -113,7 +114,7 @@ onBeforeUnmount(()=>{
       {{ displaySlide.title }}</h3>
     <p style="font-size:12.5px;line-height:1.5;color:var(--ink)">{{ displaySlide.body }}</p>
     <div style="display:flex;gap:5px;justify-content:center;margin:10px 0 2px">
-      <span v-for="(s,i) in g.TOUR_SLIDES" :key="i" aria-hidden="true"
+      <span v-for="(_,i) in g.TOUR_SLIDES" :key="i" aria-hidden="true"
             :style="{width:'6px',height:'6px',borderRadius:'50%',
                      background: i===step ? 'var(--blue)' : 'var(--line)'}"></span>
     </div>

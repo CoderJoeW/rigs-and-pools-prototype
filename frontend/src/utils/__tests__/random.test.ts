@@ -3,7 +3,8 @@ import { gauss, wearRate } from '../random.js';
 
 describe('gauss', () => {
   it('produces finite values roughly centered on 0 over many draws', () => {
-    let sum = 0, n = 2000;
+    let sum = 0;
+    const n = 2000;
     for (let i = 0; i < n; i++) {
       const v = gauss();
       expect(Number.isFinite(v)).toBe(true);

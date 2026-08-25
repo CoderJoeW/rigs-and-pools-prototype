@@ -1,13 +1,13 @@
-import { C } from '../data/constants.js';
+import { C, TRADE_IN_RATE } from '../data/constants.js';
 import { FRAMES, MOBOS, COOLERS, PART, RISER, gpuCoreW } from '../data/hardware.js';
 import { fmt } from '../utils/format.js';
 import { wearRate } from '../utils/random.js';
 import { trimName } from './state.js';
-import type { Game } from './types.js';
+import type { Game, Rig, Unit, RebuildDraft, RebuildInfo } from './types.js';
 
 const P = (id: string): any => PART(id);
 
-// 09-actions.js — installed into the shared context G.
+// Installed into the shared context G — docs/implementation-notes.md#shared-context-g-module-pattern.
 // Cross-module references go through G, so the 7 mutually dependent
 // module pairs still resolve at call time exactly as the closure did.
 // Declarations are untouched: hoisting, evaluation order and
@@ -50,7 +50,7 @@ export function installActions(G: Game): void {
   }
   function scrapRig(id: number): void {
     const rig = G.rig(id); if (!rig) return;
-    const back = G.rigSalvage(rig); G.s.cash += back; G.s.rigs = G.s.rigs.filter((other: any) => other.id !== id);
+    const back = G.rigSalvage(rig); G.s.cash += back; G.s.rigs = G.s.rigs.filter((other: Rig) => other.id !== id);
     G.say('sys', 'Stripped ' + rig.name + ' for parts', '+' + fmt.usd(back), undefined, undefined, back);
   }
   function swapWorn(id: number, th: number): void {
@@ -69,28 +69,32 @@ export function installActions(G: Game): void {
      cost that makes it a decision. */
   const SLOT_OPTS = { frame:FRAMES, mobo:MOBOS, cool:COOLERS, psu:G.livePsus };
   const rebuildTime = (cardCount: number) => C.BUILD_BASE * (0.5 + 0.1 * cardCount);   // wired already: a little faster than new
-  function rebuildInfo(rig: any, draft: any): any {
+  // Same TRADE_IN_RATE a site's shell/fab upgrade credits (sites.ts) and the
+  // picker preview quotes (useSitePickerRows.ts) — whether it's a whole
+  // slot, a batch of worn cards, or risers.
+  const tradeInCredit = (price: number) => Math.round(price * TRADE_IN_RATE);
+  function rebuildInfo(rig: Rig, draft: RebuildDraft): RebuildInfo {
     const framePart = P(draft.frame), moboPart = P(draft.mobo), coolPart = P(draft.cool), psuPart = P(draft.psu), unitPart = P(draft.unit);
     const lim = Math.min(framePart.slots, moboPart.pcie);
     let buy = 0, credit = 0;
-    for (const slot of ['frame', 'mobo', 'cool', 'psu']) if (draft[slot] !== rig[slot]) {
-      buy += P(draft[slot]).price; credit += Math.round(P(rig[slot]).price * 0.5);
+    for (const slot of ['frame', 'mobo', 'cool', 'psu'] as const) if (draft[slot] !== rig[slot]) {
+      buy += P(draft[slot]).price; credit += tradeInCredit(P(rig[slot]).price);
     }
     const typeChanged = draft.unit !== rig.units[0].p;
     if (typeChanged) {
       buy += draft.n * unitPart.price;
-      credit += Math.round(rig.units.reduce((sum: number, unit: any) => sum + P(unit.p).price * Math.max(0, 1 - unit.w) * 0.5, 0));
+      credit += tradeInCredit(rig.units.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w), 0));
     } else if (draft.n > rig.units.length) buy += (draft.n - rig.units.length) * unitPart.price;
     else if (draft.n < rig.units.length) {
-      const drop = [...rig.units].sort((unitA: any, unitB: any) => unitB.w - unitA.w).slice(0, rig.units.length - draft.n);
-      credit += Math.round(drop.reduce((sum: number, unit: any) => sum + P(unit.p).price * Math.max(0, 1 - unit.w) * 0.5, 0));
+      const drop = [...rig.units].sort((unitA: Unit, unitB: Unit) => unitB.w - unitA.w).slice(0, rig.units.length - draft.n);
+      credit += tradeInCredit(drop.reduce((sum: number, unit: Unit) => sum + P(unit.p).price * Math.max(0, 1 - unit.w), 0));
     }
     if (draft.n > rig.risers) buy += (draft.n - rig.risers) * RISER.price;
-    else if (draft.n < rig.risers) credit += Math.round((rig.risers - draft.n) * RISER.price * 0.5);
+    else if (draft.n < rig.risers) credit += tradeInCredit((rig.risers - draft.n) * RISER.price);
     const net = buy - credit;
     const core = gpuCoreW(framePart, moboPart, coolPart, unitPart, draft.n);
     const wall = core / psuPart.eff;
-    const site = G.site(rig.site);
+    const site = G.site(rig.site)!;   // a rig's site FK always resolves
     const checks = [
       { ok:draft.n>=1&&draft.n<=lim, label:draft.n+' cards into a limit of '+lim,
         fix:'The smaller of the frame and the board sets it.' },
@@ -114,13 +118,13 @@ export function installActions(G: Game): void {
     return { buy, credit, net, core, wall, lim, checks, time: rebuildTime(draft.n),
       ok: changed && checks.every(check => check.ok), changed, hashNew: draft.n * unitPart.mh };
   }
-  const startRebuild = (rig: any) => { G.s.rebuild = { rig: rig.id, picker: null,
+  const startRebuild = (rig: Rig) => { G.s.rebuild = { rig: rig.id, picker: null,
     draft: { frame: rig.frame, mobo: rig.mobo, cool: rig.cool, psu: rig.psu,
             unit: rig.units[0].p, n: rig.units.length } }; };
-  function applyRebuildTo(rig: any, draft: any, info: any): void {
+  function applyRebuildTo(rig: Rig, draft: RebuildDraft, info: RebuildInfo): void {
     if (draft.unit !== rig.units[0].p) rig.units = Array.from({ length: draft.n }, () => ({ p: draft.unit, w: 0 }));
     else if (draft.n > rig.units.length) { while (rig.units.length < draft.n) rig.units.push({ p: draft.unit, w: 0 }); }
-    else if (draft.n < rig.units.length) { rig.units.sort((unitA: any, unitB: any) => unitA.w - unitB.w); rig.units.length = draft.n; }
+    else if (draft.n < rig.units.length) { rig.units.sort((unitA: Unit, unitB: Unit) => unitA.w - unitB.w); rig.units.length = draft.n; }
     rig.frame = draft.frame; rig.mobo = draft.mobo; rig.cool = draft.cool; rig.psu = draft.psu; rig.risers = draft.n;
     G.s.cash -= info.net; if (info.net > 0) G.s.spent += info.net;
     rig.refurb++; rig.on = true; rig.cut = null; rig.deadNote = false; rig.building = info.time; rig.rb = 1; G.s.rebuilds = (G.s.rebuilds || 0) + 1;
@@ -139,16 +143,16 @@ export function installActions(G: Game): void {
     const rig = G.rig(id);
     if (rig && rig.building <= 0) { rig.on = !rig.on; rig.cut = null; }
   };   // never touches the group's window
-  const setRigGroup = (rig: any, groupId: number) => { rig.group = groupId; };
+  const setRigGroup = (rig: Rig, groupId: number) => { rig.group = groupId; };
 
   /* Pay to finish a rig's assembly or retrofit early — the same trade the
-     site construction queue already offers (sites.js: rush/rushCost), on
+     site construction queue already offers (sites.ts: rush/rushCost), on
      the same $/hour rate. `building` is real SECONDS rather than the
      queue's hours, so the rate is applied to the hour-equivalent. Setting
      `building` to a hair above zero rather than 0 lets the next tick run its
      own completion path (the 'assembled'/'rebuilt' message, r.rb reset) —
      one place that finishes a rig, whether it got there by waiting or paying. */
-  const rushRigCost = (rig: any) => Math.ceil(rig.building / 3600 * C.RUSH_PER_HOUR);
+  const rushRigCost = (rig: Rig) => Math.ceil(rig.building / 3600 * C.RUSH_PER_HOUR);
   function rushRig(id: number): void {
     const rig = G.rig(id); if (!rig || rig.building <= 0) return;
     const cost = rushRigCost(rig); if (G.s.cash < cost) return;

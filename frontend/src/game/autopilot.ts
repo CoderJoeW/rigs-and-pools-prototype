@@ -1,4 +1,4 @@
-import type { Game, Site } from './types.js';
+import type { Game, Site, Rig } from './types.js';
 
 export function installAutopilot(G: Game): void {
   function shedAndRestoreOverCapacityRigs(): void {
@@ -11,7 +11,7 @@ export function installAutopilot(G: Game): void {
   function shedOverCapacityRigs(site: Site): void {
     let guard = 0;
     while (G.siteDemand(site) > G.siteCapacity(site) + G.battFirm(site) && guard++ < 40) {
-      const liveRigs = G.siteRigs(site).filter((rig: any) => G.rigLive(rig));
+      const liveRigs = G.siteRigs(site).filter((rig: Rig) => G.rigLive(rig));
       if (!liveRigs.length) break;
       let worst = liveRigs[0];
       for (const rig of liveRigs) if (G.rigNet(rig) < G.rigNet(worst)) worst = rig;
@@ -24,8 +24,8 @@ export function installAutopilot(G: Game): void {
 
   function restoreShedRigs(site: Site): void {
     const cutRigs = G.siteRigs(site)
-      .filter((rig: any) => !rig.on && (rig.cut === 'brownout' || rig.cut === 'broke') && rig.building <= 0)
-      .sort((rigA: any, rigB: any) => G.netIfOn(rigB) - G.netIfOn(rigA));
+      .filter((rig: Rig) => !rig.on && (rig.cut === 'brownout' || rig.cut === 'broke') && rig.building <= 0)
+      .sort((rigA: Rig, rigB: Rig) => G.netIfOn(rigB) - G.netIfOn(rigA));
     for (const rig of cutRigs) {
       if (rig.cut === 'broke' && (G.s.cash < 20 || G.netIfOn(rig) <= 0)) continue;
       const wasOn = rig.on;
@@ -48,7 +48,7 @@ export function installAutopilot(G: Game): void {
         rig.on = false;
         G.say('sys', 'Policy: ' + rig.name + ' powered down');
       } else if (!rig.on && netUsd > G.s.offThreshold * 1.2 + 0.4) {
-        const site = G.site(rig.site);
+        const site = G.site(rig.site)!;   // a rig's site FK always resolves
         if (G.siteDemand(site) + G.rigWallW({ ...rig, on: true }) < G.siteCapacity(site)) {
           rig.on = true;
           G.say('sys', 'Policy: ' + rig.name + ' back online');

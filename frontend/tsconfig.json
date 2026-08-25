@@ -11,9 +11,8 @@
 
     "strict": true,
     "noFallthroughCasesInSwitch": true,
-
-    "allowJs": true,
-    "checkJs": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
 
     "jsx": "preserve",
     "types": ["vite/client", "node"]

@@ -10,7 +10,6 @@ describe('sparkPath', () => {
 
   it('starts with M and continues with L, one command per point', () => {
     const d = sparkPath([1, 2, 3, 4], 36, 32);
-    const commands = d.split(' ').filter(t => t === 'M' || t.startsWith('M') || t.startsWith('L'));
     expect(d.startsWith('M')).toBe(true);
     expect(d.match(/L/g)).toHaveLength(3);
   });

@@ -60,7 +60,7 @@ export function useSwipeAction({ can = () => true, fire, within }: UseSwipeActio
     // finger is, not with a jump of the arming distance.
     sw.x = Math.max(0, Math.min(SW_MAX, pt.base + dx - (dx > 0 ? SW_ARM : -SW_ARM)));
   };
-  const onUp = (e: PointerLike, id: Id) => {
+  const onUp = (_e: PointerLike, id: Id) => {
     if (!pt || pt.id !== id) return;
     const claimed = pt.claimed; pt = null;
     if (!claimed) return;

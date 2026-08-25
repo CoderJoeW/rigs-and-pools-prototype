@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { useGameStore } from '../stores/game.js';
 import { fmt } from '../utils/format.js';
 import { sparkPath } from '../utils/spark.js';
 import ChainGem from '../components/ChainGem.vue';
 import { CHAIN_HUE } from '../data/chains.js';
 import { useSegTabs } from '../composables/useSegTabs.js';
+import type { Focusable } from '../composables/useSegTabs.js';
+import type { ChainState } from '../game/types.js';
 
 const g = useGameStore();
 const open=reactive<Record<string, boolean>>({});
-const slip=(c: any,f: number)=>Math.min(0.5,0.5*(g.s.wallet[c.id]!*f)/c.depth);
+const slip=(c: ChainState,f: number)=>Math.min(0.5,0.5*(g.s.wallet[c.id]!*f)/c.depth);
 
 // Segmented layout, same real-tablist pattern as ChainsView: docs/implementation-notes.md#chains-view-srcviewschainsviewvue.
 const SEGS=[
@@ -23,7 +25,7 @@ const SEGS=[
 ];
 const { seg, segEl, segKey } = useSegTabs(SEGS, 'prices');
 
-// Change is measured between the last two SAMPLES (18h apart, tick.js
+// Change is measured between the last two SAMPLES (18h apart, tick.ts
 // pushes one every 0.75 sim-days), not against the live price — a live
 // comparison would relabel a 0-18h window as if it were always the same measurement.
 const WINDOW='18h';
@@ -84,7 +86,7 @@ async function onBackupFile(e: Event){
       <button v-for="x in SEGS" :key="x.k" class="segtab" :class="{on:seg===x.k}"
               role="tab" :id="'mkseg-'+x.k" :aria-controls="'mkpan-'+x.k"
               :aria-selected="seg===x.k?'true':'false'"
-              :tabindex="seg===x.k?0:-1" :ref="(el: any)=>{ if(el) segEl[x.k]=el }"
+              :tabindex="seg===x.k?0:-1" :ref="(el: Element | ComponentPublicInstance | null)=>{ if(el) segEl[x.k]=el as Focusable }"
               @click="seg=x.k">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path :d="x.icon"/></svg>
         <span>{{ x.label }}</span></button>
@@ -193,9 +195,9 @@ async function onBackupFile(e: Event){
             {{ g.s.drip.hours===1?'each hour':g.s.drip.hours===6?'four times a day':'once a day' }}<span
               v-if="g.s.drip.frac<1">, so a stack decays rather than exits</span>.</p>
           <p v-if="g.dripWorst()" class="hint" style="color:var(--amber);margin-top:4px">
-            Slippage bites hardest on {{ g.dripWorst().c.name }}: this order would lose
-            {{ fmt.pct(g.dripWorst().cost) }}<span v-if="g.s.drip.frac>0.25">
-              — a 25% order would cost {{ fmt.pct(g.dripWorst().at25) }}</span>.</p>
+            Slippage bites hardest on {{ g.dripWorst()!.c.name }}: this order would lose
+            {{ fmt.pct(g.dripWorst()!.cost) }}<span v-if="g.s.drip.frac>0.25">
+              — a 25% order would cost {{ fmt.pct(g.dripWorst()!.at25) }}</span>.</p>
           <input type="range" min="0" max="14" step="0.25" v-model.number="g.s.minSell"
                  aria-label="Hold below price floor">
           <div class="track-cap"><span>Hold below</span>

@@ -452,7 +452,7 @@ describe('BuildView', () => {
       await wrapper.findAll('button').find(b => b.text() === 'Customise')!.trigger('click');
       const rows = wrapper.findAll('.chkrow');
       expect(rows.length).toBe(store.checks.length);
-      for (const [i, r] of rows.entries()) {
+      for (const r of rows) {
         // A short title on the left, the figures the check gates on at right.
         expect(r.find('.ct')!.text().length).toBeGreaterThan(0);
         expect(r.find('.cd')!.text()).toBe(store.checks.find((c: any) => c.title === r.find('.ct').text()
